@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 import re
+import shutil
 import subprocess
 import sys
 import webbrowser
@@ -44,22 +45,156 @@ class DeterministicIntentEngine:
     }
 
     @classmethod
+    def open_url_in_browser(cls, url: str, browser_name: str = "") -> bool:
+        """Open a URL in a specific browser (Brave, Chrome, Edge, Firefox) or fallback to default."""
+        target = (browser_name or "").lower().strip()
+        
+        if "brave" in target:
+            brave_paths = [
+                r"C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe",
+                r"C:\Program Files (x86)\BraveSoftware\Brave-Browser\Application\brave.exe",
+                "brave.exe", "brave"
+            ]
+            for exe in brave_paths:
+                if os.path.exists(exe) or shutil.which(exe):
+                    try:
+                        subprocess.Popen([exe, url])
+                        return True
+                    except Exception:
+                        pass
+            if sys.platform == "win32":
+                try:
+                    subprocess.Popen(["cmd", "/c", "start", "brave", url], shell=False)
+                    return True
+                except Exception:
+                    pass
+
+        elif "chrome" in target:
+            chrome_paths = [
+                r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+                r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+                "chrome.exe", "chrome"
+            ]
+            for exe in chrome_paths:
+                if os.path.exists(exe) or shutil.which(exe):
+                    try:
+                        subprocess.Popen([exe, url])
+                        return True
+                    except Exception:
+                        pass
+
+        elif "edge" in target:
+            edge_paths = [
+                r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
+                r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
+                "msedge.exe", "msedge"
+            ]
+            for exe in edge_paths:
+                if os.path.exists(exe) or shutil.which(exe):
+                    try:
+                        subprocess.Popen([exe, url])
+                        return True
+                    except Exception:
+                        pass
+
+        elif "firefox" in target:
+            ff_paths = [
+                r"C:\Program Files\Mozilla Firefox\firefox.exe",
+                r"C:\Program Files (x86)\Mozilla Firefox\firefox.exe",
+                "firefox.exe", "firefox"
+            ]
+            for exe in ff_paths:
+                if os.path.exists(exe) or shutil.which(exe):
+                    try:
+                        subprocess.Popen([exe, url])
+                        return True
+                    except Exception:
+                        pass
+
+        # Fallback to system default browser
+        try:
+            webbrowser.open(url)
+            return True
+        except Exception:
+            return False
+
+    @classmethod
     def parse_and_execute(cls, text: str) -> dict | None:
         """
         Attempt to deterministically parse and execute the request.
         Returns dict with result details if executed, or None if LLM reasoning is required.
         """
-        if not text or not text.strip():
-            return None
-
         clean = text.lower().strip().rstrip(".!;")
         lines = [line.strip().lower() for line in text.splitlines() if line.strip()]
+
+        # 00. Match Website URL Intent (e.g. "open github.com", "go to reddit.com", "launch https://google.com in brave")
+        url_match = re.search(r"^(?:open|launch|go\s+to|visit)\s+((?:https?://)?[a-zA-Z0-9\.-]+\.(?:com|org|net|io|dev|ai|co|gov|edu|in)(?:/\S*)?)", clean, re.IGNORECASE)
+        if url_match:
+            raw_url = url_match.group(1).strip()
+            target_url = raw_url if raw_url.startswith(("http://", "https://")) else f"https://{raw_url}"
+            target_browser = ""
+            for b in ["brave", "chrome", "edge", "firefox", "opera"]:
+                if b in clean:
+                    target_browser = b
+                    break
+            success = cls.open_url_in_browser(target_url, browser_name=target_browser)
+            if success:
+                b_name = target_browser.title() if target_browser else "default browser"
+                return {
+                    "executed": True,
+                    "intent": "open_url",
+                    "target": target_url,
+                    "result": f"Opened {target_url} in {b_name} (0-Token Execution).",
+                    "tokens_saved": 2000,
+                }
+
+        # 0. Match YouTube Play / Search & Specific Browser Intent (e.g., "play a tamil song in youtube open in brave browsr")
+        if "youtube" in clean and any(w in clean for w in ["play", "search", "find", "open", "listen", "watch"]):
+            target_browser = ""
+            for b in ["brave", "chrome", "edge", "firefox", "opera"]:
+                if b in clean:
+                    target_browser = b
+                    break
+            
+            clean_query_text = clean
+            if target_browser:
+                clean_query_text = re.sub(rf"\s+(?:and\s+)?(?:open\s+in|in|using|on)\s+{target_browser}(?:\s+brows[e]?r)?$", "", clean_query_text, flags=re.IGNORECASE)
+                clean_query_text = re.sub(rf"\s+(?:open\s+in|in|using|on)\s+{target_browser}(?:\s+brows[e]?r)?\s+", " ", clean_query_text, flags=re.IGNORECASE)
+
+            yt_match = re.search(r"(?:play|search|find|watch|listen\s+to)\s+(?:a\s+)?(.+?)\s+(?:in|on|at|via)\s+youtube", clean_query_text, re.IGNORECASE)
+            if not yt_match:
+                yt_match = re.search(r"(?:search|find|open)\s+youtube\s+(?:for|and\s+play)?\s+(.+)", clean_query_text, re.IGNORECASE)
+            if not yt_match:
+                yt_match = re.search(r"^youtube\s+(?:for\s+)?(.+)", clean_query_text, re.IGNORECASE)
+            
+            query = yt_match.group(1).strip() if yt_match else ""
+            if not query:
+                query = re.sub(r"^(?:play|open|launch|go\s+to)\s+youtube\s*", "", clean_query_text, flags=re.IGNORECASE).strip()
+            
+            import urllib.parse
+            if query:
+                yt_url = f"https://www.youtube.com/results?search_query={urllib.parse.quote_plus(query)}"
+                msg_target = f"YouTube search for '{query}'"
+            else:
+                yt_url = "https://www.youtube.com"
+                msg_target = "YouTube"
+                
+            success = cls.open_url_in_browser(yt_url, browser_name=target_browser)
+            if success:
+                b_name = target_browser.title() if target_browser else "default browser"
+                return {
+                    "executed": True,
+                    "intent": "youtube_play",
+                    "target": yt_url,
+                    "result": f"Opened {msg_target} in {b_name} (0-Token Execution).",
+                    "tokens_saved": 2200,
+                }
 
         # Guard: Defer complex queries containing pipelines, conditionals, chaining, or streaming overrides to LLM
         complex_keywords = [
             "|", "named ", "content:", "then ", "create a pdf", "create a word", "save to",
             " when ", " if ", " unless ", " after ", " before ", " because ", " though ", " although ",
-            " and tell ", " and show ", " and then ", " but ", " except ", " on spotify", " on youtube",
+            " and tell ", " and show ", " and then ", " but ", " except ", " on spotify",
             "play some ", "play artist ", "play playlist ", "play album "
         ]
         if any(marker in clean for marker in complex_keywords):
@@ -254,8 +389,8 @@ class DeterministicIntentEngine:
             except Exception:
                 pass
 
-        # 0i. Match Media & Volume Controls
-        if any(re.search(rf"\b{re.escape(phrase)}\b", clean) for phrase in ["play music", "pause music", "resume music", "toggle playback", "play media", "pause media", "play", "pause"]):
+        # 0i. Match Media & Volume Controls (Strict match for standalone media control commands)
+        if clean in ("play", "pause", "play pause", "pause media", "play media", "toggle playback", "play music", "pause music", "resume music", "next track", "previous track"):
             try:
                 import pyautogui
                 pyautogui.FAILSAFE = False
@@ -678,17 +813,22 @@ class DeterministicIntentEngine:
         # 0af. Match System Clipboard Inspection Intent
         if any(phrase in clean for phrase in ["read clipboard", "check clipboard", "clipboard content", "what is on clipboard"]):
             try:
-                import tkinter as tk
-                root = tk.Tk()
-                root.withdraw()
-                clip_text = root.clipboard_get()
-                root.destroy()
-                preview = clip_text[:120].replace("\n", " ") + ("..." if len(clip_text) > 120 else "")
+                from actions.clipboard_utils import get_clipboard_text
+                clip_text = get_clipboard_text()
+                if not clip_text:
+                    return {
+                        "executed": True,
+                        "intent": "read_clipboard",
+                        "target": "system_clipboard",
+                        "result": "📋 System Clipboard: (empty or non-text)",
+                        "tokens_saved": 1500,
+                    }
+                content_display = clip_text[:4000] + ("...\n[truncated]" if len(clip_text) > 4000 else "")
                 return {
                     "executed": True,
                     "intent": "read_clipboard",
                     "target": "system_clipboard",
-                    "result": f"📋 System Clipboard Inspection:\n• Content Length: {len(clip_text)} characters\n• Preview: \"{preview}\"",
+                    "result": f"📋 System Clipboard Inspection:\n• Content Length: {len(clip_text)} characters\n• Content:\n{content_display}",
                     "tokens_saved": 1500,
                 }
             except Exception:

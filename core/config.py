@@ -14,7 +14,7 @@ MODELS_JSON = CONFIG_DIR / "models.json"
 
 class AssistantConfig(BaseModel):
     name: str = Field(default="BR", description="Name of the assistant")
-    wake_word: str = Field(default="hey jarvis", description="Wake word for voice listening")
+    wake_word: str = Field(default="jarvis", description="Wake word for voice listening")
     offline_stt: bool = Field(default=False, description="Use offline Whisper model")
     whisper_model: str = Field(default="base", description="Whisper model tier")
     voice_language: str = Field(default="en", description="Primary language code")
@@ -22,15 +22,15 @@ class AssistantConfig(BaseModel):
 
 
 class ModelConfig(BaseModel):
-    default_backend: str = Field(default="gemini", description="Default primary LLM backend")
-    gemini: str = Field(default="gemini-3.5-flash", description="Gemini model ID")
-    claude: str = Field(default="claude-sonnet-4-20250514", description="Claude model ID")
-    gpt: str = Field(default="gpt-4o", description="GPT model ID")
-    ollama: str = Field(default="llama3", description="Ollama local model ID")
+    default_backend: str = Field(default="gpt", description="Default primary LLM backend")
+    gemini: str = Field(default="gemini-3.5-flash-low", description="Gemini model ID")
+    claude: str = Field(default="gemini-pro-agent", description="Claude model ID")
+    gpt: str = Field(default="gemini-3.6-flash-high", description="GPT model ID")
+    ollama: str = Field(default="llama3.3", description="Ollama local model ID")
     nvidia: str = Field(default="meta/llama-3.1-70b-instruct", description="NVIDIA NIM model ID")
     mistral: str = Field(default="mistral-large-latest", description="Mistral model ID")
-    planner_model: str = Field(default="gemini-3.1-pro-preview", description="Planning model ID")
-    fast_model: str = Field(default="gemini-3.1-flash-lite", description="Fast inference model ID")
+    planner_model: str = Field(default="gemini-3-flash-agent", description="Planning model ID")
+    fast_model: str = Field(default="gemini-3.5-flash-low", description="Fast inference model ID")
     voice_live: str = Field(default="models/gemini-3.1-flash-live-preview", description="Voice Live model ID")
 
 

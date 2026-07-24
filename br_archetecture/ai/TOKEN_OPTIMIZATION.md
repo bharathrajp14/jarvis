@@ -1,60 +1,43 @@
-# ⚡ BR JARVIS — Token Optimization & FNV-1a Caching Strategy
+# ⚡ Zero-Token Intent Engine & Token Optimization Specification
 
-> **Document Status**: Production Architecture Specification  
-> **Subsystem**: Performance & Token Efficiency  
-> **Modules**: `core/intent_engine.py`, `core/native_bridge.py`, `memory/cache.py`, `context/compressor.py`  
-
----
-
-## 1. Executive Summary
-
-Token overhead directly impacts operational latency and API resource consumption. BR JARVIS deploys a multi-layered **Token Optimization Strategy** designed to eliminate duplicate LLM invocations and minimize token consumption:
-
-1. **Zero-Token Intent Execution (`core/intent_engine.py`)**: Deterministic instant execution for system commands, application launches, web navigation, and standard reports without calling an LLM (0 tokens consumed).
-2. **Native C++ FNV-1a Memory Caching (`core/native_bridge.py` & `memory/cache.py`)**: Sub-millisecond hashing of read-only tool parameters and screen frames to achieve 100% cache hits on repeated queries.
-3. **Head/Tail Compression (`context/compressor.py`)**: Dynamic text compression that prunes log dumps while preserving context structure.
+> **Module**: `core/intent_engine.py` & `memory/cache.py`  
+> **Version**: MK37.30.0  
+> **Primary Purpose**: 50+ deterministic 0-token instant intent execution engine, fast FNV-1a frame hashing, and prompt payload minimization.
 
 ---
 
-## 2. Multi-Tier Token Reduction Taxonomy
+## 1. Zero-Token Deterministic Intent Engine (`core/intent_engine.py`)
 
-```mermaid
-graph TD
-    UserRequest[Incoming User Request] --> IntentEngine{Deterministic Intent Engine?}
-    
-    IntentEngine -->|Match: App Launch / URL / Analysis| NativeExec[Native Process Execution: 0 Tokens Consumed]
-    IntentEngine -->|No Match| ToolCacheCheck{Read-Only Tool & FNV-1a Hash Cache Hit?}
-    
-    ToolCacheCheck -->|Cache Hit| MemoryCacheReturn[Return Cached Result: 0 LLM Tokens Consumed]
-    ToolCacheCheck -->|Cache Miss| ContextCompression[Context Engine: Head/Tail Compression]
-    
-    ContextCompression --> DispatchLLM[Dispatch to Selected Model Backend]
-```
+BR JARVIS intercepts user requests prior to model dispatch using `DeterministicIntentEngine`. If a prompt matches one of **50+ regex/keyword intent patterns**, it is executed instantly with **0 LLM tokens consumed** and **<5ms latency**.
+
+### Supported Zero-Token Intent Categories (50+ Matchers)
+
+1. **System Diagnostics & Telemetry**:
+   - RAM Free / Usage / Garbage Collection (`flush ram`, `clean memory`)
+   - CPU Load, Frequency, Core Count (`cpu info`, `cpu load`)
+   - Disk Space & Partitions (`disk space`, `disk partitions`)
+   - Battery & Power Telemetry (`battery status`, `power status`)
+   - System Uptime & Hostname (`uptime`, `hostname`)
+   - System Timezone & Clock (`time`, `timezone`)
+   - Network Ping Latency & IP (`ping`, `ip address`, `network latency`)
+
+2. **Git & Code Workspace Diagnostics**:
+   - Active Git Branch (`git branch`, `current branch`)
+   - Recent Git Commits (`recent commits`, `git log`)
+   - Workspace Health & Statistics (`project stats`, `workspace health`)
+   - Python Environment & Packages (`python version`, `installed packages`, `pip list`)
+   - Source Code Metrics (`largest python file`, `python functions count`, `python classes count`)
+
+3. **Desktop & Window Management**:
+   - Display Resolution (`display resolution`, `screen size`)
+   - Active Window Title (`active window`, `current window`)
+   - Show Desktop / Lock Screen (`show desktop`, `lock screen`)
+   - App Launchers (`open brave`, `open chrome`, `open notepad`, `open settings`)
+   - Deep Audit Test Trigger (`run deep audit`, `verify system`)
 
 ---
 
-## 3. Key Components & Implementation Details
+## 2. Fast FNV-1a Hashing & Payload Optimization
 
-### A. Zero-Token Deterministic Intent Engine (`core/intent_engine.py`)
-`DeterministicIntentEngine` evaluates incoming natural language prompts against high-speed regex pattern matchers across **50+ deterministic intent categories** before any LLM inference occurs:
-- **App Launches**: `"open excel"`, `"launch chrome"`, `"open brave"`, `"start calculator"` → Directly resolved via `APP_MAPPINGS` dictionary (including `brave`, `firefox`, `chrome`, `edge`, `vscode`, `notepad`, `cmd`, etc.) and `subprocess.Popen` (Saves 2,400 tokens per call).
-- **Web Navigation**: `"open google.com"`, `"visit github.com"` → Dispatched via native OS browser handles (Saves 1,800 tokens per call).
-- **System & Codebase Telemetry**: `"current branch"`, `"show recent commits"`, `"largest file in project"`, `"free RAM memory"`, `"battery status"`, `"cpu frequency"`, `"disk partitions"` → Instant local zero-token telemetry (Saves 1,500 - 3,500 tokens per call).
-- **Excel Codebase Reports**: `"excel project analysis"` → Triggers `tools.excel_tools.analyze_project_to_excel()` directly (Saves 3,500 tokens per call).
-
-### B. High-Speed FNV-1a Hashing (`core/native_bridge.py`)
-For read-only tools (e.g. system status checks, file reads, web queries), parameter inputs are hashed using an ultra-fast non-cryptographic FNV-1a 64-bit hashing algorithm implemented in C++ (`native/fnv1a.dll`) with Python fallback:
-
-```python
-# Ultra-fast FNV-1a hash key generation
-def hash_key(data: str | bytes) -> int:
-    # Uses native DLL compiled binary if present
-    return native_fnv1a_64(data)
-```
-
-### C. Context Compression Metrics
-| Optimization Mechanism | Token Savings Range | Target Scenarios |
-|---|---|---|
-| Deterministic Intent Engine | **100% (0 Tokens)** | Standard OS actions, launches, known web URLs |
-| FNV-1a Read-Only Tool Cache | **100% (0 Tokens)** | Repeated file reads, status checks, unchanged screen frames |
-| Semantic Context Compression | **35% - 70%** | Large log files, conversation thread pruning, middle-truncation |
+- **FNV-1a Frame Hash Caching**: Vision engine screen captures compute 64-bit FNV-1a hashes. If the screen has not changed (`is_static`), LLM vision inference calls are bypassed completely.
+- **Payload Truncation**: Tool outputs are truncated beyond 800 lines with an informative snippet header to prevent prompt explosion.

@@ -74,7 +74,10 @@ class LifecycleManager:
 
     def attach_signal_handlers(self) -> None:
         """Register SIGINT and SIGTERM OS signal handlers."""
-        loop = asyncio.get_event_loop()
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = asyncio.get_event_loop()
         for sig in (signal.SIGINT, signal.SIGTERM):
             try:
                 loop.add_signal_handler(

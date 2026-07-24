@@ -30,6 +30,22 @@ class CodeSandbox:
             if not __import__("shutil").which("pwsh"):
                 return {"error": "PowerShell (pwsh) is not installed on this system"}
 
+        import re
+        code = code.strip()
+        code = re.sub(r"^```[a-zA-Z]*\n?", "", code)
+        code = re.sub(r"\n?```$", "", code).strip()
+        if lang == "python":
+            lines = code.split("\n")
+            cleaned = []
+            narrative = ("let's", "in windows", "here is", "this script", "note:", "we can", "the following", "to get", "using the")
+            for line in lines:
+                s = line.strip()
+                if any(s.lower().startswith(p) for p in narrative):
+                    cleaned.append("# " + line)
+                else:
+                    cleaned.append(line)
+            code = "\n".join(cleaned)
+
         with tempfile.NamedTemporaryFile(
             suffix=self._ext(lang), mode="w", delete=False, encoding="utf-8"
         ) as f:

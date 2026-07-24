@@ -12,6 +12,7 @@ import pyperclip
 from pathlib import Path
 from memory.persistent_store import get_memory_dir
 from tools.registry import register_tool
+from actions.clipboard_utils import get_clipboard_text
 
 
 class ClipboardTracker:
@@ -55,7 +56,7 @@ class ClipboardTracker:
         last_val = ""
         while self._running:
             try:
-                val = pyperclip.paste()
+                val = get_clipboard_text()
                 if val and val.strip() and val != last_val:
                     last_val = val
                     self._save_entry(val)

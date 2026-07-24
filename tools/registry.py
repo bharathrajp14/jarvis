@@ -56,7 +56,7 @@ def register_tool(name: str, description: str, parameters: dict | None = None) -
 def _run_async(coro):
     """
     Helper to run asynchronous coroutines safely, even inside a running loop.
-    Uses a dedicated thread with its own event loop to avoid deadlocks.
+    Handles loop thread safety to prevent deadlocks or thread attachment errors.
     """
     try:
         loop = asyncio.get_running_loop()
@@ -64,11 +64,13 @@ def _run_async(coro):
         loop = None
 
     if loop is not None and loop.is_running():
-        # Run in a separate thread to avoid deadlocking the current event loop
-        import concurrent.futures
-        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-            future = pool.submit(asyncio.run, coro)
+        try:
+            future = asyncio.run_coroutine_threadsafe(coro, loop)
             return future.result(timeout=60)
+        except Exception:
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                return pool.submit(lambda: asyncio.run(coro)).result(timeout=60)
     else:
         return asyncio.run(coro)
 
@@ -236,13 +238,6 @@ def parse_tool_call(text: str) -> tuple[str | None, dict | None]:
             return "run_code", {"code": data.get("code"), "lang": data.get("lang", "python")}
         except json.JSONDecodeError:
             pass
-
-    # 4. Fallback for unformatted tool call mentions (e.g. "Now call create_word_document" or "Now call create_excel_sheet")
-    mention_match = re.search(r'(?:now\s+call|call\s+tool|execute)\s+([a_zA-Z0_9_]+)', text, re.IGNORECASE)
-    if mention_match:
-        target = mention_match.group(1).strip()
-        if target in TOOL_REGISTRY:
-            return target, {}
 
     return None, None
 

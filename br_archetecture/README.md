@@ -1,6 +1,6 @@
 # 🧠 BR JARVIS — Engineering Knowledge Base Index
 
-Welcome to the **BR JARVIS (Project BR / JARVIS MK37)** Engineering Knowledge Base. This directory serves as the persistent architectural brain, technical documentation, and long-term design memory for the BR JARVIS AI Operating System.
+Welcome to the **BR JARVIS (Project BR / JARVIS MK37)** Engineering Knowledge Base. This directory serves as the persistent architectural brain, technical documentation, and long-term design memory for the BR JARVIS AI Operating System (Version 37.30.0).
 
 ---
 
@@ -11,51 +11,79 @@ br_archetecture/
 ├── README.md                          # Root Knowledge Base index (This file)
 ├── fullproject.md                     # Master Full Project Specification & Architecture
 ├── PROJECT_VISION.md                  # Project BR vision, philosophy & objectives
-├── ROADMAP.md                         # Multi-phase development roadmap
-├── CHANGELOG.md                       # Architectural implementation log
-├── full_repository_audit.md           # Deep engineering audit report & verification status
+├── ROADMAP.md                         # Multi-phase development roadmap & milestone status
+├── CHANGELOG.md                       # Architectural execution changelog (v37.30.0)
+├── full_repository_audit.md           # Deep engineering audit report & bug tracking (BUG-001 to BUG-010)
 ├── architecture/
 │   ├── ARCHITECTURE.md                # System topology, data flow & component graph
-│   └── PROJECT_STRUCTURE.md            # Codebase directory mapping & module responsibilities
+│   └── PROJECT_STRUCTURE.md            # Codebase directory mapping (~180 Python files, 30+ packages)
 ├── planning/
-│   ├── FEATURE_MATRIX.md              # Implemented capability status matrix
-│   └── TECHNICAL_DEBT.md              # Refactoring targets & debt audit
+│   ├── FEATURE_MATRIX.md              # Implemented capability status matrix (15 core subsystems)
+│   ├── TECHNICAL_DEBT.md              # Refactoring targets & debt audit
+│   └── TASKS.md                       # Active task backlog & fix priorities
 ├── ai/
-│   ├── CONTEXT_ENGINE.md              # Context assembly, priority scopes & compression
+│   ├── CONTEXT_ENGINE.md              # Context assembly, reference resolution & token compression
 │   ├── MEMORY_ENGINE.md               # 5-tier memory architecture (Working, SQLite, Vector RAG, Lessons, Cache)
-│   ├── MODEL_ROUTER.md                # Dynamic multi-backend router & failover strategies
-│   └── TOKEN_OPTIMIZATION.md          # Zero-token intent engine & native FNV-1a caching
+│   ├── MODEL_ROUTER.md                # Dynamic multi-backend router & failover strategies (7 AI backends)
+│   └── TOKEN_OPTIMIZATION.md          # 50+ Zero-token intent engine & native FNV-1a caching
 ├── computer/
-│   └── COMPUTER_OPERATOR.md           # OS computer operator, PyAutoGUI & recovery interlocks
+│   └── COMPUTER_OPERATOR.md           # OS computer operator, 5-tier clipboard & visual trace overlay
 ├── vision/
-│   └── VISION_ENGINE.md               # Visual screen analyst, PyTesseract OCR & DOM bridge
+│   └── VISION_ENGINE.md               # 7-Tier Hybrid Vision Engine (Accessibility, CDP DOM, Tesseract OCR)
 ├── voice/
-│   └── VOICE_ENGINE.md                # Hands-free voice assistant, local Whisper ASR & Neural TTS
+│   └── VOICE_ENGINE.md               # Hands-free voice assistant, VoicePromptRefiner ASR & Neural TTS
 ├── plugins/
-│   └── PLUGIN_SYSTEM.md               # Plugin platform & 90+ tool plugin registry
+│   └── PLUGIN_SYSTEM.md               # Plugin platform, Antigravity Scratchpad (`./scratch/`) & tool registry
 ├── core/
-│   └── EVENT_SYSTEM.md                # Pub/Sub EventBus, DLQ & persistent telemetry store
+│   └── EVENT_SYSTEM.md                # Pub/Sub EventBus, Conscious Step Planner & Telemetry Store
 ├── security/
-│   └── SECURITY.md                    # Guardian Core, PathPolicy, permission modes & redteam audit
+│   └── SECURITY.md                    # Guardian Core, PathPolicy bounds checking, redteam audit & secret scan
+├── ui_img/
+│   ├── AI_OS_REDESIGN_MASTER_SPEC.md  # Maximum Control Center, Multi-Tasks tab & Task Cards spec
+│   ├── UI_UX_DESIGN.md                # Tkinter HUD & glassmorphic Web UI specifications
+│   └── redesign.md                    # Interface modernization roadmap & UI specs
+├── upgrademd/
+│   ├── BR_JARVIS_Master_Fix_Prompt.md  # Master system prompt & architecture directives
+│   ├── BR_JARVIS_Master_Fix_Prompt_v2.md # Version 2 master system prompt & fix specs
+│   ├── BR_JARVIS_UNIFIED_MASTER_PROMPT.md # Unified master prompt specification
+│   ├── computervision.md               # Deep computer vision technical report
+│   ├── deep-research-report.md         # Autonomous AI OS architecture research report (Part 1)
+│   └── deep-research-report (1).md     # Autonomous AI OS architecture research report (Part 2)
 └── performance/
-    └── BENCHMARKS.md                  # Latency budgets, hardware metrics & test suite benchmarks
+    └── BENCHMARKS.md                  # Latency budgets, hardware metrics & 19-test suite benchmarks
 ```
+
+---
+
+## 🚀 Key Architectural Innovations in MK37 (v37.30.0)
+
+1. **Antigravity Scratchpad Subsystem (`agent/scratchpad.py` & `tools/scratchpad_tools.py`)**:
+   - Isolated workspace at `./scratch/` for transient scripts in Python, Node.js, PowerShell, and Bash with stdout/stderr capture via `scratchpad_eval`.
+2. **Autonomous Planning Mode & GFM Artifact Engine (`agent/planning_mode.py` & `agent/artifacts.py`)**:
+   - Dynamic task complexity classifier (`warrants_plan`), `implementation_plan.md` & `walkthrough.md` generation with GitHub-style alerts (`> [!IMPORTANT]`, `> [!NOTE]`), Mermaid diagrams, and clickable `file:///` URIs.
+3. **Trajectory Transcripts Logging (`agent/transcript_logger.py`)**:
+   - JSON Lines trajectory logs (`transcript.jsonl` & `transcript_full.jsonl`) recording step index, tool calls, model thinking, and outputs.
+4. **Voice Prompt Refinement Engine (`voice/prompt_refiner.py`)**:
+   - Acoustic speech cleaner, vocal hesitation filler removal (`um`, `uh`, `like`, `you know`, `hey jarvis`), domain vocabulary mapping via `config/vocabulary.json`, and transparent UI logging (`Spoken Raw` vs `Refined Prompt`).
+5. **Multi-Task & Sub-Agent Frontend Dashboard (`ui.py`)**:
+   - Dedicated **"🚀 Multi-Tasks"** tab in Maximum Control Center rendering glossy **Task Cards**, progress bars, and status badges (`RUNNING`, `QUEUED`, `COMPLETED`, `FAILED`).
+6. **Conscious Step Planner & Adaptive Flexible Step Budget (`agent/step_planner.py`)**:
+   - Decomposes goals into conscious steps; replaces rigid step caps with a progress velocity evaluator that grants `+5` extensions (up to 60 steps max ceiling) when active progress is detected.
+7. **Multi-Backend Clipboard Engine (`actions/clipboard_utils.py`)**:
+   - 5-layer prioritized fallback (`pyperclip` -> Win32 `ctypes` -> `tkinter` -> PowerShell -> CLI).
+8. **50+ Zero-Token Deterministic Intent Engine (`core/intent_engine.py`)**:
+   - Zero-token intent triggers covering Git status/branch, RAM flush, CPU telemetry, display resolution, battery stats, network ping, and active window state with <5ms latency.
+9. **7-Tier Hybrid Vision Engine (`vision/`)**:
+   - Combines Tier 1 Windows Accessibility API (`accessibility.py`), Tier 2 CDP Browser DOM Bridge (`dom_bridge.py`), and Tesseract OCR into a unified `SemanticUIGraph`.
 
 ---
 
 ## 🌟 Essential Reading Order for AI Agents & Developers
 
 1. [fullproject.md](fullproject.md) — Master Full Project Architecture Specification
-2. [upgrademd/BR_JARVIS_UNIFIED_MASTER_PROMPT.md](upgrademd/BR_JARVIS_UNIFIED_MASTER_PROMPT.md) — Master Build & Autonomy Specification
-3. [architecture/ARCHITECTURE.md](architecture/ARCHITECTURE.md) — Core system topology & data flow
-4. [architecture/PROJECT_STRUCTURE.md](architecture/PROJECT_STRUCTURE.md) — Directory mapping & module index
-5. [full_repository_audit.md](full_repository_audit.md) — Subsystem verification & test status
-6. [security/SECURITY.md](security/SECURITY.md) — Guardian Core, PathPolicy & permission policies
-7. [ai/CONTEXT_ENGINE.md](ai/CONTEXT_ENGINE.md) — Token accounting & context priority
-8. [ai/MEMORY_ENGINE.md](ai/MEMORY_ENGINE.md) — Multi-tier memory & ChromaDB vector store
-9. [ai/MODEL_ROUTER.md](ai/MODEL_ROUTER.md) — Dynamic model backends & self-healing failover
-10. [ai/TOKEN_OPTIMIZATION.md](ai/TOKEN_OPTIMIZATION.md) — Zero-token intent engine & FNV-1a hashing
-11. [computer/COMPUTER_OPERATOR.md](computer/COMPUTER_OPERATOR.md) — Autonomous OS control
-12. [vision/VISION_ENGINE.md](vision/VISION_ENGINE.md) — Screen capture, OCR & DOM bridge
-13. [voice/VOICE_ENGINE.md](voice/VOICE_ENGINE.md) — Local Whisper ASR & Neural TTS
-14. [plugins/PLUGIN_SYSTEM.md](plugins/PLUGIN_SYSTEM.md) — Plugin platform & tool registry
+2. [architecture/ARCHITECTURE.md](architecture/ARCHITECTURE.md) — Core system topology & data flow
+3. [architecture/PROJECT_STRUCTURE.md](architecture/PROJECT_STRUCTURE.md) — Directory mapping & module index
+4. [full_repository_audit.md](full_repository_audit.md) — Deep engineering audit report & bug tracking
+5. [voice/VOICE_ENGINE.md](voice/VOICE_ENGINE.md) — VoicePromptRefiner, ASR & Neural TTS
+6. [ai/MEMORY_ENGINE.md](ai/MEMORY_ENGINE.md) — 5-Tier Memory Subsystem
+7. [computer/COMPUTER_OPERATOR.md](computer/COMPUTER_OPERATOR.md) — OS Desktop Operator & Clipboard Utility

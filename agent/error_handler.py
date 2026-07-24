@@ -125,7 +125,7 @@ Attempt number: {attempt}"""
         from google import genai as _genai
         client = _genai.Client(api_key=api_key)
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-2.0-flash",
             contents=prompt,
             config={"system_instruction": ERROR_ANALYST_PROMPT},
         )
@@ -193,7 +193,7 @@ Return ONLY the Python code, no explanation."""
         from google import genai as _genai
         client = _genai.Client(api_key=api_key)
         response = client.models.generate_content(
-            model="gemini-2.5-flash",
+            model="gemini-2.0-flash",
             contents=prompt,
         )
         code = response.text.strip()

@@ -1,26 +1,39 @@
-# 🧹 BR JARVIS — Technical Debt & Optimization Roadmap
+# 🧹 BR JARVIS — Technical Debt & Refactoring Audit
 
-> **Document Status**: Production Specification  
-> **Scope**: Codebase Debt Audits & Refactoring Targets  
-
----
-
-## 1. Debt Audit Overview
-
-All 58 pytest unit & integration tests (`python -m pytest tests/`) and 42 deep audit verification tests (`test_deep_audit.py`) currently pass with a **100% success rate**. The codebase has undergone comprehensive modularization across all 15 core architectural packages (`core/`, `guardian/`, `evolution/`, `reasoning/`, `workflow/`, `vision/`, `computer/`, `backends/`, `events/`, `context/`, `memory/`, `agent/`, `tools/`, `voice/`, `multi_agent/`).
+> **Document Status**: Production Architecture Specification  
+> **Scope**: Codebase Debt Audits, Refactoring Targets & Maintenance Roadmap  
+> **Version**: MK37.30.0  
 
 ---
 
-## 2. Refactoring Targets & Enhancements
+## 1. Executive Debt Audit Overview
 
-1. **Root Backward Compatibility Shims**:
-   - Legacy files (`anthropic_backend.py`, `gemini_backend.py`, `openai_backend.py`, `ollama_backend.py`, `nvidia_backend.py`, `mistral_backend.py`) serve as re-export wrappers for `backends/`. 
-   - *Target*: Consolidate all external callers onto direct `backends.<name>` imports.
+The BR JARVIS MK37 codebase (~180 Python files, 30+ packages) achieves a **100% test pass rate** across all 19 Pytest verification test suites (`pytest tests/`) and 47 deep audit checks (`test_deep_audit.py`). However, full project analysis reveals key technical debt targets that require modular refactoring and optimization.
 
-2. **UI Monolith Refactoring**:
-   - `ui.py` (71 KB Tkinter desktop interface) contains full GUI widget definitions and event loops.
-   - *Target*: Modularize `ui.py` into `ui/components/` (ChatPanel, LogViewer, SettingsModal).
+---
 
-3. **Tool File Consolidation**:
-   - `tools/` contains 29 tool modules.
-   - *Target*: Group complementary tool scripts (`image_tools.py`, `video_tools.py`, `transcription_tools.py` → `tools/media/`).
+## 2. Identified Technical Debt & Refactoring Targets
+
+### 1. `ui.py` Monolith File Breakdown (72KB / 2000+ Lines)
+- **Issue**: The entire Tkinter desktop interface — HUD animations, chat log, settings panels, face canvas rendering, waveform visualizer, and Multi-Task dashboard — resides in a single 72KB file.
+- **Refactoring Strategy**: Modularize `ui.py` into dedicated sub-packages under `ui/`:
+  - `ui/tabs/chat_tab.py`: Chat stream & message rendering.
+  - `ui/tabs/tasks_tab.py`: Glossy Multi-Task cards & progress bars.
+  - `ui/tabs/settings_tab.py`: API keys & system settings dialogs.
+  - `ui/widgets/canvas_hud.py`: Face canvas & waveform HUD visualizers.
+
+### 2. Concurrent SQLite Database Lock Contention (`memory/`)
+- **Issue**: `persistent_store.py`, `conversation_store.py`, and `session_store.py` open independent SQLite connections, causing occasional `database is locked` errors during concurrent worker writes.
+- **Refactoring Strategy**: Enable SQLite Write-Ahead Logging (`PRAGMA journal_mode=WAL;`) and introduce a shared `SQLiteConnectionPool` in `memory/`.
+
+### 3. Tool & Action Import Storm Optimization (`tools/registry.py`)
+- **Issue**: Initial invocation of `tools/registry.py` eagerly imports all 34 tool modules and 34 action modules, causing a 5–15 second startup stall.
+- **Refactoring Strategy**: Implement lazy module loading on first tool call request.
+
+### 4. `asyncio.get_event_loop()` Python 3.14 Deprecation
+- **Issue**: Legacy calls to `asyncio.get_event_loop()` raise deprecation warnings on Python 3.12+ and will break on Python 3.14.
+- **Refactoring Strategy**: Replace with `asyncio.get_running_loop()` across `core/`, `server.py`, and `orchestrator.py`.
+
+### 5. Synchronous WebSocket Broadcast Queue (`server.py`)
+- **Issue**: `WSBroadcastStream` broadcasts stdout to WebSocket clients synchronously; slow or disconnected clients can block process stdout.
+- **Refactoring Strategy**: Replace direct WebSocket sends with an asynchronous non-blocking background queue (`asyncio.Queue`).

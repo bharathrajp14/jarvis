@@ -2,6 +2,30 @@
 
 All major architectural updates, subsystem additions, and core refactorings are recorded in this document.
 
+## [37.30.0] — 2026-07-24
+
+### Integrated Antigravity Agent Subsystem & Adaptive Step Architecture
+- **Antigravity Scratchpad Engine (`agent/scratchpad.py` & `tools/scratchpad_tools.py`)**:
+  - Isolated `./scratch/` execution workspace.
+  - Multi-language transient script evaluator `scratchpad_eval` (Python, Node.js, PowerShell, Bash).
+  - 5 registered scratchpad tools: `scratchpad_write`, `scratchpad_read`, `scratchpad_eval`, `scratchpad_list`, `scratchpad_clear`.
+- **Autonomous Planning Mode & GFM Artifact Engine (`agent/planning_mode.py` & `agent/artifacts.py`)**:
+  - Dynamic complexity classifier (`warrants_plan`) and automatic plan generation (`implementation_plan.md` & `walkthrough.md`).
+  - GFM Artifact generator supporting alerts (`> [!IMPORTANT]`, `> [!NOTE]`), Mermaid diagrams, and `file:///` clickable links.
+- **Trajectory Transcripts Logger (`agent/transcript_logger.py`)**:
+  - Trajectory JSON Lines logger (`transcript.jsonl` & `transcript_full.jsonl`) integrated into ReAct chat loop.
+- **Voice Prompt Refinement Engine (`voice/prompt_refiner.py`)**:
+  - Acoustic speech cleaner, vocal filler stripper (`um`, `uh`, `like`, `you know`), domain vocabulary mapping via `config/vocabulary.json`, and transparent UI logging (`Spoken Raw` vs `Refined Prompt`).
+- **Multi-Task & Sub-Agent Frontend Dashboard (`ui.py`)**:
+  - Dedicated **"🚀 Multi-Tasks"** tab in Control Center rendering glossy **Task Cards**, progress bars, and status badges (`RUNNING`, `QUEUED`, `COMPLETED`, `FAILED`).
+- **Conscious Step Planner & Adaptive Flexible Step Budget (`agent/step_planner.py` & `orchestrator.py`)**:
+  - Goal decomposition into conscious sub-steps.
+  - Replaced rigid step caps with `AdaptiveStepBudget` progress velocity evaluation, granting `+5` extensions (up to 60 steps max ceiling) when active tool progress is confirmed.
+- **Multi-Backend Clipboard Utility (`actions/clipboard_utils.py`)**:
+  - 5-layer prioritized fallback (`pyperclip` -> Win32 `ctypes` -> `tkinter` -> PowerShell -> CLI).
+- **19-Test Automated Verification Suite (`tests/`)**:
+  - 100% test pass rate across all new subsystems.
+
 ---
 
 ## [37.25.0] — 2026-07-23

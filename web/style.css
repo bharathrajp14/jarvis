@@ -1096,3 +1096,11 @@ body {
     padding: 4px 8px;
     border-radius: 6px;
 }
+
+.budget-bar-fill {
+    width: 25%;
+    height: 100%;
+    border-radius: 4px;
+    background: var(--accent-blue);
+    transition: width 0.3s ease;
+}

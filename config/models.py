@@ -16,18 +16,18 @@ _MODELS_JSON = _CONFIG_DIR / "models.json"
 _DEFAULTS = {
     "voice_live":       "models/gemini-3.1-flash-live-preview",
     "voice_name":       "Charon",
-    "gemini":           "gemini-3.5-flash-low",
-    "gemini_code":      "gemini-3.1-pro-low",
-    "gemini_reasoning": "gemini-3.1-pro-low",
+    "gemini":           "gemini-3-flash",
+    "gemini_code":      "gemini-pro-agent",
+    "gemini_reasoning": "gemini-pro-agent",
     "gemini_general":   "gemini-3.5-flash-low",
     "gemini_agent":     "gemini-3-flash-agent",
-    "gemini_fast":      "gemini-3.6-flash-tiered",
-    "gemini_vision":    "gemini-3.1-flash-image",
+    "gemini_fast":      "gemini-3.5-flash-low",
+    "gemini_vision":    "gemini-3-flash",
     "gemini_lite":      "gemini-3.5-flash-extra-low",
-    "claude":           "claude-opus-4-6-thinking",
-    "gpt":              "gpt-oss-120b-medium",
-    "gpt_mini":         "gpt-4o-mini",
-    "gpt_4o":           "gpt-4o",
+    "claude":           "gemini-pro-agent",
+    "gpt":              "gemini-3.6-flash-high",
+    "gpt_mini":         "gemini-3.5-flash-extra-low",
+    "gpt_4o":           "gemini-3.6-flash-high",
     "ollama":           "llama3.3",
     "nvidia":           "meta/llama-3.1-70b-instruct",
     "mistral":          "mistral-large-latest",
@@ -36,7 +36,7 @@ _DEFAULTS = {
     "fast_model":       "gemini-3.5-flash-low",
     "openai_base_url":  "http://localhost:8045/v1",
     "openai_api_key":   "sk-5ec70bf9fa324084b7a7326babf52c45",
-    "openai_model":     "gpt-oss-120b-medium",
+    "openai_model":     "gemini-3.5-flash-low",
 }
 
 _ENV_MAP = {
@@ -87,6 +87,12 @@ def get_model_config(force_reload: bool = False) -> dict:
     return config.copy()
 
 
+def clear_model_config_cache():
+    """Clear cached model configuration to force a reload on setting changes."""
+    global _cache
+    _cache = None
+
+
 def get_model(backend: str) -> str:
     return get_model_config().get(backend, _DEFAULTS.get(backend, ""))
 
@@ -108,17 +114,17 @@ def get_model_for_task(task_type: str) -> str:
     task = (task_type or "general").lower()
 
     if task in ("code", "coding", "architecture", "refactor", "debug"):
-        return cfg.get("gemini_code", "gemini-3.1-pro-high")
+        return cfg.get("gemini_code", "gemini-pro-agent")
     elif task in ("reasoning", "math", "logic", "audit", "security"):
-        return cfg.get("gemini_reasoning", "gemini-3.1-pro-high")
+        return cfg.get("gemini_reasoning", "gemini-pro-agent")
     elif task in ("agent", "planner", "workflow", "dag", "multi_step"):
         return cfg.get("gemini_agent", "gemini-3-flash-agent")
     elif task in ("vision", "ocr", "screen", "image", "ui_scan"):
-        return cfg.get("gemini_vision", "gemini-3.1-flash-image")
+        return cfg.get("gemini_vision", "gemini-3-flash")
     elif task in ("fast", "status", "quick", "summary", "log"):
         return cfg.get("gemini_fast", "gemini-3.5-flash-low")
     elif task in ("lite", "autocomplete", "prefix", "token"):
-        return cfg.get("gemini_lite", "gemini-3.1-flash-lite")
+        return cfg.get("gemini_lite", "gemini-3.5-flash-extra-low")
     else:
         return cfg.get("gemini_general", "gemini-3-flash")
 

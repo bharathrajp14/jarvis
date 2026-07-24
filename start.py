@@ -11,6 +11,7 @@ import importlib
 import json
 import os
 import platform
+import re
 import signal
 import subprocess
 import sys
@@ -68,13 +69,13 @@ def _banner():
     console.clear()
     now = datetime.now().strftime("%A, %B %d, %Y — %I:%M %p")
     text = Text(justify="center")
-    text.append("\n⚡ BR JARVIS — AI OPERATING SYSTEM ⚡\n", style="bold cyan")
+    text.append("⚡ BR JARVIS — AI OPERATING SYSTEM ⚡\n", style="bold cyan")
     text.append("Cognitive Multi-Modal Neural Assistant & Autonomous OS Controller\n\n", style="dim")
-    text.append(f"Version: {VERSION} | Build: {BUILD} | Codename: {CODENAME}\n", style="bold green")
-    text.append(f"Python: {sys.version.split()[0]} | Platform: {platform.system()} | Guardian: ACTIVE 🛡️\n", style="cyan")
+    text.append(f"Version: {VERSION}  │  Build: {BUILD}  │  Codename: {CODENAME}\n", style="bold green")
+    text.append(f"Python: {sys.version.split()[0]}  │  Platform: {platform.system()}  │  Guardian: ACTIVE 🛡️\n", style="cyan")
     text.append(now, style="dim")
     
-    panel = Panel(text, border_style="bold cyan", expand=False, padding=(1, 4))
+    panel = Panel(text, border_style="bold cyan", padding=(0, 2))
     console.print(panel)
     console.print()
 
@@ -274,8 +275,12 @@ def doctor(auto_confirm: bool = False):
     _banner()
     console.print("[bold magenta]⚡ JARVIS MK37 Advanced System Doctor & Self-Healing Repair Engine ⚡[/]\n")
 
+    if not sys.stdin.isatty():
+        auto_confirm = True
+
     # 1. Python Libraries Audit
     python_dependencies: dict[str, str] = {
+        "PySide6": "PySide6",
         "google-genai": "google.genai",
         "openai": "openai",
         "fastapi": "fastapi",
@@ -392,17 +397,25 @@ def doctor(auto_confirm: bool = False):
         console.print(f"  [green]✓ Native Acceleration Active:[/] pure-Python fallbacks (hashlib FNV-1a / math VAD)")
     console.print()
 
-    # 4. Storage & Configuration Audit
-    console.print("[bold cyan]4. Workspace & Directory Audit[/]")
+    # 4. Storage, Configuration & Web PWA Assets Audit
+    console.print("[bold cyan]4. Workspace Directories & Web PWA Audit[/]")
     dirs_to_check = [
         BASE_DIR / "logs",
         Path.home() / ".jarvis" / "memory",
         BASE_DIR / "config",
-        BASE_DIR / "native"
+        BASE_DIR / "native",
+        BASE_DIR / "web"
     ]
     for d in dirs_to_check:
         d.mkdir(parents=True, exist_ok=True)
         console.print(f"  [green]✓ Directory Verified:[/] [dim]{d}[/]")
+
+    pwa_manifest = BASE_DIR / "web" / "manifest.json"
+    pwa_sw = BASE_DIR / "web" / "sw.js"
+    if pwa_manifest.exists() and pwa_sw.exists():
+        console.print("  [green]✓ PWA Web Dashboard Assets Verified[/]")
+    else:
+        console.print("  [yellow]⚠ PWA Web Dashboard Assets Missing/Incomplete[/]")
 
     api_key_file = BASE_DIR / "config" / "api_keys.json"
     env_file = BASE_DIR / ".env"
@@ -416,8 +429,49 @@ def doctor(auto_confirm: bool = False):
 
     console.print()
 
-    # 5. AI Backends & Gateway Health Audit
-    table_ai = Table(title="5. AI Backends & Model Gateway Audit", box=None)
+    # 5. Security & Guardian System Invariants Audit
+    console.print("[bold cyan]5. Guardian System & Security Policy Audit[/]")
+    try:
+        from permissions import PERMISSIONS
+        console.print(f"  [green]✓ Tool Permission Policy Mode:[/] [bold green]{PERMISSIONS.mode.value}[/]")
+    except Exception as pe:
+        console.print(f"  [yellow]⚠ Permission Policy Engine note: {pe}[/]")
+
+    hashes_file = BASE_DIR / ".guardian_hashes.json"
+    if hashes_file.exists():
+        console.print(f"  [green]✓ Guardian Integrity Hashes Found:[/] {hashes_file.name}")
+    else:
+        console.print(f"  [green]✓ Guardian Engine Ready:[/] Hash ledger initializes dynamically")
+
+    console.print()
+
+    # 6. Skills, Multi-Agent & Tool Registries Audit
+    console.print("[bold cyan]6. Skills, Multi-Agent & Tool Registries Audit[/]")
+    try:
+        from skills import load_skills
+        loaded_skills = [s for s in load_skills() if getattr(s, 'user_invocable', True)]
+        console.print(f"  [green]✓ Skills Registry:[/] {len(loaded_skills)} user-invocable skills ready")
+    except Exception as sk_err:
+        console.print(f"  [yellow]⚠ Skills Registry note: {sk_err}[/]")
+
+    try:
+        from multi_agent.subagent import load_agent_definitions
+        agent_defs = load_agent_definitions()
+        console.print(f"  [green]✓ Sub-Agent Registry:[/] {len(agent_defs)} specialized agent types active")
+    except Exception as ag_err:
+        console.print(f"  [yellow]⚠ Sub-Agent Registry note: {ag_err}[/]")
+
+    try:
+        from tools.registry import TOOL_SCHEMAS, _import_plugins
+        _import_plugins()
+        console.print(f"  [green]✓ Tool Registry:[/] {len(TOOL_SCHEMAS)} registered tool definitions")
+    except Exception as tl_err:
+        console.print(f"  [yellow]⚠ Tool Registry note: {tl_err}[/]")
+
+    console.print()
+
+    # 7. AI Backends & Gateway Health Audit
+    table_ai = Table(title="7. AI Backends & Model Gateway Audit", box=None)
     table_ai.add_column("Provider / Model Profile", style="bold magenta")
     table_ai.add_column("Model Name", style="dim")
     table_ai.add_column("Status")
@@ -440,29 +494,17 @@ def doctor(auto_confirm: bool = False):
     console.print(table_ai)
     console.print()
 
-    # 6. Database & Persistent Memory Health Audit
-    console.print("[bold cyan]6. Database & Vector Memory Layer Audit[/]")
+    # 8. OS Auto-Startup & System Integration Audit
+    console.print("[bold cyan]8. OS Auto-Startup & System Integration Audit[/]")
     try:
-        from memory.persistent_store import get_memory_dir
-        mem_d = get_memory_dir("user")
-        sqlite_db = mem_d / "memory.db"
-        if sqlite_db.exists():
-            console.print(f"  [green]✓ Persistent SQLite DB Active:[/] {sqlite_db}")
-        else:
-            console.print(f"  [green]✓ SQLite Store Ready:[/] auto-initializes on startup")
-    except Exception as me:
-        console.print(f"  [yellow]⚠ Persistent Memory note: {me}[/]")
-
-    try:
-        from memory.vector_store import VectorMemory
-        vm = VectorMemory()
-        console.print("  [green]✓ Vector Memory Layer Active (ChromaDB / TF-IDF)[/]")
-    except Exception as ve:
-        console.print(f"  [yellow]⚠ Vector Store note: {ve}[/]")
+        from install_startup import status as check_autostart
+        check_autostart()
+    except Exception as se:
+        console.print(f"  [yellow]⚠ Auto-Startup Check Note: {se}[/]")
 
     console.print()
 
-    # 7. Fix & Auto-Repair Phase
+    # 9. Fix & Auto-Repair Phase
     if not missing_pip:
         console.print("[bold green]========================================================[/]")
         console.print("[bold green]  DOCTOR DIAGNOSIS: SYSTEM IS 100% HEALTHY & OPERATIONAL!  [/]")
@@ -474,7 +516,7 @@ def doctor(auto_confirm: bool = False):
     # Fix Python Packages using multi-method installer
     if missing_pip:
         console.print(f"[bold yellow]Found {len(missing_pip)} missing Python packages.[/]")
-        should_fix = auto_confirm or (Prompt.ask("Install missing Python dependencies now?", choices=["y", "n"], default="y") == "y")
+        should_fix = auto_confirm or (sys.stdin.isatty() and Prompt.ask("Install missing Python dependencies now?", choices=["y", "n"], default="y") == "y")
         if should_fix:
             for pkg, import_id in missing_pip:
                 console.print(f"  [dim]Installing {pkg} (Multi-method)...[/]", end=" ")
@@ -506,7 +548,7 @@ def doctor(auto_confirm: bool = False):
     if sys.platform == "linux" and missing_sys_groups:
         setup_sh = BASE_DIR / "setup_linux.sh"
         if setup_sh.exists():
-            if Prompt.ask("\nRun system package installer (setup_linux.sh) for system dependencies?", choices=["y", "n"], default="y") == "y":
+            if auto_confirm or (sys.stdin.isatty() and Prompt.ask("\nRun system package installer (setup_linux.sh) for system dependencies?", choices=["y", "n"], default="y") == "y"):
                 subprocess.run(["bash", str(setup_sh)], cwd=str(BASE_DIR))
 
     console.print("\n[bold green]Doctor auto-repair sequence completed![/]")
@@ -672,6 +714,14 @@ def show_audio_status():
         table.add_column("Default Rate", style="dim")
         table.add_column("Status")
 
+        try:
+            from voice.stt import SounddeviceMicrophone
+            active_in = SounddeviceMicrophone().device_index
+        except Exception:
+            active_in = None
+        active_out_str = os.environ.get("JARVIS_AUDIO_OUTPUT_DEVICE", "9").strip()
+        active_out = int(active_out_str) if active_out_str.isdigit() else None
+
         for i, dev in enumerate(devices):
             in_ch = int(dev.get("max_input_channels", 0))
             out_ch = int(dev.get("max_output_channels", 0))
@@ -682,14 +732,29 @@ def show_audio_status():
                 kind.append(f"IN({in_ch})")
             if out_ch > 0:
                 kind.append(f"OUT({out_ch})")
-            is_default = (i == default_in) or (i == default_out)
+
+            is_in = (i == active_in)
+            is_out = (i == active_out)
+            is_os_def = (i == default_in) or (i == default_out)
+
+            if is_in and is_out:
+                status_str = "[bold cyan]★ Active In/Out[/]"
+            elif is_in:
+                status_str = "[bold cyan]★ Active Input[/]"
+            elif is_out:
+                status_str = "[bold green]★ Active Output[/]"
+            elif is_os_def:
+                status_str = "[dim green]OS Default[/]"
+            else:
+                status_str = "[dim]Ready[/]"
+
             sample_rate = int(dev.get("default_samplerate", 44100))
             table.add_row(
                 str(i),
                 " / ".join(kind),
                 str(dev.get("name", "")),
                 f"{sample_rate} Hz",
-                "[bold green]★ Default[/]" if is_default else "[dim]Ready[/]"
+                status_str
             )
 
         console.print(table)
@@ -705,6 +770,7 @@ def show_audio_status():
 
         # Live microphone VU Meter test
         console.print("\n[bold cyan]🎙️ Live Microphone Signal Calibration Check:[/]")
+        mic_dev = 2
         try:
             import numpy as np
             from voice.stt import SounddeviceMicrophone
@@ -719,11 +785,45 @@ def show_audio_status():
         except Exception as mic_err:
             console.print(f"  [yellow]⚠ Live mic test note: {mic_err}[/]")
 
-        console.print("\n[dim]Override audio devices with environment variables:[/]")
-        console.print("[dim]  export JARVIS_AUDIO_INPUT_DEVICE=<index-or-name>[/]")
-        console.print("[dim]  export JARVIS_AUDIO_OUTPUT_DEVICE=<index-or-name>[/]")
+        if not sys.stdin.isatty():
+            return
+
+        console.print("\n[bold cyan]🔧 Change Active Audio Devices:[/]")
+        
+        try:
+            # 1. Input Device Prompt
+            change_in = Prompt.ask(f"  [cyan]❯[/] Enter Audio INPUT Device Index (e.g. 3 for AirBass, 2 for Mic Array) [Press Enter to keep {mic_dev}]", default=str(mic_dev))
+            if change_in.strip() and change_in.strip() != str(mic_dev):
+                new_in = change_in.strip()
+                env_file = BASE_DIR / ".env"
+                if env_file.exists():
+                    content = env_file.read_text(encoding="utf-8")
+                    if "JARVIS_AUDIO_INPUT_DEVICE=" in content:
+                        content = re.sub(r"JARVIS_AUDIO_INPUT_DEVICE=.*", f"JARVIS_AUDIO_INPUT_DEVICE={new_in}", content)
+                    else:
+                        content += f"\nJARVIS_AUDIO_INPUT_DEVICE={new_in}\n"
+                    env_file.write_text(content, encoding="utf-8")
+                os.environ["JARVIS_AUDIO_INPUT_DEVICE"] = new_in
+                console.print(f"  [bold green]✓ Audio INPUT updated to Index {new_in} in .env![/]")
+
+            # 2. Output Device Prompt
+            curr_out = os.environ.get("JARVIS_AUDIO_OUTPUT_DEVICE", "5")
+            change_out = Prompt.ask(f"  [cyan]❯[/] Enter Audio OUTPUT Device Index (e.g. 5 for AirBass, 7 for Speakers) [Press Enter to keep {curr_out}]", default=str(curr_out))
+            if change_out.strip() and change_out.strip() != str(curr_out):
+                new_out = change_out.strip()
+                env_file = BASE_DIR / ".env"
+                if env_file.exists():
+                    content = env_file.read_text(encoding="utf-8")
+                    if "JARVIS_AUDIO_OUTPUT_DEVICE=" in content:
+                        content = re.sub(r"JARVIS_AUDIO_OUTPUT_DEVICE=.*", f"JARVIS_AUDIO_OUTPUT_DEVICE={new_out}", content)
+                    else:
+                        content += f"\nJARVIS_AUDIO_OUTPUT_DEVICE={new_out}\n"
+                    env_file.write_text(content, encoding="utf-8")
+                os.environ["JARVIS_AUDIO_OUTPUT_DEVICE"] = new_out
+                console.print(f"  [bold green]✓ Audio OUTPUT updated to Index {new_out} in .env![/]")
+        except (EOFError, KeyboardInterrupt):
+            pass
     except Exception as e:
-        console.print(f"[red]✗ Audio diagnostics failed:[/] {e}")
         console.print(f"[red]✗ Audio diagnostics failed:[/] {e}")
 
 def launch_live_os():
@@ -751,14 +851,17 @@ def main():
     signal.signal(signal.SIGINT, lambda s, f: sys.exit(0))
     if len(sys.argv) > 1:
         mode = sys.argv[1].lower().strip().lstrip("-")
+    elif not sys.stdin.isatty():
+        # Non-interactive / autostart environment: launch Voice Assistant automatically
+        mode = "voice"
     else:
         _banner()
         _check_env()
         
         table = Table(show_header=True, header_style="bold cyan", box=None, padding=(0, 2))
-        table.add_column("Seq", style="bold cyan", width=5)
-        table.add_column("Module Sequence", style="bold green", width=14)
-        table.add_column("Description & Subsystem Capabilities", style="dim", width=55)
+        table.add_column("Seq", style="bold cyan", justify="center", no_wrap=True)
+        table.add_column("Module Sequence", style="bold green", no_wrap=True)
+        table.add_column("Description & Capabilities", style="dim", no_wrap=False)
         
         table.add_row("1", "VOICE", "BR Hands-Free Voice Assistant (PySide GUI + Whisper ASR)")
         table.add_row("2", "CLI", "ReAct Terminal Orchestrator (Multi-LLM & Skills)")
@@ -771,22 +874,39 @@ def main():
         table.add_row("9", "LIVE OS", "Autonomous Visual Computer Control ('Antigravity Mode')")
         table.add_row("10", "FLOATING", "Frameless Glassmorphic Floating Live Voice Widget")
         
-        console.print(Panel(table, title="[bold cyan]◈ SELECT MODULE SEQUENCE ◈[/]", border_style="cyan", expand=False))
+        console.print(Panel(table, title="[bold cyan]◈ SELECT MODULE SEQUENCE ◈[/]", border_style="cyan", padding=(0, 2)))
         console.print()
         
-        choice = Prompt.ask("  [bold cyan]❯ Ready[/]", choices=["1", "2", "3", "4", "5", "6", "7", "8", "9", "10"], default="1")
-        mode = {
-            "1": "voice",
-            "2": "cli",
-            "3": "both",
-            "4": "webserver",
-            "5": "status",
-            "6": "doctor",
-            "7": "smoke",
-            "8": "audio",
-            "9": "live",
-            "10": "floating",
-        }[choice]
+        valid_choices = [
+            "1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
+            "voice", "cli", "both", "web", "webserver", "webcore", "server",
+            "status", "health", "doctor", "fix", "smoke", "check", "verify",
+            "audio", "sound", "live", "liveos", "os", "floating", "float", "overlay"
+        ]
+        
+        try:
+            choice_input = Prompt.ask(
+                "  [bold cyan]❯ Ready (Select 1-10 or Module Name)[/]", 
+                choices=valid_choices, 
+                default="1",
+                show_choices=False
+            ).strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            choice_input = "1"
+        
+        mode_map = {
+            "1": "voice", "voice": "voice", "v": "voice", "gui": "voice",
+            "2": "cli", "cli": "cli", "c": "cli", "terminal": "cli",
+            "3": "both", "both": "both", "b": "both", "all": "both",
+            "4": "webserver", "web": "webserver", "webcore": "webserver", "server": "webserver",
+            "5": "status", "status": "status", "health": "status",
+            "6": "doctor", "doctor": "doctor", "fix": "doctor",
+            "7": "smoke", "smoke": "smoke", "check": "smoke", "verify": "smoke",
+            "8": "audio", "audio": "audio", "sound": "audio",
+            "9": "live", "live": "live", "liveos": "live", "os": "live",
+            "10": "floating", "floating": "floating", "float": "floating", "overlay": "floating",
+        }
+        mode = mode_map.get(choice_input, choice_input)
 
     if mode in ("voice", "v", "gui"): launch_voice() if _pre_launch_check() else None
     elif mode in ("floating", "float", "overlay"): launch_floating_voice()

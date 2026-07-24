@@ -157,7 +157,7 @@ class GeminiLiveVoiceLoop:
 
     def _speak_conversational(self, response_text: str):
         """Speak response using fast sentence-level TTS."""
-        from voice.tts import clean_for_speech
+        from voice.tts import clean_for_speech, split_sentences
         clean = clean_for_speech(response_text)
 
         if not clean:
@@ -173,10 +173,8 @@ class GeminiLiveVoiceLoop:
             if self.ui:
                 self.ui.set_state("LISTENING")
 
-        # Split into sentences for immediate playback
-        sentences = re.split(r'([^.!?\n]+[.!?\n]+)', clean)
-        sentences = [s.strip() for s in sentences if s.strip()]
-
+        # Split into clean sentences for immediate streaming playback
+        sentences = split_sentences(clean)
         if not sentences:
             sentences = [clean]
 

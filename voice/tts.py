@@ -38,10 +38,11 @@ except ImportError:
 
 
 # ── Smart text cleaner for AI assistant output ────────────────────────────
-_TOOL_CALL_RX = re.compile(r'```tool_call\s*\n\s*\{.*?\}\s*\n\s*```', re.DOTALL)
-_XML_TOKEN_RX = re.compile(r'<\|.*?\|>', re.DOTALL)
-_CHANNEL_RX   = re.compile(r'<\|channel\|>.*?<\|call\|>', re.DOTALL)
-_MESSAGE_RX   = re.compile(r'<\|message\|>.*?<\|call\|>', re.DOTALL)
+_CODE_BLOCK_RX = re.compile(r'```.*?```', re.DOTALL)
+_TOOL_CALL_RX  = re.compile(r'```tool_call\s*\n\s*\{.*?\}\s*\n\s*```', re.DOTALL)
+_XML_TOKEN_RX  = re.compile(r'<\|.*?\|>', re.DOTALL)
+_CHANNEL_RX    = re.compile(r'<\|channel\|>.*?<\|call\|>', re.DOTALL)
+_MESSAGE_RX    = re.compile(r'<\|message\|>.*?<\|call\|>', re.DOTALL)
 _START_RX      = re.compile(r'<\|start\|>.*?<\|call\|>', re.DOTALL)
 _JSON_BLOCK_RX = re.compile(r'\{["\']tool["\']\s*:\s*["\'][^"\']+["\']\s*,\s*["\']args["\']\s*:\s*\{.*?\}\s*\}', re.DOTALL)
 _MD_CHARS_RX   = re.compile(r'[*_~`#\[\](){}<>|]')
@@ -51,11 +52,12 @@ _FILE_PATH_RX  = re.compile(r'(?:[A-Z]:\\|/)[^\s,;]+')
 _EMOJI_RX      = re.compile(r'[\U0001F300-\U0001FAFF\U00002702-\U000027B0]')
 _WHITESPACE_RX = re.compile(r'\s{2,}')
 
-_SYSTEM_TAGS_RX = re.compile(r'\[DONE[^\]]*\]|⚡\s*\[Antigravity Instant 0-Token Action\]|\[Tool:[^\]]*\]', re.IGNORECASE)
+_SYSTEM_TAGS_RX = re.compile(r'\[DONE[^\]]*\]|⚡\s*\[Antigravity Instant 0-Token Action\]|\[Tool:[^\]]*\]|\[Executed Tool:[^\]]*\]', re.IGNORECASE)
 
 def clean_for_speech(text: str) -> str:
-    """Remove tool calls, markdown, URLs, file paths, JSON blocks, system tags, and emojis from text for clean speech output."""
-    t = _TOOL_CALL_RX.sub('', text)
+    """Remove tool calls, code blocks, markdown, URLs, file paths, JSON blocks, system tags, and emojis from text for clean speech output."""
+    t = _CODE_BLOCK_RX.sub('', text)
+    t = _TOOL_CALL_RX.sub('', t)
     t = _START_RX.sub('', t)
     t = _CHANNEL_RX.sub('', t)
     t = _MESSAGE_RX.sub('', t)
@@ -71,6 +73,26 @@ def clean_for_speech(text: str) -> str:
     return t.strip()
 
 
+def summarize_for_speech(text: str, max_chars: int = 250) -> str:
+    """Truncate long technical responses to a concise conversational speech summary."""
+    clean = clean_for_speech(text)
+    if not clean or len(clean) <= max_chars:
+        return clean
+    
+    sentences = split_sentences(clean)
+    summary = ""
+    for s in sentences:
+        if len(summary) + len(s) + 1 <= max_chars:
+            summary += (s + " ")
+        else:
+            break
+    
+    if not summary.strip():
+        summary = clean[:max_chars].rsplit(" ", 1)[0] + "."
+        
+    return summary.strip()
+
+
 # ── Sentence splitter for streaming TTS ───────────────────────────────────
 _SENTENCE_RX = re.compile(r'([^.!?\n]+[.!?\n]+)')
 
@@ -83,11 +105,29 @@ def split_sentences(text: str) -> list[str]:
     return [s.strip() for s in sentences if s.strip() and len(s.strip()) > 1]
 
 
+def resolve_output_device() -> int | str | None:
+    out_dev = os.environ.get("JARVIS_AUDIO_OUTPUT_DEVICE", "").strip()
+    if not out_dev:
+        return None
+    if out_dev.isdigit():
+        return int(out_dev)
+    try:
+        import sounddevice as sd
+        devices = sd.query_devices()
+        for idx, dev in enumerate(devices):
+            if dev.get("max_output_channels", 0) > 0 and out_dev.lower() in dev.get("name", "").lower():
+                return idx
+    except Exception:
+        pass
+    return out_dev
+
+
 class MCIPlayer:
-    """Play MP3/WAV files using Windows MCI or Linux/macOS audio utilities."""
+    """Play MP3/WAV files using sounddevice, Windows MCI, or system audio utilities."""
     _winmm = None
     _lock = threading.Lock()
     _active_processes: dict[str, subprocess.Popen] = {}
+    _active_audio_threads: dict[str, tuple[threading.Thread, threading.Event]] = {}
 
     @classmethod
     def _init_winmm(cls):
@@ -111,9 +151,62 @@ class MCIPlayer:
 
     @classmethod
     def play_file(cls, filepath: str, alias: str = None) -> str:
-        """Play an audio file. Returns the alias used."""
+        """Play an audio file across platforms. Supports targeted output hardware (e.g. AirBass Earbuds)."""
         with cls._lock:
             alias = alias or f"tts_{uuid.uuid4().hex[:8]}"
+            target_dev = resolve_output_device()
+
+            # 1. Direct sounddevice PCM playback for targeted output hardware (AirBass Earbuds)
+            if target_dev is not None:
+                try:
+                    import sounddevice as sd
+                    import numpy as np
+                    ffmpeg_bin = shutil.which("ffmpeg") or shutil.which("ffplay")
+                    if ffmpeg_bin:
+                        cmd = [ffmpeg_bin, "-y", "-i", filepath, "-f", "s16le", "-ac", "1", "-ar", "24000", "-"]
+                        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+                        pcm, _ = proc.communicate(timeout=10)
+                        if pcm:
+                            audio_data = np.frombuffer(pcm, dtype=np.int16).astype(np.float32) / 32768.0
+                            stop_evt = threading.Event()
+
+                            def _play_worker(a_name=alias, data=audio_data, dev=target_dev, evt=stop_evt):
+                                try:
+                                    sd.play(data, samplerate=24000, device=dev)
+                                    duration = len(data) / 24000.0
+                                    end_t = time.time() + duration
+                                    while time.time() < end_t and not evt.is_set():
+                                        time.sleep(0.01)
+                                    if evt.is_set():
+                                        sd.stop()
+                                except Exception:
+                                    pass
+                                finally:
+                                    with cls._lock:
+                                        cls._active_audio_threads.pop(a_name, None)
+
+                            th = threading.Thread(target=_play_worker, daemon=True)
+                            cls._active_audio_threads[alias] = (th, stop_evt)
+                            th.start()
+                            return alias
+                except Exception as e:
+                    pass
+
+            # 2. Process / MCI fallback if no targeted device or sounddevice fails
+            ffplay_bin = shutil.which("ffplay")
+            if ffplay_bin:
+                cmd = [ffplay_bin, "-nodisp", "-autoexit", "-loglevel", "quiet", filepath]
+                try:
+                    proc = subprocess.Popen(
+                        cmd,
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL
+                    )
+                    cls._active_processes[alias] = proc
+                    return alias
+                except Exception:
+                    pass
+
             if _OS == "Windows":
                 fp = filepath.replace("/", "\\")
                 try:
@@ -124,22 +217,19 @@ class MCIPlayer:
                 cls._send(f'play {alias}')
                 return alias
             else:
-                # Linux / macOS playback engine
-                players = ["pw-play", "paplay", "ffplay", "mpv", "aplay", "canberra-gtk-play", "vlc"]
+                players = ["pw-play", "paplay", "mpv", "aplay", "canberra-gtk-play", "vlc"]
                 chosen = None
                 for p in players:
                     if shutil.which(p):
                         chosen = p
                         break
-                
+
                 if chosen:
                     cmd = [chosen]
-                    if chosen == "ffplay":
-                        cmd.extend(["-nodisp", "-autoexit", "-loglevel", "quiet"])
-                    elif chosen == "mpv":
+                    if chosen == "mpv":
                         cmd.extend(["--no-terminal", "--no-video"])
                     cmd.append(filepath)
-                    
+
                     try:
                         proc = subprocess.Popen(
                             cmd,
@@ -147,32 +237,37 @@ class MCIPlayer:
                             stderr=subprocess.DEVNULL
                         )
                         cls._active_processes[alias] = proc
-                    except Exception as e:
-                        print(f"[JARVIS] Audio player execution error ({chosen}): {e}")
-                else:
-                    print(f"[JARVIS] No command-line audio player found for {filepath}")
+                    except Exception:
+                        pass
                 return alias
 
     @classmethod
     def is_playing(cls, alias: str) -> bool:
         """Check if the given alias is currently playing."""
+        with cls._lock:
+            if alias in cls._active_audio_threads:
+                th, evt = cls._active_audio_threads[alias]
+                if th.is_alive() and not evt.is_set():
+                    return True
+                else:
+                    cls._active_audio_threads.pop(alias, None)
+                    return False
+
+            proc = cls._active_processes.get(alias)
+            if proc is not None:
+                if proc.poll() is None:
+                    return True
+                else:
+                    cls._active_processes.pop(alias, None)
+                    return False
+
         if _OS == "Windows":
             try:
                 status = cls._send(f'status {alias} mode')
                 return status.strip().lower() == "playing"
             except RuntimeError:
                 return False
-        else:
-            with cls._lock:
-                proc = cls._active_processes.get(alias)
-                if proc is not None:
-                    poll = proc.poll()
-                    if poll is None:
-                        return True
-                    else:
-                        cls._active_processes.pop(alias, None)
-                        return False
-                return False
+        return False
 
     @classmethod
     def play_file_blocking(cls, filepath: str):
@@ -184,21 +279,33 @@ class MCIPlayer:
 
     @classmethod
     def stop(cls, alias: str):
-        """Stop and close the given alias."""
+        """Stop and close the given alias instantly."""
+        with cls._lock:
+            if alias in cls._active_audio_threads:
+                th, evt = cls._active_audio_threads.pop(alias)
+                evt.set()
+                try:
+                    import sounddevice as sd
+                    sd.stop()
+                except Exception:
+                    pass
+
+            proc = cls._active_processes.pop(alias, None)
+            if proc and proc.poll() is None:
+                try:
+                    proc.terminate()
+                except Exception:
+                    try:
+                        proc.kill()
+                    except Exception:
+                        pass
+
         if _OS == "Windows":
             try:
                 cls._send(f'stop {alias}')
                 cls._send(f'close {alias}')
             except RuntimeError:
                 pass
-        else:
-            with cls._lock:
-                proc = cls._active_processes.pop(alias, None)
-                if proc and proc.poll() is None:
-                    try:
-                        proc.terminate()
-                    except Exception:
-                        pass
 
     @classmethod
     def stop_all(cls):
@@ -407,23 +514,36 @@ class NeuralTTS:
         if self._cancel_event.is_set():
             return
 
-        loop = asyncio.new_event_loop()
-        try:
-            communicate = edge_tts.Communicate(
-                text=sentence,
-                voice=self.voice,
-                rate=self.rate,
-                pitch=self.pitch,
-            )
-            loop.run_until_complete(communicate.save(str(mp3_path)))
-        finally:
-            loop.close()
+        for attempt in range(2):
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                communicate = edge_tts.Communicate(
+                    text=sentence,
+                    voice=self.voice,
+                    rate=self.rate,
+                    pitch=self.pitch,
+                )
+                loop.run_until_complete(communicate.save(str(mp3_path)))
+                break
+            except Exception as e:
+                if mp3_path.exists():
+                    try:
+                        mp3_path.unlink(missing_ok=True)
+                    except Exception:
+                        pass
+                if attempt == 0:
+                    time.sleep(0.25)
+                else:
+                    raise e
+            finally:
+                loop.close()
 
         if self._cancel_event.is_set():
             return
 
         if not mp3_path.exists() or mp3_path.stat().st_size < 100:
-            return
+            raise RuntimeError("Edge-TTS produced an invalid or empty audio file.")
 
         self._prune_cache()
         self._play_and_wait(str(mp3_path))

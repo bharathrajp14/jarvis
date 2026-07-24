@@ -1,87 +1,61 @@
-# 🏗️ BR JARVIS — Architecture & System Topology Specification
+# 🏗️ Core System Topology & Architecture Graph
 
-> **Document Status**: Production Architecture Specification  
-> **Version**: MK37.25 (Round 24 Voice Upgrades + Round 25 Context Fix)  
-> **Coverage**: Subsystems 1 to 15 (Guardian, Self-Upgrade, Tiered Path Policy, Reflection, Core Runtime, Reasoning, Workflow, Autonomous Planner/Executor, Multi-Agent, Multi-LLM Router, Context Engine, Memory Engine, Computer Operator, Vision Engine, Voice Subsystem)
+> **System**: BR JARVIS (MK37.30.0)  
+> **Target Scope**: End-to-end component graph, event flow, and data pipelines.
 
 ---
 
-## 1. High-Level System Topology
-
-BR JARVIS operates as a decoupled, asynchronous, local-first AI Operating System with a two-tier execution pipeline:
-
-1. **Zero-Token Instant Fast Path**: Immediate 0ms deterministic execution via regex matchers in `core/intent_engine.py` (0 LLM token cost).
-2. **ReAct Cognitive Pipeline**: Multi-backend LLM orchestration loop (`orchestrator.py` + `router.py`) with context-aware pronoun resolution, tool execution, memory retrieval, and visual OS control.
+## 1. High-Level Subsystem Topology
 
 ```mermaid
-graph TD
-    User([👤 User Input: Voice / Text / GUI / API]) --> InputRouter{Input Type & Router}
-
-    subgraph FastPath["⚡ Zero-Token Fast Path (0ms, 0 Tokens)"]
-        InputRouter -->|Simple Query / System Command| IntentEngine[DeterministicIntentEngine<br/>core/intent_engine.py<br/>50+ Matchers]
-        IntentEngine -->|Direct OS Execution| OSExec[OS Native Call / Telemetry]
-        OSExec -->|Instant Output| Speaker[TTS / Voice / UI Output]
+graph LR
+    subgraph CoreEngine["Core Engine & Event Bus"]
+        Bootstrap[Bootstrap / DI Container<br/>core/bootstrap.py]
+        EventBus[Async EventBus<br/>events/event_bus.py]
+        IntentEngine[0-Token Intent Engine<br/>core/intent_engine.py]
     end
 
-    subgraph CognitivePath["🧠 Cognitive ReAct Pipeline"]
-        InputRouter -->|Complex / Conversational| ContextResolver[_resolve_context_references<br/>Pronoun & History Resolver]
-        ContextResolver --> WorkingMemory[Working Memory<br/>memory/working.py<br/>120K Window]
-        WorkingMemory --> ReActLoop[ReAct Loop Engine<br/>orchestrator.py<br/>MAX 20 Steps]
-        ReActLoop --> ModelRouter[AgentRouter<br/>router.py]
+    subgraph CognitiveLayer["Cognitive Layer"]
+        StepPlanner[Conscious Step Planner<br/>agent/step_planner.py]
+        Orchestrator[ReAct Orchestrator<br/>orchestrator.py]
+        Router[Multi-LLM Router<br/>router.py]
+        Reasoning[Chain-of-Thought Engine<br/>reasoning/engine.py]
     end
 
-    subgraph LLMBackends["🔀 LLM Backends Tier"]
-        ModelRouter --> Gemini[Gemini 2.5 / 3.5 Flash]
-        ModelRouter --> Claude[Claude 3.5 Sonnet]
-        ModelRouter --> GPT[GPT-4o / OSS 120B]
-        ModelRouter --> DeepSeek[DeepSeek R1]
-        ModelRouter --> NVIDIA[NVIDIA NIM Llama3]
-        ModelRouter --> Ollama[Local Ollama]
+    subgraph PerceptionLayer["Perception Layer"]
+        VoiceRefiner[VoicePromptRefiner<br/>voice/prompt_refiner.py]
+        HybridVision[7-Tier Hybrid Vision<br/>vision/hybrid_pipeline.py]
+        Accessibility[Windows Accessibility API<br/>vision/accessibility.py]
+        DOMBridge[CDP Browser DOM Bridge<br/>vision/dom_bridge.py]
     end
 
-    subgraph ExecutionTier["🔧 Execution & Subsystems Tier"]
-        ReActLoop -->|Tool Call| ToolRegistry[Tool Registry<br/>tools/registry.py<br/>34 Tool Modules]
-        ToolRegistry --> LiveOS[Live OS Controller<br/>actions/live_os_control.py<br/>Red Crosshair Overlay]
-        ToolRegistry --> CompOp[Computer Operator<br/>computer/operator.py]
-        ToolRegistry --> Vision[Vision Engine<br/>vision/engine.py]
-        ToolRegistry --> Memory[Multi-Tier Memory<br/>SQLite + ChromaDB + Markdown]
+    subgraph ExecutionLayer["Execution Layer"]
+        ComputerOp[Computer Operator<br/>computer/operator.py]
+        Scratchpad[Antigravity Scratchpad<br/>agent/scratchpad.py]
+        Tools[Tool Registry (98 Tools)<br/>tools/registry.py]
+        Clipboard[5-Tier Clipboard Utility<br/>actions/clipboard_utils.py]
     end
 
-    ExecutionTier --> Telemetry[EventBus Telemetry<br/>events/bus.py]
+    VoiceRefiner --> IntentEngine
+    IntentEngine --> |Fast Path| ExecutionLayer
+    IntentEngine --> |LLM Path| StepPlanner
+    StepPlanner --> Orchestrator
+    Orchestrator --> Router
+    Orchestrator --> Reasoning
+    Orchestrator --> EventBus
+    Orchestrator --> ExecutionLayer
+    ExecutionLayer --> HybridVision
+    HybridVision --> Accessibility
+    HybridVision --> DOMBridge
 ```
 
 ---
 
-## 2. Conversation & Context Resolution Sequence
+## 2. ReAct Execution Flow & Data Pipeline
 
-```mermaid
-sequenceDiagram
-    participant User
-    participant Orch as JarvisOrchestrator
-    participant ContextResolver as Context Resolver
-    participant WM as Working Memory
-    participant Router as AgentRouter
-    participant Tool as Tool Execution
-
-    User->>Orch: User Input: "open it in brave"
-    Orch->>ContextResolver: _resolve_context_references(user_input, augmented)
-    ContextResolver->>WM: Scan previous assistant response history for URLs
-    WM-->>ContextResolver: Found last URL: "https://google.com/search?q=..."
-    ContextResolver->>ContextResolver: Spawn Brave with target URL directly
-    ContextResolver-->>Orch: Context-injected prompt: "it refers to https://... - opened in Brave"
-    Orch->>WM: add("user", augmented_context)
-    Orch->>Router: route() & run()
-    Router-->>Orch: Confirmation response
-    Orch->>WM: add("assistant", response)
-    Orch-->>User: "Opened the previous result in Brave browser, sir."
-```
-
----
-
-## 3. Core Architectural Rules & Standards
-
-1. **Zero-Token First**: Always check `DeterministicIntentEngine` before hitting LLM backends.
-2. **Context Integrity**: Every incoming user message MUST be pushed to `WorkingMemory` before any LLM inference step.
-3. **Pronoun Traceability**: Anaphoric references ("it", "that", "this") are resolved against previous turn artifacts/URLs before execution.
-4. **Visual Action Audit**: Every Live OS click/type action saves a red crosshair visual trace file (`step_{n}_action.png`) for debugging and verification.
-5. **Guardian Safety Interlocks**: High-risk system operations check `permissions.py` PathPolicy and `guardian/kill_switch.py`.
+1. **Input Interception**: Spoken audio or text input is refined by `VoicePromptRefiner` (stripping vocal fillers) and evaluated against `DeterministicIntentEngine`.
+2. **Step Decomposition**: Complex requests are decomposed into conscious steps by `StepPlanner` (`agent/step_planner.py`).
+3. **Context Reference Resolution**: `orchestrator._resolve_context_references()` resolves URLs, file paths, and browser targets against short-term working memory.
+4. **Adaptive Execution Loop**: `JarvisOrchestrator` runs the ReAct loop within an `AdaptiveStepBudget` (dynamic 5–35 steps + progress velocity extensions up to 60 ceiling).
+5. **Tool Execution & Grounding**: Tool calls execute via `tools/registry.py` or isolated `./scratch/` scripts (`scratchpad_eval`). Visual action traces are recorded to `BR_WORKSPACE/Logs/live_os/`.
+6. **Trajectory Transcript Logging**: Every step, tool call, and thought is appended to JSON Lines transcripts (`transcript.jsonl`).

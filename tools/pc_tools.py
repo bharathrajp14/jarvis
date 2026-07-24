@@ -154,7 +154,10 @@ def tool_smart_click(args: dict) -> str:
 )
 def tool_clipboard_read(args: dict) -> str:
     cc = _get_computer_control()
-    return cc(parameters={"action": "copy"})
+    res = cc(parameters={"action": "clipboard_get"})
+    if not res:
+        return "Clipboard is empty."
+    return res
 
 
 @register_tool(

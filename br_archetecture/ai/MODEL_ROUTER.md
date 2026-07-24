@@ -1,75 +1,50 @@
-# 🔀 BR JARVIS — Intelligent Multi-Backend Model Router (`router.py`)
+# 🔀 Model Router & Provider Engine Specification
 
-> **Document Status**: Production Architecture Specification  
-> **Subsystem**: Multi-Model Intelligence & Failover Router  
-> **Module Path**: `router.py` & `backends/`  
-
----
-
-## 1. Executive Summary
-
-BR JARVIS features an intelligent, task-aware multi-backend router (`AgentRouter` in `router.py`) coupled with a provider backend framework in `backends/`. The system guarantees zero-downtime execution by prioritizing Gemini as the primary backbone while dynamically routing specialised tasks (such as offline privacy, local GPU acceleration, complex code generation, or multilingual processing) across available model providers.
+> **Module**: `router.py` & `backends/`  
+> **Version**: MK37.30.0  
+> **Primary Purpose**: Dynamic multi-backend AI model selection, adaptive complexity routing, token budgeting, and automatic failover.
 
 ---
 
-## 2. Supported LLM Backends (`backends/`)
+## 1. Supported Provider Backends
 
-```mermaid
-graph TD
-    Request[Agent / User Prompt] --> AgentRouter[AgentRouter: router.py]
-    
-    AgentRouter -->|Default & Search| Gemini[GeminiBackend: gemini-2.5/3.5-flash]
-    AgentRouter -->|Code & Complex Reasoning| Claude[ClaudeBackend: anthropic claude-3.5-sonnet]
-    AgentRouter -->|OpenAI Compatibility| OpenAI[OpenAIBackend: gpt-4o / custom endpoint]
-    AgentRouter -->|100% Offline / Local| Ollama[OllamaBackend: local llama3]
-    AgentRouter -->|GPU NIM Acceleration| NVIDIA[NvidiaBackend: NIM Llama-3.1-70b]
-    AgentRouter -->|Multilingual Fast Path| Mistral[MistralBackend: mistral-large]
+BR JARVIS supports 7 LLM provider backends through modular adapters in `backends/`:
 
-    Gemini -->|Failover Retry| FallbackEngine[Self-Healing Fallback Loop]
-    Claude -->|Failover Retry| FallbackEngine
-    OpenAI -->|Failover Retry| FallbackEngine
-    Ollama -->|Failover Retry| FallbackEngine
-    NvidiaBackend -->|Failover Retry| FallbackEngine
-    Mistral -->|Failover Retry| FallbackEngine
-    FallbackEngine -->|Default Recovery| Gemini
-```
-
-### Backend Adapter Taxonomy
-
-| Backend Class | File Path | Default Model ID | Key Capabilities |
+| Provider | Backend Module | Primary Models | Usage Role |
 |---|---|---|---|
-| `GeminiBackend` | [backends/gemini.py](file:///d:/BRJARVIS/Br-Jarvis/backends/gemini.py) | `gemini-2.5-flash` / `gemini-3.5-flash` | Google Search grounding, native vision, 1M+ token context window, structured JSON mode. |
-| `ClaudeBackend` | [backends/anthropic.py](file:///d:/BRJARVIS/Br-Jarvis/backends/anthropic.py) | `claude-3-5-sonnet-20241022` | Complex code synthesis, multi-step ReAct planning, precise docstring generation. |
-| `OpenAIBackend` | [backends/openai_compat.py](file:///d:/BRJARVIS/Br-Jarvis/backends/openai_compat.py) | `gpt-oss-120b-medium` / `gpt-4o` | OpenAI API compatibility, function calling, fallback provider. |
-| `DeepSeekBackend` | [backends/deepseek.py](file:///d:/BRJARVIS/Br-Jarvis/backends/deepseek.py) | `deepseek/deepseek-r1` | Deep reasoning, CoT step expansion, open router integration. |
-| `OllamaBackend` | [backends/ollama.py](file:///d:/BRJARVIS/Br-Jarvis/backends/ollama.py) | `llama3:latest` | 100% offline air-gapped processing, zero external telemetry, local privacy mode. |
-| `NvidiaBackend` | [backends/nvidia.py](file:///d:/BRJARVIS/Br-Jarvis/backends/nvidia.py) | `meta/llama-3.1-70b-instruct` | High-throughput GPU inference acceleration via NVIDIA NIM microservices. |
-| `MistralBackend` | [backends/mistral.py](file:///d:/BRJARVIS/Br-Jarvis/backends/mistral.py) | `mistral-large-latest` | Fast multilingual translation and compact reasoning. |
+| **Google Gemini** | `backends/gemini.py` | Gemini 2.5 Flash, Gemini 3.5 Flash | High-speed multimodal reasoning & vision |
+| **Anthropic Claude** | `backends/claude.py` | Claude 3.5 Sonnet, Claude 3 Opus | Complex code synthesis & architectural design |
+| **OpenAI** | `backends/openai.py` | GPT-4o, GPT-4o-mini | Standard tool invocation & structured JSON |
+| **Ollama** | `backends/ollama.py` | Llama 3, Qwen 2.5, DeepSeek R1 | 100% offline local inference & privacy tasks |
+| **DeepSeek** | `backends/deepseek.py` | DeepSeek R1, DeepSeek V3 | Deep chain-of-thought mathematical reasoning |
+| **NVIDIA NIM** | `backends/nvidia.py` | Llama-3-70B-Instruct | High-throughput cloud inference |
+| **Mistral AI** | `backends/mistral.py` | Mistral Large, Codestral | Code completion & multi-lingual synthesis |
 
 ---
 
-## 3. Intelligent Routing Rules & Fallback Policy
+## 2. Adaptive Routing Logic
 
-Task requests pass through `ROUTING_RULES` mapping to select candidate backends in order of preference:
-
-```python
-ROUTING_RULES = {
-    "code":           [AgentProfile.GEMINI, AgentProfile.CLAUDE, AgentProfile.GPT, AgentProfile.DEEPSEEK],
-    "security":       [AgentProfile.GEMINI, AgentProfile.CLAUDE],
-    "creative":       [AgentProfile.CLAUDE, AgentProfile.GEMINI, AgentProfile.GPT],
-    "search":         [AgentProfile.GEMINI, AgentProfile.CLAUDE],
-    "local_private":  [AgentProfile.OLLAMA],  # Fail-closed privacy guarantee
-    "long_context":   [AgentProfile.GEMINI, AgentProfile.CLAUDE],
-    "gpu_inference":  [AgentProfile.NVIDIA, AgentProfile.GEMINI],
-    "fast_inference": [AgentProfile.GEMINI, AgentProfile.MISTRAL],
-    "multilingual":   [AgentProfile.GEMINI, AgentProfile.MISTRAL],
-    "vision":         [AgentProfile.GEMINI, AgentProfile.CLAUDE],
-    "analysis":       [AgentProfile.GEMINI, AgentProfile.CLAUDE, AgentProfile.GPT],
-    "reasoning":      [AgentProfile.DEEPSEEK, AgentProfile.CLAUDE, AgentProfile.GEMINI],
-}
+```
+Task Execution Request
+         │
+         ▼
+[ DeterministicIntentEngine (core/intent_engine.py) ]
+         │ (Matches 50+ 0-token system intents -> 0ms, 0 tokens)
+         ├─────────────────────────────────────────┐
+         │ (No match)                              │ (Matched)
+         ▼                                         ▼
+[ Complexity Classifier ]                   Instant Execution
+         │
+         ├───────────────────────┬───────────────────────┐
+         ▼                       ▼                       ▼
+   Simple Goal              Medium Goal             Complex Goal
+   (Ollama / Gemini Flash)  (GPT-4o / Gemini 3.5)   (Claude 3.5 Sonnet / DeepSeek R1)
 ```
 
-### Self-Healing Failover Algorithm
-1. **Health Verification**: Before dispatching, `AgentRouter.generate()` checks backend availability via key verification or active ping (e.g. `OllamaBackend.ping(timeout=2.0)`).
-2. **Graceful Fallback**: If the selected backend returns an HTTP exception (e.g., rate limit 429, timeout 504), the router catches the error, logs telemetry via `EventBus`, and immediately falls back to `GeminiBackend`.
-3. **Runtime Switching**: Users or automated planners can dynamically override the active backend at runtime via `/model <name>` CLI commands or `AgentRouter.switch_backend()`.
+---
+
+## 3. Token Budget Tracking & Failover Strategy
+
+- **Token Budgeting**: `router.py` monitors input/output tokens per session, enforcing configurable soft and hard limits.
+- **Failover Cascade**: If a primary backend fails (e.g. Rate Limit 429 or API Error 500), the router automatically attempts the fallback chain:
+  `Gemini Flash -> Claude 3.5 Sonnet -> GPT-4o -> Local Ollama`.

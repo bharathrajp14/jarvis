@@ -25,8 +25,17 @@ MAX_BUILD_TRIES = 3
 def _clean_code(text: str) -> str:
     text = text.strip()
     text = re.sub(r"^```[a-zA-Z]*\n?", "", text)
-    text = re.sub(r"\n?```$", "", text)
-    return text.strip()
+    text = re.sub(r"\n?```$", "", text).strip()
+    lines = text.split("\n")
+    cleaned = []
+    narrative_prefixes = ("let's", "in windows", "here is", "this script", "note:", "we can", "the following", "to get", "using the")
+    for line in lines:
+        s = line.strip()
+        if any(s.lower().startswith(p) for p in narrative_prefixes):
+            cleaned.append("# " + line)
+        else:
+            cleaned.append(line)
+    return "\n".join(cleaned).strip()
 
 
 def _resolve_save_path(output_path: str, language: str) -> Path:

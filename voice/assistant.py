@@ -52,9 +52,9 @@ class BRVoiceAssistant:
         
         # Load configurable settings
         self.name = os.environ.get("JARVIS_ASSISTANT_NAME", "BR").strip()
-        self.wake_word = os.environ.get("JARVIS_WAKE_WORD", "hey jarvis").strip().lower()
+        self.wake_word = os.environ.get("JARVIS_WAKE_WORD", "jarvis").strip().lower()
         self._wake_listen_timeout = 2.0       # max seconds to wait for any speech
-        self._wake_phrase_limit = 2.5         # ⚡ 2.5s for wake word capture (was 1.2s cut-off)
+        self._wake_phrase_limit = 4.0         # ⚡ 4.0s capture to allow continuous wake + command utterance
         self._command_timeout = 4.0           # seconds to wait for command speech
         self._command_phrase_limit = 10.0     # allow longer commands
         self._ambient_calibration = 0.5       # ⚡ halved from 1.0s
@@ -138,53 +138,47 @@ class BRVoiceAssistant:
 
     def _tune_recognizer(self, recognizer):
         """Apply optimal settings for wake-word and command capture."""
-        recognizer.dynamic_energy_threshold = True
-        recognizer.pause_threshold = 0.5          # detect end-of-speech after 0.5s silence
+        recognizer.dynamic_energy_threshold = False  # ⚡ Fixed threshold prevents sensitivity drift
+        recognizer.energy_threshold = 150             # ⚡ Sensitive threshold ensures quick wake word response
+        recognizer.pause_threshold = 0.4              # detect end-of-speech after 0.4s silence
         recognizer.non_speaking_duration = 0.2     # min non-speech before phrase end
         recognizer.phrase_threshold = 0.1          # min speech length to register
-        recognizer.energy_threshold = min(max(getattr(recognizer, "energy_threshold", 300), 150), 500)
-        try:
-            recognizer.dynamic_energy_adjustment_damping = 0.15
-            recognizer.dynamic_energy_ratio = 1.2
-        except Exception:
-            pass
 
     def _is_wake_phrase(self, text: str) -> bool:
-        """Return True when transcript contains wake word ('hey jarvis', 'jarvis', 'br', or phonetic variants)."""
+        """Return True when transcript contains explicit wake word ('jarvis', 'hey jarvis', or phonetic variants)."""
         normalized = re.sub(r"[^a-z0-9\s]", " ", text.lower()).strip()
         if not normalized:
             return False
-        
-        words = normalized.split()
+
+        # Regex check for jarvis and common phonetic STT mishearings
+        if re.search(r"\b(jarvis|jarves|javis|garvis|charvis|harvis|travis|hey\s+jarvis|ok\s+jarvis|hi\s+jarvis|hello\s+jarvis|hey\s+br|br)\b", normalized):
+            return True
+
         wake_word = self.wake_word.lower().strip()
-        name = self.name.lower().strip()
-        
-        if wake_word and (wake_word in normalized or any(w in words for w in wake_word.split())):
-            return True
-        if name and (name in words or name in normalized):
-            return True
-        if "jarvis" in words or "jarvis" in normalized or "hey jarvis" in normalized:
+        if wake_word and wake_word in normalized:
             return True
 
-        # Common phonetic misheard speech variations for "jarvis" / "hey jarvis"
-        fuzzy_matches = (
-            "jarves", "jarv", "javis", "garvis", "jarvises", "travis", "harvis",
-            "charvis", "ok jarvis", "hi jarvis", "hello jarvis", "wake up", "hey br", "hey assistant"
-        )
-        for target in fuzzy_matches:
-            if target in normalized or target in words:
-                return True
+        fuzzy_matches = ("jarvis", "hey jarvis", "ok jarvis", "hi jarvis", "hello jarvis", "wake up", "hey assistant")
+        return any(target in normalized for target in fuzzy_matches)
 
-        return False
+    def _extract_command_from_wake(self, text: str) -> str:
+        """Extract trailing command when user speaks wake-word and command in a single sentence."""
+        if not text:
+            return ""
+        norm = text.lower().strip()
+        pat = r"^(hey\s+jarvis|ok\s+jarvis|hi\s+jarvis|hello\s+jarvis|br\s+jarvis|hey\s+br|jarvis|jarves|javis|garvis|charvis|harvis)\b[\s,:\.\!]*"
+        cleaned = re.sub(pat, "", norm, flags=re.IGNORECASE).strip()
+        return cleaned if len(cleaned) > 2 else ""
 
     async def _transcribe_wake(self, audio: sr.AudioData) -> str:
         """⚡ FAST wake-word transcription. Uses Google STT with Whisper local fallback."""
+        loop = self._loop or asyncio.get_running_loop()
         text = ""
         try:
             if hasattr(self, "r") and self.r:
                 from voice.multilingual import get_google_stt_code
                 stt_lang = get_google_stt_code()
-                text = await self._loop.run_in_executor(
+                text = await loop.run_in_executor(
                     None, lambda: self.r.recognize_google(audio, language=stt_lang).lower()
                 )
         except Exception:
@@ -194,21 +188,20 @@ class BRVoiceAssistant:
             try:
                 from voice.whisper_local import transcribe as whisper_transcribe, is_available as whisper_available
                 if whisper_available():
-                    text = await self._loop.run_in_executor(
+                    text = await loop.run_in_executor(
                         None, lambda: whisper_transcribe(audio.get_wav_data()).lower()
                     )
             except Exception:
                 pass
 
         text_clean = text.strip()
-        if text_clean:
-            print(f"[Voice Debug] Heard: '{text_clean}'")
         return text_clean
 
     async def _transcribe_command(self, audio: sr.AudioData) -> str:
         """Full-quality command transcription with fallback chain.
         Used ONLY after wake word is detected — accuracy matters here.
         """
+        loop = self._loop or asyncio.get_running_loop()
         text = ""
 
         # 1. Try local Whisper first (offline STT — highest quality)
@@ -266,39 +259,19 @@ class BRVoiceAssistant:
         return text
 
     async def process_command(self, text: str):
-        text_clean = text.strip()
-        if not text_clean:
+        if not text or not text.strip():
             return
 
-        # Apply custom vocabulary corrections
-        try:
-            if self._vocab_cache:
-                for misheard, correct in self._vocab_cache.items():
-                    pattern = re.compile(r'\b' + re.escape(misheard) + r'\b', re.IGNORECASE)
-                    text_clean = pattern.sub(correct, text_clean)
-        except Exception as e:
-            print(f"[Voice] Vocabulary correction error: {e}")
+        # Refine raw acoustic speech transcript into a clean execution prompt
+        from voice.prompt_refiner import refine_voice_prompt
+        ref_res = refine_voice_prompt(text)
+        text_clean = ref_res["refined"]
 
-        # Match custom commands
-        try:
-            from actions.custom_commands import custom_command_engine
-            match_res = custom_command_engine.match(text_clean)
-            if match_res:
-                cmd_dict, variables = match_res
-                self.ui.set_state("THINKING")
-                self.ui.write_log(f"Custom Command Matched: {cmd_dict['trigger']}")
-                result_str = await self._loop.run_in_executor(
-                    None,
-                    lambda: custom_command_engine.execute(cmd_dict, variables, speak_callback=self.speak)
-                )
-                self.ui.write_log(f"SYS: {result_str}")
-                self.ui.set_state("LISTENING")
-                return
-        except Exception as e:
-            print(f"[Voice] Custom command execution error: {e}")
-
-        self.ui.set_state("THINKING")
-        self.ui.write_log(f"You: {text_clean}")
+        if ref_res["was_modified"]:
+            self.ui.write_log(f"🎙️ Spoken Raw: \"{ref_res['raw']}\"")
+            self.ui.write_log(f"✨ Refined Prompt: \"{text_clean}\"")
+        else:
+            self.ui.write_log(f"You: {text_clean}")
 
         low = text_clean.lower()
         if any(w in low for w in ["goodbye", "exit", "close", "stop br", "shutdown br", "stop jarvis", "shutdown jarvis"]):
@@ -371,10 +344,12 @@ class BRVoiceAssistant:
             if not response or not str(response).strip():
                 response = "I am ready, sir. Please specify a single task or command."
             # Log clean version to UI
-            from voice.tts import clean_for_speech
+            from voice.tts import clean_for_speech, summarize_for_speech
             clean_log = clean_for_speech(response)
             self.ui.write_log(f"JARVIS: {clean_log[:500] if clean_log else response[:500]}")
-            self.speak(response)
+            spoken_summary = summarize_for_speech(response)
+            if spoken_summary:
+                self.speak(spoken_summary)
         except asyncio.CancelledError:
             # Task was cancelled by a new incoming command — silently exit
             return
@@ -387,7 +362,10 @@ class BRVoiceAssistant:
         self.ui.set_state("LISTENING")
 
     async def run(self):
-        self._loop = asyncio.get_event_loop()
+        try:
+            self._loop = asyncio.get_running_loop()
+        except RuntimeError:
+            self._loop = asyncio.get_event_loop()
 
         # Initialize AI core backends
         self.ui.set_state("THINKING")
@@ -461,16 +439,16 @@ class BRVoiceAssistant:
                         self.r.energy_threshold = 400
                     mic.drain()  # ⚡ instant flush instead of sleep + manual loop
                     self.ui.set_state("LISTENING")
-                    self.ui.write_log(f"SYS: Microphone active (Device {mic.device_index}). Hands-free mode active. Listening for 'Hey Jarvis'...")
+                    self.ui.write_log(f"SYS: Microphone active (Device {mic.device_index}). Hands-free mode active. Listening for 'Jarvis' or 'Hey Jarvis'...")
                 except Exception as e:
                     self.ui.write_log(f"ERR: Microphone calibration failed: {e}")
 
                 # Wake-word passive listening loop
                 while True:
                     try:
-                        # Passive listening checks: only run if not speaking/muted
-                        if self.ui.speaking or getattr(self.ui, "muted", False):
-                            await asyncio.sleep(0.08)
+                        # Passive listening checks: suspend listening while speaking, thinking, executing, or muted
+                        if self.ui.speaking or self.ui._state in ("THINKING", "SPEAKING", "EXECUTING", "BUSY") or getattr(self.ui, "muted", False):
+                            await asyncio.sleep(0.1)
                             continue
 
                         # ⚡ Listen for short wake-word audio (1.2s max capture)
@@ -492,27 +470,37 @@ class BRVoiceAssistant:
                                 winsound.Beep(1318, 80)
 
                             self.ui.set_state("LISTENING")
-                            self.ui.write_log("SYS: Wake word detected. Listening...")
+                            self.ui.write_log("SYS: Wake word detected.")
+
+                            # Check if command was spoken in the same sentence as the wake word
+                            embedded_cmd = self._extract_command_from_wake(text)
+                            if embedded_cmd:
+                                self.ui.write_log(f"SYS: Command captured: '{embedded_cmd}'")
+                                await self._switch_to_new_command(embedded_cmd)
+                                continue
 
                             # Flush mic queue for clean command capture
                             mic.drain()
 
-                            # Listen for the actual command
-                            audio_cmd = await self._loop.run_in_executor(
-                                None, lambda: self.r.listen(
-                                    source,
-                                    timeout=self._command_timeout,
-                                    phrase_time_limit=self._command_phrase_limit
+                            # Listen for follow-up command if user spoke only the wake word
+                            try:
+                                audio_cmd = await self._loop.run_in_executor(
+                                    None, lambda: self.r.listen(
+                                        source,
+                                        timeout=self._command_timeout,
+                                        phrase_time_limit=self._command_phrase_limit
+                                    )
                                 )
-                            )
+                                # Full-quality transcription for command
+                                cmd_text = await self._transcribe_command(audio_cmd)
 
-                            # Full-quality transcription for command
-                            cmd_text = await self._transcribe_command(audio_cmd)
-
-                            if cmd_text.strip():
-                                await self._switch_to_new_command(cmd_text)
-                            else:
-                                self.ui.write_log("SYS: No command detected. Resuming...")
+                                if cmd_text.strip():
+                                    await self._switch_to_new_command(cmd_text)
+                                else:
+                                    self.ui.write_log("SYS: No command detected. Resuming...")
+                                    self.ui.set_state("LISTENING")
+                            except sr.WaitTimeoutError:
+                                self.ui.write_log("SYS: Command capture timed out — no input heard.")
                                 self.ui.set_state("LISTENING")
 
                     except sr.WaitTimeoutError:

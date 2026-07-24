@@ -762,6 +762,8 @@ class JarvisUI:
         return int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
 
     def _draw_frame(self):
+        if not hasattr(self, "root") or not self.root.winfo_exists():
+            return
         c = self.bg
         W, H = self.root.winfo_width(), self.root.winfo_height()
         c.delete("all")
@@ -953,15 +955,21 @@ class JarvisUI:
 
         sc = self._state_color()
         dot = "●" if self.status_blink else "○"
-        c.create_text(10, 10, text=f"{dot}  BR  ·  {self._state}",
+        
+        # Count running tasks
+        running_cnt = sum(1 for t in self._agent_tasks.values() if t.get("status") in ("running", "queued"))
+        badge = f"  ·  🚀 {running_cnt} Active" if running_cnt > 0 else ""
+        
+        c.create_text(10, 10, text=f"{dot}  BR  ·  {self._state}{badge}",
                       fill=sc, font=F["ui_b"], anchor="w")
 
         tasks = list(self._agent_tasks.items())[-2:]
         for i, (tid, info) in enumerate(tasks):
             y = 28 + i * 14
             st = info.get("status", "?")
-            st_col = C["green"] if st == "completed" else C["warn"]
-            c.create_text(18, y, text=f"↳ {info.get('name','agent')[:16]} [{st}]",
+            st_col = C["green"] if st in ("completed", "done") else C["err"] if st == "failed" else C["cyan"] if st == "running" else C["warn"]
+            icon = "⚡" if st == "running" else "✓" if st in ("completed", "done") else "✕" if st == "failed" else "⏳"
+            c.create_text(18, y, text=f"{icon} {info.get('name','agent')[:16]} [{st.upper()}]",
                           fill=st_col, font=F["ui_xs"], anchor="w")
 
     @staticmethod
@@ -1113,7 +1121,16 @@ class JarvisUI:
             tk.Label(r, text=f"✓ {label}", fg=C["cyan"], bg=C["card"], font=F["ui_b"]).pack(side="left")
             tk.Label(r, text=f"{model_id}  ({desc})", fg=C["t3"], bg=C["card"], font=F["mono_xs"]).pack(side="right")
 
-        # Tab 2: Vision & Operator
+        # Tab 2: Multi-Task & Sub-Agents Dashboard
+        t_tasks = tk.Frame(notebook, bg=C["surface"], padx=16, pady=16)
+        notebook.add(t_tasks, text="🚀 Multi-Tasks")
+        tk.Label(t_tasks, text="Active Multi-Tasks & Autonomous Sub-Agents", fg=C["t1"], bg=C["surface"], font=F["ui_lg"]).pack(anchor="w", pady=(0, 6))
+        
+        self._multitask_list_frame = tk.Frame(t_tasks, bg=C["surface"])
+        self._multitask_list_frame.pack(fill="both", expand=True)
+        self._render_multitask_cards()
+
+        # Tab 3: Vision & Operator
         t2 = tk.Frame(notebook, bg=C["surface"], padx=16, pady=16)
         notebook.add(t2, text="👁️ Vision & Operator")
         tk.Label(t2, text="Computer Vision & Screen Controls", fg=C["t1"], bg=C["surface"], font=F["ui_lg"]).pack(anchor="w", pady=(0, 10))
@@ -1157,6 +1174,63 @@ class JarvisUI:
             telem_text = "Antigravity Token Telemetry: Active (0-Token Bypass Engine Operational)"
 
         tk.Label(t6, text=telem_text, fg=C["green"], bg=C["card"], font=F["mono_sm"], justify="left", padx=12, pady=12).pack(fill="x")
+
+    def _render_multitask_cards(self):
+        """Render glossy Task Cards for active/parallel tasks in the control center tab."""
+        if not hasattr(self, "_multitask_list_frame") or not self._multitask_list_frame:
+            return
+
+        try:
+            if not self._multitask_list_frame.winfo_exists():
+                return
+            for child in self._multitask_list_frame.winfo_children():
+                child.destroy()
+        except Exception:
+            return
+
+        if not self._agent_tasks:
+            try:
+                empty_lbl = tk.Label(
+                    self._multitask_list_frame,
+                    text="No active parallel tasks or sub-agent goals registered.\nSubmit multi-goal tasks using '/run goal1 | goal2' or voice.",
+                    fg=C["t3"], bg=C["surface"], font=F["mono_sm"], justify="center", pady=24
+                )
+                empty_lbl.pack(fill="x")
+            except Exception:
+                pass
+            return
+            return
+
+        for tid, info in list(self._agent_tasks.items())[::-1]:
+            st = info.get("status", "queued").lower()
+            name = info.get("name", "Task")
+            prog = info.get("progress", 0.0)
+            res = info.get("result", "")
+
+            # Badge color mapping
+            badge_bg = C["cyan"] if st == "running" else C["green"] if st in ("completed", "done") else C["err"] if st == "failed" else C["amber"]
+            icon = "⚡" if st == "running" else "✓" if st in ("completed", "done") else "✕" if st == "failed" else "⏳"
+
+            card = tk.Frame(self._multitask_list_frame, bg=C["card"], highlightbackground=C["border"], highlightthickness=1, padx=12, pady=8)
+            card.pack(fill="x", pady=4)
+
+            # Top row: icon + title + status pill badge
+            top_row = tk.Frame(card, bg=C["card"])
+            top_row.pack(fill="x")
+
+            tk.Label(top_row, text=f"{icon} {name}", fg=C["t1"], bg=C["card"], font=F["ui_b"]).pack(side="left")
+            tk.Label(top_row, text=f" {st.upper()} ", fg="#000000", bg=badge_bg, font=F["mono_xs"]).pack(side="right")
+
+            # Middle row: progress info if running
+            if st == "running" or prog > 0:
+                p_frame = tk.Frame(card, bg=C["bg"], height=6)
+                p_frame.pack(fill="x", pady=6)
+                p_frame.pack_propagate(False)
+                fw = max(4, int((p_frame.winfo_width() or 200) * prog))
+                tk.Frame(p_frame, bg=C["cyan"], width=fw).pack(side="left", fill="y")
+
+            if res:
+                tk.Label(card, text=f"Output: {res[:100]}", fg=C["t3"], bg=C["card"], font=F["mono_xs"], anchor="w").pack(fill="x", pady=(2, 0))
 
     def _show_settings_modal(self):
         overlay = tk.Toplevel(self.root)
@@ -1457,8 +1531,47 @@ class JarvisUI:
 
         self.root.after_idle(_insert)
 
-    def update_agent_task(self, task_id: str, name: str, status: str):
-        self._agent_tasks[task_id] = {"name": name, "status": status}
+    def update_agent_task(self, task_id: str, name: str, status: str, progress: float = 0.0, result: str = ""):
+        """Update or register an active/parallel task for visual rendering in the UI."""
+        clean_st = str(status).lower().strip()
+        prog = max(0.0, min(1.0, float(progress))) if progress is not None else 0.0
+        
+        # Preserve or set entry
+        entry = self._agent_tasks.get(task_id, {})
+        entry.update({
+            "id": task_id,
+            "name": name or entry.get("name", "Task"),
+            "status": clean_st,
+            "progress": prog,
+            "result": result or entry.get("result", ""),
+            "updated_at": time.time(),
+        })
+        self._agent_tasks[task_id] = entry
+
+        def _refresh():
+            self._draw_agent_status()
+            if hasattr(self, "_multitask_list_frame") and self._multitask_list_frame:
+                self._render_multitask_cards()
+
+        try:
+            self.root.after_idle(_refresh)
+        except Exception:
+            pass
+
+    def remove_agent_task(self, task_id: str):
+        if task_id in self._agent_tasks:
+            del self._agent_tasks[task_id]
+            try:
+                self.root.after_idle(self._draw_agent_status)
+            except Exception:
+                pass
+
+    def clear_agent_tasks(self):
+        self._agent_tasks.clear()
+        try:
+            self.root.after_idle(self._draw_agent_status)
+        except Exception:
+            pass
 
     def start_speaking(self):
         self.set_state("SPEAKING")

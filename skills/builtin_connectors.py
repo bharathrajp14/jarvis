@@ -11,16 +11,15 @@ CONNECTOR_SKILLS: list[SkillDef] = [
         name="gmail_assistant",
         description="Check unread Gmail messages, extract key directives, and generate executive digests.",
         triggers=["/gmail", "check emails", "read gmail", "check unread messages"],
-        tools=["gmail_list_unread", "gmail_send_email"],
+        tools=["gmail_send", "gmail_reply", "browser_open_url", "browser_click", "browser_type"],
         prompt="""
 You are the JARVIS Executive Communications Specialist.
 Execute the following workflow:
-1. Call `gmail_list_unread` to fetch top unread messages.
-2. Analyze message senders, subjects, and snippets for urgent action items.
-3. Present a formatted Executive Email Briefing to the user.
+1. Use `gmail_send` or `gmail_reply` to compose, send, or reply to emails online in Gmail.
+2. Use `browser_open_url` to inspect Gmail inbox or thread details when requested.
 """,
         file_path="builtin:gmail_assistant",
-        when_to_use="When the user asks to check, read, or summarize emails from Gmail.",
+        when_to_use="When the user asks to check, send, compose, or reply to emails in Gmail.",
         source="builtin"
     ),
     SkillDef(
@@ -83,6 +82,21 @@ Execute the following workflow:
 """,
         file_path="builtin:slack_channel_broadcaster",
         when_to_use="When the user asks to post or broadcast messages to Slack/Discord.",
+        source="builtin"
+    ),
+    SkillDef(
+        name="ms365_workspace_manager",
+        description="Launch and interact with Microsoft 365 / Office Online web apps (Word, Excel, PowerPoint, Outlook).",
+        triggers=["/ms365", "/office365", "open office online", "open word online", "open excel online"],
+        tools=["ms365_control", "browser_open_url", "browser_click", "browser_type"],
+        prompt="""
+You are the JARVIS Office Online Specialist.
+Execute the following workflow:
+1. Use `ms365_control` to launch Word Online, Excel Online, PowerPoint Online, or Outlook.
+2. Use interactive browser tools (`browser_click`, `browser_type`) to edit documents online.
+""",
+        file_path="builtin:ms365_workspace_manager",
+        when_to_use="When the user asks to open or work with Microsoft 365 / Office Online.",
         source="builtin"
     ),
 ]

@@ -1,52 +1,61 @@
-# 🧠 BR JARVIS — Multi-Tier Advanced Memory Engine (`memory/`)
+# 🧠 Memory Engine Architectural Specification
 
-> **Document Status**: Production Architecture Specification  
-> **Subsystem**: Memory & Knowledge Retention  
-> **Module Path**: `memory/`  
-
----
-
-## 1. Executive Summary
-
-The BR JARVIS **Memory Engine** provides a 4-tier hybrid storage architecture enabling zero-latency volatile caching, durable relational session storage, cross-session persistent markdown state, and local vector retrieval (RAG).
+> **Module**: `memory/`  
+> **Version**: MK37.30.0  
+> **Primary Purpose**: Multi-tier memory retention, conversation session history, ChromaDB vector RAG retrieval, and instant FNV-1a response caching.
 
 ---
 
-## 2. Multi-Tier Architecture Overview
+## 1. 5-Tier Memory Architecture
 
-```mermaid
-graph TD
-    UserQuery[User Request / Execution Step] --> UnifiedMemory[UnifiedMemoryManager: Coordinator]
-    
-    UnifiedMemory -->|Tier 1: Volatile Cache| FastTTL[MemoryCache: FNV-1a Hashing + TTL Decay]
-    UnifiedMemory -->|Tier 2: Active Working State| WorkingMem[WorkingMemory: In-Memory Ring Buffer]
-    UnifiedMemory -->|Tier 3: Session Database| SQLiteStore[ConversationStore: SQLite conversation_history.db]
-    UnifiedMemory -->|Tier 4: Semantic Knowledge| PersistentStore[PersistentStore: Markdown Files + SQLite]
-    UnifiedMemory -->|Tier 5: Dense Embeddings| VectorStore[VectorStore: ChromaDB + SentenceTransformers]
+BR JARVIS employs a 5-tier memory subsystem managed by `UnifiedMemoryManager` (`memory/manager.py`).
 
-    WorkingMem -->|Stale Context Consolidator| MemoryArchiver[MemoryArchiver: JSONL Archive Log]
+```
+                    ┌─────────────────────────┐
+                    │      User Prompt        │
+                    └────────────┬────────────┘
+                                 │
+         ┌───────────────────────┴───────────────────────┐
+         ▼                                               ▼
+┌──────────────────┐                           ┌──────────────────┐
+│  Tier 1: Working │                           │  Tier 5: FNV-1a  │
+│  Memory (RAM)    │                           │  Response Cache  │
+└────────┬─────────┘                           └────────┬─────────┘
+         │                                              │
+         ▼                                              ▼
+┌──────────────────┐                           ┌──────────────────┐
+│  Tier 2: SQLite  │                           │  Tier 4: Lesson  │
+│  Session DB      │                           │  Store (Markdown)│
+└────────┬─────────┘                           └────────┬─────────┘
+         │                                              │
+         └───────────────────────┬──────────────────────┘
+                                 │
+                                 ▼
+                    ┌─────────────────────────┐
+                    │  Tier 3: ChromaDB Vector│
+                    │  RAG Store              │
+                    └─────────────────────────┘
 ```
 
 ---
 
-## 3. Subsystem Components & Responsibilities
+## 2. Subsystem Tier Breakdown
 
-| Subsystem Module | Class / Component | Function & Storage Mechanism |
-|---|---|---|
-| [working.py](file:///d:/BRJARVIS/Br-Jarvis/memory/working.py) | `WorkingMemory` | Rapid in-memory storage for active turn history and transient execution variables. |
-| [cache.py](file:///d:/BRJARVIS/Br-Jarvis/memory/cache.py) | `MemoryCache` | In-memory key-value cache with TTL expiration and C++ FNV-1a hash key generation. |
-| [conversation_store.py](file:///d:/BRJARVIS/Br-Jarvis/memory/conversation_store.py) | `ConversationStore` | SQLite persistent database for full conversation thread history, system prompts, and tool outputs. |
-| [persistent_store.py](file:///d:/BRJARVIS/Br-Jarvis/memory/persistent_store.py) | `PersistentStore` | Dual-mode persistent store maintaining Markdown state files (`MEMORY.md`, `PREFERENCES.md`) & key-value SQLite tables. |
-| [vector_store.py](file:///d:/BRJARVIS/Br-Jarvis/memory/vector_store.py) | `VectorStore` | Local ChromaDB vector database with `all-MiniLM-L6-v2` dense embedding generation for semantic document RAG. |
-| [consolidator.py](file:///d:/BRJARVIS/Br-Jarvis/memory/consolidator.py) | `MemoryConsolidator` | Background worker that extracts long-term user facts and semantic insights from dialogue turns. |
-| [archiver.py](file:///d:/BRJARVIS/Br-Jarvis/memory/archiver.py) | `MemoryArchiver` | Archives completed session turns into compressed `workspace/logs/memory_archive.jsonl`. |
-| [memory_scan.py](file:///d:/BRJARVIS/Br-Jarvis/memory/memory_scan.py) | `MemoryScan` | Full-text and regex search scanner across persistent session records and log archives. |
-| [unified_memory.py](file:///d:/BRJARVIS/Br-Jarvis/memory/unified_memory.py) | `UnifiedMemoryManager` | Master façade providing seamless query operations across working, SQLite, vector, and cache tiers. |
+### Tier 1: Short-Term Working Memory (`memory/working.py`)
+- Maintains in-memory session turn state (`turn_history`) during an active goal execution.
+- Features turn recording helpers: `add_user_message()`, `add_assistant_message()`, `_record_turn()`.
+- Thread-safe access protected by re-entrant locks (`RLock`).
 
----
+### Tier 2: Persistent Conversation Store (`memory/persistent_store.py` & `memory/conversation_store.py`)
+- SQLite-backed store persisting user interactions, execution logs, and turn histories across restarts (`memory_db/`).
+- Includes automatic migration schema and thread-safe statement execution.
 
-## 4. Operational Data Flow & Consolidation
+### Tier 3: Semantic Vector RAG (`memory/vector_store.py` & `memory/rag.py`)
+- Embedded ChromaDB vector database generating semantic embeddings for file contents, previous solutions, and web research notes.
+- Provides similarity search (`search_similar()`) with distance threshold filtering.
 
-1. **Write Flow**: Incoming user and agent turns are appended to `WorkingMemory` and asynchronously committed to `ConversationStore` (SQLite).
-2. **Read Flow**: Queries check `MemoryCache` first. If cache misses occur, `UnifiedMemoryManager` merges results from `WorkingMemory`, `ConversationStore`, and `VectorStore`.
-3. **Consolidation**: Stale conversation turns are periodically processed by `MemoryConsolidator` to extract user rules and preferences, writing them to `PersistentStore` (`MEMORY.md`), before `MemoryArchiver` offloads raw turns to `memory_archive.jsonl`.
+### Tier 4: Architectural Lessons Store (`memory/lessons.py`)
+- Persistent Markdown store (`memory/lessons/`) containing self-correction rules, error recovery lessons, and user feedback preferences.
+
+### Tier 5: Fast Hashing Response Cache (`memory/cache.py`)
+- In-memory & disk-backed cache keying tool outputs and deterministic queries by FNV-1a frame/query hashes for instant hit resolution (<1ms).

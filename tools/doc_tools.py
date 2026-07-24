@@ -350,3 +350,60 @@ B.R. JARVIS shifts the paradigm from static autocomplete AI to an autonomous sen
     res_pdf = create_pdf_document({"title": doc_title, "content": doc_text, "filename": "JARVIS_Product_Analysis.pdf", "auto_open": True})
 
     return f"{res_word}\n{res_pdf}"
+
+
+@register_tool(
+    name="generate_walkthrough",
+    description="Generate a rich GitHub-flavored Markdown Walkthrough document (walkthrough.md) documenting technical changes, verification results, and file links.",
+    parameters={
+        "type": "object",
+        "properties": {
+            "title": {"type": "string", "description": "Title of the walkthrough"},
+            "summary": {"type": "string", "description": "High-level summary of work accomplished"},
+            "changes": {"type": "string", "description": "Detailed description or markdown list of changes made"},
+            "verification": {"type": "string", "description": "Verification steps and automated test results"},
+            "filename": {"type": "string", "description": "Target filename, default is walkthrough.md"},
+            "auto_open": {"type": "boolean", "description": "Whether to auto-open the generated walkthrough file"}
+        },
+        "required": ["title", "changes"]
+    }
+)
+def generate_walkthrough(args: dict) -> str:
+    """Generate a GitHub-flavored markdown walkthrough document."""
+    title = args.get("title", "Task Walkthrough").strip()
+    summary = args.get("summary", "").strip()
+    changes = args.get("changes", "").strip()
+    verification = args.get("verification", "").strip()
+    filename = args.get("filename", "walkthrough.md").strip()
+    auto_open = args.get("auto_open", False)
+
+    content_lines = [f"# Walkthrough — {title}\n"]
+
+    if summary:
+        content_lines.append(f"{summary}\n")
+
+    content_lines.append("## Changes Made\n")
+    content_lines.append(f"{changes}\n")
+
+    if verification:
+        content_lines.append("## Verification Results\n")
+        content_lines.append(f"{verification}\n")
+
+    full_md = "\n".join(content_lines)
+
+    workspace_dir = _get_workspace_dir()
+    out_path = workspace_dir / filename
+
+    try:
+        out_path.write_text(full_md, encoding="utf-8")
+    except Exception as e:
+        return f"Error writing walkthrough document: {e}"
+
+    if auto_open and sys.platform == "win32":
+        try:
+            subprocess.Popen(f'start "" "{out_path}"', shell=True)
+        except Exception:
+            pass
+
+    file_uri = out_path.as_uri()
+    return f"⚡ Generated Walkthrough document successfully: [{filename}]({file_uri})"

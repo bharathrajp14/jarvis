@@ -2,6 +2,7 @@
 
 > **Document Status**: Production Architecture Specification  
 > **Scope**: Implementation Status across Core Subsystems  
+> **Version**: MK37.30.0  
 
 ---
 
@@ -9,15 +10,26 @@
 
 | Subsystem | Feature | Status | Module Path |
 |---|---|---|---|
-| **Core Runtime** | Zero-Token Intent Engine | ✅ Production | `core/intent_engine.py` |
-| **Core Runtime** | Thread-safe DI Container | ✅ Production | `core/di.py` |
-| **Core Runtime** | Native C++ FNV-1a Bridge | ✅ Production | `core/native_bridge.py` |
+| **Core Runtime** | 50+ Zero-Token Intent Engine | ✅ Production | `core/intent_engine.py` |
+| **Core Runtime** | Thread-safe DI Container | ✅ Production | `core/di_container.py` |
+| **Core Runtime** | Native C FNV-1a Bridge | ✅ Production | `native/jarvis_native.c` |
+| **Scratchpad Subsystem** | Isolated `./scratch/` Execution Workspace | ✅ Production | `agent/scratchpad.py` |
+| **Scratchpad Tools** | 5 Scratchpad Tools (Write/Read/Eval/List/Clear) | ✅ Production | `tools/scratchpad_tools.py` |
+| **Planning Mode** | Dynamic Complexity Classifier & Plan Generator | ✅ Production | `agent/planning_mode.py` |
+| **Artifact Engine** | GFM Alerts, Mermaid Diagrams & file:/// Links | ✅ Production | `agent/artifacts.py` |
+| **Transcripts Engine** | JSON Lines Trajectory Transcripts Logging | ✅ Production | `agent/transcript_logger.py` |
+| **Voice Subsystem** | VoicePromptRefiner & Vocal Filler Cleaner | ✅ Production | `voice/prompt_refiner.py` |
+| **Voice Subsystem** | Real-time Raw vs Refined Prompt UI Log | ✅ Production | `voice/prompt_refiner.py` |
+| **Frontend UI** | Multi-Task Dashboard & Glossy Task Cards | ✅ Production | `ui.py` |
+| **Frontend UI** | Canvas Multi-Task HUD Banner & Progress Bars | ✅ Production | `ui.py` |
+| **Step Planner** | Conscious Sub-Step Decomposition | ✅ Production | `agent/step_planner.py` |
+| **Step Planner** | AdaptiveStepBudget & Progress Velocity Extensions | ✅ Production | `agent/step_planner.py` |
+| **Clipboard Engine** | Multi-Backend 5-Tier Fallback Clipboard | ✅ Production | `actions/clipboard_utils.py` |
 | **Guardian Core** | KillSwitch & Pause Controller | ✅ Production | `guardian/kill_switch.py` |
-| **Guardian Core** | SHA-256 Integrity Verification | ✅ Production | `guardian/core.py` |
+| **Guardian Core** | SHA-256 Integrity Verification | ✅ Production | `guardian/integrity.py` |
 | **Guardian Core** | Pre-Upgrade Snapshot Manager | ✅ Production | `guardian/snapshot.py` |
 | **Guardian Core** | Automated Rollback Engine | ✅ Production | `guardian/rollback.py` |
-| **Guardian Core** | Autonomy Audit Log | ✅ Production | `guardian/audit_log.py` |
-| **Permissions** | Tiered PathPolicy & Cloud Exclusion | ✅ Production | `permissions.py` |
+| **Guardian Core** | PathPolicy Path Bounds Checking | ✅ Production | `guardian/path_policy.py` |
 | **Reflection Engine** | Implicit & Explicit Correction Capture | ✅ Production | `memory/reflection.py` |
 | **Lesson Store** | Priority 6 Context Integration | ✅ Production | `memory/lessons.py` |
 | **Self-Upgrade Engine** | Blast-Radius ChangeClassifier | ✅ Production | `evolution/classifier.py` |
@@ -28,15 +40,14 @@
 | **Workflow Engine** | Durable SQLite DAG Scheduler | ✅ Production | `workflow/engine.py` |
 | **Agent Executor** | Parallel Multi-Worker Execution | ✅ Production | `agent/executor.py` |
 | **Multi-Agent Orchestra** | 12 Specialized SubAgents | ✅ Production | `multi_agent/subagent.py` |
-| **Multi-LLM Router** | Auto-Failover to Gemini | ✅ Production | `router.py` |
-| **Backends** | Gemini, Claude, GPT, Ollama, NIM, Mistral | ✅ Production | `backends/` |
-| **Context Engine** | Priority Windowing & Compression | ✅ Production | `context/` |
-| **Memory Engine** | 4-Tier Volatile/SQLite/Vector Memory | ✅ Production | `memory/` |
+| **Multi-LLM Router** | 7 Backends with Auto-Failover | ✅ Production | `router.py` |
+| **Backends** | Gemini, Claude, GPT, Ollama, DeepSeek, NIM, Mistral | ✅ Production | `backends/` |
+| **Context Engine** | Priority Windowing & Pronoun Resolution | ✅ Production | `context/` & `orchestrator.py` |
+| **Memory Engine** | 5-Tier Volatile/SQLite/Vector/Lesson Memory | ✅ Production | `memory/` |
 | **Computer Control** | PyAutoGUI + Semantic UI Finder | ✅ Production | `computer/` |
-| **Vision Engine** | Screen Capture, PyTesseract OCR, DOM Bridge | ✅ Production | `vision/` |
+| **Vision Engine** | 7-Tier Hybrid Pipeline (Accessibility, DOM, OCR) | ✅ Production | `vision/` |
 | **Voice Subsystem** | Local Whisper ASR + Neural TTS | ✅ Production | `voice/` |
-| **Tool Ecosystem** | 90+ Tools & `@register_tool` | ✅ Production | `tools/` |
+| **Tool Ecosystem** | 34 Tool Modules & `@register_tool` | ✅ Production | `tools/` |
 | **Context Resolver** | Anaphoric Pronoun & History Resolver | ✅ Production | `orchestrator._resolve_context_references` |
 | **Live OS Control** | Visual Action Target Trace (Red Crosshair) | ✅ Production | `actions/live_os_control.py` |
-| **Orchestrator** | User Turn WorkingMemory Injection Fix | ✅ Production | `orchestrator.chat()` |
-
+| **Verification Suite** | 19-Test Automated Unit Test Suite | ✅ Production | `tests/` |

@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import io
 import json
+import os
 import platform
 import re
 import subprocess
@@ -18,6 +19,8 @@ import random
 from pathlib import Path
 
 # ── Optional imports ──────────────────────────────────────────────────────────
+from actions.clipboard_utils import get_clipboard_text, set_clipboard_text
+
 try:
     import pyautogui
     pyautogui.FAILSAFE = True
@@ -400,18 +403,26 @@ def _get_mouse_pos() -> str:
 
 
 def _clipboard_get() -> str:
-    if _PYPERCLIP:
-        return pyperclip.paste()
-    _hotkey("ctrl", "c")
-    time.sleep(0.15)
-    return "(copied)"
+    return get_clipboard_text()
 
 
 def _clipboard_set(text: str) -> str:
-    if _PYPERCLIP:
-        pyperclip.copy(text)
+    success = set_clipboard_text(text)
+    if success:
         return f"Clipboard: {text[:60]}{'…' if len(text) > 60 else ''}"
-    return "pyperclip not available"
+    return "Failed to write to clipboard"
+
+
+def _copy_selection() -> str:
+    if _OS == "Darwin":
+        _hotkey("command", "c")
+    else:
+        _hotkey("ctrl", "c")
+    time.sleep(0.15)
+    clip_text = get_clipboard_text()
+    if clip_text:
+        return f"Copied to clipboard: {clip_text[:60]}{'…' if len(clip_text) > 60 else ''}"
+    return "(copied)"
 
 
 def _screenshot(save_path: str | None = None) -> str:
@@ -577,86 +588,91 @@ def _call_vision_llm(img_bytes: bytes, prompt: str, mime_type: str = "image/png"
     import base64
     import urllib.request
     import json
+    import io as _io
 
-    # 1. Try local gateway first (unlimited quota)
+    # Optimize & compress image bytes for sub-second vision inference
     try:
-        b64_img = base64.b64encode(img_bytes).decode("utf-8")
-        payload = {
-            "model": "gemini-3.1-flash-image",
-            "messages": [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": prompt},
-                        {"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{b64_img}"}}
-                    ]
-                }
-            ]
-        }
-        data_bytes = json.dumps(payload).encode("utf-8")
-        req = urllib.request.Request(
-            "http://localhost:8045/v1/chat/completions",
-            data=data_bytes,
-            headers={
-                "Content-Type": "application/json",
-                "Authorization": "Bearer sk-5ec70bf9fa324084b7a7326babf52c45"
-            }
-        )
-        with urllib.request.urlopen(req, timeout=12) as resp:
-            body = json.loads(resp.read().decode("utf-8"))
-            content = body.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
-            if content:
-                return content
+        if _PIL:
+            img = PILImage.open(_io.BytesIO(img_bytes)).convert("RGB")
+            img.thumbnail((1280, 720), PILImage.BILINEAR)
+            buf = _io.BytesIO()
+            img.save(buf, format="JPEG", quality=80)
+            img_bytes = buf.getvalue()
+            mime_type = "image/jpeg"
     except Exception:
         pass
 
-    # 2. Fallback to Google GenAI Cloud SDK
-    api_key = _get_api_key()
-    from google import genai
-    from google.genai import types as gtypes
-    client = genai.Client(api_key=api_key)
-    response = client.models.generate_content(
-        model="gemini-3.1-flash-image",
-        contents=[
-            gtypes.Part.from_bytes(data=img_bytes, mime_type=mime_type),
-            prompt,
-        ],
-    )
-    return (response.text or "").strip()
+    b64_img = base64.b64encode(img_bytes).decode("utf-8")
+
+    # 1. Try local gateway models (unlimited quota)
+    for model_name in ["gemini-3.1-flash-image", "gemini-3-pro-image", "gemini-3-flash"]:
+        try:
+            payload = {
+                "model": model_name,
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": prompt},
+                            {"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{b64_img}"}}
+                        ]
+                    }
+                ]
+            }
+            data_bytes = json.dumps(payload).encode("utf-8")
+            req = urllib.request.Request(
+                "http://localhost:8045/v1/chat/completions",
+                data=data_bytes,
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": "Bearer sk-5ec70bf9fa324084b7a7326babf52c45"
+                }
+            )
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                body = json.loads(resp.read().decode("utf-8"))
+                content = body.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+                if content:
+                    return content
+        except Exception:
+            continue
+
+    # 2. Fallback to Google GenAI Cloud SDK if local gateway is unreachable
+    try:
+        api_key = _get_api_key()
+        if api_key:
+            from google import genai
+            from google.genai import types as gtypes
+            client = genai.Client(api_key=api_key)
+            response = client.models.generate_content(
+                model="gemini-3.1-flash-image",
+                contents=[
+                    gtypes.Part.from_bytes(data=img_bytes, mime_type=mime_type),
+                    prompt,
+                ],
+            )
+            if response and response.text:
+                return response.text.strip()
+    except Exception as cloud_err:
+        return f"Vision LLM unavailable: {cloud_err}"
+
+    return "Could not generate vision description from current screen."
 
 
 def screen_find(description: str) -> tuple[int, int] | None:
     """Find a UI element on screen using Gemini vision."""
-    api_key = _get_api_key()
-    if not api_key:
-        print("[ComputerControl] No API key for screen_find.")
-        return None
-
     # Check cache
     with _find_lock:
         if description in _find_cache:
             cached = _find_cache[description]
             if time.time() - cached[2] < 10.0:  # 10s TTL
-                print(f"[ComputerControl] ⚡ Cache hit for: {description}")
+                print(f"[ComputerControl] [CACHE] Cache hit for: {description}")
                 return (cached[0], cached[1])
 
     try:
-        w, h        = _screen_size()
-        img_bytes   = _take_screenshot_bytes()
+        w, h = _screen_size()
+        img_bytes = _take_screenshot_bytes()
         if not img_bytes:
             return None
-
-        # Compress for API
-        if _PIL:
-            import io as _io
-            img = PILImage.open(_io.BytesIO(img_bytes)).convert("RGB")
-            img.thumbnail((800, 600), PILImage.BILINEAR)
-            buf = _io.BytesIO()
-            img.save(buf, format="JPEG", quality=75)
-            img_bytes   = buf.getvalue()
-            mime_type   = "image/jpeg"
-        else:
-            mime_type = "image/png"
 
         prompt = (
             f"This is a screenshot of a {w}×{h} screen. "
@@ -665,7 +681,7 @@ def screen_find(description: str) -> tuple[int, int] | None:
             f"If not visible, reply: NOT_FOUND"
         )
 
-        text = _call_vision_llm(img_bytes, prompt, mime_type)
+        text = _call_vision_llm(img_bytes, prompt)
         if "NOT_FOUND" in text.upper():
             return None
 
@@ -677,16 +693,13 @@ def screen_find(description: str) -> tuple[int, int] | None:
             return (x, y)
 
     except Exception as e:
-        print(f"[ComputerControl] screen_find error: {e}")
+        print(f"[ComputerControl] [ERROR] screen_find: {e}")
 
     return None
 
 
 def _screen_read(region: tuple | None = None) -> str:
     """Read text from screen using OCR (Gemini vision)."""
-    api_key = _get_api_key()
-    if not api_key:
-        return "No API key for OCR."
     try:
         img_bytes = _take_screenshot_bytes()
         if not img_bytes:
@@ -699,9 +712,6 @@ def _screen_read(region: tuple | None = None) -> str:
 
 def _screen_describe() -> str:
     """Get a description of what's currently on screen."""
-    api_key = _get_api_key()
-    if not api_key:
-        return "No API key for screen describe."
     try:
         img_bytes = _take_screenshot_bytes()
         if not img_bytes:
@@ -785,7 +795,7 @@ def computer_control(
     if player:
         player.write_log(f"[Computer] {action}")
 
-    print(f"[ComputerControl] ▶ {action}  {params}")
+    print(f"[ComputerControl] [ACTION] {action}  {params}")
 
     try:
         # ── Mouse ─────────────────────────────────────────────────────────
@@ -856,8 +866,11 @@ def computer_control(
             return _select_all()
 
         # ── Clipboard ──────────────────────────────────────────────────────
-        if action in ("copy", "clipboard_get"):
+        if action in ("clipboard_get", "read_clipboard"):
             return _clipboard_get()
+
+        if action in ("copy",):
+            return _copy_selection()
 
         if action in ("paste", "clipboard_set"):
             text = params.get("text", "")
@@ -970,5 +983,5 @@ def computer_control(
         return f"Unknown action: '{action}'"
 
     except Exception as e:
-        print(f"[ComputerControl] ❌ {action}: {e}")
+        print(f"[ComputerControl] [ERROR] {action}: {e}")
         return f"computer_control '{action}' failed: {e}"

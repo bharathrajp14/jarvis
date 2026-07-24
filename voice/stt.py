@@ -54,33 +54,31 @@ class SounddeviceMicrophone(_BaseAudioSource):
                 except Exception:
                     pass
 
-        # 2. Smart auto-resolution: Avoid silent virtual mics, prefer real hardware
+        # 2. Smart auto-resolution: Probes active hardware mics, avoids silent virtual devices
         if self.device_index is None and _HAS_SD:
             try:
                 devices = sd.query_devices()
                 def_idx = sd.default.device[0]
                 virtual_keywords = ["virtual", "audiorelay", "cable", "mapper", "stereo mix"]
-                physical_keywords = ["microphone array", "microphone", "mic", "headset", "realtek", "intel"]
+                physical_keywords = ["airbass", "headset", "microphone array", "realtek", "intel", "jabra", "bthhfenum"]
 
-                # Check if default device is a valid physical mic
-                if def_idx is not None and 0 <= def_idx < len(devices):
+                # 1. Search for primary physical hardware mic
+                for idx, dev in enumerate(devices):
+                    if dev.get("max_input_channels", 0) > 0:
+                        d_name = dev.get("name", "").lower()
+                        if not any(vk in d_name for vk in virtual_keywords):
+                            if any(pk in d_name for pk in physical_keywords):
+                                self.device_index = idx
+                                break
+
+                # 2. Fallback to default device if non-virtual
+                if self.device_index is None and def_idx is not None and 0 <= def_idx < len(devices):
                     def_dev = devices[def_idx]
                     def_name = def_dev.get("name", "").lower()
-                    is_virtual = any(vk in def_name for vk in virtual_keywords)
-                    if def_dev.get("max_input_channels", 0) > 0 and not is_virtual:
+                    if def_dev.get("max_input_channels", 0) > 0 and not any(vk in def_name for vk in virtual_keywords):
                         self.device_index = def_idx
 
-                # Search for primary physical hardware mic
-                if self.device_index is None:
-                    for idx, dev in enumerate(devices):
-                        if dev.get("max_input_channels", 0) > 0:
-                            d_name = dev.get("name", "").lower()
-                            if not any(vk in d_name for vk in virtual_keywords):
-                                if any(pk in d_name for pk in physical_keywords):
-                                    self.device_index = idx
-                                    break
-
-                # Fallback to any non-virtual input device
+                # 3. Fallback to any non-virtual input device
                 if self.device_index is None:
                     for idx, dev in enumerate(devices):
                         if dev.get("max_input_channels", 0) > 0:
@@ -88,10 +86,6 @@ class SounddeviceMicrophone(_BaseAudioSource):
                             if not any(vk in d_name for vk in virtual_keywords):
                                 self.device_index = idx
                                 break
-
-                # Final fallback to default device
-                if self.device_index is None and def_idx is not None and def_idx >= 0:
-                    self.device_index = def_idx
             except Exception:
                 self.device_index = None
 

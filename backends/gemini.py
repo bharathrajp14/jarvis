@@ -45,11 +45,12 @@ class GeminiBackend(BaseBackend):
     """
 
     FALLBACK_MODELS = [
+        "gemini-3.5-flash-low",
         "gemini-3-flash",
-        "gemini-2.5-flash",
+        "gemini-3.6-flash-high",
+        "gemini-3-flash-agent",
+        "gemini-pro-agent",
         "gemini-2.0-flash",
-        "gemini-1.5-flash",
-        "gemini-1.5-pro",
     ]
 
     def __init__(self, model: str = None, api_key: str = None):
@@ -64,7 +65,7 @@ class GeminiBackend(BaseBackend):
                 from config.models import get_model_config
                 cfg = get_model_config()
                 base_url = cfg.get("openai_base_url", "http://localhost:8045/v1")
-                api_key_val = os.environ.get("OPENAI_API_KEY", "").strip() or cfg.get("openai_api_key", "sk-5ec70bf9fa324084b7a7326babf52c45")
+                api_key_val = os.environ.get("OPENAI_API_KEY", "").strip() or cfg.get("openai_api_key", "").strip() or "local-proxy-key"
                 self._client = OpenAI(base_url=base_url, api_key=api_key_val)
                 self._use_openai_client = True
                 self.model = model or self._pick_model()

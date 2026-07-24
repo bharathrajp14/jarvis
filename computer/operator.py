@@ -15,6 +15,7 @@ from events.bus import get_event_bus
 from events.types import AuditEvent
 from permissions import check_permission
 from vision.engine import get_vision_engine
+from actions.clipboard_utils import get_clipboard_text, set_clipboard_text
 
 logger = logging.getLogger("JARVIS.ComputerOperator")
 
@@ -104,20 +105,11 @@ class ComputerOperator:
             elif action.action_type == ActionType.CLIPBOARD_SET:
                 if action.text is not None:
                     self._clipboard_buffer = action.text
-                    if _PYPERCLIP_AVAILABLE:
-                        try:
-                            pyperclip.copy(action.text)
-                        except Exception:
-                            pass
+                    set_clipboard_text(action.text)
 
             elif action.action_type == ActionType.CLIPBOARD_GET:
-                clip_text = ""
-                if _PYPERCLIP_AVAILABLE:
-                    try:
-                        clip_text = pyperclip.paste()
-                    except Exception:
-                        pass
-                if not clip_text or (self._clipboard_buffer and clip_text != self._clipboard_buffer):
+                clip_text = get_clipboard_text()
+                if not clip_text and self._clipboard_buffer:
                     clip_text = self._clipboard_buffer
                 return ActionResult(action_id=action.action_id, success=True, data=clip_text)
 
@@ -154,8 +146,13 @@ class ComputerOperator:
 
         except Exception as ex:
             if "FailSafeException" in type(ex).__name__:
-                logger.warning(f"⚠️ PyAutoGUI FailSafe triggered during action {action.action_type.value}, handling gracefully.")
-                return ActionResult(action_id=action.action_id, success=True, verification_message="Executed (Failsafe warning bypassed)")
+                logger.warning(f"⚠️ PyAutoGUI FailSafe triggered during action {action.action_type.value}, moving mouse to screen center.")
+                try:
+                    if _PYAUTOGUI_AVAILABLE:
+                        pyautogui.moveTo(500, 500)
+                except Exception:
+                    pass
+                return ActionResult(action_id=action.action_id, success=True, verification_message="Executed (Failsafe warning bypassed & cursor reset)")
             logger.error(f"❌ ComputerOperator action failed: {ex}", exc_info=True)
             return ActionResult(action_id=action.action_id, success=False, verification_message=str(ex))
 

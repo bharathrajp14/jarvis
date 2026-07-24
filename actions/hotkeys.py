@@ -104,8 +104,8 @@ class HotkeyManager:
                     ui.write_log(f"SYS: Voice assistant {state.lower()} via hotkey.")
 
             elif action_name == "ask_clipboard":
-                import pyperclip
-                clip = pyperclip.paste().strip()
+                from actions.clipboard_utils import get_clipboard_text
+                clip = get_clipboard_text().strip()
                 if clip:
                     self.assistant.ui.write_log(f"Hotkey: Clipboard Query triggered.")
                     # Process in helper thread

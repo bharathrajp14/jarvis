@@ -478,6 +478,13 @@ def file_controller(
     path   = params.get("path", "desktop")
     name   = params.get("name", "")
 
+    if action in ("create_dir", "create_directory", "mkdir", "make_dir"):
+        action = "create_folder"
+    elif action in ("create", "touch"):
+        action = "create_file"
+    elif action in ("rm", "remove"):
+        action = "delete"
+
     if player:
         player.write_log(f"[file] {action} {name or path}")
 

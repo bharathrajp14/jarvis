@@ -132,7 +132,7 @@ def _call_vision_llm(img_bytes: bytes, system_instruction: str, api_key: str, mo
         from google.genai import types as gtypes
         client = genai.Client(api_key=api_key)
         response = client.models.generate_content(
-            model=model_name if (model_name and "1.5" not in model_name) else "gemini-2.5-flash",
+            model=model_name if (model_name and "1.5" not in model_name) else "gemini-2.0-flash",
             contents=[
                 gtypes.Part.from_bytes(data=compressed_bytes, mime_type=mime_type),
                 system_instruction,

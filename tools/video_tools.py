@@ -5,6 +5,7 @@ Registers AI video generation tools in the JARVIS tool registry.
 from __future__ import annotations
 
 import json
+import os
 from tools.registry import register_tool
 
 

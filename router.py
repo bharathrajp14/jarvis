@@ -172,7 +172,9 @@ def _print_skip(msg: str):
 class AgentRouter:
     """Routes tasks to the best available backend. Gemini is always the fallback."""
 
-    def __init__(self, backends: dict):
+    def __init__(self, backends: dict | None = None):
+        if backends is None:
+            backends = load_available_backends()
         self.backends = backends
         self._health_cache: dict[AgentProfile, tuple[bool, float]] = {}
         self._health_ttl = 60.0  # Cache health checks for 60s
@@ -318,3 +320,13 @@ class AgentRouter:
                 "is_default": profile == self.default,
             }
         return status
+
+
+_router_instance: AgentRouter | None = None
+
+def get_router() -> AgentRouter:
+    """Singleton getter for AgentRouter."""
+    global _router_instance
+    if _router_instance is None:
+        _router_instance = AgentRouter()
+    return _router_instance

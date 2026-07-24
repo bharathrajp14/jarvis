@@ -271,3 +271,35 @@ register_builtin_skill(SkillDef(
     file_path="",
     user_invocable=True,
 ))
+
+_WALKTHROUGH_PROMPT = """\
+You are an expert technical writer and developer assistant. Generate a comprehensive GitHub-flavored Markdown Walkthrough document (walkthrough.md) for technical changes and completed tasks.
+
+## Task
+$ARGUMENTS
+
+## Required Walkthrough Structure
+1. **Title & Overview**: Header `# Walkthrough — [Goal Description]` and brief background/summary.
+2. **Changes Made**:
+   - Organized by component/subsystem.
+   - List modified/created/deleted files with clickable file:/// URLs.
+   - Concise explanation of rationale and implementation details.
+3. **Verification Plan & Results**:
+   - Automated test suite results (pytest tests/).
+   - Compilation and runtime verification logs.
+4. **GitHub Alerts & Diagrams**:
+   - Use > [!NOTE], > [!TIP], > [!IMPORTANT] where appropriate.
+   - Include Mermaid diagrams for workflows if helpful.
+
+Use the generate_walkthrough tool to write and open the resulting walkthrough.md document.
+"""
+
+register_builtin_skill(SkillDef(
+    name="walkthrough",
+    triggers=["/walkthrough", "create walkthrough", "generate walkthrough", "make walkthrough"],
+    description="Generate a rich GitHub-flavored markdown walkthrough document (walkthrough.md).",
+    prompt=_WALKTHROUGH_PROMPT,
+    tools=["generate_walkthrough", "create_word_document"],
+    file_path="",
+    user_invocable=True,
+))

@@ -29,7 +29,7 @@ class OpenAIBackend(BaseBackend):
         )
         self.client = None
 
-        _api_key = api_key or os.environ.get("OPENAI_API_KEY", "").strip() or "sk-5ec70bf9fa324084b7a7326babf52c45"
+        _api_key = api_key or os.environ.get("OPENAI_API_KEY", "").strip() or "local-proxy-key"
         _base_url = base_url or os.environ.get("OPENAI_BASE_URL", "").strip() or "http://localhost:8045/v1"
 
         if _api_key:

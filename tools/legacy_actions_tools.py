@@ -222,3 +222,24 @@ def tool_agent_task(args: dict) -> str:
     sub_executor = AgentExecutor()
     return sub_executor.execute(goal=goal)
 
+
+@register_tool(
+    name="file_controller",
+    description="Perform file and directory management actions (read, write, delete, move, create_dir, list).",
+    parameters={
+        "type": "object",
+        "properties": {
+            "action": {"type": "string", "description": "read, write, delete, move, create_dir, list"},
+            "path": {"type": "string", "description": "Target file or directory path"},
+            "name": {"type": "string", "description": "File or directory name"},
+            "content": {"type": "string", "description": "Content for write operations"},
+            "destination": {"type": "string", "description": "Destination path for move operations"},
+        },
+        "required": ["action"],
+    }
+)
+def tool_file_controller(args: dict) -> str:
+    from actions.file_controller import file_controller
+    return file_controller(parameters=args) or "File operation completed."
+
+

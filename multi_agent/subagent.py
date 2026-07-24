@@ -386,6 +386,10 @@ class SubAgentManager:
                         ).strip()
                         if clean_response:
                             sub_memory.add("assistant", clean_response)
+                        else:
+                            import json
+                            args_str = json.dumps(tool_args or {}, sort_keys=True)
+                            sub_memory.add("assistant", f"[Executed Tool: {tool_name}({args_str})]")
                         sub_memory.add("user", f"[Tool Result for '{tool_name}']:\n{tool_result}")
                         continue
                     else:

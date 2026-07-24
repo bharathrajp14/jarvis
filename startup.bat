@@ -23,8 +23,8 @@ if "%ERRORLEVEL%" NEQ "0" (
 
 :: Silent mode (auto-startup) - launch voice assistant directly, no menu
 if "%~1"=="--silent" (
-    echo [BR] Auto-startup - launching web server...
-    python start.py webserver
+    echo [BR] Auto-startup - launching voice assistant...
+    python start.py voice
     goto :end
 )
 
@@ -37,19 +37,25 @@ if "%~1"=="--voice-safe" (
     goto :end
 )
 
-:: If a mode argument was passed, use it directly
-if "%~1" NEQ "" (
-    python start.py %1
+:: Menu / Interactive mode - show launcher menu
+if "%~1"=="--menu" (
+    python start.py
+    goto :end
+)
+if "%~1"=="--interactive" (
+    python start.py
     goto :end
 )
 
-:: Interactive mode - show the launcher menu
-echo.
-echo ========================================
-echo         B.R  LAUNCHER
-echo ========================================
-echo.
-python start.py
+:: If mode arguments were passed, use them directly
+if "%~1" NEQ "" (
+    python start.py %*
+    goto :end
+)
+
+:: Default execution - Launch Voice Assistant directly
+echo [BR] Launching BR Voice Assistant...
+python start.py voice
 
 :end
 :: Keep window open if it crashes

@@ -41,6 +41,7 @@ You are intelligent, precise, direct, and capable of executing complex tasks end
 - **BE EXTREMELY CONCISE AND DIRECT**: Give short, high-precision 1-3 sentence answers.
 - **ZERO FILLER**: Never output wall-of-text explanations when a tool or direct action can do the work.
 - **ACTION-FIRST**: Execute the assigned work using tools immediately.
+- **PURE CODE PARAMETERS**: When passing code to tools (`run_code`, `code_helper`, `scratchpad_eval`), the `"code"` parameter MUST contain ONLY executable code. Do NOT mix raw narrative sentences inside code strings without `#` comments.
 - Never fabricate results — always call the tool.
 - If a tool fails, try an alternative approach.
 
@@ -63,6 +64,7 @@ You are intelligent, precise, direct, and capable of executing complex tasks end
 | System controls (brightness/volume/wifi) | computer_settings |
 | Mouse/keyboard | computer_control |
 | Code tasks | code_helper or dev_agent |
+| Temporary code/eval/scratch space | scratchpad_write / scratchpad_eval |
 | Steam/Epic games | game_updater |
 | Multi-step complex tasks | agent_task |
 | Screen analysis | screen_process |
@@ -82,6 +84,27 @@ MODES = {
 }
 
 MAX_REACT_STEPS = 20
+
+
+def _format_clean_tool_summary(tool_name: str, tool_args: dict) -> str:
+    """Format a clean, human-readable summary of executed tools without raw code/JSON dumps."""
+    args = tool_args or {}
+    if "query" in args:
+        val = str(args["query"]).replace("\n", " ").strip()[:60]
+        return f"[Executed Tool: {tool_name} query='{val}']"
+    elif "action" in args:
+        act = str(args["action"])
+        target = str(args.get("path") or args.get("name") or args.get("app_name") or args.get("value") or "").replace("\n", " ").strip()[:40]
+        return f"[Executed Tool: {tool_name} action='{act}' {target}]".strip()
+    elif any(k in args for k in ("code", "script", "content")):
+        lang = str(args.get("lang") or args.get("language") or "code")
+        return f"[Executed Tool: {tool_name} ({lang} script)]"
+    elif not args:
+        return f"[Executed Tool: {tool_name}({{}})]"
+    else:
+        keys = ", ".join(list(args.keys())[:3])
+        return f"[Executed Tool: {tool_name}({keys})]"
+
 
 
 class JarvisOrchestrator:
@@ -154,11 +177,12 @@ class JarvisOrchestrator:
         name = os.environ.get("JARVIS_ASSISTANT_NAME", "BR").strip()
         sys_prompt = (
             f"You are {name}, an ultra-fast autonomous AI assistant. Think step-by-step, act decisively, avoid filler.\n"
-            "CRITICAL EXPORT & TOOL CALL RULES:\n"
-            "1. When asked to create, recreate, generate, or export a report, document, or spreadsheet (Excel/Word/PDF), "
-            "YOU MUST IMMEDIATELY INVOKE THE TOOL (e.g. ```tool_call\n{\"tool\": \"create_excel_sheet\", \"args\": {...}}\n```).\n"
-            "2. NEVER output unexecuted thoughts like 'Generate report content. Now call create_word_document.' as plain text.\n"
-            "3. If the user explicitly asks for an Excel file ('i need excel document', 'create excel sheet'), ALWAYS call `create_excel_sheet` with structured data rows, headers, and filename ending in .xlsx."
+            "CRITICAL THINKING & WORKSPACE EXECUTION RULES:\n"
+            "1. THINK FIRST, THEN EXECUTE: Carefully plan your complete task before executing tools.\n"
+            "2. ISOLATED WORKSPACE: When creating apps, projects, backend services, or games, ALWAYS put all generated files inside a dedicated subfolder under `./workspace/<ProjectName>/` (e.g. `./workspace/FoodDeliveryApp/` or `./workspace/Games/TicTacToe/`). NEVER dump loose files into the root codebase directory!\n"
+            "3. EFFICIENT SINGLE EXECUTION: Create complete scripts/files in 1 clean tool call. Do NOT make 10-20 consecutive file_write calls in a loop.\n"
+            "4. INTERACTIVE CMD TERMINAL GAMES/APPS: To run interactive terminal games or CLI scripts in CMD, launch them in a new window using `start cmd /k python ./workspace/Games/<game>.py` so a native CMD window opens for the user to play interactively!\n"
+            "5. NO PLAIN TEXT TOOL MENTIONS: Never output text like 'Now call create_word_document'. Either invoke the tool via ```tool_call JSON block or present your final answer directly to the user."
         )
         parts = [sys_prompt]
         mode_text = MODES.get(self.current_mode, "")
@@ -290,33 +314,16 @@ class JarvisOrchestrator:
                     break
 
             if last_url:
-                # Quick-execute: open URL in chosen browser directly
+                # Quick-execute: open URL in chosen browser directly via DeterministicIntentEngine
                 try:
-                    import subprocess, shutil, sys
-                    # Windows browser paths
-                    browser_executables = {
-                        "brave": ["brave.exe", "brave"],
-                        "chrome": ["chrome.exe", "chrome", "google-chrome"],
-                        "edge": ["msedge.exe", "msedge"],
-                        "firefox": ["firefox.exe", "firefox"],
-                        "browser": ["brave.exe", "msedge.exe", "chrome.exe"],
-                    }
-                    executables = browser_executables.get(target_browser, ["brave.exe"])
-                    launched = False
-                    for exe in executables:
-                        if shutil.which(exe):
-                            subprocess.Popen([exe, last_url])
-                            launched = True
-                            break
-                    if not launched:
-                        # Fallback to start command on Windows
-                        subprocess.Popen(["cmd", "/c", "start", target_browser, last_url], shell=False)
-                    print(f"[Context] Resolved 'it' → {last_url} | Browser: {target_browser}")
-                    # Return an informative augment so LLM confirms it
-                    return augmented + f"\n[SYSTEM CONTEXT: 'it' refers to {last_url} — already opened in {target_browser}. Confirm to user.]"
+                    from core.intent_engine import DeterministicIntentEngine
+                    launched = DeterministicIntentEngine.open_url_in_browser(last_url, browser_name=target_browser)
+                    if launched:
+                        print(f"[Context] Resolved 'it' → {last_url} | Browser: {target_browser}")
+                        return augmented + f"\n[SYSTEM CONTEXT: 'it' refers to {last_url} — already opened in {target_browser}. Confirm to user.]"
                 except Exception as e:
                     print(f"[Context] Browser launch failed: {e}")
-                    return augmented + f"\n[SYSTEM CONTEXT: The last result URL was {last_url}. Open it in {target_browser}.]"
+                return augmented + f"\n[SYSTEM CONTEXT: The last result URL was {last_url}. Open it in {target_browser}.]"
             else:
                 # No URL found — inject context so LLM can retrieve from memory
                 return augmented + f"\n[SYSTEM CONTEXT: User wants to open the previous result in {target_browser}. Check conversation history for URL.]"
@@ -388,10 +395,14 @@ class JarvisOrchestrator:
         # Context-aware pronoun/browser resolution: 'open it in brave/chrome/edge'
         augmented = self._resolve_context_references(user_input, augmented)
 
-        # Smart Context Trimming to maintain sub-300ms inference latency
+        # Smart Context Trimming to maintain sub-300ms inference latency while preserving root user goal
         try:
             if hasattr(self.working_memory, "trim") and len(self.working_memory.get()) > 10:
+                # Preserve root turn at index 0
+                root_msg = self.working_memory.get()[0] if self.working_memory.get() else None
                 self.working_memory.trim(max_turns=10)
+                if root_msg and root_msg not in self.working_memory.get():
+                    self.working_memory.messages.insert(0, root_msg)
         except Exception:
             pass
 
@@ -403,11 +414,27 @@ class JarvisOrchestrator:
         profile  = self.router.route(keywords)
         system   = self._build_system(user_input)
 
+        # Conscious Step Planning & Adaptive Flexible Step Budget
+        from agent.step_planner import StepPlanner
+        plan_info = StepPlanner.plan_steps(user_input)
+        budget = plan_info["budget_controller"]
+        print(f"[StepPlanner] 🧠 Conscious Plan for '{user_input[:40]}...' ({plan_info['complexity']} Complexity, Initial Budget: {budget.initial_budget} steps)")
+
         final_response = ""
         success = True
         _consecutive_tool: dict = {"name": None, "args_str": None, "count": 0}  # duplicate-call guard
+        tool_history: list = []
+        step = 0
 
-        for step in range(MAX_REACT_STEPS):
+        while True:
+            should_continue, budget_msg, was_extended = budget.evaluate(step, tool_history)
+            if was_extended:
+                print(f"[StepBudget] {budget_msg}")
+            if not should_continue:
+                print(f"[StepBudget] ⏹ Step limit reached: {budget_msg}")
+                final_response += f"\n\n[BR: Step budget completed ({budget.current_budget} steps). Returning current results.]"
+                break
+
             t_start = time.monotonic()
 
             try:
@@ -437,24 +464,27 @@ class JarvisOrchestrator:
 
                 if _consecutive_tool["count"] >= 2:
                     print(f"[JARVIS] ⚠️ Duplicate-call guard triggered for '{tool_name}' (x{_consecutive_tool['count']})")
-                    if _consecutive_tool["count"] >= 3:
-                        final_response = (
-                            f"[JARVIS] Duplicate tool execution stopped after {_consecutive_tool['count']} attempts. "
-                            f"Execution completed."
-                        )
-                        self.working_memory.add("user", f"[SYSTEM: '{tool_name}' duplicate call blocked. Respond with current results.]")
-                        break
 
-                print(f"[JARVIS] 🔧 Step {step+1}: {tool_name}({list(tool_args.keys() if tool_args else [])})")
+                print(f"[JARVIS] 🧠 Step {step+1}/{budget.current_budget}: {tool_name}({list(tool_args.keys() if tool_args else [])})")
                 t_tool = time.monotonic()
-                if _consecutive_tool["count"] >= 4:
-                    tool_result = f"[SYSTEM NOTICE: '{tool_name}' execution was blocked because it was called {_consecutive_tool['count']} times consecutively. Respond directly to the user now without making any further tool calls.]"
+                if _consecutive_tool["count"] >= 3:
+                    tool_result = (
+                        f"[SYSTEM NOTICE: '{tool_name}' has been executed {_consecutive_tool['count']} times consecutively with identical arguments. "
+                        f"DO NOT call '{tool_name}' again. Use the tool result provided above to directly answer the user's request now.]"
+                    )
                 else:
                     try:
                         tool_result = execute_tool(tool_name, tool_args or {})
                     except Exception as tool_err:
                         tool_result = f"[Tool Error: {tool_name} failed — {tool_err}. Try an alternative approach.]"
                 tool_ms = int((time.monotonic() - t_tool) * 1000)
+
+                tool_history.append({
+                    "step": step,
+                    "tool_name": tool_name,
+                    "args": tool_args,
+                    "result": tool_result,
+                })
 
                 self._record_turn(
                     "assistant", response[:2000],
@@ -470,20 +500,56 @@ class JarvisOrchestrator:
                 clean = re.sub(r'<\|.*?\|>', '', clean).strip()
                 if clean:
                     self.working_memory.add("assistant", clean)
+                else:
+                    self.working_memory.add("assistant", _format_clean_tool_summary(tool_name, tool_args))
 
-                self.working_memory.add("user", f"[Tool: {tool_name}]\n{tool_result}")
+                self.working_memory.add("user", f"[Tool Result for '{tool_name}']:\n{tool_result}")
+                step += 1
                 continue
 
             else:
+                # Multi-task continuation guard: push for completion if user asked for multiple items and loop stopped early
+                is_multitask = any(k in user_input.lower() for k in ("1.", "2.", "3.", "concurrently", "in parallel", "workflow", "together"))
+                if is_multitask and step > 0 and step < 4 and not getattr(self, "_prompted_continuation", False):
+                    self._prompted_continuation = True
+                    self.working_memory.add("user", "[SYSTEM DIRECTIVE: You completed initial sub-tasks, but the user prompt requested multiple numbered/parallel tasks. Continue executing tools for all remaining items before giving your final text response.]")
+                    step += 1
+                    continue
+
+                self._prompted_continuation = False
                 final_response = re.sub(r'<\|start\|>.*?<\|call\|>', '', response, flags=re.DOTALL)
                 final_response = re.sub(r'<\|channel\|>.*?<\|call\|>', '', final_response, flags=re.DOTALL)
                 final_response = re.sub(r'<\|message\|>.*?<\|call\|>', '', final_response, flags=re.DOTALL)
                 final_response = re.sub(r'<\|.*?\|>', '', final_response).strip()
+
+                if not final_response:
+                    try:
+                        nudge = (
+                            "All requested tasks have been successfully executed using tools. "
+                            "Provide a clean, direct, human-readable summary of the results to the user now. "
+                            "Do NOT call any more tools."
+                        )
+                        self.working_memory.add("user", nudge)
+                        sum_resp = self.router.run(profile, self.working_memory.get(), nudge)
+                        final_response = re.sub(r'<\|start\|>.*?<\|call\|>', '', sum_resp, flags=re.DOTALL)
+                        final_response = re.sub(r'<\|channel\|>.*?<\|call\|>', '', final_response, flags=re.DOTALL)
+                        final_response = re.sub(r'<\|message\|>.*?<\|call\|>', '', final_response, flags=re.DOTALL)
+                        final_response = re.sub(r'<\|.*?\|>', '', final_response).strip()
+                    except Exception:
+                        pass
+
+                if not final_response:
+                    assistant_turns = [
+                        m["content"] for m in self.working_memory.get()
+                        if m["role"] == "assistant" and not m["content"].strip().startswith("[Executed Tool:")
+                    ]
+                    if assistant_turns:
+                        final_response = assistant_turns[-1]
+                    else:
+                        final_response = "I have successfully executed the requested operations, sir."
+
                 self._record_turn("assistant", final_response[:5000], backend=profile.value, latency_ms=latency_ms)
                 break
-
-        else:
-            final_response += "\n\n[BR: Max steps reached. Returning current results.]"
 
         self.working_memory.add("assistant", final_response)
         self._store_exchange(user_input, final_response)
@@ -545,11 +611,32 @@ class JarvisOrchestrator:
             yield skill_result
             return
 
+        # Antigravity 0-Token Intent Bypass (Streaming)
+        try:
+            from core.intent_engine import DeterministicIntentEngine
+            from context.token_manager import TokenBudgetManager
+            intent_res = DeterministicIntentEngine.parse_and_execute(user_input)
+            if intent_res and intent_res.get("executed"):
+                TokenBudgetManager().record_usage(consumed=0, saved=intent_res.get("tokens_saved", 2000), is_bypassed=True)
+                yield f"⚡ [Antigravity Instant 0-Token Action]\n{intent_res.get('result')}"
+                return
+        except Exception:
+            pass
+
         memory_ctx = self._recall_context(user_input)
         augmented = f"{memory_ctx}{user_input}" if memory_ctx else user_input
 
         self.working_memory.add("user", augmented)
         self._record_turn("user", user_input)
+        try:
+            from agent.transcript_logger import get_transcript_logger
+            get_transcript_logger(self.session_id).log_step(
+                source="USER_EXPLICIT",
+                step_type="USER_INPUT",
+                content=user_input,
+            )
+        except Exception:
+            pass
 
         keywords = self._extract_keywords(user_input)
         profile = self.router.route(keywords)
@@ -609,8 +696,10 @@ class JarvisOrchestrator:
                 clean = re.sub(r'```tool_call\s*\n\s*\{.*?\}\s*\n\s*```', '', full_response, flags=re.DOTALL).strip()
                 if clean:
                     self.working_memory.add("assistant", clean)
+                else:
+                    self.working_memory.add("assistant", _format_clean_tool_summary(tool_name, tool_args))
 
-                self.working_memory.add("user", f"[Tool: {tool_name}]\n{tool_result}")
+                self.working_memory.add("user", f"[Tool Result for '{tool_name}']:\n{tool_result}")
                 yield f"[Tool Result: {tool_name} complete]\n"
                 continue
             else:

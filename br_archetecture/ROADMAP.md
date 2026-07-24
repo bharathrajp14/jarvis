@@ -1,6 +1,6 @@
 # 🛣️ BR JARVIS — System Development Roadmap
 
-This document outlines the multi-phase implementation roadmap for the BR JARVIS AI Operating System.
+This document outlines the multi-phase implementation roadmap for the BR JARVIS AI Operating System (Current Release: **v37.30.0**).
 
 ---
 
@@ -33,7 +33,7 @@ This document outlines the multi-phase implementation roadmap for the BR JARVIS 
 - [x] **Legacy Compatibility Shims** — Root re-export shims for all backends
 - [x] **30 Integration Test Scenarios** (`tests/integration/`) — Vision, operator, files, terminal, memory, stability
 - [x] **CI/CD Pipeline** (`.github/workflows/ci.yml`) — GitHub Actions matrix (Ubuntu/Windows/macOS × Python 3.10–3.12)
-- [x] **117 Verification Checks Passing** — Full green across the 60 pytest tests (including 18 in `tests/integration/`), 47 standalone checks in `test_deep_audit.py`, and 10 standalone checks in `scripts/smoke_startup.py`
+- [x] **117 Verification Checks Passing** — Full green across the 60 pytest tests, 47 standalone checks in `test_deep_audit.py`, and 10 standalone checks in `scripts/smoke_startup.py`
 
 ---
 
@@ -59,6 +59,7 @@ This document outlines the multi-phase implementation roadmap for the BR JARVIS 
 - [x] **Streaming STT & Local Whisper ASR** (`voice/whisper_local.py`, `voice/stt.py`)
 - [x] **Configurable Wake Word Engine** (`voice/assistant.py`)
 - [x] **Multilingual Voice Support** (`voice/multilingual.py`)
+- [x] **Voice Prompt Refinement Engine** (`voice/prompt_refiner.py`) — Acoustic speech cleaner, vocal filler removal, domain vocabulary mapping (`config/vocabulary.json`)
 
 ---
 
@@ -67,6 +68,7 @@ This document outlines the multi-phase implementation roadmap for the BR JARVIS 
 - [x] **Glassmorphic Web Dashboard** (`web/index.html`, `web/style.css`, `web/app.js`)
 - [x] **Real-time Streaming Chat & Monitors** (`server.py` WebSocket API)
 - [x] **Rich TUI CLI Control** (`main_mk37.py`)
+- [x] **Tkinter Control Center Overhaul & Multi-Task Dashboard** (`ui.py`) — Dedicated "🚀 Multi-Tasks" tab rendering Task Cards, progress bars, and status badges
 
 ---
 
@@ -75,3 +77,29 @@ This document outlines the multi-phase implementation roadmap for the BR JARVIS 
 - [x] **Plugin Platform & Isolation** (`plugins/plugin_manager.py`)
 - [x] **OpenAI-Compatible REST API Gateway** (`server.py` `/v1/chat/completions`)
 - [x] **System Diagnostics & Health Check** (`healthcheck.py`)
+
+---
+
+## 🟢 Phase 7: Antigravity Subsystem & Adaptive Step Planner (COMPLETED — v37.30.0)
+
+- [x] **Antigravity Scratchpad Workspace** (`agent/scratchpad.py` & `tools/scratchpad_tools.py`) — `./scratch/` environment with `scratchpad_eval` multi-language script runner
+- [x] **Autonomous Planning Mode & GFM Artifact Engine** (`agent/planning_mode.py` & `agent/artifacts.py`) — Dynamic task complexity classifier and GFM markdown artifact generator
+- [x] **Trajectory Transcripts Logging** (`agent/transcript_logger.py`) — Step-by-step JSON Lines trajectory logging
+- [x] **Conscious Step Planner & Progress Velocity Budget** (`agent/step_planner.py` & `orchestrator.py`) — Progress velocity evaluation granting step budget extensions
+- [x] **50+ Zero-Token Deterministic Intent Engine** (`core/intent_engine.py`) — Zero-token instant triggers (<5ms latency)
+- [x] **5-Tier Clipboard Fallback Utility** (`actions/clipboard_utils.py`) — Multi-backend clipboard reader/writer
+
+---
+
+## 🟡 Phase 8: Core Refactoring & Robustness (IN PROGRESS / ACTIVE BACKLOG)
+
+- [ ] **BUG-001 Fix**: Resolve `self.ui` AttributeError in `BRVoiceAssistant.__init__()`
+- [ ] **BUG-002 Fix**: Replace deprecated `asyncio.get_event_loop()` with `asyncio.get_running_loop()` across all modules
+- [ ] **BUG-003 Fix**: Add tool call deduplication and infinite-loop breaker in ReAct orchestrator loop
+- [ ] **BUG-004 Fix**: Fix `_run_async` deadlock in tool registry for nested coroutine execution
+- [ ] **BUG-005 Fix**: Implement SQLite WAL mode and shared connection pooling across memory stores
+- [ ] **BUG-006 Fix**: Convert WebSocket broadcast stream to asynchronous non-blocking queue
+- [ ] **BUG-007 Fix**: Lazy-load tool and action modules on demand to eliminate startup import storm
+- [ ] **BUG-008 Refactoring**: Modularize 72KB `ui.py` monolith into component sub-modules (`ui/tabs/`, `ui/widgets/`)
+- [ ] **BUG-009 Security**: Remove hardcoded API key fallback in `backends/gemini.py`
+- [ ] **BUG-010 Fix**: Synchronize tool name alias registry between planner and executor

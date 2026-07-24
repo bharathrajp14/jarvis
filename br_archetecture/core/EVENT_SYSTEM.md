@@ -3,12 +3,13 @@
 > **Document Status**: Production Architecture Specification  
 > **Subsystem**: Core Decoupled Event Messaging & Telemetry Audit  
 > **Module Path**: `events/`  
+> **Version**: MK37.30.0  
 
 ---
 
 ## 1. Executive Summary
 
-The BR JARVIS **Event System** (`events/`) acts as the central asynchronous communication backbone for the entire AI Operating System. Built with zero tight coupling, it enables components to publish event notifications, record operational audit logs, track execution telemetry, and manage unexpected handler errors via a Dead Letter Queue (DLQ).
+The BR JARVIS **Event System** (`events/`) acts as the central asynchronous communication backbone for the entire AI Operating System. Built with zero tight coupling, it enables components to publish event notifications, record operational audit logs, track execution telemetry, stream multi-task UI status cards (`ui.py`), and manage unexpected handler errors via a Dead Letter Queue (DLQ).
 
 ---
 
@@ -16,10 +17,11 @@ The BR JARVIS **Event System** (`events/`) acts as the central asynchronous comm
 
 ```mermaid
 graph TD
-    Publisher[Publisher: Core / Agent / Tools] -->|Publish Event| EventBus[EventBus: events/bus.py]
+    Publisher[Publisher: Core / Agent / Tools / Vision] -->|Publish Event| EventBus[EventBus: events/bus.py]
     
     EventBus -->|Topic Pattern Match| Subscribers[Subscriber Handlers: @subscribe]
     EventBus -->|Persist Audit Log| EventStore[EventStore: workspace/logs/events.jsonl]
+    EventBus -->|Broadcast UI Cards| UITab[Tkinter Multi-Task Dashboard / Web Dashboard]
     
     Subscribers -->|Execution Success| LogComplete[Telemetry Logged]
     Subscribers -->|Handler Exception| DLQ[Dead-Letter Queue: retry & error inspection]
@@ -31,16 +33,18 @@ graph TD
 
 | File | Class / Entity | Responsibility |
 |---|---|---|
-| [bus.py](file:///d:/BRJARVIS/Br-Jarvis/events/bus.py) | `EventBus` | Thread-safe, async Pub/Sub event dispatcher supporting wildcard topic subscriptions (e.g. `task.*`, `system.error`). Includes Dead Letter Queue management. |
+| [bus.py](file:///d:/BRJARVIS/Br-Jarvis/events/bus.py) | `EventBus` | Thread-safe, async Pub/Sub event dispatcher supporting wildcard topic subscriptions (e.g. `task.*`, `step_planner.*`, `system.error`). Includes Dead Letter Queue management. |
 | [handlers.py](file:///d:/BRJARVIS/Br-Jarvis/events/handlers.py) | `@subscribe` | Decorator framework for registering synchronous and asynchronous subscriber functions. |
 | [store.py](file:///d:/BRJARVIS/Br-Jarvis/events/store.py) | `EventStore` | High-throughput append-only JSONL persistent store logging system telemetry to `events.jsonl`. |
-| [types.py](file:///d:/BRJARVIS/Br-Jarvis/events/types.py) | `Event`, `EventType` | Enums and Pydantic v2 schemas defining event payloads across system lifecycle, tasks, tools, errors, and security audits. |
+| [types.py](file:///d:/BRJARVIS/Br-Jarvis/events/types.py) | `Event`, `EventType`, `VisionEvent` | Enums and Pydantic v2 schemas defining event payloads across system lifecycle, step planning, vision graph updates, tasks, tools, errors, and security audits. |
 
 ---
 
-## 4. Standard Event Types
+## 4. Standard Event Topics & Event Types
 
-- `SYSTEM_STARTUP` / `SYSTEM_SHUTDOWN`: Lifecycle lifecycle state changes.
-- `TASK_CREATED` / `TASK_COMPLETED` / `TASK_FAILED`: Workflow DAG execution events.
-- `TOOL_INVOKED` / `TOOL_SUCCESS` / `TOOL_ERROR`: Tool runtime execution metrics.
-- `SECURITY_ALERT` / `PERMISSION_DENIED`: Audit trails for permission violations and redteam checks.
+- `system.startup` / `system.shutdown`: Core lifecycle state changes.
+- `step_planner.conscious_decomposition` / `step_planner.budget_extended`: Conscious Step Planner goal decomposition & flexible step budget extensions.
+- `task.react.start` / `task.react.completed` / `task.react.failed`: ReAct loop execution lifecycle.
+- `screen.understood` / `graph.updated`: 7-Tier Hybrid Vision Engine semantic UI updates.
+- `tool.invoked` / `tool.success` / `tool.error`: Tool runtime execution metrics.
+- `security.alert` / `permission.denied`: Guardian safety and PathPolicy violation logs.

@@ -1,14 +1,15 @@
 # 🎙️ BR JARVIS — Voice Assistant Subsystem (`voice/`)
 
 > **Document Status**: Production Architecture Specification  
-> **Subsystem**: Hands-Free Voice Loop, Speech Recognition & Neural TTS  
+> **Subsystem**: Hands-Free Voice Loop, Voice Prompt Refiner, Speech Recognition & Neural TTS  
 > **Module Path**: `voice/`  
+> **Version**: MK37.30.0  
 
 ---
 
 ## 1. Executive Summary
 
-The **Voice Assistant Subsystem** (`voice/`) powers hands-free voice interaction for BR JARVIS. It features wake-word gating, offline local Automatic Speech Recognition (ASR) via OpenAI Whisper (`whisper_local.py`), cloud speech recognition fallbacks (`stt.py`), multilingual language translation (`multilingual.py`), and neural Text-to-Speech synthesis with low-latency MCI audio playback (`tts.py`).
+The **Voice Assistant Subsystem** (`voice/`) powers hands-free voice interaction for BR JARVIS. It features wake-word gating, offline local Automatic Speech Recognition (ASR) via OpenAI Whisper (`whisper_local.py`), an acoustic **Voice Prompt Refinement Engine** (`prompt_refiner.py`), cloud speech recognition fallbacks (`stt.py`), multilingual language translation (`multilingual.py`), and neural Text-to-Speech synthesis with low-latency MCI audio playback (`tts.py`).
 
 ---
 
@@ -25,8 +26,10 @@ graph TD
     ASR -->|Yes| LocalWhisper[WhisperLocal: voice/whisper_local.py]
     ASR -->|No / Cloud Mode| CloudSTT[Google / Web STT Fallback]
     
-    LocalWhisper --> IntentCheck[Core Runtime / IntentEngine]
-    CloudSTT --> IntentCheck
+    LocalWhisper --> PromptRefiner[VoicePromptRefiner: voice/prompt_refiner.py<br/>Vocal Filler Cleaner & Vocab Mapping]
+    CloudSTT --> PromptRefiner
+    
+    PromptRefiner -->|Refined Prompt| IntentCheck[Core Runtime / StepPlanner / Orchestrator]
     
     IntentCheck --> OutputResponse[Response Text Payload]
     OutputResponse --> NeuralTTS[NeuralTTS: voice/tts.py]
@@ -35,12 +38,26 @@ graph TD
 
 ---
 
-## 3. Subsystem Components & Responsibilities
+## 3. Voice Prompt Refinement Engine (`voice/prompt_refiner.py`)
+
+Raw spoken speech frequently contains hesitation fillers, stutters, conversational bloat (`um`, `uh`, `ah`, `like`, `you know`, `please can you`, `hey jarvis`), and STT mishearings.
+
+`VoicePromptRefiner` processes raw acoustic transcripts before passing them to the execution engine:
+1. **Iterative Filler Stripping**: Iteratively cleans vocal hesitation patterns until the sentence stabilizes into clean actionable commands.
+2. **Domain Vocabulary Mapping**: Replaces misheard technical terms using custom rules in `config/vocabulary.json`.
+3. **Transparent UI Logging**: Logs both acoustic raw input and refined execution prompts to `JarvisUI`:
+   - `🎙️ Spoken Raw: "um jarvis please check system memory and open chrome"`
+   - `✨ Refined Prompt: "Check system memory and open chrome"`
+
+---
+
+## 4. Subsystem Components & Responsibilities
 
 | File | Class / Entity | Primary Responsibility |
 |---|---|---|
 | [assistant.py](file:///d:/BRJARVIS/Br-Jarvis/voice/assistant.py) | `BRVoiceAssistant` | Master voice loop coordinator handling state transitions (`IDLE`, `LISTENING`, `THINKING`, `SPEAKING`), wake-word gating, and interrupts. |
-| [stt.py](file:///d:/BRJARVIS/Br-Jarvis/voice/stt.py) | `SpeechToText` | `sounddevice` audio stream recorder and cloud STT service fallback interface. |
+| [prompt_refiner.py](file:///d:/BRJARVIS/Br-Jarvis/voice/prompt_refiner.py) | `VoicePromptRefiner` | Acoustic speech cleaner, vocal filler stripper (`um`, `uh`, `like`), vocabulary mapper, and high-precision prompt generator. |
+| [stt.py](file:///d:/BRJARVIS/Br-Jarvis/voice/stt.py) | `SounddeviceMicrophone` | Zero-dependency `sounddevice` audio stream recorder and speech recognition adapter. |
 | [whisper_local.py](file:///d:/BRJARVIS/Br-Jarvis/voice/whisper_local.py) | `LocalWhisperASR` | Offline local OpenAI Whisper model worker supporting `tiny`, `base`, `small`, and `medium` quantized models. |
 | [tts.py](file:///d:/BRJARVIS/Br-Jarvis/voice/tts.py) | `NeuralTTS` | Text-to-speech engine using PyTTSx3 / gTTS with Win32 MCI low-latency audio stream playback. |
 | [multilingual.py](file:///d:/BRJARVIS/Br-Jarvis/voice/multilingual.py) | `MultilingualVoice` | Automatic language detection and translation wrapper supporting English, Tamil, Hindi, Spanish, French, and German. |
