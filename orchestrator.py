@@ -462,8 +462,10 @@ class JarvisOrchestrator:
                 else:
                     _consecutive_tool = {"name": tool_name, "args_str": args_str, "count": 1}
 
-                if _consecutive_tool["count"] >= 2:
-                    print(f"[JARVIS] ⚠️ Duplicate-call guard triggered for '{tool_name}' (x{_consecutive_tool['count']})")
+                if _consecutive_tool["count"] >= 4:
+                    print(f"[JARVIS] ⛔ Duplicate-call limit reached (x{_consecutive_tool['count']}). Terminating loop to prevent infinite token burn.")
+                    final_response = f"[BR: Duplicate tool call limit reached for '{tool_name}'. Proceeding with accumulated results.]"
+                    break
 
                 print(f"[JARVIS] 🧠 Step {step+1}/{budget.current_budget}: {tool_name}({list(tool_args.keys() if tool_args else [])})")
                 t_tool = time.monotonic()

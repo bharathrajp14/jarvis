@@ -138,32 +138,32 @@ except ImportError:
 
 # ── Re-export backends ───────────────────────────────────────────────────
 try:
-    from gemini_backend import GeminiBackend
+    from backends.gemini import GeminiBackend
 except ImportError:
     GeminiBackend = None  # type: ignore[assignment,misc]
 
 try:
-    from anthropic_backend import ClaudeBackend
+    from backends.anthropic import ClaudeBackend
 except ImportError:
     ClaudeBackend = None  # type: ignore[assignment,misc]
 
 try:
-    from openai_backend import OpenAIBackend
+    from backends.openai import OpenAIBackend
 except ImportError:
     OpenAIBackend = None  # type: ignore[assignment,misc]
 
 try:
-    from ollama_backend import OllamaBackend
+    from backends.ollama import OllamaBackend
 except ImportError:
     OllamaBackend = None  # type: ignore[assignment,misc]
 
 try:
-    from nvidia_backend import NvidiaBackend
+    from backends.nvidia import NvidiaBackend
 except ImportError:
     NvidiaBackend = None  # type: ignore[assignment,misc]
 
 try:
-    from mistral_backend import MistralBackend
+    from backends.mistral import MistralBackend
 except ImportError:
     MistralBackend = None  # type: ignore[assignment,misc]
 

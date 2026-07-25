@@ -64,13 +64,11 @@ def _run_async(coro):
         loop = None
 
     if loop is not None and loop.is_running():
-        try:
-            future = asyncio.run_coroutine_threadsafe(coro, loop)
-            return future.result(timeout=60)
-        except Exception:
-            import concurrent.futures
-            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-                return pool.submit(lambda: asyncio.run(coro)).result(timeout=60)
+        # Running inside an active event loop thread.
+        # Run coroutine in a separate worker thread with its own loop to prevent deadlock.
+        import concurrent.futures
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+            return pool.submit(lambda: asyncio.run(coro)).result(timeout=60)
     else:
         return asyncio.run(coro)
 
@@ -95,6 +93,67 @@ If you do NOT need a tool, just respond normally with text.
 NEVER fabricate tool results. Always call the tool if you need real data.
 
 **AUTO-ALLOW MODE**: All tools execute immediately without confirmation.
+
+### Tool Definitions
+{schema_text}
+"""
+
+
+def get_pruned_tool_prompt_block(user_prompt: str = "") -> str:
+    """
+    Generate a lightweight, intent-pruned tool system prompt block.
+    Filters available tool definitions down to the most relevant tools, saving up to 80% prompt tokens.
+    """
+    _import_plugins()
+
+    if not user_prompt:
+        return get_tool_prompt_block()
+
+    low = user_prompt.lower()
+    
+    # Core high-frequency tools always available
+    essential_tools = {"open_app", "web_search", "file_read", "file_write", "run_code", "computer_settings"}
+    
+    # Domain keyword matching for targeted tool inclusion
+    domain_map = {
+        ("search", "google", "find", "who is", "what is", "news", "price", "weather"): {"web_search", "fetch_page"},
+        ("file", "read", "write", "save", "folder", "directory", "document", "txt", "csv", "json", "pdf", "docx"): {"file_read", "file_write", "file_list", "file_delete", "file_search"},
+        ("app", "open", "launch", "close", "brave", "chrome", "edge", "notepad", "calculator"): {"open_app", "computer_settings"},
+        ("screen", "see", "look", "click", "vision", "ocr", "capture", "display"): {"screen_find", "screen_click", "smart_click"},
+        ("code", "python", "script", "execute", "eval", "debug", "run"): {"run_code", "scratchpad_write", "scratchpad_eval"},
+        ("system", "volume", "brightness", "wifi", "battery", "restart", "shutdown", "diagnostic", "cpu", "ram"): {"computer_settings", "system_diagnostic"},
+        ("youtube", "video", "play"): {"youtube_video"},
+        ("flight", "ticket", "airline", "fly"): {"flight_finder"},
+        ("game", "steam", "epic"): {"game_updater"},
+        ("agent", "task", "subagent", "multi"): {"agent_task"},
+    }
+
+    selected_names = set(essential_tools)
+    for keywords, tools in domain_map.items():
+        if any(kw in low for kw in keywords):
+            selected_names.update(tools)
+
+    pruned_schemas = [schema for schema in TOOL_SCHEMAS if schema.get("name") in selected_names]
+    
+    # If pruning is too aggressive, fallback to full schemas
+    if len(pruned_schemas) < 3:
+        pruned_schemas = TOOL_SCHEMAS
+
+    schema_text = json.dumps(pruned_schemas, indent=2)
+
+    return f"""
+## Available Tools (Intent-Pruned Context)
+
+To use a tool, output EXACTLY this JSON block on its own line:
+
+```tool_call
+{{"tool": "<tool_name>", "args": {{<arguments>}}}}
+```
+
+After you output a tool_call block, execution pauses while the tool runs.
+You will then receive the tool result and can continue.
+
+**AUTO-ALLOW MODE**: Selected tools execute immediately without confirmation.
 
 ### Tool Definitions
 {schema_text}
@@ -132,7 +191,21 @@ def execute_tool(name: str, args: dict) -> str:
 
     try:
         func = TOOL_REGISTRY[name]
-        result = func(args)
+        if not isinstance(args, dict):
+            args = {}
+        
+        import inspect
+        sig = inspect.signature(func)
+        params = list(sig.parameters.keys())
+
+        if len(params) == 1 and params[0] in ("args", "kwargs", "data", "payload", "input_data"):
+            result = func(args)
+        else:
+            try:
+                result = func(**args)
+            except TypeError:
+                result = func(args)
+
         if inspect_is_coroutine(result):
             result = _run_async(result)
         return str(result)
@@ -282,6 +355,9 @@ def _import_plugins():
         "tools.system_diagnostic_tool",
         "tools.batch_file_tool",
         "tools.git_repo_tool",
+        "tools.browser_automation",
+        "tools.qa_testing_tool",
+        "tools.autonomous_browser_agent",
     ]
 
     for p in plugins:
@@ -319,7 +395,12 @@ def get_pruned_tool_prompt_block(user_prompt: str = "") -> str:
     selected = []
     
     # Core general-purpose tools that should never be pruned
-    core_tools = {"code_helper", "run_code", "web_search", "computer_settings", "file_read", "file_write", "file_list"}
+    core_tools = {
+        "code_helper", "run_code", "web_search", "computer_settings", "file_read", "file_write", "file_list",
+        "browser_open_url", "browser_execute_web_task", "browser_auto_navigate_and_extract",
+        "browser_fill_and_submit_form", "browser_click", "browser_type", "browser_read_page",
+        "qa_generate_report", "gmail_list_unread", "github_list_prs", "notion_search_pages"
+    }
     
     for schema in TOOL_SCHEMAS:
         name = schema["name"]

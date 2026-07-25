@@ -47,12 +47,20 @@ def main():
         br = BRVoiceAssistant(ui)
         try:
             asyncio.run(br.run())
-        except KeyboardInterrupt:
+        except (KeyboardInterrupt, SystemExit):
             print("\n🔴 Shutting down...")
 
     threading.Thread(target=runner, daemon=True).start()
-    ui.root.mainloop()
+    try:
+        ui.root.mainloop()
+    except (KeyboardInterrupt, SystemExit):
+        print("\n[JARVIS] 👋 Voice Assistant GUI closed.")
+        sys.exit(0)
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except (KeyboardInterrupt, SystemExit):
+        print("\n[JARVIS] 👋 Exited cleanly.")
+        sys.exit(0)

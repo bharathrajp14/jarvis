@@ -65,7 +65,7 @@ class GeminiBackend(BaseBackend):
                 from config.models import get_model_config
                 cfg = get_model_config()
                 base_url = cfg.get("openai_base_url", "http://localhost:8045/v1")
-                api_key_val = os.environ.get("OPENAI_API_KEY", "").strip() or cfg.get("openai_api_key", "").strip() or "local-proxy-key"
+                api_key_val = os.environ.get("OPENAI_API_KEY", "").strip() or cfg.get("openai_api_key", "").strip() or "none"
                 self._client = OpenAI(base_url=base_url, api_key=api_key_val)
                 self._use_openai_client = True
                 self.model = model or self._pick_model()

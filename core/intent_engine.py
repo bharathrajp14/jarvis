@@ -148,6 +148,51 @@ class DeterministicIntentEngine:
                     "tokens_saved": 2000,
                 }
 
+        # 00b. Match Google Search Intent (e.g. "search google for python playwright", "google search rtx 4090")
+        google_match = re.search(r"^(?:search\s+google\s+for|google\s+search\s+for|google\s+search)\s+(.+)", clean, re.IGNORECASE)
+        if google_match:
+            import urllib.parse
+            g_query = google_match.group(1).strip()
+            g_url = f"https://www.google.com/search?q={urllib.parse.quote_plus(g_query)}"
+            success = cls.open_url_in_browser(g_url)
+            if success:
+                return {
+                    "executed": True,
+                    "intent": "google_search",
+                    "target": g_url,
+                    "result": f"Searching Google for '{g_query}' (0-Token Execution).",
+                    "tokens_saved": 2000,
+                }
+
+        # 00c. Match Wikipedia Intent (e.g. "look up quantum computing on wikipedia", "wikipedia search python")
+        wiki_match = re.search(r"(?:look\s+up\s+(.+)\s+on\s+wikipedia|wikipedia\s+search\s+(.+)|wikipedia\s+(.+))", clean, re.IGNORECASE)
+        if wiki_match:
+            import urllib.parse
+            w_query = (wiki_match.group(1) or wiki_match.group(2) or wiki_match.group(3)).strip()
+            w_url = f"https://en.wikipedia.org/wiki/Special:Search?search={urllib.parse.quote_plus(w_query)}"
+            success = cls.open_url_in_browser(w_url)
+            if success:
+                return {
+                    "executed": True,
+                    "intent": "wikipedia_lookup",
+                    "target": w_url,
+                    "result": f"Opened Wikipedia for '{w_query}' (0-Token Execution).",
+                    "tokens_saved": 2000,
+                }
+
+        # 00d. Match Hacker News Intent (e.g. "open hacker news", "check hacker news")
+        if any(hn_kw in clean for hn_kw in ["open hacker news", "check hacker news", "hacker news homepage"]):
+            hn_url = "https://news.ycombinator.com"
+            success = cls.open_url_in_browser(hn_url)
+            if success:
+                return {
+                    "executed": True,
+                    "intent": "hacker_news",
+                    "target": hn_url,
+                    "result": "Opened Hacker News (0-Token Execution).",
+                    "tokens_saved": 2000,
+                }
+
         # 0. Match YouTube Play / Search & Specific Browser Intent (e.g., "play a tamil song in youtube open in brave browsr")
         if "youtube" in clean and any(w in clean for w in ["play", "search", "find", "open", "listen", "watch"]):
             target_browser = ""
@@ -403,6 +448,22 @@ class DeterministicIntentEngine:
                     "tokens_saved": 1500,
                 }
             except Exception:
+                pass
+
+        # 0j. Match Codebase Excel Analysis Export Intent
+        if any(w in clean for w in ["excel", "sheet", "xlsx", "spreadsheet"]) and any(w in clean for w in ["analysis", "analisis", "audit", "export", "project", "codebase"]):
+            try:
+                from tools.excel_tools import analyze_project_to_excel
+                excel_res = analyze_project_to_excel({})
+                return {
+                    "executed": True,
+                    "intent": "excel_codebase_analysis",
+                    "target": "JARVIS_Project_Full_Analysis.xlsx",
+                    "result": excel_res,
+                    "tokens_saved": 2500,
+                }
+            except Exception as e:
+                pass
                 pass
 
         if any(phrase in clean for phrase in ["mute audio", "unmute audio", "mute volume", "unmute volume", "mute", "unmute"]):

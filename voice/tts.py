@@ -73,7 +73,7 @@ def clean_for_speech(text: str) -> str:
     return t.strip()
 
 
-def summarize_for_speech(text: str, max_chars: int = 250) -> str:
+def summarize_for_speech(text: str, max_chars: int = 600) -> str:
     """Truncate long technical responses to a concise conversational speech summary."""
     clean = clean_for_speech(text)
     if not clean or len(clean) <= max_chars:

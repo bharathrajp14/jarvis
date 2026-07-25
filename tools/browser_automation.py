@@ -25,6 +25,31 @@ _USER_DATA_DIR = Path(__file__).resolve().parent.parent / "workspace" / "browser
 _active_browser_context: Optional[Any] = None
 _active_page: Optional[Any] = None
 _playwright_instance: Optional[Any] = None
+_last_page_console_logs: list[str] = []
+_last_page_errors: list[str] = []
+
+
+def get_browser_trace_logs() -> dict:
+    """Return accumulated browser console logs and page errors."""
+    return {
+        "console_logs": list(_last_page_console_logs),
+        "page_errors": list(_last_page_errors)
+    }
+
+
+def clear_browser_trace_logs():
+    """Clear accumulated trace logs."""
+    _last_page_console_logs.clear()
+    _last_page_errors.clear()
+
+
+def _attach_trace_listeners(page: Any):
+    """Attach console and error listeners to Playwright page."""
+    try:
+        page.on("console", lambda msg: _last_page_console_logs.append(f"[{msg.type.upper()}] {msg.text}") if len(_last_page_console_logs) < 200 else None)
+        page.on("pageerror", lambda err: _last_page_errors.append(str(err)) if len(_last_page_errors) < 50 else None)
+    except Exception:
+        pass
 
 
 async def _get_or_create_page(headless: bool = False) -> Page:
@@ -52,6 +77,7 @@ async def _get_or_create_page(headless: bool = False) -> Page:
 
     pages = _active_browser_context.pages
     _active_page = pages[0] if pages else await _active_browser_context.new_page()
+    _attach_trace_listeners(_active_page)
     return _active_page
 
 

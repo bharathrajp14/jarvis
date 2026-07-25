@@ -347,7 +347,7 @@ class BRVoiceAssistant:
             from voice.tts import clean_for_speech, summarize_for_speech
             clean_log = clean_for_speech(response)
             self.ui.write_log(f"JARVIS: {clean_log[:500] if clean_log else response[:500]}")
-            spoken_summary = summarize_for_speech(response)
+            spoken_summary = summarize_for_speech(response, max_chars=600)
             if spoken_summary:
                 self.speak(spoken_summary)
         except asyncio.CancelledError:
