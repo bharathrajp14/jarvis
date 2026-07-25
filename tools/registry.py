@@ -258,6 +258,22 @@ try:
 except Exception:
     pass
 
+try:
+    from tools.web_extractor import web_extractor_action
+    register_tool(
+        name="web_extractor",
+        description="Extract clean text content, headers, and main article text from any web URL. Args: 'url' (webpage URL).",
+        parameters={
+            "type": "object",
+            "properties": {
+                "url": {"type": "string", "description": "Target webpage URL to fetch and extract"}
+            },
+            "required": ["url"]
+        }
+    )(web_extractor_action)
+except Exception:
+    pass
+
 
 def parse_tool_call(text: str) -> tuple[str | None, dict | None]:
     """Parse a tool_call JSON block from LLM output."""
