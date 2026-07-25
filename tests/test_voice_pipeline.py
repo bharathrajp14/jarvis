@@ -37,6 +37,12 @@ class TestVoicePipeline(unittest.TestCase):
         # Execute chime without error
         assistant._play_listening_chime()
 
+    def test_sound_effects(self):
+        from voice.sound_effects import play_activation_beep, play_deep_listening_bass, play_processing_bass_chime
+        play_activation_beep()
+        play_deep_listening_bass()
+        play_processing_bass_chime()
+
 
 if __name__ == "__main__":
     unittest.main()

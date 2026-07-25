@@ -138,13 +138,13 @@ class BRVoiceAssistant:
         self.tts.speak_async(text, on_start=on_start, on_finish=on_finish)
 
     def _play_listening_chime(self):
-        """Play ascending dual-tone acoustic activation chime."""
-        if _HAS_WINSOUND:
-            try:
-                winsound.Beep(988, 70)
-                winsound.Beep(1318, 90)
-            except Exception:
-                pass
+        """Play ascending dual-tone acoustic activation chime and deep sub-bass pulse."""
+        try:
+            from voice.sound_effects import play_activation_beep, play_deep_listening_bass
+            play_activation_beep()
+            play_deep_listening_bass()
+        except Exception:
+            pass
 
     def _tune_recognizer(self, recognizer):
         """Apply optimal settings for wake-word and command capture."""
@@ -513,6 +513,13 @@ class BRVoiceAssistant:
                                         phrase_time_limit=self._command_phrase_limit
                                     )
                                 )
+                                # Play deep processing bass chime when voice capture finishes
+                                try:
+                                    from voice.sound_effects import play_processing_bass_chime
+                                    play_processing_bass_chime()
+                                except Exception:
+                                    pass
+
                                 # Full-quality transcription for command
                                 cmd_text = await self._transcribe_command(audio_cmd)
 
