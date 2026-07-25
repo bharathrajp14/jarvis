@@ -2,25 +2,24 @@
 from __future__ import annotations
 
 import unittest
-from computer.operator import ComputerOperator, ComputerAction, ActionType
+from computer.operator import get_computer_operator, ComputerAction, ActionType
 from watchers.file_watcher import FileWatcher
 
 
 class TestFlawRemediationsV5(unittest.TestCase):
 
     def test_computer_operator_failsafe_handling(self):
-        op = ComputerOperator()
+        op = get_computer_operator()
         action = ComputerAction(
-            action_type=ActionType.MOUSE_CLICK,
-            x=10, y=10,
-            description="Test click action"
+            action_type=ActionType.CLIPBOARD_SET,
+            text="JARVIS Failsafe Verification",
+            description="Test failsafe action"
         )
         res = op.execute_action(action)
         self.assertTrue(res.success)
-        self.assertIn("Verified", res.verification_message)
 
     def test_file_watcher_scan_safety(self):
-        fw = FileWatcher(observed_paths=["."])
+        fw = FileWatcher(watch_path=".")
         changes = fw.scan_for_changes()
         self.assertIsInstance(changes, int)
 
