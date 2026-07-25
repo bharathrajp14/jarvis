@@ -314,12 +314,19 @@ class GeminiBackend(BaseBackend):
         if self._use_openai_client:
             try:
                 import io
-                audio_file = io.BytesIO(audio_bytes)
-                audio_file.name = "audio.wav"
-                response = self._client.audio.transcriptions.create(
-                    model="whisper-1",
-                    file=audio_file
-                )
+                file_payload = ("audio.wav", audio_bytes, mime_type)
+                try:
+                    response = self._client.audio.transcriptions.create(
+                        model="whisper-1",
+                        file=file_payload,
+                    )
+                except Exception:
+                    audio_file = io.BytesIO(audio_bytes)
+                    audio_file.name = "audio.wav"
+                    response = self._client.audio.transcriptions.create(
+                        model="whisper-1",
+                        file=audio_file,
+                    )
                 return (response.text or "").strip()
             except Exception as e:
                 print(f"[Gemini Proxy] Transcription failed: {e}")

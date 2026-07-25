@@ -109,13 +109,19 @@ class OpenAIBackend(BaseBackend):
         try:
             self._ensure_client()
             import io
-            audio_file = io.BytesIO(audio_bytes)
-            audio_file.name = filename
-            
-            response = self.client.audio.transcriptions.create(
-                model="whisper-1",
-                file=audio_file
-            )
+            file_payload = (filename, audio_bytes, "audio/wav")
+            try:
+                response = self.client.audio.transcriptions.create(
+                    model="whisper-1",
+                    file=file_payload,
+                )
+            except Exception:
+                audio_file = io.BytesIO(audio_bytes)
+                audio_file.name = filename
+                response = self.client.audio.transcriptions.create(
+                    model="whisper-1",
+                    file=audio_file,
+                )
             return (response.text or "").strip()
         except Exception as e:
             print(f"[OpenAI] Transcription failed: {e}")

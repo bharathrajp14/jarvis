@@ -245,6 +245,19 @@ class BRVoiceAssistant:
             except Exception as e:
                 print(f"[Voice] Primary transcription chain failed: {e}")
 
+        # 2.5 Try local Whisper fallback if available
+        if not text:
+            try:
+                from voice.whisper_local import transcribe as whisper_transcribe, is_available as whisper_available
+                from voice.multilingual import get_whisper_code
+                if whisper_available():
+                    lang_code = get_whisper_code()
+                    text = await self._loop.run_in_executor(
+                        None, lambda: whisper_transcribe(audio.get_wav_data(), language=lang_code)
+                    )
+            except Exception:
+                pass
+
         # 3. Fallback to Google STT with multilingual support
         if not text:
             try:
