@@ -53,6 +53,12 @@ class TestVoicePipeline(unittest.TestCase):
         self.assertEqual(r.pause_threshold, 0.9)
         self.assertEqual(assistant._command_phrase_limit, 25.0)
 
+    def test_stop_speech_barge_in(self):
+        from voice.assistant import BRVoiceAssistant
+        assistant = BRVoiceAssistant(ui=None)
+        self.assertTrue(hasattr(assistant, "stop_speech"))
+        assistant.stop_speech()
+
 
 if __name__ == "__main__":
     unittest.main()

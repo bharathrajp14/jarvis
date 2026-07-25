@@ -137,6 +137,13 @@ class BRVoiceAssistant:
 
         self.tts.speak_async(text, on_start=on_start, on_finish=on_finish)
 
+    def stop_speech(self):
+        """Halt active neural TTS speech playback immediately for barge-in interruption."""
+        if hasattr(self, "tts") and self.tts:
+            self.tts.stop()
+        if self.ui:
+            self.ui.speaking = False
+
     def _play_listening_chime(self):
         """Play ascending dual-tone acoustic activation chime and deep sub-bass pulse."""
         try:
