@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import unittest
-import speech_recognition as sr
+import speech_recognition as sr  # type: ignore
 from memory.working import WorkingMemory
 from watchers.file_watcher import FileWatcher
 from watchers.system_watcher import SystemWatcher

@@ -45,7 +45,7 @@ class TestVoicePipeline(unittest.TestCase):
 
     def test_recognizer_tuning(self):
         from voice.assistant import BRVoiceAssistant
-        import speech_recognition as sr
+        import speech_recognition as sr  # type: ignore
         assistant = BRVoiceAssistant(ui=None)
         r = sr.Recognizer()
         assistant._tune_recognizer(r)
