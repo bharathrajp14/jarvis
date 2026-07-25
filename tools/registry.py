@@ -287,6 +287,22 @@ try:
 except Exception:
     pass
 
+try:
+    from tools.file_search_semantic import file_search_semantic_action
+    register_tool(
+        name="file_search_semantic",
+        description="Fast natural language semantic file search across workspace files. Args: 'query' (search term or file description).",
+        parameters={
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "Natural language file description or keywords"}
+            },
+            "required": ["query"]
+        }
+    )(file_search_semantic_action)
+except Exception:
+    pass
+
 
 def parse_tool_call(text: str) -> tuple[str | None, dict | None]:
     """Parse a tool_call JSON block from LLM output."""
