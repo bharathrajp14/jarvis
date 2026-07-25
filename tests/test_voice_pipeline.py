@@ -30,6 +30,13 @@ class TestVoicePipeline(unittest.TestCase):
         self.assertFalse(res["was_modified"])
         self.assertEqual(res["refined"], "")
 
+    def test_listening_chime(self):
+        from voice.assistant import BRVoiceAssistant
+        assistant = BRVoiceAssistant(ui=None)
+        self.assertTrue(hasattr(assistant, "_play_listening_chime"))
+        # Execute chime without error
+        assistant._play_listening_chime()
+
 
 if __name__ == "__main__":
     unittest.main()

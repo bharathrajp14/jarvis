@@ -137,6 +137,15 @@ class BRVoiceAssistant:
 
         self.tts.speak_async(text, on_start=on_start, on_finish=on_finish)
 
+    def _play_listening_chime(self):
+        """Play ascending dual-tone acoustic activation chime."""
+        if _HAS_WINSOUND:
+            try:
+                winsound.Beep(988, 70)
+                winsound.Beep(1318, 90)
+            except Exception:
+                pass
+
     def _tune_recognizer(self, recognizer):
         """Apply optimal settings for wake-word and command capture."""
         recognizer.dynamic_energy_threshold = False  # ⚡ Fixed threshold prevents sensitivity drift
@@ -480,13 +489,10 @@ class BRVoiceAssistant:
                         text = await self._transcribe_wake(audio)
 
                         if self._is_wake_phrase(text):
-                            # Instant audio feedback
-                            if _HAS_WINSOUND:
-                                winsound.Beep(988, 60)
-                                winsound.Beep(1318, 80)
-
+                            # Instant audio feedback & listening HUD trigger
+                            self._play_listening_chime()
                             self.ui.set_state("LISTENING")
-                            self.ui.write_log("SYS: Wake word detected.")
+                            self.ui.write_log("SYS: 🎙️ Wake word detected. Active listening mode...")
 
                             # Check if command was spoken in the same sentence as the wake word
                             embedded_cmd = self._extract_command_from_wake(text)

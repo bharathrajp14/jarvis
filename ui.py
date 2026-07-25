@@ -899,6 +899,10 @@ class JarvisUI:
         wy = FCY + FW // 2 + 18
         if wy + 20 > H - 60: return
 
+        if self._state == "LISTENING":
+            sym = "🎙️ LISTENING FOR COMMAND..." if self.status_blink else "🎙️ LISTENING..."
+            c.create_text(FCX, wy - 12, text=sym, fill=C["cyan"], font=F["ui_b"], anchor="center")
+
         N = len(self._wave_smooth)
         tw = int(W * 0.28)
         px0 = FCX - tw // 2
