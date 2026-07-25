@@ -66,6 +66,19 @@ class TestVoicePipeline(unittest.TestCase):
         res = backend.transcribe(b"RIFF....WAVE", mime_type="audio/wav")
         self.assertIsInstance(res, str)
 
+    def test_audio_ring_buffer(self):
+        from voice.ring_buffer import AudioRingBuffer
+        rb = AudioRingBuffer(buffer_duration_ms=500)
+        # 16kHz 16-bit mono PCM = 32000 bytes/sec -> 500ms = 16000 bytes max
+        chunk = b"\x00" * 8000
+        rb.append(chunk)
+        rb.append(chunk)
+        self.assertEqual(len(rb.get_preroll_bytes()), 16000)
+        rb.append(chunk)  # overflow drops oldest frame
+        self.assertEqual(len(rb.get_preroll_bytes()), 16000)
+        rb.clear()
+        self.assertEqual(len(rb.get_preroll_bytes()), 0)
+
 
 if __name__ == "__main__":
     unittest.main()
