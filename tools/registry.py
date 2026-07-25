@@ -274,6 +274,19 @@ try:
 except Exception:
     pass
 
+try:
+    from tools.system_health import system_health_action
+    register_tool(
+        name="system_health",
+        description="Retrieve system health metrics including CPU load, RAM usage, storage, and battery state.",
+        parameters={
+            "type": "object",
+            "properties": {}
+        }
+    )(system_health_action)
+except Exception:
+    pass
+
 
 def parse_tool_call(text: str) -> tuple[str | None, dict | None]:
     """Parse a tool_call JSON block from LLM output."""
