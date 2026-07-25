@@ -158,7 +158,7 @@ class BRVoiceAssistant:
         recognizer.dynamic_energy_threshold = True   # Enable adaptive noise floor tracking
         recognizer.dynamic_energy_adjustment_damping = 0.15
         recognizer.dynamic_energy_ratio = 1.5
-        recognizer.energy_threshold = 300             # Balanced initial baseline energy
+        recognizer.energy_threshold = max(200, getattr(recognizer, "energy_threshold", 300))  # Enforce 200 RMS minimum floor
         recognizer.pause_threshold = 0.9              # Allow 0.9s pause for natural speech cadence
         recognizer.non_speaking_duration = 0.4        # Min non-speech duration before phrase end
         recognizer.phrase_threshold = 0.2          # Min speech length to register

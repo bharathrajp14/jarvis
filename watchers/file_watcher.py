@@ -31,10 +31,12 @@ class FileWatcher:
         changes_detected = 0
         try:
             ignored_parts = {"__pycache__", ".git", ".venv", "venv", "node_modules", "build", "dist", ".pytest_cache"}
+            current_paths = set()
             for file_path in self.watch_path.rglob("*.py"):
                 if file_path.is_file() and not any(part in file_path.parts for part in ignored_parts):
-                    mtime = file_path.stat().st_mtime
                     str_path = str(file_path)
+                    current_paths.add(str_path)
+                    mtime = file_path.stat().st_mtime
                     
                     if str_path in self._file_mtimes:
                         if mtime > self._file_mtimes[str_path]:
@@ -45,6 +47,10 @@ class FileWatcher:
                                 {"file_path": str_path, "filename": file_path.name, "mtime": mtime},
                             )
                     self._file_mtimes[str_path] = mtime
+
+            # Cleanup deleted files to prevent memory leak
+            for obs in list(set(self._file_mtimes.keys()) - current_paths):
+                del self._file_mtimes[obs]
         except Exception as e:
             logger.warning(f"FileWatcher scan error: {e}")
 

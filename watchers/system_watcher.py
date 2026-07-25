@@ -46,7 +46,7 @@ class SystemWatcher:
             if ram.percent > 90.0:
                 logger.warning(f"⚠️ SystemWatcher: High RAM usage detected ({ram.percent}%)")
                 self.event_bus.publish("system.high_ram", {"ram_percent": ram.percent})
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug(f"SystemWatcher telemetry check note: {e}")
 
         return metrics
