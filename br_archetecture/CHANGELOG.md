@@ -2,6 +2,28 @@
 
 All major architectural updates, subsystem additions, and core refactorings are recorded in this document.
 
+## [37.31.0] — 2026-07-25
+
+### Ultra-Fast Silero VAD Voice Subsystem & CDP DOM Bridge Infrastructure
+- **Silero Voice Activity Detection (`voice/silero_vad.py`)**:
+  - Integrated ONNX-based Silero VAD for low-latency acoustic speech chunk segmentation (<10ms inference overhead).
+  - Eliminates silence clipping and background static noise triggers before passing speech buffers to Whisper ASR.
+- **Zero-Disk Whisper Audio Streaming (`voice/whisper_local.py`)**:
+  - Implemented direct in-memory audio byte stream processing without disk file I/O overhead.
+  - Added RMS acoustic silence gating and post-inference hallucination filtering to eliminate phantom ASR transcriptions.
+- **CDP DOM Bridge Vision Tier (`vision/dom_bridge.py`)**:
+  - Tier 2 CDP Chrome/Edge Browser accessibility DOM inspection bridge allowing real-time tree extraction and visual grounding coordinate mapping without raw screenshot dependency.
+- **Gemini Model Router Fallback Modernization (`backends/gemini.py`)**:
+  - Updated model fallback list with `gemini-3.6-flash-high`, `gemini-3-flash-agent`, and `gemini-pro-agent` for reliable execution failover.
+- **PyAutoGUI Screen Bounds Safety (`computer/operator.py`)**:
+  - Refined mouse click and motion handlers to guarantee raw target coordinate execution while avoiding out-of-bounds PyAutoGUI failsafe crashes.
+- **Unified Health Telemetry API (`server.py`)**:
+  - Consolidated health metrics under `/health` and `/api/health` dual endpoint routing.
+- **94-Test Verification Suite Integration (`tests/`)**:
+  - Expanded test suite to cover Silero VAD, CDP DOM bridge, clipboard fallbacks, and step velocity evaluation.
+
+---
+
 ## [37.30.0] — 2026-07-24
 
 ### Integrated Antigravity Agent Subsystem & Adaptive Step Architecture

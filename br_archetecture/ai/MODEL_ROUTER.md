@@ -1,7 +1,7 @@
 # 🔀 Model Router & Provider Engine Specification
 
 > **Module**: `router.py` & `backends/`  
-> **Version**: MK37.30.0  
+> **Version**: MK37.31.0  
 > **Primary Purpose**: Dynamic multi-backend AI model selection, adaptive complexity routing, token budgeting, and automatic failover.
 
 ---
@@ -12,7 +12,7 @@ BR JARVIS supports 7 LLM provider backends through modular adapters in `backends
 
 | Provider | Backend Module | Primary Models | Usage Role |
 |---|---|---|---|
-| **Google Gemini** | `backends/gemini.py` | Gemini 2.5 Flash, Gemini 3.5 Flash | High-speed multimodal reasoning & vision |
+| **Google Gemini** | `backends/gemini.py` | Gemini 3.6 Flash High, Gemini 3 Flash Agent, Gemini Pro Agent, Gemini 3.5 Flash Low | High-speed multimodal reasoning & vision |
 | **Anthropic Claude** | `backends/claude.py` | Claude 3.5 Sonnet, Claude 3 Opus | Complex code synthesis & architectural design |
 | **OpenAI** | `backends/openai.py` | GPT-4o, GPT-4o-mini | Standard tool invocation & structured JSON |
 | **Ollama** | `backends/ollama.py` | Llama 3, Qwen 2.5, DeepSeek R1 | 100% offline local inference & privacy tasks |
@@ -38,7 +38,7 @@ Task Execution Request
          ├───────────────────────┬───────────────────────┐
          ▼                       ▼                       ▼
    Simple Goal              Medium Goal             Complex Goal
-   (Ollama / Gemini Flash)  (GPT-4o / Gemini 3.5)   (Claude 3.5 Sonnet / DeepSeek R1)
+   (Ollama / Gemini Flash)  (GPT-4o / Gemini 3.6)   (Claude 3.5 Sonnet / DeepSeek R1)
 ```
 
 ---
@@ -47,4 +47,4 @@ Task Execution Request
 
 - **Token Budgeting**: `router.py` monitors input/output tokens per session, enforcing configurable soft and hard limits.
 - **Failover Cascade**: If a primary backend fails (e.g. Rate Limit 429 or API Error 500), the router automatically attempts the fallback chain:
-  `Gemini Flash -> Claude 3.5 Sonnet -> GPT-4o -> Local Ollama`.
+  `gemini-3.5-flash-low -> gemini-3-flash -> gemini-3.6-flash-high -> gemini-3-flash-agent -> gemini-pro-agent -> gemini-2.0-flash -> Claude 3.5 Sonnet -> GPT-4o -> Local Ollama`.

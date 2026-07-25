@@ -1,6 +1,6 @@
 # 🛣️ BR JARVIS — System Development Roadmap
 
-This document outlines the multi-phase implementation roadmap for the BR JARVIS AI Operating System (Current Release: **v37.30.0**).
+This document outlines the multi-phase implementation roadmap for the BR JARVIS AI Operating System (Current Release: **v37.31.0**).
 
 ---
 
@@ -33,7 +33,7 @@ This document outlines the multi-phase implementation roadmap for the BR JARVIS 
 - [x] **Legacy Compatibility Shims** — Root re-export shims for all backends
 - [x] **30 Integration Test Scenarios** (`tests/integration/`) — Vision, operator, files, terminal, memory, stability
 - [x] **CI/CD Pipeline** (`.github/workflows/ci.yml`) — GitHub Actions matrix (Ubuntu/Windows/macOS × Python 3.10–3.12)
-- [x] **117 Verification Checks Passing** — Full green across the 60 pytest tests, 47 standalone checks in `test_deep_audit.py`, and 10 standalone checks in `scripts/smoke_startup.py`
+- [x] **94 Automated Verification Tests Passing** — Full 100% green pass rate across `pytest tests/`
 
 ---
 
@@ -88,6 +88,16 @@ This document outlines the multi-phase implementation roadmap for the BR JARVIS 
 - [x] **Conscious Step Planner & Progress Velocity Budget** (`agent/step_planner.py` & `orchestrator.py`) — Progress velocity evaluation granting step budget extensions
 - [x] **50+ Zero-Token Deterministic Intent Engine** (`core/intent_engine.py`) — Zero-token instant triggers (<5ms latency)
 - [x] **5-Tier Clipboard Fallback Utility** (`actions/clipboard_utils.py`) — Multi-backend clipboard reader/writer
+
+---
+
+## 🟢 Phase 7.5: Silero VAD, Zero-Disk Audio & CDP DOM Bridge (COMPLETED — v37.31.0)
+
+- [x] **ONNX Silero Voice Activity Detection** (`voice/silero_vad.py`) — Ultra-fast acoustic segmenter (<10ms latency)
+- [x] **Zero-Disk Whisper Audio Streaming** (`voice/whisper_local.py`) — Pure in-memory audio byte buffer ASR streaming with RMS silence gating
+- [x] **CDP Browser DOM Bridge Vision Tier** (`vision/dom_bridge.py`) — Chrome/Edge DevTools Protocol DOM accessibility bridge
+- [x] **Gemini Model Router Fallback Modernization** (`backends/gemini.py`) — Updated model fallback order with Gemini 3.6 Flash & Agent models
+- [x] **PyAutoGUI Click Bounds Interlock** (`computer/operator.py`) — Reliable click execution without screen bounds failsafe crashes
 
 ---
 

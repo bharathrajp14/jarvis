@@ -310,6 +310,44 @@ class AgentRouter:
         """Direct access to Gemini backend."""
         return self.backends.get(AgentProfile.GEMINI)
 
+    def select_multi_objective_backend(
+        self,
+        task_type: str = "general",
+        w_quality: float = 1.0,
+        w_cost: float = 0.5,
+        w_latency: float = 0.5,
+    ) -> AgentProfile:
+        """
+        Multi-objective optimization selecting backend balancing Quality, Cost, and Latency:
+        Score = (Quality * w_quality) - (EstCost * w_cost) - (EstLatency * w_latency)
+        """
+        if not self.backends:
+            raise RuntimeError("No backends available")
+
+        # Performance & cost profiles (normalized 0.0 - 1.0)
+        profile_metrics = {
+            AgentProfile.GEMINI:   {"quality": 0.95, "cost": 0.1, "latency": 0.2},
+            AgentProfile.GPT:      {"quality": 0.92, "cost": 0.4, "latency": 0.3},
+            AgentProfile.CLAUDE:   {"quality": 0.98, "cost": 0.5, "latency": 0.4},
+            AgentProfile.DEEPSEEK: {"quality": 0.96, "cost": 0.1, "latency": 0.5},
+            AgentProfile.OLLAMA:   {"quality": 0.75, "cost": 0.0, "latency": 0.1},
+            AgentProfile.MISTRAL:  {"quality": 0.85, "cost": 0.2, "latency": 0.2},
+            AgentProfile.NVIDIA:   {"quality": 0.88, "cost": 0.3, "latency": 0.2},
+        }
+
+        best_profile = self.default
+        best_score = -999.0
+
+        for profile, backend in self.backends.items():
+            metrics = profile_metrics.get(profile, {"quality": 0.8, "cost": 0.3, "latency": 0.3})
+            score = (metrics["quality"] * w_quality) - (metrics["cost"] * w_cost) - (metrics["latency"] * w_latency)
+            
+            if score > best_score:
+                best_score = score
+                best_profile = profile
+
+        return best_profile
+
     def get_status(self) -> dict:
         """Get status of all backends for display."""
         status = {}

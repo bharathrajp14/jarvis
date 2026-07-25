@@ -1,6 +1,6 @@
 # 🧠 BR JARVIS — Engineering Knowledge Base Index
 
-Welcome to the **BR JARVIS (Project BR / JARVIS MK37)** Engineering Knowledge Base. This directory serves as the persistent architectural brain, technical documentation, and long-term design memory for the BR JARVIS AI Operating System (Version 37.30.0).
+Welcome to the **BR JARVIS (Project BR / JARVIS MK37)** Engineering Knowledge Base. This directory serves as the persistent architectural brain, technical documentation, and long-term design memory for the BR JARVIS AI Operating System (Version 37.31.0).
 
 ---
 
@@ -12,8 +12,8 @@ br_archetecture/
 ├── fullproject.md                     # Master Full Project Specification & Architecture
 ├── PROJECT_VISION.md                  # Project BR vision, philosophy & objectives
 ├── ROADMAP.md                         # Multi-phase development roadmap & milestone status
-├── CHANGELOG.md                       # Architectural execution changelog (v37.30.0)
-├── full_repository_audit.md           # Deep engineering audit report & bug tracking (BUG-001 to BUG-010)
+├── CHANGELOG.md                       # Architectural execution changelog (v37.31.0)
+├── full_repository_audit.md           # Deep engineering audit report & bug tracking (BUG-001 to BUG-012)
 ├── architecture/
 │   ├── ARCHITECTURE.md                # System topology, data flow & component graph
 │   └── PROJECT_STRUCTURE.md            # Codebase directory mapping (~180 Python files, 30+ packages)
@@ -31,7 +31,7 @@ br_archetecture/
 ├── vision/
 │   └── VISION_ENGINE.md               # 7-Tier Hybrid Vision Engine (Accessibility, CDP DOM, Tesseract OCR)
 ├── voice/
-│   └── VOICE_ENGINE.md               # Hands-free voice assistant, VoicePromptRefiner ASR & Neural TTS
+│   └── VOICE_ENGINE.md               # Hands-free voice assistant, Silero VAD, Whisper ASR & Neural TTS
 ├── plugins/
 │   └── PLUGIN_SYSTEM.md               # Plugin platform, Antigravity Scratchpad (`./scratch/`) & tool registry
 ├── core/
@@ -50,27 +50,33 @@ br_archetecture/
 │   ├── deep-research-report.md         # Autonomous AI OS architecture research report (Part 1)
 │   └── deep-research-report (1).md     # Autonomous AI OS architecture research report (Part 2)
 └── performance/
-    └── BENCHMARKS.md                  # Latency budgets, hardware metrics & 19-test suite benchmarks
+    └── BENCHMARKS.md                  # Latency budgets, hardware metrics & test suite benchmarks
 ```
 
 ---
 
-## 🚀 Key Architectural Innovations in MK37 (v37.30.0)
+## 🚀 Key Architectural Innovations in MK37 (v37.31.0)
 
-1. **Antigravity Scratchpad Subsystem (`agent/scratchpad.py` & `tools/scratchpad_tools.py`)**:
+1. **Ultra-Fast Silero VAD Voice Subsystem (`voice/silero_vad.py`)**:
+   - High-precision ONNX Silero VAD acoustic segmenter eliminating silence noise and clipping (<10ms latency).
+2. **Zero-Disk Whisper Audio Streaming (`voice/whisper_local.py`)**:
+   - Pure in-memory audio byte buffer ASR transcription with RMS acoustic silence gating and hallucination suppression.
+3. **CDP DOM Bridge Vision Tier (`vision/dom_bridge.py`)**:
+   - Tier 2 CDP Chrome/Edge Browser accessibility DOM inspection bridge for instant element extraction without visual snapshot reliance.
+4. **Antigravity Scratchpad Subsystem (`agent/scratchpad.py` & `tools/scratchpad_tools.py`)**:
    - Isolated workspace at `./scratch/` for transient scripts in Python, Node.js, PowerShell, and Bash with stdout/stderr capture via `scratchpad_eval`.
-2. **Autonomous Planning Mode & GFM Artifact Engine (`agent/planning_mode.py` & `agent/artifacts.py`)**:
+5. **Autonomous Planning Mode & GFM Artifact Engine (`agent/planning_mode.py` & `agent/artifacts.py`)**:
    - Dynamic task complexity classifier (`warrants_plan`), `implementation_plan.md` & `walkthrough.md` generation with GitHub-style alerts (`> [!IMPORTANT]`, `> [!NOTE]`), Mermaid diagrams, and clickable `file:///` URIs.
-3. **Trajectory Transcripts Logging (`agent/transcript_logger.py`)**:
+6. **Trajectory Transcripts Logging (`agent/transcript_logger.py`)**:
    - JSON Lines trajectory logs (`transcript.jsonl` & `transcript_full.jsonl`) recording step index, tool calls, model thinking, and outputs.
-4. **Voice Prompt Refinement Engine (`voice/prompt_refiner.py`)**:
+7. **Voice Prompt Refinement Engine (`voice/prompt_refiner.py`)**:
    - Acoustic speech cleaner, vocal hesitation filler removal (`um`, `uh`, `like`, `you know`, `hey jarvis`), domain vocabulary mapping via `config/vocabulary.json`, and transparent UI logging (`Spoken Raw` vs `Refined Prompt`).
-5. **Multi-Task & Sub-Agent Frontend Dashboard (`ui.py`)**:
+8. **Multi-Task & Sub-Agent Frontend Dashboard (`ui.py`)**:
    - Dedicated **"🚀 Multi-Tasks"** tab in Maximum Control Center rendering glossy **Task Cards**, progress bars, and status badges (`RUNNING`, `QUEUED`, `COMPLETED`, `FAILED`).
-6. **Conscious Step Planner & Adaptive Flexible Step Budget (`agent/step_planner.py`)**:
+9. **Conscious Step Planner & Adaptive Flexible Step Budget (`agent/step_planner.py`)**:
    - Decomposes goals into conscious steps; replaces rigid step caps with a progress velocity evaluator that grants `+5` extensions (up to 60 steps max ceiling) when active progress is detected.
-7. **Multi-Backend Clipboard Engine (`actions/clipboard_utils.py`)**:
-   - 5-layer prioritized fallback (`pyperclip` -> Win32 `ctypes` -> `tkinter` -> PowerShell -> CLI).
+10. **Multi-Backend Clipboard Engine (`actions/clipboard_utils.py`)**:
+    - 5-layer prioritized fallback (`pyperclip` -> Win32 `ctypes` -> `tkinter` -> PowerShell -> CLI).
 8. **50+ Zero-Token Deterministic Intent Engine (`core/intent_engine.py`)**:
    - Zero-token intent triggers covering Git status/branch, RAM flush, CPU telemetry, display resolution, battery stats, network ping, and active window state with <5ms latency.
 9. **7-Tier Hybrid Vision Engine (`vision/`)**:

@@ -2,7 +2,7 @@
 
 > **Document Status**: Production Architecture Specification  
 > **Scope**: Implementation Status across Core Subsystems  
-> **Version**: MK37.30.0  
+> **Version**: MK37.31.0  
 
 ---
 
@@ -10,6 +10,9 @@
 
 | Subsystem | Feature | Status | Module Path |
 |---|---|---|---|
+| **Voice Subsystem** | ONNX Silero Voice Activity Detector (<10ms) | ✅ Production | `voice/silero_vad.py` |
+| **Voice Subsystem** | Zero-Disk In-Memory Whisper Byte Streaming | ✅ Production | `voice/whisper_local.py` |
+| **Vision Subsystem** | Tier 2 CDP Chrome/Edge Browser DOM Bridge | ✅ Production | `vision/dom_bridge.py` |
 | **Core Runtime** | 50+ Zero-Token Intent Engine | ✅ Production | `core/intent_engine.py` |
 | **Core Runtime** | Thread-safe DI Container | ✅ Production | `core/di_container.py` |
 | **Core Runtime** | Native C FNV-1a Bridge | ✅ Production | `native/jarvis_native.c` |
@@ -41,13 +44,13 @@
 | **Agent Executor** | Parallel Multi-Worker Execution | ✅ Production | `agent/executor.py` |
 | **Multi-Agent Orchestra** | 12 Specialized SubAgents | ✅ Production | `multi_agent/subagent.py` |
 | **Multi-LLM Router** | 7 Backends with Auto-Failover | ✅ Production | `router.py` |
-| **Backends** | Gemini, Claude, GPT, Ollama, DeepSeek, NIM, Mistral | ✅ Production | `backends/` |
+| **Backends** | Gemini (3.6 Flash & Agent), Claude, GPT, Ollama, DeepSeek, NIM, Mistral | ✅ Production | `backends/` |
 | **Context Engine** | Priority Windowing & Pronoun Resolution | ✅ Production | `context/` & `orchestrator.py` |
 | **Memory Engine** | 5-Tier Volatile/SQLite/Vector/Lesson Memory | ✅ Production | `memory/` |
-| **Computer Control** | PyAutoGUI + Semantic UI Finder | ✅ Production | `computer/` |
+| **Computer Control** | PyAutoGUI + Precise Coordinate Execution | ✅ Production | `computer/` |
 | **Vision Engine** | 7-Tier Hybrid Pipeline (Accessibility, DOM, OCR) | ✅ Production | `vision/` |
-| **Voice Subsystem** | Local Whisper ASR + Neural TTS | ✅ Production | `voice/` |
+| **Voice Subsystem** | Silero VAD + Zero-Disk Whisper + Neural TTS | ✅ Production | `voice/` |
 | **Tool Ecosystem** | 34 Tool Modules & `@register_tool` | ✅ Production | `tools/` |
 | **Context Resolver** | Anaphoric Pronoun & History Resolver | ✅ Production | `orchestrator._resolve_context_references` |
 | **Live OS Control** | Visual Action Target Trace (Red Crosshair) | ✅ Production | `actions/live_os_control.py` |
-| **Verification Suite** | 19-Test Automated Unit Test Suite | ✅ Production | `tests/` |
+| **Verification Suite** | 94-Test Automated Unit & Integration Suite | ✅ Production | `tests/` |

@@ -1,6 +1,6 @@
 # 📂 Codebase Directory Mapping & Module Responsibilities
 
-> **System**: BR JARVIS (MK37.30.0)  
+> **System**: BR JARVIS (MK37.31.0)  
 > **Scale**: ~180 Python files across 30 top-level packages.
 
 ---
@@ -46,7 +46,10 @@ Br-Jarvis/
 ├── skills/                    # Skill loader & builtins (RAG, Auditor, Writer, Excel)
 ├── tools/                     # Tool registry & 34 tool modules (scratchpad_tools, browser_tools, etc.)
 ├── vision/                    # 7-tier hybrid vision engine (Accessibility API, CDP DOM bridge, OCR)
-├── voice/                     # Voice system (Whisper ASR, Neural TTS, prompt refiner, wake word)
+│   └── dom_bridge.py          # CDP Chrome/Edge DevTools Protocol browser DOM bridge
+├── voice/                     # Voice system (Silero VAD, Whisper ASR, Neural TTS, prompt refiner, wake word)
+│   ├── silero_vad.py          # Fast ONNX Silero Voice Activity Detector (<10ms)
+│   ├── whisper_local.py       # In-memory zero-disk Whisper byte streaming & RMS silence gate
 │   └── prompt_refiner.py      # VoicePromptRefiner vocal filler cleaner & vocabulary mapper
 ├── web/                       # Glassmorphic PWA Web UI dashboard (HTML/CSS/JS)
 ├── workflow/                  # Durable workflow DAG engine & SQLite state store

@@ -3,7 +3,7 @@
 > **Document Status**: Production Architecture Specification  
 > **Subsystem**: Hands-Free OS Automation, Desktop Control, 5-Tier Clipboard Engine & Live OS Visual Trace Overlays  
 > **Module Path**: `computer/` & `actions/`  
-> **Version**: MK37.30.0  
+> **Version**: MK37.31.0  
 
 ---
 
@@ -42,7 +42,7 @@ graph TD
 
 | File | Primary Class | Function & OS Interlocks |
 |---|---|---|
-| [operator.py](file:///d:/BRJARVIS/Br-Jarvis/computer/operator.py) | `ComputerOperator` | Master automation operator handling click, double_click, drag, type_text, key_combination, mouse_scroll, and active window switching. Implements PyAutoGUI corner failsafes and speed bounds. |
+| [operator.py](file:///d:/BRJARVIS/Br-Jarvis/computer/operator.py) | `ComputerOperator` | Master automation operator handling click, double_click, right_click, mouse_move, drag, type_text, key_combination, mouse_scroll, and active window switching with precise coordinate handling. |
 | [clipboard_utils.py](file:///d:/BRJARVIS/Br-Jarvis/actions/clipboard_utils.py) | `MultiBackendClipboard` | 5-layer prioritized clipboard engine fallback (`pyperclip` -> Win32 `ctypes` -> `tkinter` -> PowerShell -> CLI) for robust cross-platform clipboard copy/paste. |
 | [live_os_control.py](file:///d:/BRJARVIS/Br-Jarvis/actions/live_os_control.py) | `LiveOSController` | LLM visual screenshot action execution loop; generates red target crosshairs and action bounding footprint overlays (`_save_action_visualization()`) saved to `BR_WORKSPACE/Logs/live_os/`. |
 | [semantic_operator.py](file:///d:/BRJARVIS/Br-Jarvis/computer/semantic_operator.py) | `SemanticComputerOperator` | High-level GUI element finder that maps natural language labels (e.g. `"Submit Button"`, `"Search Bar"`) to bounding box coordinates via `vision/ocr_engine.py` and accessibility trees. |

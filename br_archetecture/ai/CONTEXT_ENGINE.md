@@ -1,8 +1,8 @@
 # 🧩 Context Engine Architectural Specification
 
 > **Module**: `context/` & `orchestrator._resolve_context_references()`  
-> **Version**: MK37.30.0  
-> **Primary Purpose**: Context window assembly, dynamic token budgeting, sliding window compression, and anaphoric pronoun reference resolution.
+> **Version**: MK37.31.0  
+> **Primary Purpose**: Context window assembly, dynamic token budgeting, sliding window compression, prompt pruning, and anaphoric pronoun reference resolution.
 
 ---
 
@@ -10,7 +10,7 @@
 
 The **Context Engine** handles context lifecycle management for BR JARVIS. It ensures that the LLM receives optimal, relevant background context while preventing token overflow and minimizing payload costs.
 
-### Key Capabilities in v37.30.0
+### Key Capabilities in v37.31.0
 1. **Context-Aware Pronoun & Reference Resolver (`orchestrator._resolve_context_references()`)**:
    - Automatically resolves anaphoric pronouns and target browser commands (e.g. `"open it in brave"`, `"show this in chrome"`).
    - Scans recent working memory history for target URLs, browser windows, or file paths and replaces explicit/implicit references before dispatching to the executor.

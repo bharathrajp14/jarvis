@@ -3,7 +3,7 @@
 > **Document Status**: Production Architecture Specification  
 > **Subsystem**: Extensible Plugin Manager, Universal Tool Registry & Antigravity Scratchpad  
 > **Module Paths**: `plugins/`, `tools/`, and `agent/scratchpad.py`  
-> **Version**: MK37.30.0  
+> **Version**: MK37.31.0  
 
 ---
 

@@ -1,6 +1,6 @@
 # 🏗️ Core System Topology & Architecture Graph
 
-> **System**: BR JARVIS (MK37.30.0)  
+> **System**: BR JARVIS (MK37.31.0)  
 > **Target Scope**: End-to-end component graph, event flow, and data pipelines.
 
 ---
@@ -23,6 +23,7 @@ graph LR
     end
 
     subgraph PerceptionLayer["Perception Layer"]
+        SileroVAD[Silero VAD ONNX<br/>voice/silero_vad.py]
         VoiceRefiner[VoicePromptRefiner<br/>voice/prompt_refiner.py]
         HybridVision[7-Tier Hybrid Vision<br/>vision/hybrid_pipeline.py]
         Accessibility[Windows Accessibility API<br/>vision/accessibility.py]

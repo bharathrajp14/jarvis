@@ -1,7 +1,7 @@
 # ⚡ Zero-Token Intent Engine & Token Optimization Specification
 
 > **Module**: `core/intent_engine.py` & `memory/cache.py`  
-> **Version**: MK37.30.0  
+> **Version**: MK37.31.0  
 > **Primary Purpose**: 50+ deterministic 0-token instant intent execution engine, fast FNV-1a frame hashing, and prompt payload minimization.
 
 ---

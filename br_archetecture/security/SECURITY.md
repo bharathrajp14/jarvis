@@ -3,7 +3,7 @@
 > **Document Status**: Production Architecture Specification  
 > **Subsystem**: Guardian Core, PathPolicy, Permission Modes, Secret Scanning & RedTeaming  
 > **Module Path**: `guardian/`, `permissions.py`, `redteam/`  
-> **Version**: MK37.30.0  
+> **Version**: MK37.31.0  
 
 ---
 

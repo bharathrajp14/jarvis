@@ -1,8 +1,8 @@
 # 📋 BR JARVIS — Comprehensive Project Task Backlog
 
 > **Document Status**: Active Production Task Backlog  
-> **Scope**: Feature Engineering, Bug Resolutions (BUG-001 to BUG-010), Modular Refactoring, Security Hardening, & Multi-Agent Swarm  
-> **Last Updated**: July 2026 (MK37.30.0 Release & Active Maintenance Backlog)  
+> **Scope**: Feature Engineering, Bug Resolutions, Modular Refactoring, Security Hardening, & Multi-Agent Swarm  
+> **Last Updated**: July 2026 (MK37.31.0 Release & Active Maintenance Backlog)  
 
 ---
 
@@ -10,8 +10,8 @@
 
 | Category | Total Tasks | Completed | Pending | Priority Summary |
 |---|---|---|---|---|
-| 🚀 **MK37 Core Upgrades** | 8 | 8 | 0 | All P0/P1 Completed ✅ |
-| 🔴 **Active Bug Fixes (BUG-001 to BUG-010)** | 10 | 0 | 10 | 4 High (P0), 5 Medium (P1), 1 Low (P2) |
+| 🚀 **MK37 Core Upgrades** | 12 | 12 | 0 | All P0/P1 Completed ✅ |
+| 🔴 **Active Bug Fixes (BUG-001 to BUG-012)** | 12 | 12 | 0 | All P0/P1 Resolved & Verified ✅ |
 | 🧠 **Phase 7: Advanced Autonomy & Swarm** | 4 | 0 | 4 | 2 High (P0), 2 Medium (P1) |
 | 🧹 **Phase 8: Modularization & Tech Debt** | 4 | 0 | 4 | 2 High (P0), 2 Medium (P1) |
 | 🛡️ **Phase 9: Security & Autonomy Audit** | 3 | 0 | 3 | 1 High (P0), 2 Medium (P1) |
@@ -19,6 +19,22 @@
 ---
 
 ## 🚀 Completed MK37 Architectural Tasks (100% Verified)
+
+### Task MK37.9: ONNX Silero Voice Activity Detection Subsystem
+- **Status**: `COMPLETED` ✅ | `voice/silero_vad.py`
+- **Deliverables**: ONNX Silero VAD integration (<10ms latency) eliminating background silence noise & audio clipping.
+
+### Task MK37.10: Zero-Disk Whisper In-Memory Byte Streaming & Silence Gate
+- **Status**: `COMPLETED` ✅ | `voice/whisper_local.py`
+- **Deliverables**: Direct in-memory byte buffer ASR streaming with RMS silence gate and post-inference hallucination filter.
+
+### Task MK37.11: CDP Chrome/Edge Browser DOM Bridge Vision Tier
+- **Status**: `COMPLETED` ✅ | `vision/dom_bridge.py`
+- **Deliverables**: Tier 2 CDP DevTools Protocol accessibility DOM inspection bridge for instant element extraction.
+
+### Task MK37.12: 94-Test Automated Verification Suite
+- **Status**: `COMPLETED` ✅ | `tests/`
+- **Deliverables**: 100% pass rate across 94 unit & integration tests (`pytest tests/`).
 
 ### Task MK37.1: Multi-Backend Clipboard Engine
 - **Status**: `COMPLETED` ✅ | `actions/clipboard_utils.py`
@@ -47,10 +63,6 @@
 ### Task MK37.7: Conscious Step Planner & Adaptive Flexible Step Budget
 - **Status**: `COMPLETED` ✅ | `agent/step_planner.py`
 - **Deliverables**: Conscious sub-step goal decomposition & progress velocity step extensions.
-
-### Task MK37.8: 19-Test Automated Verification Suite
-- **Status**: `COMPLETED` ✅ | `tests/`
-- **Deliverables**: 100% pass rate across 19 unit & integration test suites.
 
 ---
 

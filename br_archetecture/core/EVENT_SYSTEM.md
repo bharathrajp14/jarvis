@@ -3,7 +3,7 @@
 > **Document Status**: Production Architecture Specification  
 > **Subsystem**: Core Decoupled Event Messaging & Telemetry Audit  
 > **Module Path**: `events/`  
-> **Version**: MK37.30.0  
+> **Version**: MK37.31.0  
 
 ---
 

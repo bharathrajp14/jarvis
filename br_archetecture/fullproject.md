@@ -1,10 +1,10 @@
 # 🌌 BR JARVIS — Master Architecture Record & Full Project Specification
 
 > **System Identity**: BR JARVIS (Project BR / JARVIS MK37)  
-> **Version**: MK37.30.0 — Antigravity Agent Subsystem & Adaptive Step Architecture  
+> **Version**: MK37.31.0 — Ultra-Fast Silero VAD Voice Subsystem & CDP DOM Bridge Infrastructure  
 > **Target Platform**: Windows 11 / Linux / macOS  
-> **Last Updated**: 2026-07-24  
-> **Test Coverage**: 19 automated Pytest unit & integration test suites passing cleanly (100% green)  
+> **Last Updated**: 2026-07-25  
+> **Test Coverage**: 94 automated Pytest unit & integration test suites passing cleanly (100% green)  
 
 ---
 
@@ -18,6 +18,9 @@ It is not a simple chatbot wrapper — it is a full **AI Operating System** with
 
 | Principle | Implementation | Status |
 |---|---|---|
+| **Ultra-Fast Silero VAD Voice Engine** | `voice/silero_vad.py` — ONNX Silero VAD segmenter for acoustic speech chunking (<10ms latency) | ✅ Production |
+| **Zero-Disk Whisper Audio Streaming** | `voice/whisper_local.py` — In-memory audio byte streaming with RMS silence gating & hallucination filter | ✅ Production |
+| **CDP DOM Bridge Vision Tier** | `vision/dom_bridge.py` — Real-time Chrome/Edge browser accessibility DOM inspection bridge | ✅ Production |
 | **Zero-Token Instant Execution** | `core/intent_engine.py` — 50+ deterministic matchers executing system commands in 0ms, 0 LLM tokens | ✅ Production |
 | **Voice Prompt Refinement Engine** | `voice/prompt_refiner.py` — Vocal hesitation cleaner, filler stripper (`um`, `uh`, `like`), and vocab mapper | ✅ Production |
 | **Conscious Step Planner & Adaptive Budget** | `agent/step_planner.py` — Goal decomposition & progress velocity evaluator (+5 step extensions up to 60 ceiling) | ✅ Production |
@@ -27,7 +30,7 @@ It is not a simple chatbot wrapper — it is a full **AI Operating System** with
 | **Multi-Task & Sub-Agent UI Dashboard** | `ui.py` — Control Center tab displaying Task Cards with status badges (`RUNNING`, `QUEUED`, `COMPLETED`, `FAILED`), progress bars & canvas HUD | ✅ Production |
 | **Multi-Backend Clipboard Engine** | `actions/clipboard_utils.py` — 5-layer prioritized fallback (`pyperclip` -> Win32 `ctypes` -> `tkinter` -> PowerShell -> CLI) | ✅ Production |
 | **Context-Aware Pronoun Resolution** | `orchestrator._resolve_context_references()` — resolves "open it in brave" using conversation history | ✅ Production |
-| **Multi-Backend LLM Routing** | `router.py` — 7 backends: Gemini, Claude, GPT, DeepSeek, NVIDIA, Ollama, Mistral | ✅ Production |
+| **Multi-Backend LLM Routing** | `router.py` — 7 backends: Gemini (including 3.6 Flash & Agent models), Claude, GPT, DeepSeek, NVIDIA, Ollama, Mistral | ✅ Production |
 | **Immutable Guardian Core** | `guardian/` — kill-switch, snapshot, rollback, audit ledger | ✅ Production |
 | **Autonomous Self-Upgrade** | `evolution/` — blast-radius classifier, sandbox testing, auto-deploy | ✅ Production |
 | **Multi-Tier Memory** | `memory/` — 5 storage tiers: Working, SQLite, ChromaDB, LessonStore, FNV-1a cache | ✅ Production |

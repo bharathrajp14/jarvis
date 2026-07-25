@@ -143,10 +143,12 @@ class ToolRuntimeEngine:
             raise
 
     def execute_tool(self, name: str, args: Dict[str, Any]) -> Any:
-        """Execute a tool synchronously."""
+        """Execute a tool synchronously returning the actual result payload."""
         try:
             loop = asyncio.get_running_loop()
-            return loop.create_task(self.execute_tool_async(name, args))
+            import concurrent.futures
+            future = asyncio.run_coroutine_threadsafe(self.execute_tool_async(name, args), loop)
+            return future.result(timeout=60.0)
         except RuntimeError:
             return asyncio.run(self.execute_tool_async(name, args))
 

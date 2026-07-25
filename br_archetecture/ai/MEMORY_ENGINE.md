@@ -1,7 +1,7 @@
 # 🧠 Memory Engine Architectural Specification
 
 > **Module**: `memory/`  
-> **Version**: MK37.30.0  
+> **Version**: MK37.31.0  
 > **Primary Purpose**: Multi-tier memory retention, conversation session history, ChromaDB vector RAG retrieval, and instant FNV-1a response caching.
 
 ---

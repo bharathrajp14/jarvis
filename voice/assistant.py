@@ -18,7 +18,7 @@ from router import AgentProfile
 
 _HAS_SR = False
 try:
-    import speech_recognition as sr
+    import speech_recognition as sr  # type: ignore
     _HAS_SR = True
 except ImportError:
     pass
@@ -70,8 +70,9 @@ class BRVoiceAssistant:
             print(f"[Voice] Gemini Live loop init warning: {e}")
             self.gemini_live = None
 
-        # Bind manual text command submission from UI
-        self.ui.on_text_command = self._on_text_command
+        # Bind manual text command submission from UI if available
+        if self.ui:
+            self.ui.on_text_command = self._on_text_command
 
         # Start Global Hotkeys System
         try:
@@ -365,11 +366,13 @@ class BRVoiceAssistant:
         try:
             self._loop = asyncio.get_running_loop()
         except RuntimeError:
-            self._loop = asyncio.get_event_loop()
+            self._loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(self._loop)
 
         # Initialize AI core backends
-        self.ui.set_state("THINKING")
-        self.ui.write_log("SYS: Initializing AI backends...")
+        if self.ui:
+            self.ui.set_state("THINKING")
+            self.ui.write_log("SYS: Initializing AI backends...")
         runtime = build_assistant_runtime()
         self.orchestrator = runtime.orchestrator
         self.backends = runtime.backends

@@ -1,15 +1,15 @@
 # 🎙️ BR JARVIS — Voice Assistant Subsystem (`voice/`)
 
 > **Document Status**: Production Architecture Specification  
-> **Subsystem**: Hands-Free Voice Loop, Voice Prompt Refiner, Speech Recognition & Neural TTS  
+> **Subsystem**: Hands-Free Voice Loop, Silero VAD, Voice Prompt Refiner, Zero-Disk Whisper Streaming & Neural TTS  
 > **Module Path**: `voice/`  
-> **Version**: MK37.30.0  
+> **Version**: MK37.31.0  
 
 ---
 
 ## 1. Executive Summary
 
-The **Voice Assistant Subsystem** (`voice/`) powers hands-free voice interaction for BR JARVIS. It features wake-word gating, offline local Automatic Speech Recognition (ASR) via OpenAI Whisper (`whisper_local.py`), an acoustic **Voice Prompt Refinement Engine** (`prompt_refiner.py`), cloud speech recognition fallbacks (`stt.py`), multilingual language translation (`multilingual.py`), and neural Text-to-Speech synthesis with low-latency MCI audio playback (`tts.py`).
+The **Voice Assistant Subsystem** (`voice/`) powers hands-free voice interaction for BR JARVIS. It features ONNX-based **Silero Voice Activity Detection** (`silero_vad.py`), wake-word gating, offline zero-disk local Automatic Speech Recognition (ASR) via OpenAI Whisper (`whisper_local.py`) with RMS silence gating and hallucination filtering, an acoustic **Voice Prompt Refinement Engine** (`prompt_refiner.py`), cloud speech recognition fallbacks (`stt.py`), multilingual language translation (`multilingual.py`), and neural Text-to-Speech synthesis with low-latency MCI audio playback (`tts.py`).
 
 ---
 
@@ -17,13 +17,16 @@ The **Voice Assistant Subsystem** (`voice/`) powers hands-free voice interaction
 
 ```mermaid
 graph TD
-    Mic[Microphone Stream: voice/stt.py] --> WakeWord{Wake-Word Gating: 'Jarvis' / 'BR'}
+    Mic[Microphone Stream: voice/stt.py] --> SileroVAD[Silero VAD Segmenter: voice/silero_vad.py<br/>ONNX Audio Activity Detection <10ms]
     
-    WakeWord -->|Silence / Other Words| Mic
+    SileroVAD -->|Silence| Mic
+    SileroVAD -->|Speech Segment| WakeWord{Wake-Word Gating: 'Jarvis' / 'BR'}
+    
+    WakeWord -->|Other Words| Mic
     WakeWord -->|Wake Word Detected| VoiceLoop[Voice Assistant Loop: voice/assistant.py]
     
     VoiceLoop --> ASR{Local Whisper Available?}
-    ASR -->|Yes| LocalWhisper[WhisperLocal: voice/whisper_local.py]
+    ASR -->|Yes| LocalWhisper[WhisperLocal: voice/whisper_local.py<br/>Zero-Disk In-Memory Byte Stream & RMS Gate]
     ASR -->|No / Cloud Mode| CloudSTT[Google / Web STT Fallback]
     
     LocalWhisper --> PromptRefiner[VoicePromptRefiner: voice/prompt_refiner.py<br/>Vocal Filler Cleaner & Vocab Mapping]
@@ -56,8 +59,9 @@ Raw spoken speech frequently contains hesitation fillers, stutters, conversation
 | File | Class / Entity | Primary Responsibility |
 |---|---|---|
 | [assistant.py](file:///d:/BRJARVIS/Br-Jarvis/voice/assistant.py) | `BRVoiceAssistant` | Master voice loop coordinator handling state transitions (`IDLE`, `LISTENING`, `THINKING`, `SPEAKING`), wake-word gating, and interrupts. |
+| [silero_vad.py](file:///d:/BRJARVIS/Br-Jarvis/voice/silero_vad.py) | `SileroVAD` | Fast ONNX-based voice activity detector for acoustic chunking (<10ms latency overhead). |
 | [prompt_refiner.py](file:///d:/BRJARVIS/Br-Jarvis/voice/prompt_refiner.py) | `VoicePromptRefiner` | Acoustic speech cleaner, vocal filler stripper (`um`, `uh`, `like`), vocabulary mapper, and high-precision prompt generator. |
 | [stt.py](file:///d:/BRJARVIS/Br-Jarvis/voice/stt.py) | `SounddeviceMicrophone` | Zero-dependency `sounddevice` audio stream recorder and speech recognition adapter. |
-| [whisper_local.py](file:///d:/BRJARVIS/Br-Jarvis/voice/whisper_local.py) | `LocalWhisperASR` | Offline local OpenAI Whisper model worker supporting `tiny`, `base`, `small`, and `medium` quantized models. |
-| [tts.py](file:///d:/BRJARVIS/Br-Jarvis/voice/tts.py) | `NeuralTTS` | Text-to-speech engine using PyTTSx3 / gTTS with Win32 MCI low-latency audio stream playback. |
+| [whisper_local.py](file:///d:/BRJARVIS/Br-Jarvis/voice/whisper_local.py) | `LocalWhisperASR` | Offline local OpenAI Whisper model worker with zero-disk in-memory byte streaming, RMS silence gate, and hallucination filter. |
+| [tts.py](file:///d:/BRJARVIS/Br-Jarvis/voice/tts.py) | `NeuralTTS` | Text-to-speech engine using PyTTSx3 / gTTS with SAPI5 COM safety and Win32 MCI low-latency audio stream playback. |
 | [multilingual.py](file:///d:/BRJARVIS/Br-Jarvis/voice/multilingual.py) | `MultilingualVoice` | Automatic language detection and translation wrapper supporting English, Tamil, Hindi, Spanish, French, and German. |
