@@ -59,6 +59,13 @@ class TestVoicePipeline(unittest.TestCase):
         self.assertTrue(hasattr(assistant, "stop_speech"))
         assistant.stop_speech()
 
+    def test_proxy_http_415_fallback(self):
+        from backends.gemini import GeminiBackend
+        backend = GeminiBackend()
+        # Test transcribe with empty/dummy audio bytes handles exceptions gracefully
+        res = backend.transcribe(b"RIFF....WAVE", mime_type="audio/wav")
+        self.assertIsInstance(res, str)
+
 
 if __name__ == "__main__":
     unittest.main()

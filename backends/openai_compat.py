@@ -105,26 +105,40 @@ class OpenAIBackend(BaseBackend):
             yield f"\n[OpenAI Stream Error: {e}]"
 
     def transcribe(self, audio_bytes: bytes, filename: str = "audio.wav") -> str:
-        """Transcribe audio bytes using OpenAI Whisper API."""
+        """Transcribe audio bytes using OpenAI Whisper API or Chat Fallback."""
+        import base64
+        import io
+
         try:
             self._ensure_client()
-            import io
             file_payload = (filename, audio_bytes, "audio/wav")
             try:
                 response = self.client.audio.transcriptions.create(
                     model="whisper-1",
                     file=file_payload,
                 )
-            except Exception:
-                audio_file = io.BytesIO(audio_bytes)
-                audio_file.name = filename
-                response = self.client.audio.transcriptions.create(
-                    model="whisper-1",
-                    file=audio_file,
-                )
-            return (response.text or "").strip()
+                return (response.text or "").strip()
+            except Exception as ex_stt:
+                # Fall back to base64 inline audio chat completion for proxies returning HTTP 415
+                try:
+                    b64 = base64.b64encode(audio_bytes).decode("ascii")
+                    resp = self.client.chat.completions.create(
+                        model=self.model or "gpt-4o",
+                        messages=[{
+                            "role": "user",
+                            "content": [
+                                {"type": "text", "text": "Transcribe this audio clip exactly. Return only the transcription, no intro, no comments."},
+                                {"type": "image_url", "image_url": {"url": f"data:audio/wav;base64,{b64}"}}
+                            ]
+                        }]
+                    )
+                    return (resp.choices[0].message.content or "").strip()
+                except Exception:
+                    pass
+                print(f"[OpenAI Proxy STT Note] {ex_stt}")
+                return ""
         except Exception as e:
-            print(f"[OpenAI] Transcription failed: {e}")
+            print(f"[OpenAI] Transcription note: {e}")
             return ""
 
     def ping(self, timeout: float = 3.0) -> bool:

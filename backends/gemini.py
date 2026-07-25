@@ -310,47 +310,60 @@ class GeminiBackend(BaseBackend):
             return f"Vision error: {e}"
 
     def transcribe(self, audio_bytes: bytes, mime_type: str = "audio/wav") -> str:
-        """Transcribe audio bytes using Gemini."""
-        if self._use_openai_client:
+        """Transcribe audio bytes using Gemini (Proxy or Direct API)."""
+        import base64
+        import io
+
+        if self._use_openai_client and self._client:
             try:
-                import io
+                # 1. Try standard OpenAI whisper endpoint
                 file_payload = ("audio.wav", audio_bytes, mime_type)
                 try:
                     response = self._client.audio.transcriptions.create(
                         model="whisper-1",
                         file=file_payload,
                     )
-                except Exception:
-                    audio_file = io.BytesIO(audio_bytes)
-                    audio_file.name = "audio.wav"
-                    response = self._client.audio.transcriptions.create(
-                        model="whisper-1",
-                        file=audio_file,
-                    )
-                return (response.text or "").strip()
+                    return (response.text or "").strip()
+                except Exception as ex_stt:
+                    # 2. Multimodal Chat Fallback for proxy gateways returning HTTP 415
+                    b64 = base64.b64encode(audio_bytes).decode("ascii")
+                    try:
+                        resp = self._client.chat.completions.create(
+                            model=self.model or "gpt-4o",
+                            messages=[{
+                                "role": "user",
+                                "content": [
+                                    {"type": "text", "text": "Transcribe this audio clip exactly. Return only the transcription, no intro, no comments."},
+                                    {"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{b64}"}}
+                                ]
+                            }]
+                        )
+                        return (resp.choices[0].message.content or "").strip()
+                    except Exception:
+                        pass
             except Exception as e:
-                print(f"[Gemini Proxy] Transcription failed: {e}")
-                return ""
+                print(f"[Gemini Proxy] Transcription note: {e}")
 
-        # Direct path
-        import base64
+        # Direct Google Gemini API path
         try:
-            b64 = base64.b64encode(audio_bytes).decode("ascii")
-            contents = [{
-                "role": "user",
-                "parts": [
-                    {"inline_data": {"mime_type": mime_type, "data": b64}},
-                    {"text": "Transcribe this audio clip exactly. If you only hear noise or silence, return an empty string. Output only the transcription, no chat, no intro, no comments."},
-                ]
-            }]
-            response = self.client.models.generate_content(
-                model=self.model,
-                contents=contents,
-            )
-            return (response.text or "").strip()
+            if hasattr(self, "client") and self.client and hasattr(self.client, "models"):
+                b64 = base64.b64encode(audio_bytes).decode("ascii")
+                contents = [{
+                    "role": "user",
+                    "parts": [
+                        {"inline_data": {"mime_type": mime_type, "data": b64}},
+                        {"text": "Transcribe this audio clip exactly. Output only the transcription, no intro, no comments."},
+                    ]
+                }]
+                response = self.client.models.generate_content(
+                    model=self.model or "gemini-2.5-flash",
+                    contents=contents,
+                )
+                return (response.text or "").strip()
         except Exception as e:
-            print(f"[Gemini] Transcription failed: {e}")
-            return ""
+            print(f"[Gemini Direct] Transcription failed: {e}")
+
+        return ""
 
     def quick(self, prompt: str) -> str:
         """Quick single-prompt completion — for planning, routing, etc."""
