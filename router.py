@@ -245,29 +245,44 @@ class AgentRouter:
         except Exception:
             pass
 
-        try:
-            res = backend.complete(messages, system)
-            out_tokens = TokenCounter.count(res)
-            self.tokens_consumed["output"] += out_tokens
-            self.tokens_consumed["total"] += out_tokens
-            return res
-        except Exception as e:
-            # Privacy Protection: If local_private requested Ollama, fail closed without cloud failover
-            if profile == AgentProfile.OLLAMA:
-                raise RuntimeError(
-                    f"Privacy Protection Error: Local backend (Ollama) failed — {e}. "
-                    "Task was marked 'local_private' and will NOT failover to cloud backends."
-                ) from e
-            # Try fallback on failure
-            print(f"[Router] {profile.value} failed: {e} — trying fallback...")
-            fallback = self._find_fallback(profile)
-            if fallback != profile:
-                res = self.backends[fallback].complete(messages, system)
-                out_tokens = TokenCounter.count(res)
-                self.tokens_consumed["output"] += out_tokens
-                self.tokens_consumed["total"] += out_tokens
-                return res
-            raise
+        # Attempt completion with 3-try exponential backoff
+        for attempt in range(1, 4):
+            try:
+                res = backend.complete(messages, system)
+                if res and str(res).strip():
+                    out_tokens = TokenCounter.count(res)
+                    self.tokens_consumed["output"] += out_tokens
+                    self.tokens_consumed["total"] += out_tokens
+                    return res
+            except Exception as e:
+                err_str = str(e).lower()
+                is_transient = any(k in err_str for k in ("429", "rate", "limit", "500", "503", "overloaded", "busy", "timeout"))
+                if attempt < 3 and is_transient:
+                    backoff = 0.5 * (2 ** (attempt - 1))
+                    print(f"[Router] {profile.value} transient note ({e}) — retrying in {backoff:.1f}s (attempt {attempt}/3)...")
+                    time.sleep(backoff)
+                    continue
+
+                # Privacy Protection: If local_private requested Ollama, fail closed without cloud failover
+                if profile == AgentProfile.OLLAMA:
+                    raise RuntimeError(
+                        f"Privacy Protection Error: Local backend (Ollama) failed — {e}. "
+                        "Task was marked 'local_private' and will NOT failover to cloud backends."
+                    ) from e
+
+                # Try fallback on failure
+                print(f"[Router] {profile.value} failed: {e} — trying fallback...")
+                fallback = self._find_fallback(profile)
+                if fallback != profile:
+                    try:
+                        res = self.backends[fallback].complete(messages, system)
+                        out_tokens = TokenCounter.count(res)
+                        self.tokens_consumed["output"] += out_tokens
+                        self.tokens_consumed["total"] += out_tokens
+                        return res
+                    except Exception as fb_err:
+                        print(f"[Router] Fallback {fallback.value} also failed: {fb_err}")
+                raise
 
     def _find_fallback(self, exclude: AgentProfile = None) -> AgentProfile:
         """Find a working fallback backend."""
