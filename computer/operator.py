@@ -62,32 +62,22 @@ class ComputerOperator:
         logger.info(f"🖱️ ComputerOperator: Executing [{action.action_type.value}] - {action.description}")
 
         try:
-            # Clamp coordinates to screen bounds to prevent PyAutoGUI failsafe triggers
-            cx, cy = action.x, action.y
-            if _PYAUTOGUI_AVAILABLE and action.x is not None and action.y is not None:
-                try:
-                    sw, sh = pyautogui.size()
-                    cx = max(5, min(action.x, sw - 5))
-                    cy = max(5, min(action.y, sh - 5))
-                except Exception:
-                    pass
-
             # Low-level OS execution
             if action.action_type == ActionType.MOUSE_CLICK:
-                if _PYAUTOGUI_AVAILABLE and cx is not None and cy is not None:
-                    pyautogui.click(cx, cy)
+                if _PYAUTOGUI_AVAILABLE and action.x is not None and action.y is not None:
+                    pyautogui.click(action.x, action.y)
 
             elif action.action_type == ActionType.DOUBLE_CLICK:
-                if _PYAUTOGUI_AVAILABLE and cx is not None and cy is not None:
-                    pyautogui.doubleClick(cx, cy)
+                if _PYAUTOGUI_AVAILABLE and action.x is not None and action.y is not None:
+                    pyautogui.doubleClick(action.x, action.y)
 
             elif action.action_type == ActionType.RIGHT_CLICK:
-                if _PYAUTOGUI_AVAILABLE and cx is not None and cy is not None:
-                    pyautogui.rightClick(cx, cy)
+                if _PYAUTOGUI_AVAILABLE and action.x is not None and action.y is not None:
+                    pyautogui.rightClick(action.x, action.y)
 
             elif action.action_type == ActionType.MOUSE_MOVE:
-                if _PYAUTOGUI_AVAILABLE and cx is not None and cy is not None:
-                    pyautogui.moveTo(cx, cy)
+                if _PYAUTOGUI_AVAILABLE and action.x is not None and action.y is not None:
+                    pyautogui.moveTo(action.x, action.y)
 
             elif action.action_type == ActionType.MOUSE_SCROLL:
                 if _PYAUTOGUI_AVAILABLE:
