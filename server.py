@@ -511,6 +511,7 @@ async def get_history():
 
 @app.get("/health")
 @app.get("/api/health")
+@app.get("/api/status")
 async def health_check():
     """Return health metrics and hardware telemetry."""
     try:
