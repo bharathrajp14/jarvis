@@ -120,13 +120,13 @@ def get_pruned_tool_prompt_block(user_prompt: str = "") -> str:
     low = user_prompt.lower()
     
     # Core high-frequency tools always available
-    essential_tools = {"open_app", "web_search", "file_read", "file_write", "run_code", "computer_settings"}
+    essential_tools = {"open_app", "web_search", "file_read", "file_write", "run_code", "computer_settings", "window_manager"}
     
     # Domain keyword matching for targeted tool inclusion
     domain_map = {
         ("search", "google", "find", "who is", "what is", "news", "price", "weather"): {"web_search", "fetch_page"},
         ("file", "read", "write", "save", "folder", "directory", "document", "txt", "csv", "json", "pdf", "docx"): {"file_read", "file_write", "file_list", "file_delete", "file_search"},
-        ("app", "open", "launch", "close", "brave", "chrome", "edge", "notepad", "calculator"): {"open_app", "computer_settings"},
+        ("app", "open", "launch", "close", "brave", "chrome", "edge", "notepad", "calculator", "window", "process"): {"open_app", "computer_settings", "window_manager"},
         ("screen", "see", "look", "click", "vision", "ocr", "capture", "display"): {"screen_find", "screen_click", "smart_click"},
         ("code", "python", "script", "execute", "eval", "debug", "run"): {"run_code", "scratchpad_write", "scratchpad_eval"},
         ("system", "volume", "brightness", "wifi", "battery", "restart", "shutdown", "diagnostic", "cpu", "ram"): {"computer_settings", "system_diagnostic"},
@@ -239,6 +239,24 @@ def set_orchestrator_ref(orchestrator: Any):
 def get_orchestrator_ref() -> Any:
     """Get active orchestrator reference."""
     return _orchestrator_ref
+
+
+try:
+    from tools.window_manager import window_manager_action
+    register_tool(
+        name="window_manager",
+        description="Inspect visible desktop window titles and focus/switch applications. Args: 'action' ('list' or 'focus'), 'title' (optional application window title).",
+        parameters={
+            "type": "object",
+            "properties": {
+                "action": {"type": "string", "enum": ["list", "focus"]},
+                "title": {"type": "string", "description": "Title or partial title of window to focus"}
+            },
+            "required": ["action"]
+        }
+    )(window_manager_action)
+except Exception:
+    pass
 
 
 def parse_tool_call(text: str) -> tuple[str | None, dict | None]:
