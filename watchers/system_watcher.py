@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Dict, Optional
+from typing import Any, Dict, Optional
 from events.bus import get_event_bus
 
 logger = logging.getLogger("JARVIS.SystemWatcher")

@@ -1,5 +1,5 @@
 # tests/test_flaw_remediations_v2.py — Verification Tests for Empirical Codebase Flaw Fixes
-import pytest
+import pytest  # type: ignore
 from permissions import check_permission, PathPolicy, PathTier
 from watchers.file_watcher import FileWatcher
 from watchers.system_watcher import SystemWatcher
