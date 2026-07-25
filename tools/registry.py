@@ -53,6 +53,17 @@ def register_tool(name: str, description: str, parameters: dict | None = None) -
     return decorator
 
 
+_WORKER_POOL: Any = None
+
+
+def _get_worker_pool():
+    global _WORKER_POOL
+    if _WORKER_POOL is None:
+        import concurrent.futures
+        _WORKER_POOL = concurrent.futures.ThreadPoolExecutor(max_workers=4, thread_name_prefix="jarvis_tool_worker")
+    return _WORKER_POOL
+
+
 def _run_async(coro):
     """
     Helper to run asynchronous coroutines safely, even inside a running loop.
@@ -64,11 +75,8 @@ def _run_async(coro):
         loop = None
 
     if loop is not None and loop.is_running():
-        # Running inside an active event loop thread.
-        # Run coroutine in a separate worker thread with its own loop to prevent deadlock.
-        import concurrent.futures
-        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-            return pool.submit(lambda: asyncio.run(coro)).result(timeout=60)
+        pool = _get_worker_pool()
+        return pool.submit(lambda: asyncio.run(coro)).result(timeout=60)
     else:
         return asyncio.run(coro)
 
