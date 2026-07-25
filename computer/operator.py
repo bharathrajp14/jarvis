@@ -149,7 +149,8 @@ class ComputerOperator:
                 logger.warning(f"⚠️ PyAutoGUI FailSafe triggered during action {action.action_type.value}, moving mouse to screen center.")
                 try:
                     if _PYAUTOGUI_AVAILABLE:
-                        pyautogui.moveTo(500, 500)
+                        w, h = pyautogui.size() if hasattr(pyautogui, "size") else (1920, 1080)
+                        pyautogui.moveTo(w // 2, h // 2)
                 except Exception:
                     pass
                 return ActionResult(action_id=action.action_id, success=True, verification_message="Executed (Failsafe warning bypassed & cursor reset)")
