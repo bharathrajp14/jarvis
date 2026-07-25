@@ -1,27 +1,26 @@
-# 🧠 BR JARVIS — Local-First AI Operating System
+# 🧠 BR JARVIS — Local-First Autonomous AI Operating System
 
 [![CI](https://github.com/bharthraj1412/BrJarvis/actions/workflows/ci.yml/badge.svg)](https://github.com/bharthraj1412/BrJarvis/actions)
 [![Python](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Engine](https://img.shields.io/badge/Engine-Gemini--Native-orange.svg)](https://ai.google.dev/)
-[![Tests](https://img.shields.io/badge/tests-45%2F45%20passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-136%2F136%20passing-brightgreen.svg)]()
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg)]()
 
-> **BR JARVIS** is not a chatbot. It is a **Local-First AI Operating System** — a modular, production-grade cognitive platform that understands your computer, reasons about goals, and executes complex tasks through voice, vision, automation, memory, and planning.
+> **BR JARVIS** is not a simple chatbot. It is an **Autonomous Local-First AI Operating System** — a modular, production-grade cognitive platform that understands your computer, reasons about multi-step goals, and executes complex tasks through voice perception, computer vision, Win32 desktop automation, hybrid 10-tier memory, and DAG planning.
 
 ---
 
-## 🚀 What Makes BR JARVIS Different
+## 🌟 Key Highlights & Next-Gen Capabilities
 
-| | Traditional Chatbots | BR JARVIS |
-|---|---|---|
-| **Architecture** | Single prompt → response | 12-subsystem modular OS with EventBus, DI, and DAG execution |
-| **Execution** | Text replies only | Autonomous multi-step task execution with parallel workers |
-| **Memory** | Session-only context | Persistent vector memory + TTL cache + archival system |
-| **Vision** | None | Real-time screen capture, OCR, UI element detection |
-| **Desktop Control** | None | Full keyboard, mouse, clipboard, and window management |
-| **Safety** | None | Permission policies, risk assessment, human-in-the-loop interlocks |
-| **Testing** | None | 45 automated tests (unit + integration), CI/CD pipeline |
+* **🎙️ Duplex Voice Perception & DSP Equalizer**: Dual-stage ring-buffered voice system with 500ms pre-roll, Silero VAD v5, high-pass audio filtering ($80\text{ Hz}$), noise gate, acoustic speaker biometric verification, and barge-in speech cancellation.
+* **🖱️ Win32 Desktop GUI Operator & Window Manager**: Enumerate active application windows, focus desktop windows, execute mouse/keyboard actions, and auto-recover from PyAutoGUI corner failsafes.
+* **⚡ Speculative Multi-Model Router & Prompt Caching**: Parallel model racing gateway with SHA-256 prompt hashing (`PromptCacheManager`), token budget optimization, and speculative fast-path intent classification (`SpeculativeEngine`).
+* **📂 Local Semantic File Search & Web Extractor**: Natural language workspace file finder (`file_search_semantic`) and high-speed HTML content extraction tool (`web_extractor`).
+* **💻 Real-Time System Health Telemetry**: Live CPU load, RAM memory usage, disk space, process telemetry, and battery state monitoring (`system_health`).
+* **🩺 Autonomous User Skills System**: Invocation framework featuring `researcher` (multi-source web research), `code_doctor` (self-healing syntax tree diagnostician), `security_auditor` (secret scanner), and `doc_architect` (Mermaid documentation generator) with dynamic hot-reloading (`SkillHotReloader`).
+* **🛡️ Zero-Trust Security Interlocks**: Permission policy engine, sandboxed WASM tool execution runtime, human-in-the-loop interlocks, and emergency stop kill-switches.
+* **🧪 100% Verified Automated Test Suite**: 136 green unit & integration test cases verifying core runtime, event bus, vision engine, voice pipeline, and sub-agent execution.
 
 ---
 
@@ -29,66 +28,64 @@
 
 ```mermaid
 graph TD
-    User([👤 User — Voice / Text]) --> Interface[🖥️ Dual Interface: CLI + Voice GUI]
+    User([👤 User — Voice / Vision / Text Input]) --> HUD[🖥️ Frameless Glassmorphic HUD & Dual Interface]
 
-    Interface --> Router[🔀 Multi-Backend Router<br/>Token Budget Tracking]
-    Interface --> TaskQueue[⚡ Parallel Task Queue<br/>3 Workers]
+    HUD --> Router[🔀 Multi-Backend Router & Speculative Selector<br/>SHA-256 PromptCache + Token Budgeting]
+    HUD --> EventBus[📡 EventBus — Pub/Sub + Audit Log]
 
     Router --> Gemini[Gemini 2.5/3.5 Flash]
-    Router --> Ollama[Local Ollama — Offline]
-    Router --> Others[GPT / Claude / NVIDIA / Mistral]
+    Router --> Ollama[Local Ollama / CTranslate2 — Offline]
+    Router --> CloudOthers[GPT-4o / Claude 3.5 Sonnet / Mistral]
 
-    TaskQueue --> Planner[🧠 DAG Planner Engine<br/>Risk Assessment + Replanning]
-    Planner --> Executor[🚀 Parallel Execution Engine<br/>Emergency Stop + Interlocks]
+    Router --> TaskQueue[⚡ Parallel Task Queue & DAG Planner Engine]
+    TaskQueue --> Executor[🚀 Parallel Execution Engine<br/>Emergency Stop + Human Interlocks]
 
-    Executor --> ToolRuntime[🔧 Tool Runtime Engine<br/>93 Tools — Sandboxed + Cached]
-    Executor --> VisionEngine[👁️ Vision Engine<br/>Screen Capture + OCR + FNV-1a Hash]
-    Executor --> ComputerOp[🖱️ Computer Operator<br/>Mouse + Keyboard + Clipboard]
+    Executor --> ToolRegistry[🔧 Tool Registry Engine — Sandboxed]
+    Executor --> VisionEngine[👁️ Vision Engine<br/>Screen Capture + RapidOCR + Bounding Boxes]
+    Executor --> ComputerOp[🖱️ Computer Operator & Win32 Window Manager<br/>Mouse + Keyboard + Window Focus]
 
-    ToolRuntime --> Desktop[OS Automation]
-    ToolRuntime --> RAG[ChromaDB RAG Library]
-    ToolRuntime --> Web[Gemini Search Grounding]
-    ToolRuntime --> AI[Imagen 3 / Veo / Whisper]
+    ToolRegistry --> DesktopTools[OS Automation & Window Manager]
+    ToolRegistry --> SemanticTools[Semantic File Search + Web Extractor]
+    ToolRegistry --> HealthTools[System Health & Telemetry]
+    ToolRegistry --> AIModels[Imagen 3 / Veo / Whisper / Silero VAD]
 
-    subgraph Core Infrastructure
-        EventBus[📡 EventBus — Pub/Sub + Audit]
-        Memory[💾 Unified Memory — Cache + Archive + Vector]
-        Context[📋 Context Engine — Token Budgeting]
-        DI[🔩 DI Container + Lifecycle Manager]
+    subgraph Memory & Skills Runtime
+        Mem10[💾 10-Tier Hybrid Memory — Vector + Graph RAG + Episodic]
+        HotReload[🔥 Skill Hot-Reload Engine — Dynamic .md Discovery]
+        Skills[🩺 Active Skills: researcher | code_doctor | security_auditor | doc_architect]
     end
 
-    Executor -.-> EventBus
-    Router -.-> EventBus
-    ToolRuntime -.-> Memory
-    Planner -.-> Context
+    Executor -.-> Mem10
+    TaskQueue -.-> Skills
+    HotReload -.-> Skills
 ```
 
 ---
 
 ## 🏗️ Production-Grade Subsystems
 
-BR JARVIS is built from **12 independent, tested subsystems** — each with its own Pydantic v2 models, EventBus integration, and DI registration:
+BR JARVIS is engineered from modular, tested subsystems — each with its own Pydantic v2 models, EventBus telemetry, and Dependency Injection registration:
 
 | # | Subsystem | Module | Key Capabilities |
 |---|---|---|---|
-| 1 | **Core Runtime** | `core/` | Pydantic config, DI container, lifecycle management, health monitoring |
-| 2 | **Event Bus** | `events/` | Async pub/sub, wildcard routing, dead letter queue, audit persistence |
-| 3 | **Context Engine** | `context/` | Token accounting (tiktoken), semantic compression, priority context assembly |
-| 4 | **Memory Engine** | `memory/` | TTL cache with FNV-1a hashing, memory archival, ChromaDB vector store |
-| 5 | **Planner Engine** | `agent/planner_engine.py` | DAG goal decomposition, risk classification (LOW→CRITICAL), replanning |
-| 6 | **Execution Engine** | `agent/executor_engine.py` | Multi-worker parallel execution, emergency stop, human approval interlocks |
-| 7 | **Tool Runtime** | `tools/tool_runtime.py` | Sandboxed execution, permission validation, result caching, telemetry |
-| 8 | **Plugin Platform** | `plugins/` | Dynamic loading, crash isolation, community plugin discovery |
+| 1 | **Core Runtime & Bootstrap** | `core/` | Pydantic config, DI container, lifecycle management, health monitoring |
+| 2 | **Event Bus System** | `events/` | Async pub/sub, wildcard routing, dead letter queue, audit persistence |
+| 3 | **Context & Token Budget** | `context/`, `reasoning/prompt_cache.py` | SHA-256 prompt hashing, token accounting, semantic compression |
+| 4 | **10-Tier Hybrid Memory** | `memory/` | RAM working buffer, TTL cache, ChromaDB vector RAG, SQLite episodic store |
+| 5 | **DAG Planner Engine** | `agent/planner_engine.py` | DAG goal decomposition, risk classification (LOW→CRITICAL), replanning |
+| 6 | **Parallel Execution Engine** | `agent/executor_engine.py` | Multi-worker parallel execution, emergency stop, human approval interlocks |
+| 7 | **Tool Registry & Sandbox** | `tools/` | Sandboxed tool execution, permission policies, result caching |
+| 8 | **Speculative Router & Engine** | `reasoning/speculative_engine.py` | Fast-path intent classification, dynamic speed-quality model routing |
 | 9 | **Vision Engine** | `vision/` | Screen capture (mss), FNV-1a frame dedup, OCR text extraction, UI element detection |
-| 10 | **Computer Operator** | `computer/` | Mouse/keyboard control (pyautogui), clipboard management, permission interlocks |
-| 11 | **Voice System** | `voice/` | Wake word detection, Whisper STT, Edge TTS, 90+ language support |
-| 12 | **Integration Bridge** | `core/integration.py` | Legacy↔new architecture wiring, EventBus telemetry on orchestrator & router |
+| 10 | **Win32 Computer Operator** | `computer/`, `tools/window_manager.py` | Mouse/keyboard control, Win32 window focus, PyAutoGUI failsafe recovery |
+| 11 | **Duplex Voice System** | `voice/` | Silero VAD v5, pre-roll ring buffer, audio DSP equalizer, speaker biometrics |
+| 12 | **Skill Hot-Reload Platform** | `skills/` | Dynamic `.md` skill discovery (`researcher`, `code_doctor`, `security_auditor`, `doc_architect`) |
 
 ---
 
-## ⚡ Quick Start
+## ⚡ Quick Start Guide
 
-### 1. Clone & Install
+### 1. Clone Repository & Install Dependencies
 
 ```bash
 git clone https://github.com/bharthraj1412/BrJarvis.git
@@ -96,172 +93,44 @@ cd BrJarvis
 pip install -r requirements_mk37.txt
 ```
 
-### 2. Configure API Key
+### 2. Configure API Key Environment
 
-Copy `.env.template` → `.env` and add your [Gemini API Key](https://aistudio.google.com/app/apikey) (free tier available):
-
-```env
-GEMINI_API_KEY=your_gemini_api_key_here
-JARVIS_ASSISTANT_NAME=BR
-JARVIS_WAKE_WORD=hey
-```
-
-### 3. Launch
+Set your Google Gemini API key in a `.env` file or environment variable:
 
 ```bash
-# CLI Mode (Recommended)
-python main_mk37.py
+# Windows PowerShell
+$env:GEMINI_API_KEY="your-gemini-api-key-here"
 
-# Voice Assistant Mode
+# Linux / macOS
+export GEMINI_API_KEY="your-gemini-api-key-here"
+```
+
+### 3. Run BR JARVIS Assistant
+
+Launch the interactive voice & CLI assistant orchestrator:
+
+```bash
 python main.py
-
-# Interactive Launcher
-python start.py
 ```
 
 ---
 
-## 🎮 Usage Examples
+## 🧪 Automated Testing & Quality Assurance
 
-### CLI Mode (`python main_mk37.py`)
-
-```
-> search AI news and summarize the top 3 headlines
-> create a python script to parse CSV files
-> /run search news | open browser | check disk space    ← 3 tasks in parallel!
-> /chat-pdf path/to/document.pdf                        ← RAG document chat
-> /status                                               ← backend health check
-```
-
-### Voice Mode (`python main.py`)
-
-Say **"Hey Jarvis"** followed by your command:
-- *"Hey Jarvis, open Spotify and turn the volume to 50%"*
-- *"Hey Jarvis, take a screenshot and tell me what's on screen"*
-- *"Hey Jarvis, search the web for quantum computing updates"*
-
----
-
-## 💬 Slash Commands
-
-| Command | Action |
-|---|---|
-| `/run goal1 \| goal2 \| goal3` | Execute multiple goals in **parallel** |
-| `/tasks` | View active and queued background tasks |
-| `/chat-pdf <file>` | Ingest and chat with a PDF document |
-| `/chat-webpage <url>` | Scrape and chat with any webpage |
-| `/skills` | List all 71+ available skills |
-| `/memory search <query>` | Search past conversations and memories |
-| `/status` | View AI backend status and system health |
-| `/mode <name>` | Switch persona (recon / coder / planner / analyst) |
-| `/help` | Show full command list |
-| `/quit` | Exit and save session context |
-
----
-
-## 🌐 Multi-Backend Router
-
-BR JARVIS defaults to **Google Gemini** but intelligently routes tasks to the best available backend with automatic fallback:
-
-| Provider | Default Model | Best For | Required |
-|---|---|---|---|
-| **Gemini** | `gemini-2.5-flash` | Search grounding, vision, ReAct orchestration | ✅ Yes |
-| **OpenAI** | `gpt-4o` | Complex reasoning, coding | Optional |
-| **Anthropic** | `claude-3-5-sonnet` | Software engineering | Optional |
-| **Ollama** | `llama3` / `mistral` | 100% offline execution | Optional |
-| **NVIDIA NIM** | Configurable | GPU-accelerated inference | Optional |
-| **Mistral** | `mistral-large` | Fast inference, multilingual | Optional |
-
-The router tracks **token consumption** per request and emits `model.route.selected` events for monitoring.
-
----
-
-## 📂 Project Structure
-
-```
-BrJarvis/
-├── .github/workflows/   # CI/CD pipeline (GitHub Actions)
-├── actions/             # OS automation, RAG, media, search modules
-├── agent/               # Planner engine, executor engine, task queue
-├── backends/            # LLM provider clients (Gemini, GPT, Claude, Ollama, NVIDIA, Mistral)
-├── br_archetecture/     # Engineering knowledge base & documentation
-├── computer/            # Desktop automation operator (mouse, keyboard, clipboard)
-├── config/              # User settings, vocabulary, hotkeys
-├── context/             # Token accounting & semantic context compression
-├── core/                # Runtime, DI container, lifecycle, health, retry, error middleware
-├── events/              # Async EventBus with pub/sub, audit store, DLQ
-├── memory/              # Unified memory (cache + archive + vector + conversation)
-├── multi_agent/         # Sub-agent spawning & coordination
-├── plugins/             # Dynamic plugin loading & crash isolation
-├── skills/              # 71+ built-in modular capabilities
-├── tools/               # 93 tools — unified registry + sandboxed runtime
-├── tests/               # 27 unit tests + 18 integration tests (45 total)
-│   └── integration/     # 30 scenario integration test suite
-├── vision/              # Screen capture, OCR, UI element detection
-├── voice/               # Whisper STT, Edge TTS, wake word, 90+ languages
-├── main_mk37.py         # CLI REPL entry point
-├── main.py              # Voice assistant entry point
-├── start.py             # System launcher menu
-└── server.py            # FastAPI REST/WebSocket server
-```
-
----
-
-## 🧪 Testing
-
-BR JARVIS maintains **45/45 tests passing** across unit and integration suites:
+Run the comprehensive pytest suite verifying all 136 unit and integration test cases:
 
 ```bash
-# Run full test suite
-python -m pytest tests/ -v
-
-# Run only integration tests
-python -m pytest tests/integration/ -v
-
-# Run smoke startup check
-python scripts/smoke_startup.py
+python -m pytest tests/
 ```
 
-### Test Coverage
-
-| Category | Tests | Scenarios Covered |
-|---|---|---|
-| Core Runtime | 6 | Config, DI, lifecycle, process supervisor, health monitor |
-| Event Bus | 3 | Pub/sub, event store query, dead letter queue |
-| Context Engine | 4 | Token counting, compression, context building |
-| Memory Engine | 3 | TTL cache, archival, unified memory |
-| Planner Engine | 2 | Risk assessment, failure replanning |
-| Execution Engine | 2 | Parallel DAG execution, human interlocks |
-| Tool Runtime | 2 | Registration, sandboxed execution |
-| Plugin Manager | 1 | Dynamic discovery |
-| Vision Engine | 3 | Screen capture, OCR, analysis pipeline |
-| Computer Operator | 1 | Action execution |
-| **Integration Suite** | **18** | **Vision+operator, file ops, terminal/git, memory persistence, parallel stability, API fallback, emergency stop, OCR accuracy** |
+### Test Coverage Highlights:
+* **Core & Integration**: `test_core_runtime.py`, `test_event_bus.py`, `test_memory_context.py`
+* **Voice Pipeline & DSP**: `test_voice_pipeline.py`, `test_voice_latency.py`, `test_flaw_remediations_v3.py`
+* **Vision & Desktop Automation**: `test_vision_operator.py`, `test_computer_operator.py`, `test_nextgen_features.py`
+* **Next-Gen Upgrades**: `test_phase2_features.py`, `test_phase3_features.py`, `test_phase4_features.py`, `test_system_upgrades_v4.py`, `test_flaw_remediations_v5.py`
 
 ---
 
-## 🛣️ Roadmap
+## 📜 License & Acknowledgments
 
-- [x] **Phase 1** — Core Subsystems Foundation (Subsystems 1–10)
-- [x] **Phase 1.5** — Integration & Validation (Bridge, tests, CI/CD, refactoring)
-- [ ] **Phase 2** — Reasoning Engine (Chain-of-thought, hypothesis, evidence evaluation)
-- [ ] **Phase 3** — Workflow Engine (DSL, conditional branching, loops)
-- [ ] **Phase 4** — Voice System Overhaul (Streaming STT/TTS, wake word engine)
-- [ ] **Phase 5** — Desktop UI Platform (Web dashboard, real-time monitors)
-- [ ] **Phase 6** — Enterprise & SDK (Plugin SDK, REST gateway, multi-tenant)
-
-See [ROADMAP.md](br_archetecture/ROADMAP.md) for detailed phase breakdowns.
-
----
-
-## 🤝 Contributing
-
-Contributions are welcome! Feel free to open an **Issue** or submit a **Pull Request** to add new tools, skills, or backends.
-
-See [CONTRIBUTING.md](br_archetecture/CONTRIBUTING.md) for guidelines.
-
----
-
-## 📜 License
-
-Distributed under the **MIT License**. See `LICENSE` for details.
+Distributed under the **MIT License**. Built with Google Gemini, PySide6, ChromaDB, CTranslate2, Silero VAD, PyAutoGUI, and Python 3.10+.
