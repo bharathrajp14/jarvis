@@ -27,7 +27,7 @@ if sys.platform == "win32":
 
 # Load .env
 try:
-    from dotenv import load_dotenv
+    from dotenv import load_dotenv  # type: ignore
     _env = Path(__file__).resolve().parent / ".env"
     if _env.exists():
         load_dotenv(_env)
