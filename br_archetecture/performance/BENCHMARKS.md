@@ -28,5 +28,5 @@
 
 ## 2. Test Verification Suite Benchmarks
 
-- **94-Test Automated Pytest Suite (`pytest tests/`)**: **100% Pass Rate** across all 94 collected tests in 33 seconds.
+- **102-Test Automated Pytest Suite (`pytest tests/`)**: **100% Pass Rate** across all 102 collected tests in 36.99 seconds.
 - **`scripts/smoke_startup.py`**: **10 Standalone Startup Checks** — **100% Pass Rate**.

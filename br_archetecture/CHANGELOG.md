@@ -4,23 +4,31 @@ All major architectural updates, subsystem additions, and core refactorings are 
 
 ## [37.31.0] — 2026-07-25
 
-### Ultra-Fast Silero VAD Voice Subsystem & CDP DOM Bridge Infrastructure
-- **Silero Voice Activity Detection (`voice/silero_vad.py`)**:
-  - Integrated ONNX-based Silero VAD for low-latency acoustic speech chunk segmentation (<10ms inference overhead).
-  - Eliminates silence clipping and background static noise triggers before passing speech buffers to Whisper ASR.
-- **Zero-Disk Whisper Audio Streaming (`voice/whisper_local.py`)**:
-  - Implemented direct in-memory audio byte stream processing without disk file I/O overhead.
-  - Added RMS acoustic silence gating and post-inference hallucination filtering to eliminate phantom ASR transcriptions.
+### Cognitive AI OS Architecture Subsystems & Closed-Loop Cognitive Cycle
+- **Closed-Loop Cognitive Cycle (`reasoning/cognitive_loop.py`)**:
+  - Implemented explicit `Observe -> Think -> Critic -> Improve -> Retry` evaluation loop with structured `SelfEvaluationPayload` metrics (`confidence_score`, `reasoning_depth`, `alternative_options`, `failure_risk`).
+- **Autonomous Critic & Verifier Sub-Agent (`agent/critic_agent.py`)**:
+  - Independent quality score review and action recommendations (`PROCEED`, `RETRY`, `REPLAN`, `ABORT`) before step completion commitment.
+- **Relational World Model (`memory/knowledge_graph.py`)**:
+  - Graph-based world model connecting system entities (`Workspace`, `Projects`, `Files`, `Apps`, `Windows`, `Goals`, `Repositories`, `APIs`) with directed relational edges. Includes NetworkX integration and zero-dependency fallback.
+- **Persistent Task DAG & Crash Resume (`workflow/task_dag.py`)**:
+  - Durable task state machine supporting SQLite WAL atomic step checkpointing (`checkpoint()`, `resume()`, `rollback_node()`) to guarantee automatic goal resume after system restarts or interrupts.
+- **Multi-Objective Model Router (`router.py`)**:
+  - Added `select_multi_objective_backend()` evaluating backend utility balancing Quality, Token Cost, and Latency.
+- **Memory Decay & Forgetting Engine (`memory/decay.py`)**:
+  - Implemented Ebbinghaus retention decay score calculation partitioning memories into `RETAIN`, `ARCHIVE`, and `PRUNE` tiers.
+- **Asynchronous Task DAG Scheduler (`agent/task_scheduler.py`)**:
+  - Decoupled goal graph task scheduling from orchestrator loops with async worker dispatch.
+- **Event-Driven Workspace & Telemetry Watchers (`watchers/`)**:
+  - Created `file_watcher.py` (workspace file change detection) and `system_watcher.py` (CPU/RAM telemetry alerts) emitting events into `events/bus.py`.
+- **Hierarchical Multi-Agent Swarm Collaboration (`multi_agent/swarm.py`)**:
+  - Role specialization (`Architect -> Specialist -> Critic -> Integrator`) and consensus evaluation.
+- **Silero Voice Activity Detection & Zero-Disk Audio (`voice/silero_vad.py`, `voice/whisper_local.py`)**:
+  - ONNX Silero VAD (<10ms) paired with zero-disk in-memory byte streaming and RMS silence gating.
 - **CDP DOM Bridge Vision Tier (`vision/dom_bridge.py`)**:
-  - Tier 2 CDP Chrome/Edge Browser accessibility DOM inspection bridge allowing real-time tree extraction and visual grounding coordinate mapping without raw screenshot dependency.
-- **Gemini Model Router Fallback Modernization (`backends/gemini.py`)**:
-  - Updated model fallback list with `gemini-3.6-flash-high`, `gemini-3-flash-agent`, and `gemini-pro-agent` for reliable execution failover.
-- **PyAutoGUI Screen Bounds Safety (`computer/operator.py`)**:
-  - Refined mouse click and motion handlers to guarantee raw target coordinate execution while avoiding out-of-bounds PyAutoGUI failsafe crashes.
-- **Unified Health Telemetry API (`server.py`)**:
-  - Consolidated health metrics under `/health` and `/api/health` dual endpoint routing.
-- **94-Test Verification Suite Integration (`tests/`)**:
-  - Expanded test suite to cover Silero VAD, CDP DOM bridge, clipboard fallbacks, and step velocity evaluation.
+  - Tier 2 CDP Chrome/Edge Browser accessibility DOM inspection bridge.
+- **102-Test Verification Suite (`tests/test_cognitive_ai_os_upgrades.py`)**:
+  - 100% pass rate across 102 automated Pytest unit and integration test suites.
 
 ---
 

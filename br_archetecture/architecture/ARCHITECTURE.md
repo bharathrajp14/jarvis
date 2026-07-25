@@ -17,20 +17,30 @@ graph LR
 
     subgraph CognitiveLayer["Cognitive Layer"]
         StepPlanner[Conscious Step Planner<br/>agent/step_planner.py]
-        Orchestrator[ReAct Orchestrator<br/>orchestrator.py]
-        Router[Multi-LLM Router<br/>router.py]
-        Reasoning[Chain-of-Thought Engine<br/>reasoning/engine.py]
+        CognitiveLoop[Closed Cognitive Loop<br/>reasoning/cognitive_loop.py]
+        CriticAgent[Critic & Verifier<br/>agent/critic_agent.py]
+        TaskScheduler[Task DAG Scheduler<br/>agent/task_scheduler.py]
+        Orchestrator[ReAct Orchestrator Coordinator<br/>orchestrator.py]
+        Router[Multi-Objective Router<br/>router.py]
+    end
+
+    subgraph WorldModelLayer["World Model & Memory"]
+        KnowledgeGraph[NetworkX Knowledge Graph<br/>memory/knowledge_graph.py]
+        MemoryDecay[Ebbinghaus Memory Decay<br/>memory/decay.py]
+        TaskDAGStore[Persistent Task DAG Store<br/>workflow/task_dag.py]
     end
 
     subgraph PerceptionLayer["Perception Layer"]
         SileroVAD[Silero VAD ONNX<br/>voice/silero_vad.py]
         VoiceRefiner[VoicePromptRefiner<br/>voice/prompt_refiner.py]
+        EventWatchers[Event-Driven Watchers<br/>watchers/]
         HybridVision[7-Tier Hybrid Vision<br/>vision/hybrid_pipeline.py]
         Accessibility[Windows Accessibility API<br/>vision/accessibility.py]
         DOMBridge[CDP Browser DOM Bridge<br/>vision/dom_bridge.py]
     end
 
     subgraph ExecutionLayer["Execution Layer"]
+        SwarmCollab[Multi-Agent Swarm<br/>multi_agent/swarm.py]
         ComputerOp[Computer Operator<br/>computer/operator.py]
         Scratchpad[Antigravity Scratchpad<br/>agent/scratchpad.py]
         Tools[Tool Registry (98 Tools)<br/>tools/registry.py]

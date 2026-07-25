@@ -22,17 +22,17 @@ The BR JARVIS MK37 codebase (~180 Python files, 30+ packages) achieves a **100% 
   - `ui/tabs/settings_tab.py`: API keys & system settings dialogs.
   - `ui/widgets/canvas_hud.py`: Face canvas & waveform HUD visualizers.
 
-### 2. Concurrent SQLite Database Lock Contention (`memory/`)
-- **Issue**: `persistent_store.py`, `conversation_store.py`, and `session_store.py` open independent SQLite connections, causing occasional `database is locked` errors during concurrent worker writes.
-- **Refactoring Strategy**: Enable SQLite Write-Ahead Logging (`PRAGMA journal_mode=WAL;`) and introduce a shared `SQLiteConnectionPool` in `memory/`.
+### 2. Concurrent SQLite Database Lock Contention (`memory/`) [RESOLVED]
+- **Status**: ✅ **RESOLVED in v37.31.0**
+- **Fix**: Enabled SQLite Write-Ahead Logging (`PRAGMA journal_mode=WAL;`), increased busy timeouts (`PRAGMA busy_timeout=20000;`), and set `timeout=20.0` across `memory/lessons.py` and `memory/conversation_store.py`.
 
 ### 3. Tool & Action Import Storm Optimization (`tools/registry.py`)
 - **Issue**: Initial invocation of `tools/registry.py` eagerly imports all 34 tool modules and 34 action modules, causing a 5–15 second startup stall.
 - **Refactoring Strategy**: Implement lazy module loading on first tool call request.
 
-### 4. `asyncio.get_event_loop()` Python 3.14 Deprecation
-- **Issue**: Legacy calls to `asyncio.get_event_loop()` raise deprecation warnings on Python 3.12+ and will break on Python 3.14.
-- **Refactoring Strategy**: Replace with `asyncio.get_running_loop()` across `core/`, `server.py`, and `orchestrator.py`.
+### 4. `asyncio.get_event_loop()` Python 3.14 Deprecation [RESOLVED]
+- **Status**: ✅ **RESOLVED in v37.31.0**
+- **Fix**: Replaced legacy `asyncio.get_event_loop()` calls with `asyncio.get_running_loop()` and `asyncio.get_event_loop_policy().get_event_loop()` across `voice/assistant.py` and `core/lifecycle.py`.
 
 ### 5. Synchronous WebSocket Broadcast Queue (`server.py`)
 - **Issue**: `WSBroadcastStream` broadcasts stdout to WebSocket clients synchronously; slow or disconnected clients can block process stdout.

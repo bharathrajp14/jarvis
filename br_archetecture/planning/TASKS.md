@@ -20,6 +20,46 @@
 
 ## 🚀 Completed MK37 Architectural Tasks (100% Verified)
 
+### Task MK37.13: Closed-Loop Cognitive Cycle Engine
+- **Status**: `COMPLETED` ✅ | `reasoning/cognitive_loop.py`
+- **Deliverables**: Observe -> Think -> Critic -> Improve -> Retry cycle generating `SelfEvaluationPayload` metrics.
+
+### Task MK37.14: Autonomous Critic & Verifier Sub-Agent
+- **Status**: `COMPLETED` ✅ | `agent/critic_agent.py`
+- **Deliverables**: Independent quality score review and recommended action dispatcher (`PROCEED`, `RETRY`, `REPLAN`, `ABORT`).
+
+### Task MK37.15: Relational Knowledge Graph World Model
+- **Status**: `COMPLETED` ✅ | `memory/knowledge_graph.py`
+- **Deliverables**: NetworkX relational entity graph connecting workspace resources and system entities.
+
+### Task MK37.16: Persistent Task DAG & Crash Resume Engine
+- **Status**: `COMPLETED` ✅ | `workflow/task_dag.py`
+- **Deliverables**: SQLite WAL atomic step checkpointing (`checkpoint()`, `resume()`, `rollback_node()`).
+
+### Task MK37.17: Multi-Objective Model Router Engine
+- **Status**: `COMPLETED` ✅ | `router.py`
+- **Deliverables**: `select_multi_objective_backend()` balancing Quality, Token Cost, and Latency.
+
+### Task MK37.18: Ebbinghaus Memory Decay Engine
+- **Status**: `COMPLETED` ✅ | `memory/decay.py`
+- **Deliverables**: Retention decay calculation classifying memory items into `RETAIN`, `ARCHIVE`, and `PRUNE`.
+
+### Task MK37.19: Decoupled Async Task Scheduler
+- **Status**: `COMPLETED` ✅ | `agent/task_scheduler.py`
+- **Deliverables**: Asynchronous DAG task scheduler and worker dispatcher.
+
+### Task MK37.20: Event-Driven Workspace & Telemetry Watchers
+- **Status**: `COMPLETED` ✅ | `watchers/`
+- **Deliverables**: Passive workspace file (`file_watcher.py`) and OS telemetry (`system_watcher.py`) watchers emitting EventBus alerts.
+
+### Task MK37.21: Hierarchical Multi-Agent Swarm Collaboration
+- **Status**: `COMPLETED` ✅ | `multi_agent/swarm.py`
+- **Deliverables**: Swarm role specialization (`Architect -> Specialist -> Critic -> Integrator`) and consensus evaluation.
+
+### Task MK37.22: 102-Test Automated Verification Suite
+- **Status**: `COMPLETED` ✅ | `tests/test_cognitive_ai_os_upgrades.py`
+- **Deliverables**: 100% pass rate across 102 automated Pytest unit and integration test suites.
+
 ### Task MK37.9: ONNX Silero Voice Activity Detection Subsystem
 - **Status**: `COMPLETED` ✅ | `voice/silero_vad.py`
 - **Deliverables**: ONNX Silero VAD integration (<10ms latency) eliminating background silence noise & audio clipping.
@@ -31,10 +71,6 @@
 ### Task MK37.11: CDP Chrome/Edge Browser DOM Bridge Vision Tier
 - **Status**: `COMPLETED` ✅ | `vision/dom_bridge.py`
 - **Deliverables**: Tier 2 CDP DevTools Protocol accessibility DOM inspection bridge for instant element extraction.
-
-### Task MK37.12: 94-Test Automated Verification Suite
-- **Status**: `COMPLETED` ✅ | `tests/`
-- **Deliverables**: 100% pass rate across 94 unit & integration tests (`pytest tests/`).
 
 ### Task MK37.1: Multi-Backend Clipboard Engine
 - **Status**: `COMPLETED` ✅ | `actions/clipboard_utils.py`

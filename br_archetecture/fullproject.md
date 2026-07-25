@@ -1,10 +1,10 @@
 # 🌌 BR JARVIS — Master Architecture Record & Full Project Specification
 
 > **System Identity**: BR JARVIS (Project BR / JARVIS MK37)  
-> **Version**: MK37.31.0 — Ultra-Fast Silero VAD Voice Subsystem & CDP DOM Bridge Infrastructure  
+> **Version**: MK37.31.0 — Cognitive AI OS Architecture & Autonomous Swarm Subsystems  
 > **Target Platform**: Windows 11 / Linux / macOS  
 > **Last Updated**: 2026-07-25  
-> **Test Coverage**: 94 automated Pytest unit & integration test suites passing cleanly (100% green)  
+> **Test Coverage**: 102 automated Pytest unit & integration test suites passing cleanly (100% green)  
 
 ---
 
@@ -18,6 +18,11 @@ It is not a simple chatbot wrapper — it is a full **AI Operating System** with
 
 | Principle | Implementation | Status |
 |---|---|---|
+| **Closed-Loop Cognitive Cycle** | `reasoning/cognitive_loop.py` & `agent/critic_agent.py` — Observe -> Think -> Critic -> Improve -> Retry cycle | ✅ Production |
+| **Relational Knowledge Graph World Model** | `memory/knowledge_graph.py` — NetworkX relational entity graph connecting workspace resources | ✅ Production |
+| **Persistent Task DAG & Crash Resume** | `workflow/task_dag.py` — SQLite WAL atomic step checkpointing (`checkpoint()`, `resume()`) | ✅ Production |
+| **Multi-Objective Model Router** | `router.py` — `select_multi_objective_backend()` balancing Quality, Cost, and Latency | ✅ Production |
+| **Memory Decay & Forgetting Engine** | `memory/decay.py` — Ebbinghaus retention decay engine classifying memories into `RETAIN`, `ARCHIVE`, `PRUNE` | ✅ Production |
 | **Ultra-Fast Silero VAD Voice Engine** | `voice/silero_vad.py` — ONNX Silero VAD segmenter for acoustic speech chunking (<10ms latency) | ✅ Production |
 | **Zero-Disk Whisper Audio Streaming** | `voice/whisper_local.py` — In-memory audio byte streaming with RMS silence gating & hallucination filter | ✅ Production |
 | **CDP DOM Bridge Vision Tier** | `vision/dom_bridge.py` — Real-time Chrome/Edge browser accessibility DOM inspection bridge | ✅ Production |

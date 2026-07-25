@@ -15,11 +15,13 @@ Br-Jarvis/
 │   └── ...                    # 34 action modules
 ├── agent/                     # Autonomous planning & execution pipeline
 │   ├── artifacts.py           # GFM Artifact Engine (implementation_plan.md, walkthrough.md)
+│   ├── critic_agent.py        # Autonomous Critic & Verifier Sub-Agent
 │   ├── executor.py            # GoalGraph worker execution pool
 │   ├── planner.py             # Plan DAG generator & complexity evaluation
 │   ├── planning_mode.py       # Autonomous Planning Mode logic (`warrants_plan`)
 │   ├── scratchpad.py          # Antigravity Scratchpad workspace evaluator (`./scratch/`)
 │   ├── step_planner.py        # Conscious Step Planner & AdaptiveStepBudget controller
+│   ├── task_scheduler.py      # Async Task DAG scheduler & worker dispatcher
 │   └── transcript_logger.py   # Trajectory JSON Lines transcript logger (`transcript.jsonl`)
 ├── backends/                  # AI Provider Adapters (Gemini, Claude, GPT, Ollama, DeepSeek, NVIDIA, Mistral)
 ├── br_archetecture/           # Persistent Engineering Knowledge Base index & specifications
@@ -36,11 +38,15 @@ Br-Jarvis/
 ├── evolution/                 # Self-upgrade sandbox, classifier, proposer, deployer
 ├── guardian/                  # PathPolicy bounds check, kill-switch, snapshot, rollback
 ├── history/                   # Session store, replay engine, transcript writer
-├── memory/                    # 5-tier memory subsystem (Working, SQLite, Vector RAG, Lessons, Cache)
-├── multi_agent/               # Sub-agent spawning framework (12 subagent definitions)
+├── memory/                    # 6-tier memory subsystem (Working, SQLite, Vector RAG, Lessons, Cache, KnowledgeGraph, Decay)
+│   ├── decay.py               # Ebbinghaus memory retention decay & pruner
+│   └── knowledge_graph.py     # Relational NetworkX world model entity graph
+├── multi_agent/               # Sub-agent spawning framework (12 subagent definitions & hierarchical swarm)
+│   └── swarm.py               # Hierarchical multi-agent collaboration engine
 ├── native/                    # Win32 C native bridge (`jarvis_native.c`)
 ├── plugins/                   # Plugin platform & isolation manager
-├── reasoning/                 # Chain-of-Thought engine, plan graph DAG
+├── reasoning/                 # Chain-of-Thought engine, plan graph DAG, cognitive loop
+│   └── cognitive_loop.py      # Observe -> Think -> Critic -> Improve -> Retry cognitive loop
 ├── redteam/                   # Recon scanner, security auditor, scope manager
 ├── screen_server/             # Real-time WebSocket screen share server
 ├── skills/                    # Skill loader & builtins (RAG, Auditor, Writer, Excel)
@@ -51,8 +57,10 @@ Br-Jarvis/
 │   ├── silero_vad.py          # Fast ONNX Silero Voice Activity Detector (<10ms)
 │   ├── whisper_local.py       # In-memory zero-disk Whisper byte streaming & RMS silence gate
 │   └── prompt_refiner.py      # VoicePromptRefiner vocal filler cleaner & vocabulary mapper
+├── watchers/                  # Event-driven background watchers (file_watcher, system_watcher)
 ├── web/                       # Glassmorphic PWA Web UI dashboard (HTML/CSS/JS)
-├── workflow/                  # Durable workflow DAG engine & SQLite state store
+├── workflow/                  # Durable workflow DAG engine & persistent Task DAG store
+│   └── task_dag.py            # SQLite WAL atomic step checkpointing & crash resume
 ├── floating_voice_ui.py       # Gemini Live floating overlay UI
 ├── main_mk37.py               # Rich TUI CLI launcher
 ├── orchestrator.py            # Core ReAct reasoning & execution loop

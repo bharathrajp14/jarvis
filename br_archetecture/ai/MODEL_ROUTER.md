@@ -46,5 +46,8 @@ Task Execution Request
 ## 3. Token Budget Tracking & Failover Strategy
 
 - **Token Budgeting**: `router.py` monitors input/output tokens per session, enforcing configurable soft and hard limits.
+- **Multi-Objective Routing (`select_multi_objective_backend()`)**:
+  Computes a dynamic utility score balancing model quality, token cost, and estimated latency:
+  $$\text{Score} = (\text{Quality} \times w_{\text{quality}}) - (\text{EstCost} \times w_{\text{cost}}) - (\text{EstLatency} \times w_{\text{latency}})$$
 - **Failover Cascade**: If a primary backend fails (e.g. Rate Limit 429 or API Error 500), the router automatically attempts the fallback chain:
   `gemini-3.5-flash-low -> gemini-3-flash -> gemini-3.6-flash-high -> gemini-3-flash-agent -> gemini-pro-agent -> gemini-2.0-flash -> Claude 3.5 Sonnet -> GPT-4o -> Local Ollama`.

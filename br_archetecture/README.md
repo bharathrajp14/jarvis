@@ -57,26 +57,26 @@ br_archetecture/
 
 ## 🚀 Key Architectural Innovations in MK37 (v37.31.0)
 
-1. **Ultra-Fast Silero VAD Voice Subsystem (`voice/silero_vad.py`)**:
+1. **Closed-Loop Cognitive Cycle & Verification Engine (`reasoning/cognitive_loop.py` & `agent/critic_agent.py`)**:
+   - Explicit `Observe -> Think -> Critic -> Improve -> Retry` evaluation cycle generating structured `SelfEvaluationPayload` metrics (`confidence_score`, `reasoning_depth`, `failure_risk`).
+2. **Relational Knowledge Graph World Model (`memory/knowledge_graph.py`)**:
+   - Relational NetworkX world model entity graph connecting `Workspace`, `Projects`, `Files`, `Apps`, `Windows`, `Goals`, `Repositories`, and `APIs`.
+3. **Persistent Task DAG & Crash Resume Engine (`workflow/task_dag.py`)**:
+   - Durable Task DAG state manager persisting SQLite WAL atomic step checkpoints (`checkpoint()`, `resume()`, `rollback_node()`) for seamless crash recovery.
+4. **Multi-Objective Model Router (`router.py`)**:
+   - Multi-objective optimization router selecting backends by balancing Quality, Token Cost, and Latency.
+5. **Ebbinghaus Memory Decay Engine (`memory/decay.py`)**:
+   - Dynamic retention decay engine scoring memory items and partitioning them into `RETAIN`, `ARCHIVE`, and `PRUNE` categories.
+6. **Ultra-Fast Silero VAD Voice Subsystem (`voice/silero_vad.py`)**:
    - High-precision ONNX Silero VAD acoustic segmenter eliminating silence noise and clipping (<10ms latency).
-2. **Zero-Disk Whisper Audio Streaming (`voice/whisper_local.py`)**:
+7. **Zero-Disk Whisper Audio Streaming (`voice/whisper_local.py`)**:
    - Pure in-memory audio byte buffer ASR transcription with RMS acoustic silence gating and hallucination suppression.
-3. **CDP DOM Bridge Vision Tier (`vision/dom_bridge.py`)**:
+8. **CDP DOM Bridge Vision Tier (`vision/dom_bridge.py`)**:
    - Tier 2 CDP Chrome/Edge Browser accessibility DOM inspection bridge for instant element extraction without visual snapshot reliance.
-4. **Antigravity Scratchpad Subsystem (`agent/scratchpad.py` & `tools/scratchpad_tools.py`)**:
+9. **Antigravity Scratchpad Subsystem (`agent/scratchpad.py` & `tools/scratchpad_tools.py`)**:
    - Isolated workspace at `./scratch/` for transient scripts in Python, Node.js, PowerShell, and Bash with stdout/stderr capture via `scratchpad_eval`.
-5. **Autonomous Planning Mode & GFM Artifact Engine (`agent/planning_mode.py` & `agent/artifacts.py`)**:
-   - Dynamic task complexity classifier (`warrants_plan`), `implementation_plan.md` & `walkthrough.md` generation with GitHub-style alerts (`> [!IMPORTANT]`, `> [!NOTE]`), Mermaid diagrams, and clickable `file:///` URIs.
-6. **Trajectory Transcripts Logging (`agent/transcript_logger.py`)**:
-   - JSON Lines trajectory logs (`transcript.jsonl` & `transcript_full.jsonl`) recording step index, tool calls, model thinking, and outputs.
-7. **Voice Prompt Refinement Engine (`voice/prompt_refiner.py`)**:
-   - Acoustic speech cleaner, vocal hesitation filler removal (`um`, `uh`, `like`, `you know`, `hey jarvis`), domain vocabulary mapping via `config/vocabulary.json`, and transparent UI logging (`Spoken Raw` vs `Refined Prompt`).
-8. **Multi-Task & Sub-Agent Frontend Dashboard (`ui.py`)**:
-   - Dedicated **"🚀 Multi-Tasks"** tab in Maximum Control Center rendering glossy **Task Cards**, progress bars, and status badges (`RUNNING`, `QUEUED`, `COMPLETED`, `FAILED`).
-9. **Conscious Step Planner & Adaptive Flexible Step Budget (`agent/step_planner.py`)**:
-   - Decomposes goals into conscious steps; replaces rigid step caps with a progress velocity evaluator that grants `+5` extensions (up to 60 steps max ceiling) when active progress is detected.
-10. **Multi-Backend Clipboard Engine (`actions/clipboard_utils.py`)**:
-    - 5-layer prioritized fallback (`pyperclip` -> Win32 `ctypes` -> `tkinter` -> PowerShell -> CLI).
+10. **Autonomous Planning Mode & GFM Artifact Engine (`agent/planning_mode.py` & `agent/artifacts.py`)**:
+    - Dynamic task complexity classifier (`warrants_plan`), `implementation_plan.md` & `walkthrough.md` generation with GitHub-style alerts (`> [!IMPORTANT]`, `> [!NOTE]`), Mermaid diagrams, and clickable `file:///` URIs.
 8. **50+ Zero-Token Deterministic Intent Engine (`core/intent_engine.py`)**:
    - Zero-token intent triggers covering Git status/branch, RAM flush, CPU telemetry, display resolution, battery stats, network ping, and active window state with <5ms latency.
 9. **7-Tier Hybrid Vision Engine (`vision/`)**:

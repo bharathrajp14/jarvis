@@ -101,6 +101,21 @@ This document outlines the multi-phase implementation roadmap for the BR JARVIS 
 
 ---
 
+## 🟢 Phase 8.0: Cognitive AI OS Subsystems & Autonomous Swarm (COMPLETED — v37.31.0)
+
+- [x] **Closed-Loop Cognitive Cycle** (`reasoning/cognitive_loop.py`) — Observe -> Think -> Critic -> Improve -> Retry evaluation loop
+- [x] **Autonomous Critic & Verifier Agent** (`agent/critic_agent.py`) — Independent quality score review and recommended action dispatcher
+- [x] **Relational Knowledge Graph World Model** (`memory/knowledge_graph.py`) — NetworkX relational entity graph connecting workspace resources
+- [x] **Persistent Task DAG & Crash Resume** (`workflow/task_dag.py`) — SQLite WAL atomic step checkpointing (`checkpoint()`, `resume()`)
+- [x] **Multi-Objective Model Router** (`router.py`) — `select_multi_objective_backend()` balancing Quality, Cost, and Latency
+- [x] **Ebbinghaus Memory Decay Engine** (`memory/decay.py`) — Retention decay engine classifying memories into `RETAIN`, `ARCHIVE`, and `PRUNE`
+- [x] **Decoupled Async Task Scheduler** (`agent/task_scheduler.py`) — Asynchronous DAG task scheduler and worker dispatcher
+- [x] **Event-Driven Workspace & Telemetry Watchers** (`watchers/`) — Workspace filesystem and system telemetry watchers emitting EventBus alerts
+- [x] **Hierarchical Multi-Agent Swarm** (`multi_agent/swarm.py`) — Swarm role specialization (`Architect -> Specialist -> Critic -> Integrator`)
+- [x] **102-Test Verification Suite** (`tests/test_cognitive_ai_os_upgrades.py`) — 100% pass rate across 102 automated Pytest unit and integration tests
+
+---
+
 ## 🟡 Phase 8: Core Refactoring & Robustness (IN PROGRESS / ACTIVE BACKLOG)
 
 - [ ] **BUG-001 Fix**: Resolve `self.ui` AttributeError in `BRVoiceAssistant.__init__()`

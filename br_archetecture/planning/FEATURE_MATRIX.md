@@ -10,6 +10,15 @@
 
 | Subsystem | Feature | Status | Module Path |
 |---|---|---|---|
+| **Cognitive Loop** | Observe -> Think -> Critic -> Improve -> Retry Cycle | ✅ Production | `reasoning/cognitive_loop.py` |
+| **Critic Sub-Agent** | Autonomous Quality & Security Reviewer | ✅ Production | `agent/critic_agent.py` |
+| **Knowledge Graph** | Relational NetworkX World Model Entity Graph | ✅ Production | `memory/knowledge_graph.py` |
+| **Task DAG Storage** | Persistent SQLite WAL Task Checkpointing & Resume | ✅ Production | `workflow/task_dag.py` |
+| **Multi-Objective Router** | Utility Optimization (Quality, Cost, Latency) | ✅ Production | `router.py` |
+| **Memory Decay Engine** | Ebbinghaus Retention Decay & Pruning | ✅ Production | `memory/decay.py` |
+| **Task Scheduler** | Async Task DAG Scheduler & Worker Dispatcher | ✅ Production | `agent/task_scheduler.py` |
+| **Event Watchers** | Workspace File & OS Telemetry Watchers | ✅ Production | `watchers/` |
+| **Swarm Subsystem** | Hierarchical Multi-Agent Collaboration | ✅ Production | `multi_agent/swarm.py` |
 | **Voice Subsystem** | ONNX Silero Voice Activity Detector (<10ms) | ✅ Production | `voice/silero_vad.py` |
 | **Voice Subsystem** | Zero-Disk In-Memory Whisper Byte Streaming | ✅ Production | `voice/whisper_local.py` |
 | **Vision Subsystem** | Tier 2 CDP Chrome/Edge Browser DOM Bridge | ✅ Production | `vision/dom_bridge.py` |
@@ -46,11 +55,11 @@
 | **Multi-LLM Router** | 7 Backends with Auto-Failover | ✅ Production | `router.py` |
 | **Backends** | Gemini (3.6 Flash & Agent), Claude, GPT, Ollama, DeepSeek, NIM, Mistral | ✅ Production | `backends/` |
 | **Context Engine** | Priority Windowing & Pronoun Resolution | ✅ Production | `context/` & `orchestrator.py` |
-| **Memory Engine** | 5-Tier Volatile/SQLite/Vector/Lesson Memory | ✅ Production | `memory/` |
+| **Memory Engine** | 6-Tier Volatile/SQLite/Vector/Lesson/KG/Decay Memory | ✅ Production | `memory/` |
 | **Computer Control** | PyAutoGUI + Precise Coordinate Execution | ✅ Production | `computer/` |
 | **Vision Engine** | 7-Tier Hybrid Pipeline (Accessibility, DOM, OCR) | ✅ Production | `vision/` |
 | **Voice Subsystem** | Silero VAD + Zero-Disk Whisper + Neural TTS | ✅ Production | `voice/` |
 | **Tool Ecosystem** | 34 Tool Modules & `@register_tool` | ✅ Production | `tools/` |
 | **Context Resolver** | Anaphoric Pronoun & History Resolver | ✅ Production | `orchestrator._resolve_context_references` |
 | **Live OS Control** | Visual Action Target Trace (Red Crosshair) | ✅ Production | `actions/live_os_control.py` |
-| **Verification Suite** | 94-Test Automated Unit & Integration Suite | ✅ Production | `tests/` |
+| **Verification Suite** | 102-Test Automated Unit & Integration Suite | ✅ Production | `tests/` |
