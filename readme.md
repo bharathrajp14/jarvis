@@ -9,11 +9,25 @@
 
 ---
 
+## ⚔️ How BR JARVIS Compares to Other Assistants
+
+| Feature | ChatGPT Desktop | Claude Desktop | Cursor / Windsurf | Siri / Windows Copilot | **BR JARVIS** |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| **🎙️ Voice Command Perception** | ✅ | ❌ | ❌ | ✅ | **✅ (Advanced Noise Gate + Pre-Roll)** |
+| **👁️ Reads & Sees Your Screen** | ❌ | ❌ | ❌ | ❌ | **✅ (Real-Time Vision & OCR)** |
+| **🖱️ Controls Apps & Desktop** | ❌ | ❌ | ❌ | ⚠️ Limited | **✅ (Full Keyboard, Mouse, & Window Control)** |
+| **📂 Searches Your Local Files** | ❌ | ❌ | ✅ Code Only | ⚠️ Basic | **✅ (Natural Language File Finder)** |
+| **🩺 Self-Healing Code Doctor** | ❌ | ❌ | ⚠️ Basic | ❌ | **✅ (Auto-Fixes Project Errors)** |
+| **💻 Monitors Computer Health** | ❌ | ❌ | ❌ | ❌ | **✅ (Live CPU, RAM, & Battery Telemetry)** |
+| **🔒 100% Private & Local** | ❌ Cloud Only | ❌ Cloud Only | ❌ Cloud Only | ❌ Cloud Only | **✅ (Your Data Stays on Your PC)** |
+
+---
+
 ## ✨ What Can BR JARVIS Do For You?
 
 | Feature | What JARVIS Does For You |
 | :--- | :--- |
-| **🎙️ Voice Assistant** | Speak naturally to your computer. JARVIS listens, filters background noise, and speaks back in clear human voice. |
+| **🎙️ Voice Assistant** | Speak naturally to your computer. JARVIS listens, filters background noise, and speaks back in a clear human voice. |
 | **👁️ Sees Your Screen** | Reads text on your screen, spots buttons, and understands what app you have open. |
 | **🖱️ Controls Apps & Desktop** | Switches windows, opens apps, clicks buttons, types text, and copies items to your clipboard for you. |
 | **📂 Smart File Finder** | Find any document or project by just describing it (e.g. *"Find my voice assistant setup script"*). |
