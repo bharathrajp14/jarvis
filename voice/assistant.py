@@ -42,8 +42,16 @@ class BRVoiceAssistant:
 
     def __init__(self, ui: JarvisUI):
         self.ui = ui
-        self.orchestrator = None
-        self.backends = {}
+        # Initialize ReAct Orchestrator & Backend Gateway
+        try:
+            from orchestrator import JarvisOrchestrator
+            self.orchestrator = JarvisOrchestrator()
+            self.backends = getattr(getattr(self.orchestrator, "router", None), "backends", {})
+        except Exception as e:
+            print(f"[Voice] Orchestrator init warning: {e}")
+            self.orchestrator = None
+            self.backends = {}
+
         self._loop = None
         self._current_task: asyncio.Task | None = None   # track running command task
         self._task_lock = threading.Lock()                # serialize task switches

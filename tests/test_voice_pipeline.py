@@ -79,6 +79,12 @@ class TestVoicePipeline(unittest.TestCase):
         rb.clear()
         self.assertEqual(len(rb.get_preroll_bytes()), 0)
 
+    def test_voice_assistant_backend_binding(self):
+        from voice.assistant import BRVoiceAssistant
+        assistant = BRVoiceAssistant(ui=None)
+        self.assertIsNotNone(assistant.orchestrator)
+        self.assertIsInstance(assistant.backends, dict)
+
 
 if __name__ == "__main__":
     unittest.main()

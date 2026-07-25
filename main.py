@@ -43,12 +43,15 @@ def main():
     ui = JarvisUI("face.png")
 
     def runner():
-        ui.wait_for_api_key()
-        br = BRVoiceAssistant(ui)
         try:
+            br = BRVoiceAssistant(ui)
             asyncio.run(br.run())
         except (KeyboardInterrupt, SystemExit):
             print("\n🔴 Shutting down...")
+        except Exception as err:
+            print(f"[Main Runner Error]: {err}")
+            if ui:
+                ui.write_log(f"ERR: Voice assistant worker failed: {err}")
 
     threading.Thread(target=runner, daemon=True).start()
     try:
