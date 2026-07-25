@@ -56,6 +56,7 @@ class BRVoiceAssistant:
         self._wake_listen_timeout = 2.5       # max seconds to wait for any speech
         self._wake_phrase_limit = 6.0         # ⚡ 6.0s capture for wake + continuous command
         self._command_timeout = 6.0           # seconds to wait for command speech
+        self._command_phrase_limit = 25.0     # ⚡ allow long complex multi-sentence commands
         self._ambient_calibration = 0.5       # ⚡ halved from 1.0s
 
         # Initialize 500ms rolling audio pre-roll ring buffer
