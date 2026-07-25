@@ -124,8 +124,17 @@ PERMISSIONS = _build_global_policy()
 
 
 def check_permission(tool_name: str, args: dict | None = None) -> bool:
-    """Check if tool execution is permitted under global policy."""
-    return PERMISSIONS.check(tool_name)
+    """Check if tool execution is permitted under global policy and path security policies."""
+    if not PERMISSIONS.check(tool_name):
+        return False
+
+    if args and isinstance(args, dict):
+        for path_key in ("AbsolutePath", "TargetFile", "SearchPath", "file_path", "path"):
+            val = args.get(path_key)
+            if val and isinstance(val, (str, Path)):
+                if not PathPolicy.allow_cloud_context(val):
+                    return False
+    return True
 
 
 # ── Path Policy & Tiered File Access ────────────────────────────────────────

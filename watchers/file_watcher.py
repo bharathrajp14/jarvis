@@ -30,8 +30,9 @@ class FileWatcher:
         """
         changes_detected = 0
         try:
-            for file_path in self.watch_path.glob("*.py"):
-                if file_path.is_file():
+            ignored_parts = {"__pycache__", ".git", ".venv", "venv", "node_modules", "build", "dist", ".pytest_cache"}
+            for file_path in self.watch_path.rglob("*.py"):
+                if file_path.is_file() and not any(part in file_path.parts for part in ignored_parts):
                     mtime = file_path.stat().st_mtime
                     str_path = str(file_path)
                     

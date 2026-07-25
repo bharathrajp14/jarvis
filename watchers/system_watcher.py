@@ -19,6 +19,11 @@ class SystemWatcher:
 
     def __init__(self):
         self.event_bus = get_event_bus()
+        try:
+            import psutil
+            psutil.cpu_percent(interval=None)  # Warm-up initial CPU sample
+        except Exception:
+            pass
 
     def check_telemetry(self) -> Dict[str, Any]:
         """

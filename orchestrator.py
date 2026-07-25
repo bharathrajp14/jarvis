@@ -505,7 +505,10 @@ class JarvisOrchestrator:
                 else:
                     self.working_memory.add("assistant", _format_clean_tool_summary(tool_name, tool_args))
 
-                self.working_memory.add("user", f"[Tool Result for '{tool_name}']:\n{tool_result}")
+                str_res = str(tool_result)
+                if len(str_res) > 4000:
+                    str_res = str_res[:2000] + "\n\n[... output truncated for context efficiency ...]\n\n" + str_res[-1500:]
+                self.working_memory.add("user", f"[Tool Result for '{tool_name}']:\n{str_res}")
                 step += 1
                 continue
 
