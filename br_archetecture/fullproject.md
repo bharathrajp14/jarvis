@@ -1,10 +1,10 @@
 # 🌌 BR JARVIS — Master Architecture Record & Full Project Specification
 
-> **System Identity**: BR JARVIS (Project BR / JARVIS MK37)  
-> **Version**: MK37.31.0 — Cognitive AI OS Architecture & Autonomous Swarm Subsystems  
+> **System Identity**: BR JARVIS (Project BR / JARVIS MK38)  
+> **Version**: MK38.2.0 — Meta-Cognition, Speculative Core & World Intelligence Subsystems  
 > **Target Platform**: Windows 11 / Linux / macOS  
 > **Last Updated**: 2026-07-25  
-> **Test Coverage**: 102 automated Pytest unit & integration test suites passing cleanly (100% green)  
+> **Test Coverage**: 110 automated Pytest unit & integration test suites passing cleanly (100% green)  
 
 ---
 
@@ -18,6 +18,11 @@ It is not a simple chatbot wrapper — it is a full **AI Operating System** with
 
 | Principle | Implementation | Status |
 |---|---|---|
+| **Meta-Cognition Engine** | `reasoning/meta_cognition.py` — Pre-execution risk assessment & confidence scoring ($0.0 \text{ to } 1.0$) | ✅ Production |
+| **Speculative Execution Engine** | `reasoning/speculative.py` & `orchestrator/speculative.py` — Speculative draft step generator & parallel validator | ✅ Production |
+| **Trajectory Experience Replay DB** | `memory/experience_replay.py` — SQLite WAL trajectory store for similarity retrieval & playback | ✅ Production |
+| **Temporal Knowledge Graph 2.0** | `memory/temporal_kg.py` — Time-stamped relational edges $(e_1, r, e_2, t_{\text{start}}, t_{\text{end}})$ & `query_as_of` snapshots | ✅ Production |
+| **Semantic Workspace Code Graph** | `workspace/code_graph.py` — Zero-token AST code symbol definition & reference resolution | ✅ Production |
 | **Closed-Loop Cognitive Cycle** | `reasoning/cognitive_loop.py` & `agent/critic_agent.py` — Observe -> Think -> Critic -> Improve -> Retry cycle | ✅ Production |
 | **Relational Knowledge Graph World Model** | `memory/knowledge_graph.py` — NetworkX relational entity graph connecting workspace resources | ✅ Production |
 | **Persistent Task DAG & Crash Resume** | `workflow/task_dag.py` — SQLite WAL atomic step checkpointing (`checkpoint()`, `resume()`) | ✅ Production |

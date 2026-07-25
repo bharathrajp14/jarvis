@@ -38,11 +38,19 @@ Br-Jarvis/
 ├── evolution/                 # Self-upgrade sandbox, classifier, proposer, deployer
 ├── guardian/                  # PathPolicy bounds check, kill-switch, snapshot, rollback
 ├── history/                   # Session store, replay engine, transcript writer
-├── memory/                    # 6-tier memory subsystem (Working, SQLite, Vector RAG, Lessons, Cache, KnowledgeGraph, Decay)
+├── memory/                    # 8-tier memory subsystem (Working, SQLite, Vector RAG, Lessons, Cache, KnowledgeGraph, ExperienceReplay, TemporalKG)
 │   ├── decay.py               # Ebbinghaus memory retention decay & pruner
-│   └── knowledge_graph.py     # Relational NetworkX world model entity graph
+│   ├── experience_replay.py   # Trajectory Experience Replay SQLite WAL database
+│   ├── knowledge_graph.py     # Relational NetworkX world model entity graph
+│   └── temporal_kg.py         # Time-stamped Temporal Knowledge Graph 2.0
 ├── multi_agent/               # Sub-agent spawning framework (12 subagent definitions & hierarchical swarm)
 │   └── swarm.py               # Hierarchical multi-agent collaboration engine
+├── reasoning/                 # Meta-cognition, speculative drafting & cognitive loops
+│   ├── cognitive_loop.py      # Closed Observe-Think-Critic-Improve-Retry loop
+│   ├── meta_cognition.py      # MetaCognitionEngine pre-execution risk evaluator
+│   └── speculative.py         # SpeculativeExecutionEngine parallel step validator
+├── workspace/                 # Workspace AST code intelligence graph
+│   └── code_graph.py          # WorkspaceCodeGraph zero-token symbol definition indexer
 ├── native/                    # Win32 C native bridge (`jarvis_native.c`)
 ├── plugins/                   # Plugin platform & isolation manager
 ├── reasoning/                 # Chain-of-Thought engine, plan graph DAG, cognitive loop

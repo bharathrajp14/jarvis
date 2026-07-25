@@ -1,6 +1,6 @@
 # 🏗️ Core System Topology & Architecture Graph
 
-> **System**: BR JARVIS (MK37.31.0)  
+> **System**: BR JARVIS (MK38.2.0)  
 > **Target Scope**: End-to-end component graph, event flow, and data pipelines.
 
 ---
@@ -16,15 +16,19 @@ graph LR
     end
 
     subgraph CognitiveLayer["Cognitive Layer"]
+        MetaCognition[MetaCognitionEngine<br/>reasoning/meta_cognition.py]
+        SpeculativeEngine[SpeculativeExecutionEngine<br/>reasoning/speculative.py]
         StepPlanner[Conscious Step Planner<br/>agent/step_planner.py]
         CognitiveLoop[Closed Cognitive Loop<br/>reasoning/cognitive_loop.py]
         CriticAgent[Critic & Verifier<br/>agent/critic_agent.py]
-        TaskScheduler[Task DAG Scheduler<br/>agent/task_scheduler.py]
         Orchestrator[ReAct Orchestrator Coordinator<br/>orchestrator.py]
         Router[Multi-Objective Router<br/>router.py]
     end
 
     subgraph WorldModelLayer["World Model & Memory"]
+        ExperienceReplay[ExperienceReplayStore<br/>memory/experience_replay.py]
+        TemporalKG[TemporalKnowledgeGraph<br/>memory/temporal_kg.py]
+        WorkspaceCodeGraph[WorkspaceCodeGraph<br/>workspace/code_graph.py]
         KnowledgeGraph[NetworkX Knowledge Graph<br/>memory/knowledge_graph.py]
         MemoryDecay[Ebbinghaus Memory Decay<br/>memory/decay.py]
         TaskDAGStore[Persistent Task DAG Store<br/>workflow/task_dag.py]

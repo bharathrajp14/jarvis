@@ -116,6 +116,19 @@ This document outlines the multi-phase implementation roadmap for the BR JARVIS 
 
 ---
 
+## 🟢 Phase 8.1 & 8.2: Meta-Cognition, Speculative Core & World Intelligence (COMPLETED — v38.2.0)
+
+- [x] **Meta-Cognition Engine** (`reasoning/meta_cognition.py`) — Pre-execution risk assessment & confidence scoring ($0.0 \text{ to } 1.0$)
+- [x] **Speculative Drafting & Execution Engine** (`reasoning/speculative.py`, `orchestrator/speculative.py`) — Speculative draft step generator & parallel validator
+- [x] **Trajectory Experience Replay Database** (`memory/experience_replay.py`) — SQLite WAL database for trajectory playback & similarity search
+- [x] **Temporal Knowledge Graph 2.0** (`memory/temporal_kg.py`) — Time-stamped relational edges $(e_1, r, e_2, t_{\text{start}}, t_{\text{end}})$ and point-in-time snapshot queries
+- [x] **Semantic Workspace Code Graph** (`workspace/code_graph.py`) — Zero-token AST code symbol definition & reference resolution
+- [x] **PathPolicy TIER_2 Enforcement** (`permissions.py`) — Hardened `check_permission` evaluating file path arguments against restricted patterns
+- [x] **ReAct Working Memory Truncation** (`orchestrator.py`) — Cap tool execution outputs in working memory at 4000 chars
+- [x] **110-Test Verification Suite** (`tests/test_mk38_phase1_upgrades.py`, `tests/test_mk38_phase2_upgrades.py`, `tests/test_flaw_remediations_v2.py`) — 100% pass rate across 110 automated tests
+
+---
+
 ## 🟡 Phase 8: Core Refactoring & Robustness (IN PROGRESS / ACTIVE BACKLOG)
 
 - [ ] **BUG-001 Fix**: Resolve `self.ui` AttributeError in `BRVoiceAssistant.__init__()`

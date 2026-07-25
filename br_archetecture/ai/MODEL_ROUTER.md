@@ -1,8 +1,8 @@
 # 🔀 Model Router & Provider Engine Specification
 
-> **Module**: `router.py` & `backends/`  
-> **Version**: MK37.31.0  
-> **Primary Purpose**: Dynamic multi-backend AI model selection, adaptive complexity routing, token budgeting, and automatic failover.
+> **Module**: `router.py`, `reasoning/meta_cognition.py`, `reasoning/speculative.py` & `backends/`  
+> **Version**: MK38.2.0  
+> **Primary Purpose**: Dynamic multi-backend AI model selection, meta-cognitive risk evaluation, speculative step drafting, adaptive complexity routing, token budgeting, and automatic failover.
 
 ---
 
@@ -22,7 +22,7 @@ BR JARVIS supports 7 LLM provider backends through modular adapters in `backends
 
 ---
 
-## 2. Adaptive Routing Logic
+## 2. Adaptive Routing & Meta-Cognitive Pipeline
 
 ```
 Task Execution Request
@@ -33,7 +33,13 @@ Task Execution Request
          ├─────────────────────────────────────────┐
          │ (No match)                              │ (Matched)
          ▼                                         ▼
-[ Complexity Classifier ]                   Instant Execution
+[ MetaCognitionEngine (reasoning/meta_cognition.py) ] Instant Execution
+         │ (Evaluates Confidence score 0.0-1.0 & Risk Level)
+         ▼
+[ SpeculativeExecutionEngine (reasoning/speculative.py) ]
+         │ (Generates draft step proposals)
+         ▼
+[ Multi-Objective Router (router.py) ]
          │
          ├───────────────────────┬───────────────────────┐
          ▼                       ▼                       ▼

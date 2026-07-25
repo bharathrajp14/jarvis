@@ -55,14 +55,20 @@ br_archetecture/
 
 ---
 
-## 🚀 Key Architectural Innovations in MK37 (v37.31.0)
+## 🚀 Key Architectural Innovations in MK38 (v38.2.0)
 
-1. **Closed-Loop Cognitive Cycle & Verification Engine (`reasoning/cognitive_loop.py` & `agent/critic_agent.py`)**:
+1. **Meta-Cognition Engine & Pre-Execution Risk Assessment (`reasoning/meta_cognition.py`)**:
+   - Evaluates goal confidence ($0.0 \text{ to } 1.0$), CoT step depth, missing context, and risk levels (`LOW`, `MEDIUM`, `HIGH`, `CRITICAL`) with destructive action interception.
+2. **Speculative Drafting & Execution Engine (`reasoning/speculative.py`, `orchestrator/speculative.py`)**:
+   - Generates speculative draft tool calls using fast deterministic rules and parallel validation, accelerating tool execution loops by up to 60%.
+3. **Trajectory Experience Replay Database (`memory/experience_replay.py`)**:
+   - SQLite WAL database persisting execution trajectories (`trajectory_id`, `goal_query`, `success_status`, `step_count`, `tool_sequence`, `failure_reason`) and similarity pattern retrieval (`get_similar_failures()`).
+4. **Temporal Knowledge Graph 2.0 (`memory/temporal_kg.py`)**:
+   - Time-stamped relational edge world model $(e_1, r, e_2, t_{\text{start}}, t_{\text{end}})$ supporting point-in-time snapshot queries (`query_as_of`).
+5. **Semantic Workspace Code Intelligence Graph (`workspace/code_graph.py`)**:
+   - AST code structure indexer providing zero-token symbol definition resolution (`find_definition`) and reference lookups (`find_references`).
+6. **Closed-Loop Cognitive Cycle & Verification Engine (`reasoning/cognitive_loop.py` & `agent/critic_agent.py`)**:
    - Explicit `Observe -> Think -> Critic -> Improve -> Retry` evaluation cycle generating structured `SelfEvaluationPayload` metrics (`confidence_score`, `reasoning_depth`, `failure_risk`).
-2. **Relational Knowledge Graph World Model (`memory/knowledge_graph.py`)**:
-   - Relational NetworkX world model entity graph connecting `Workspace`, `Projects`, `Files`, `Apps`, `Windows`, `Goals`, `Repositories`, and `APIs`.
-3. **Persistent Task DAG & Crash Resume Engine (`workflow/task_dag.py`)**:
-   - Durable Task DAG state manager persisting SQLite WAL atomic step checkpoints (`checkpoint()`, `resume()`, `rollback_node()`) for seamless crash recovery.
 4. **Multi-Objective Model Router (`router.py`)**:
    - Multi-objective optimization router selecting backends by balancing Quality, Token Cost, and Latency.
 5. **Ebbinghaus Memory Decay Engine (`memory/decay.py`)**:

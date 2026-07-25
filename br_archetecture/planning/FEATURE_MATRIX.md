@@ -2,7 +2,7 @@
 
 > **Document Status**: Production Architecture Specification  
 > **Scope**: Implementation Status across Core Subsystems  
-> **Version**: MK37.31.0  
+> **Version**: MK38.2.0  
 
 ---
 
@@ -10,6 +10,11 @@
 
 | Subsystem | Feature | Status | Module Path |
 |---|---|---|---|
+| **Meta-Cognition Engine** | Pre-Execution Risk Assessment & Confidence Evaluation | ✅ Production | `reasoning/meta_cognition.py` |
+| **Speculative Execution** | Speculative Draft Generation & Parallel Validation | ✅ Production | `reasoning/speculative.py` & `orchestrator/speculative.py` |
+| **Experience Replay DB** | SQLite WAL Goal Trajectory Recording & Similarity Search | ✅ Production | `memory/experience_replay.py` |
+| **Temporal Knowledge Graph 2.0** | Time-Stamped Relational Edges & Point-in-Time Queries | ✅ Production | `memory/temporal_kg.py` |
+| **Workspace Code Graph** | Zero-Token AST Code Symbol Definition & Reference Resolution | ✅ Production | `workspace/code_graph.py` |
 | **Cognitive Loop** | Observe -> Think -> Critic -> Improve -> Retry Cycle | ✅ Production | `reasoning/cognitive_loop.py` |
 | **Critic Sub-Agent** | Autonomous Quality & Security Reviewer | ✅ Production | `agent/critic_agent.py` |
 | **Knowledge Graph** | Relational NetworkX World Model Entity Graph | ✅ Production | `memory/knowledge_graph.py` |

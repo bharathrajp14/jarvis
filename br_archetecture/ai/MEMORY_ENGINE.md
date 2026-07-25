@@ -1,39 +1,39 @@
 # 🧠 Memory Engine Architectural Specification
 
 > **Module**: `memory/`  
-> **Version**: MK37.31.0  
-> **Primary Purpose**: Multi-tier memory retention, Knowledge Graph world model, Ebbinghaus memory decay, ChromaDB vector RAG, and instant FNV-1a response caching.
+> **Version**: MK38.2.0  
+> **Primary Purpose**: Multi-tier memory retention, Trajectory Experience Replay DB, Temporal Knowledge Graph 2.0, Ebbinghaus memory decay, ChromaDB vector RAG, and instant FNV-1a response caching.
 
 ---
 
-## 1. 6-Tier Memory Architecture
+## 1. 8-Tier Memory Architecture
 
-BR JARVIS employs a 6-tier memory subsystem managed by `UnifiedMemoryManager` (`memory/manager.py`).
+BR JARVIS employs an 8-tier memory subsystem managed by `UnifiedMemoryManager` (`memory/manager.py`).
 
 ```
                     ┌─────────────────────────┐
                     │      User Prompt        │
                     └────────────┬────────────┘
                                  │
-         ┌───────────────────────┴───────────────────────┐
-         ▼                                               ▼
-┌──────────────────┐                           ┌──────────────────┐
-│  Tier 1: Working │                           │  Tier 5: FNV-1a  │
-│  Memory (RAM)    │                           │  Response Cache  │
-└────────┬─────────┘                           └────────┬─────────┘
-         │                                              │
-         ▼                                              ▼
-┌──────────────────┐                           ┌──────────────────┐
-│  Tier 2: SQLite  │                           │  Tier 4: Lesson  │
-│  Session DB      │                           │  Store (Markdown)│
-└────────┬─────────┘                           └────────┬─────────┘
-         │                                              │
-         ├───────────────────────┬──────────────────────┘
-         ▼                       ▼
-┌──────────────────┐   ┌──────────────────┐
-│  Tier 3: ChromaDB│   │ Tier 6: NetworkX │
-│  Vector RAG      │   │ Knowledge Graph  │
-└──────────────────┘   └──────────────────┘
+         ┌───────────────────────┼───────────────────────┐
+         ▼                       ▼                       ▼
+┌──────────────────┐   ┌──────────────────┐   ┌──────────────────┐
+│  Tier 1: Working │   │  Tier 5: FNV-1a  │   │ Tier 7: Trajectory│
+│  Memory (RAM)    │   │  Response Cache  │   │ Experience Replay│
+└────────┬─────────┘   └────────┬─────────┘   └────────┬─────────┘
+         │                      │                      │
+         ▼                      ▼                      ▼
+┌──────────────────┐   ┌──────────────────┐   ┌──────────────────┐
+│  Tier 2: SQLite  │   │  Tier 4: Lesson  │   │ Tier 8: Temporal │
+│  Session DB      │   │  Store (Markdown)│   │ Knowledge Graph  │
+└────────┬─────────┘   └────────┬─────────┘   └──────────────────┘
+         │                      │
+         ├──────────────────────┘
+         ▼
+┌──────────────────┐
+│  Tier 3: ChromaDB│
+│  Vector RAG      │
+└──────────────────┘
 ```
 
 ---
@@ -61,8 +61,13 @@ BR JARVIS employs a 6-tier memory subsystem managed by `UnifiedMemoryManager` (`
 ### Tier 6: Relational Knowledge Graph World Model (`memory/knowledge_graph.py`)
 - NetworkX relational entity graph connecting `Workspace`, `Projects`, `Files`, `Apps`, `Windows`, `Goals`, `Repositories`, and `APIs`.
 
+### Tier 7: Trajectory Experience Replay DB (`memory/experience_replay.py`)
+- SQLite WAL store persisting step execution trajectories (`trajectory_id`, `goal_query`, `success_status`, `step_count`, `tool_sequence`, `failure_reason`) enabling similarity retrieval (`get_similar_failures()`).
+
+### Tier 8: Temporal Knowledge Graph 2.0 (`memory/temporal_kg.py`)
+- Time-stamped directed relational graph $(e_1, r, e_2, t_{\text{start}}, t_{\text{end}})$ supporting edge mutation history and point-in-time snapshot filtering (`query_as_of`).
+
 ### Memory Decay & Forgetting Engine (`memory/decay.py`)
 - Implements Ebbinghaus memory decay:
   $$\text{RetentionScore} = \text{Importance} \times e^{-\text{decay\_rate} \times \text{elapsed\_time}} \times (1 + \log(\text{access\_count}))$$
 - Classifies memories into `RETAIN`, `ARCHIVE`, and `PRUNE` categories to prevent memory bloat.
-- In-memory & disk-backed cache keying tool outputs and deterministic queries by FNV-1a frame/query hashes for instant hit resolution (<1ms).
