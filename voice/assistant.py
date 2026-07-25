@@ -53,10 +53,10 @@ class BRVoiceAssistant:
         # Load configurable settings
         self.name = os.environ.get("JARVIS_ASSISTANT_NAME", "BR").strip()
         self.wake_word = os.environ.get("JARVIS_WAKE_WORD", "jarvis").strip().lower()
-        self._wake_listen_timeout = 2.0       # max seconds to wait for any speech
-        self._wake_phrase_limit = 4.0         # ⚡ 4.0s capture to allow continuous wake + command utterance
-        self._command_timeout = 4.0           # seconds to wait for command speech
-        self._command_phrase_limit = 10.0     # allow longer commands
+        self._wake_listen_timeout = 2.5       # max seconds to wait for any speech
+        self._wake_phrase_limit = 6.0         # ⚡ 6.0s capture for wake + continuous command
+        self._command_timeout = 6.0           # seconds to wait for command speech
+        self._command_phrase_limit = 25.0     # ⚡ allow long complex multi-sentence commands
         self._ambient_calibration = 0.5       # ⚡ halved from 1.0s
 
         # Initialize Neural TTS Engine
@@ -150,8 +150,8 @@ class BRVoiceAssistant:
         """Apply optimal settings for wake-word and command capture."""
         recognizer.dynamic_energy_threshold = False  # ⚡ Fixed threshold prevents sensitivity drift
         recognizer.energy_threshold = 150             # ⚡ Sensitive threshold ensures quick wake word response
-        recognizer.pause_threshold = 0.4              # detect end-of-speech after 0.4s silence
-        recognizer.non_speaking_duration = 0.2     # min non-speech before phrase end
+        recognizer.pause_threshold = 1.2              # ⚡ Allows 1.2s natural speech pause without mid-sentence cutoff
+        recognizer.non_speaking_duration = 0.5        # min non-speech before phrase end boundary
         recognizer.phrase_threshold = 0.1          # min speech length to register
 
     def _is_wake_phrase(self, text: str) -> bool:
