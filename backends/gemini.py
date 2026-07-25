@@ -61,7 +61,7 @@ class GeminiBackend(BaseBackend):
         use_proxy = os.environ.get("JARVIS_ROUTE_GEMINI_TO_GATEWAY", "true").lower() == "true"
         if use_proxy:
             try:
-                from openai import OpenAI
+                from openai import OpenAI  # type: ignore
                 from config.models import get_model_config
                 cfg = get_model_config()
                 base_url = cfg.get("openai_base_url", "http://localhost:8045/v1")
