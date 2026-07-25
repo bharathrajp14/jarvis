@@ -109,7 +109,10 @@ def _format_clean_tool_summary(tool_name: str, tool_args: dict) -> str:
 
 class JarvisOrchestrator:
 
-    def __init__(self, router: AgentRouter, use_vector_memory: bool = True):
+    def __init__(self, router: AgentRouter | None = None, use_vector_memory: bool = True):
+        if router is None:
+            from router import AgentRouter
+            router = AgentRouter()
         self.router = router
         self.working_memory = WorkingMemory(max_tokens=120_000)
         self.vector_memory  = None

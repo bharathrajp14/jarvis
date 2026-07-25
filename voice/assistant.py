@@ -45,7 +45,9 @@ class BRVoiceAssistant:
         # Initialize ReAct Orchestrator & Backend Gateway
         try:
             from orchestrator import JarvisOrchestrator
-            self.orchestrator = JarvisOrchestrator()
+            from router import AgentRouter
+            router = AgentRouter()
+            self.orchestrator = JarvisOrchestrator(router=router)
             self.backends = getattr(getattr(self.orchestrator, "router", None), "backends", {})
         except Exception as e:
             print(f"[Voice] Orchestrator init warning: {e}")
