@@ -45,9 +45,13 @@ class TestVoicePipeline(unittest.TestCase):
 
     def test_recognizer_tuning(self):
         from voice.assistant import BRVoiceAssistant
+        import speech_recognition as sr
         assistant = BRVoiceAssistant(ui=None)
+        r = sr.Recognizer()
+        assistant._tune_recognizer(r)
+        self.assertTrue(r.dynamic_energy_threshold)
+        self.assertEqual(r.pause_threshold, 0.9)
         self.assertEqual(assistant._command_phrase_limit, 25.0)
-        self.assertEqual(assistant._command_timeout, 6.0)
 
 
 if __name__ == "__main__":

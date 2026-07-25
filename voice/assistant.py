@@ -147,12 +147,14 @@ class BRVoiceAssistant:
             pass
 
     def _tune_recognizer(self, recognizer):
-        """Apply optimal settings for wake-word and command capture."""
-        recognizer.dynamic_energy_threshold = False  # ⚡ Fixed threshold prevents sensitivity drift
-        recognizer.energy_threshold = 150             # ⚡ Sensitive threshold ensures quick wake word response
-        recognizer.pause_threshold = 1.2              # ⚡ Allows 1.2s natural speech pause without mid-sentence cutoff
-        recognizer.non_speaking_duration = 0.5        # min non-speech before phrase end boundary
-        recognizer.phrase_threshold = 0.1          # min speech length to register
+        """Apply adaptive dynamic energy thresholding and optimal phrase boundary settings."""
+        recognizer.dynamic_energy_threshold = True   # Enable adaptive noise floor tracking
+        recognizer.dynamic_energy_adjustment_damping = 0.15
+        recognizer.dynamic_energy_ratio = 1.5
+        recognizer.energy_threshold = 300             # Balanced initial baseline energy
+        recognizer.pause_threshold = 0.9              # Allow 0.9s pause for natural speech cadence
+        recognizer.non_speaking_duration = 0.4        # Min non-speech duration before phrase end
+        recognizer.phrase_threshold = 0.2          # Min speech length to register
 
     def _is_wake_phrase(self, text: str) -> bool:
         """Return True when transcript contains explicit wake word ('jarvis', 'hey jarvis', or phonetic variants)."""
@@ -501,9 +503,7 @@ class BRVoiceAssistant:
                                 await self._switch_to_new_command(embedded_cmd)
                                 continue
 
-                            # Flush mic queue for clean command capture
-                            mic.drain()
-
+                            # Preserve audio frames captured immediately after wake chime
                             # Listen for follow-up command if user spoke only the wake word
                             try:
                                 audio_cmd = await self._loop.run_in_executor(
