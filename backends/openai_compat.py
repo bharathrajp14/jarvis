@@ -34,7 +34,7 @@ class OpenAIBackend(BaseBackend):
 
         if _api_key:
             try:
-                from openai import OpenAI
+                from openai import OpenAI  # type: ignore
                 client_kwargs = {"api_key": _api_key}
                 if _base_url:
                     client_kwargs["base_url"] = _base_url
