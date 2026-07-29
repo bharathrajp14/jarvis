@@ -48,14 +48,24 @@ _JSON_BLOCK_RX = re.compile(r'\{["\']tool["\']\s*:\s*["\'][^"\']+["\']\s*,\s*["\
 _MD_CHARS_RX   = re.compile(r'[*_~`#\[\](){}<>|]')
 _LINK_RX       = re.compile(r'\[([^\]]*)\]\([^)]*\)')
 _URL_RX        = re.compile(r'https?://\S+')
-_FILE_PATH_RX  = re.compile(r'(?:[A-Z]:\\|/)[^\s,;]+')
+_FILE_PATH_RX  = re.compile(r'(?:[A-Z]:\\|[a-zA-Z0-9_-]+[/\\])[^\s,;]+')
 _EMOJI_RX      = re.compile(r'[\U0001F300-\U0001FAFF\U00002702-\U000027B0]')
 _WHITESPACE_RX = re.compile(r'\s{2,}')
 
 _SYSTEM_TAGS_RX = re.compile(r'\[DONE[^\]]*\]|⚡\s*\[Antigravity Instant 0-Token Action\]|\[Tool:[^\]]*\]|\[Executed Tool:[^\]]*\]', re.IGNORECASE)
 
+def _format_path_for_speech(match: re.Match) -> str:
+    path_str = match.group(0)
+    try:
+        fname = Path(path_str).name
+        if fname:
+            return fname.replace('_', ' ')
+    except Exception:
+        pass
+    return path_str
+
 def clean_for_speech(text: str) -> str:
-    """Remove tool calls, code blocks, markdown, URLs, file paths, JSON blocks, system tags, and emojis from text for clean speech output."""
+    """Remove tool calls, code blocks, markdown, URLs, JSON blocks, system tags, and emojis from text for clean speech output, converting file paths to natural spoken names."""
     t = _CODE_BLOCK_RX.sub('', text)
     t = _TOOL_CALL_RX.sub('', t)
     t = _START_RX.sub('', t)
@@ -66,15 +76,15 @@ def clean_for_speech(text: str) -> str:
     t = _SYSTEM_TAGS_RX.sub('', t)
     t = _LINK_RX.sub(r'\1', t)       # [link text](url) → link text
     t = _URL_RX.sub('', t)
-    t = _FILE_PATH_RX.sub('', t)
+    t = _FILE_PATH_RX.sub(_format_path_for_speech, t)
     t = _EMOJI_RX.sub('', t)
     t = _MD_CHARS_RX.sub('', t)
     t = _WHITESPACE_RX.sub(' ', t)
     return t.strip()
 
 
-def summarize_for_speech(text: str, max_chars: int = 600) -> str:
-    """Truncate long technical responses to a concise conversational speech summary."""
+def summarize_for_speech(text: str, max_chars: int = 1000) -> str:
+    """Truncate long technical responses to a concise conversational speech summary ending on clean sentence boundaries."""
     clean = clean_for_speech(text)
     if not clean or len(clean) <= max_chars:
         return clean
@@ -88,7 +98,9 @@ def summarize_for_speech(text: str, max_chars: int = 600) -> str:
             break
     
     if not summary.strip():
-        summary = clean[:max_chars].rsplit(" ", 1)[0] + "."
+        # Fallback to nearest word boundary
+        words = clean[:max_chars].rsplit(" ", 1)[0]
+        summary = words + "." if not words.endswith(('.', '!', '?')) else words
         
     return summary.strip()
 
