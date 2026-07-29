@@ -45,11 +45,11 @@ class GeminiBackend(BaseBackend):
     """
 
     FALLBACK_MODELS = [
+        "gemini-3-flash",
         "gemini-3.5-flash-extra-low",
         "gemini-3.5-flash-low",
         "gemini-3.6-flash-low",
         "gemini-3.6-flash-medium",
-        "gemini-3-flash",
     ]
 
     def __init__(self, model: str = None, api_key: str = None):
