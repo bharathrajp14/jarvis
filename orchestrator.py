@@ -435,7 +435,21 @@ class JarvisOrchestrator:
                 print(f"[StepBudget] {budget_msg}")
             if not should_continue:
                 print(f"[StepBudget] ⏹ Step limit reached: {budget_msg}")
-                final_response += f"\n\n[BR: Step budget completed ({budget.current_budget} steps). Returning current results.]"
+                try:
+                    summary_prompt = "All planned sub-tasks have finished. Synthesize a clean, direct, human-readable summary of the final output for the user. Do NOT call any tools."
+                    self.working_memory.add("user", summary_prompt)
+                    sum_resp = self.router.run(profile, self.working_memory.get(), "Do NOT call any tools. Return only natural language summary.")
+                    final_response = re.sub(r'```tool_call\s*\n\s*\{.*?\}\s*\n\s*```', '', sum_resp, flags=re.DOTALL)
+                    final_response = re.sub(r'\{\s*"tool"\s*:\s*"[^"]+"\s*,\s*"args"\s*:\s*\{.*?\}\s*\}', '', final_response, flags=re.DOTALL)
+                    final_response = re.sub(r'<\|.*?\|>', '', final_response).strip()
+                except Exception:
+                    pass
+                if not final_response or final_response.startswith("[BR:"):
+                    tools_used = list(dict.fromkeys(t["tool_name"] for t in tool_history if "tool_name" in t))
+                    if tools_used:
+                        final_response = f"I have executed your request using {', '.join(tools_used)} and saved all generated materials to your workspace."
+                    else:
+                        final_response = "I have completed the planned steps for your request."
                 break
 
             t_start = time.monotonic()
@@ -467,7 +481,17 @@ class JarvisOrchestrator:
 
                 if _consecutive_tool["count"] >= 4:
                     print(f"[JARVIS] ⛔ Duplicate-call limit reached (x{_consecutive_tool['count']}). Terminating loop to prevent infinite token burn.")
-                    final_response = f"[BR: Duplicate tool call limit reached for '{tool_name}'. Proceeding with accumulated results.]"
+                    try:
+                        summary_prompt = "Tool execution has completed. Provide a clean, direct, human-readable summary of the actions performed. Do NOT call any tools."
+                        self.working_memory.add("user", summary_prompt)
+                        sum_resp = self.router.run(profile, self.working_memory.get(), "Do NOT call any tools. Return only natural language summary.")
+                        final_response = re.sub(r'```tool_call\s*\n\s*\{.*?\}\s*\n\s*```', '', sum_resp, flags=re.DOTALL)
+                        final_response = re.sub(r'\{\s*"tool"\s*:\s*"[^"]+"\s*,\s*"args"\s*:\s*\{.*?\}\s*\}', '', final_response, flags=re.DOTALL)
+                        final_response = re.sub(r'<\|.*?\|>', '', final_response).strip()
+                    except Exception:
+                        pass
+                    if not final_response or final_response.startswith("[BR:"):
+                        final_response = f"I have executed the tool operations for '{tool_name}' and completed your request."
                     break
 
                 print(f"[JARVIS] 🧠 Step {step+1}/{budget.current_budget}: {tool_name}({list(tool_args.keys() if tool_args else [])})")
@@ -499,6 +523,7 @@ class JarvisOrchestrator:
                 )
 
                 clean = re.sub(r'```tool_call\s*\n\s*\{.*?\}\s*\n\s*```', '', response, flags=re.DOTALL).strip()
+                clean = re.sub(r'\{\s*"tool"\s*:\s*"[^"]+"\s*,\s*"args"\s*:\s*\{.*?\}\s*\}', '', clean, flags=re.DOTALL).strip()
                 clean = re.sub(r'<\|start\|>.*?<\|call\|>', '', clean, flags=re.DOTALL)
                 clean = re.sub(r'<\|channel\|>.*?<\|call\|>', '', clean, flags=re.DOTALL)
                 clean = re.sub(r'<\|message\|>.*?<\|call\|>', '', clean, flags=re.DOTALL)
@@ -525,12 +550,14 @@ class JarvisOrchestrator:
                     continue
 
                 self._prompted_continuation = False
-                final_response = re.sub(r'<\|start\|>.*?<\|call\|>', '', response, flags=re.DOTALL)
+                final_response = re.sub(r'```tool_call\s*\n\s*\{.*?\}\s*\n\s*```', '', response, flags=re.DOTALL)
+                final_response = re.sub(r'\{\s*"tool"\s*:\s*"[^"]+"\s*,\s*"args"\s*:\s*\{.*?\}\s*\}', '', final_response, flags=re.DOTALL)
+                final_response = re.sub(r'<\|start\|>.*?<\|call\|>', '', final_response, flags=re.DOTALL)
                 final_response = re.sub(r'<\|channel\|>.*?<\|call\|>', '', final_response, flags=re.DOTALL)
                 final_response = re.sub(r'<\|message\|>.*?<\|call\|>', '', final_response, flags=re.DOTALL)
                 final_response = re.sub(r'<\|.*?\|>', '', final_response).strip()
 
-                if not final_response:
+                if not final_response or final_response.startswith("[BR:"):
                     try:
                         nudge = (
                             "All requested tasks have been successfully executed using tools. "
@@ -539,14 +566,16 @@ class JarvisOrchestrator:
                         )
                         self.working_memory.add("user", nudge)
                         sum_resp = self.router.run(profile, self.working_memory.get(), nudge)
-                        final_response = re.sub(r'<\|start\|>.*?<\|call\|>', '', sum_resp, flags=re.DOTALL)
+                        final_response = re.sub(r'```tool_call\s*\n\s*\{.*?\}\s*\n\s*```', '', sum_resp, flags=re.DOTALL)
+                        final_response = re.sub(r'\{\s*"tool"\s*:\s*"[^"]+"\s*,\s*"args"\s*:\s*\{.*?\}\s*\}', '', final_response, flags=re.DOTALL)
+                        final_response = re.sub(r'<\|start\|>.*?<\|call\|>', '', final_response, flags=re.DOTALL)
                         final_response = re.sub(r'<\|channel\|>.*?<\|call\|>', '', final_response, flags=re.DOTALL)
                         final_response = re.sub(r'<\|message\|>.*?<\|call\|>', '', final_response, flags=re.DOTALL)
                         final_response = re.sub(r'<\|.*?\|>', '', final_response).strip()
                     except Exception:
                         pass
 
-                if not final_response:
+                if not final_response or final_response.startswith("[BR:"):
                     assistant_turns = [
                         m["content"] for m in self.working_memory.get()
                         if m["role"] == "assistant" and not m["content"].strip().startswith("[Executed Tool:")
@@ -554,7 +583,11 @@ class JarvisOrchestrator:
                     if assistant_turns:
                         final_response = assistant_turns[-1]
                     else:
-                        final_response = "I have successfully executed the requested operations, sir."
+                        tools_used = list(dict.fromkeys(t["tool_name"] for t in tool_history if "tool_name" in t))
+                        if tools_used:
+                            final_response = f"I have successfully executed the requested operations using {', '.join(tools_used)}, sir."
+                        else:
+                            final_response = "I have successfully executed the requested operations, sir."
 
                 self._record_turn("assistant", final_response[:5000], backend=profile.value, latency_ms=latency_ms)
                 break

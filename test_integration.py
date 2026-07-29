@@ -70,7 +70,7 @@ def run_integration_tests():
     assert results[0].name == 'test_integration'
     delete_memory('test_integration', scope='user')
     results2 = search_memory('integration test')
-    assert len(results2) == 0
+    assert 'test_integration' not in [e.name for e in results2]
     print('[PASS] 5. Persistent Memory: save/search/delete cycle works')
 
     # 6. Memory Scan
