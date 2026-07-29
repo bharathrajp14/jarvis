@@ -143,7 +143,22 @@ class GeminiBackend(BaseBackend):
                         return response.choices[0].message.content or ""
                     except Exception:
                         pass
-                raise e
+                print(f"[Gemini Proxy] All proxy models exhausted/failed. Falling back to direct Google client...")
+                try:
+                    direct_key = _load_api_key()
+                    from google import genai
+                    direct_client = genai.Client(api_key=direct_key)
+                    contents = []
+                    for msg in messages:
+                        role = "user" if msg.get("role") == "user" else "model"
+                        c = msg.get("content")
+                        if c: contents.append({"role": role, "parts": [{"text": str(c)}]})
+                    if not contents: contents = [{"role": "user", "parts": [{"text": "Hello"}]}]
+                    resp = direct_client.models.generate_content(model="gemini-2.5-flash", contents=contents)
+                    return resp.text or ""
+                except Exception as ex_direct:
+                    print(f"[Gemini Direct Fallback Error]: {ex_direct}")
+                    raise e
 
         # Direct Google client path
         contents = []
