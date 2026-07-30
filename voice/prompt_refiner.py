@@ -72,6 +72,31 @@ class VoicePromptRefiner:
             cleaned = pattern.sub(correct, cleaned)
         return cleaned
 
+    def collapse_repetitions(self, text: str) -> str:
+        """Detect and collapse repetitive token loops (e.g. 'hey hey hey' -> 'hey', 'hey javis hey javis' -> 'hey javis')."""
+        if not text or not text.strip():
+            return ""
+        
+        tokens = re.findall(r"\b\w+\b", text)
+        if not tokens:
+            return text.strip()
+        
+        # 1. Check single-word repetition loop (e.g. ['hey', 'hey', 'hey', ...])
+        if len(tokens) >= 3 and len(set(t.lower() for t in tokens)) == 1:
+            return tokens[0]
+
+        # 2. Check 2-word phrase repetition loop (e.g. ['hey', 'javis', 'hey', 'javis', ...])
+        if len(tokens) >= 4:
+            even_unique = set(t.lower() for t in tokens[0::2])
+            odd_unique = set(t.lower() for t in tokens[1::2])
+            if len(even_unique) == 1 and len(odd_unique) == 1:
+                return f"{tokens[0]} {tokens[1]}"
+
+        # 3. Regex deduplication for consecutive duplicate phrases
+        pattern = re.compile(r"(\b.+?\b)(?:\s*[\,\.\!\?]?\s*\1)+", re.IGNORECASE)
+        cleaned = pattern.sub(r"\1", text.strip())
+        return cleaned.strip()
+
     def refine(self, raw_speech: str) -> Dict[str, Any]:
         """
         Refine a raw spoken transcript into a proper, high-precision prompt.
@@ -82,13 +107,27 @@ class VoicePromptRefiner:
 
         raw_trimmed = raw_speech.strip()
         
-        # Step 1: Strip vocal fillers
-        without_fillers = self.strip_fillers(raw_trimmed)
+        # Step 1: Collapse repetitive STT token loops
+        collapsed = self.collapse_repetitions(raw_trimmed)
 
-        # Step 2: Apply vocabulary corrections
+        # Step 2: Strip vocal fillers, wake words, and prefix bloat
+        without_fillers = self.strip_fillers(collapsed)
+
+        # If stripping wake words/fillers leaves nothing or only meaningless noise words remain
+        meaningless_words = {"hey", "jarvis", "javis", "br", "hello", "hi", "ok", "please", "um", "uh", "ah", "er", "hmm"}
+        clean_words = set(re.findall(r"\b\w+\b", without_fillers.lower()))
+        if not without_fillers or clean_words.issubset(meaningless_words):
+            return {
+                "raw": raw_trimmed,
+                "refined": "",
+                "was_modified": True,
+                "is_artifact": True
+            }
+
+        # Step 3: Apply vocabulary corrections
         with_vocab = self.apply_vocabulary(without_fillers)
 
-        # Step 3: Capitalize first letter and format cleanly
+        # Step 4: Capitalize first letter and format cleanly
         if with_vocab:
             refined = with_vocab[0].upper() + with_vocab[1:]
         else:

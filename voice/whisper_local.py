@@ -90,7 +90,7 @@ def is_available() -> bool:
     return False
 
 
-DEFAULT_INITIAL_PROMPT = "Jarvis, Javis, Hey Jarvis, Hey Javis, BR, open Brave, Chrome, search, system control, python script, email, whatsapp, calendar, list files, terminal."
+DEFAULT_INITIAL_PROMPT = "This is a speech command for Jarvis AI assistant to open applications, manage tasks, search, send emails, or run commands."
 
 
 def transcribe(audio_bytes: bytes, language: str = "en", detect_language: bool = False, initial_prompt: str = "") -> str:
@@ -138,7 +138,7 @@ def transcribe(audio_bytes: bytes, language: str = "en", detect_language: bool =
             float_samples = shorts.astype(np.float32) / 32768.0
             rms = math.sqrt(np.mean(float_samples ** 2))
             
-            min_rms = float(os.environ.get("JARVIS_AUDIO_MIN_RMS", "0.005"))
+            min_rms = float(os.environ.get("JARVIS_AUDIO_MIN_RMS", "0.015"))
             if rms < min_rms:
                 return ""
     except Exception as e:
@@ -212,12 +212,18 @@ def _transcribe_faster(engine, audio_input, language: str, detect: bool, initial
         "condition_on_previous_text": False,
         "temperature": 0.0,
         "no_speech_threshold": 0.6,
+        "compression_ratio_threshold": 2.4,
+        "logprob_threshold": -1.0,
+        "repetition_penalty": 1.2,
     }
     if not detect and language:
         kwargs["language"] = language
 
     segments, info = engine.transcribe(audio_input, **kwargs)
     text_parts = []
+    for segment in segments:
+        text_parts.append(segment.text.strip())
+    return " ".join(text_parts)
     for segment in segments:
         text_parts.append(segment.text.strip())
     return " ".join(text_parts)

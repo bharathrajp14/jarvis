@@ -199,10 +199,18 @@ class BRVoiceAssistant:
         """Extract trailing command when user speaks wake-word and command in a single sentence."""
         if not text:
             return ""
-        norm = text.lower().strip()
+        # Collapse repetitive token loops first
+        from voice.prompt_refiner import VoicePromptRefiner
+        collapsed = VoicePromptRefiner.get_instance().collapse_repetitions(text)
+        norm = collapsed.lower().strip()
         pat = r"^(hey\s+jarvis|hey\s+javis|ok\s+jarvis|ok\s+javis|hi\s+jarvis|hi\s+javis|hello\s+jarvis|hello\s+javis|br\s+jarvis|hey\s+br|jarvis|javis|jarves|jarvas|jervis|garvis|charvis|harvis)\b[\s,:\.\!]*"
         cleaned = re.sub(pat, "", norm, flags=re.IGNORECASE).strip()
-        return cleaned if len(cleaned) > 2 else ""
+
+        meaningless = {"hey", "jarvis", "javis", "br", "hello", "hi", "ok", "please"}
+        words = set(re.findall(r"\b\w+\b", cleaned.lower()))
+        if not cleaned or words.issubset(meaningless) or len(cleaned) <= 2:
+            return ""
+        return cleaned
 
     def _get_active_loop(self) -> asyncio.AbstractEventLoop:
         """Safely get or create an active event loop for async voice processing."""
@@ -334,6 +342,12 @@ class BRVoiceAssistant:
         from voice.prompt_refiner import refine_voice_prompt
         ref_res = refine_voice_prompt(text)
         text_clean = ref_res["refined"]
+
+        if not text_clean or not text_clean.strip():
+            raw_preview = ref_res.get("raw", text)[:60]
+            self.ui.write_log(f"SYS: Ignored wake/noise artifact: \"{raw_preview}\"")
+            self.ui.set_state("LISTENING")
+            return
 
         if ref_res["was_modified"]:
             self.ui.write_log(f"🎙️ Spoken Raw: \"{ref_res['raw']}\"")

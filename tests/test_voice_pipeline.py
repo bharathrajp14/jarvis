@@ -93,6 +93,28 @@ class TestVoicePipeline(unittest.TestCase):
         cmd = assistant._extract_command_from_wake("hey javis open brave browser")
         self.assertEqual(cmd, "open brave browser")
 
+    def test_repetition_collapsing_and_artifact_filtering(self):
+        from voice.prompt_refiner import refine_voice_prompt, VoicePromptRefiner
+        refiner = VoicePromptRefiner.get_instance()
+        
+        # Test collapse single-word repetition
+        self.assertEqual(refiner.collapse_repetitions("hey, hey, hey, hey, hey"), "hey")
+        self.assertEqual(refiner.collapse_repetitions("javis javis javis javis"), "javis")
+        
+        # Test collapse phrase repetition
+        self.assertEqual(refiner.collapse_repetitions("hey javis, hey javis, hey javis"), "hey javis")
+        
+        # Test artifact rejection (pure wake words / fillers should yield refined = "")
+        res1 = refine_voice_prompt("hey, javis, hey, javis, javis, javis, javis, javis")
+        self.assertEqual(res1["refined"], "")
+        
+        res2 = refine_voice_prompt("hey, hey, hey, hey, hey, hey, hey")
+        self.assertEqual(res2["refined"], "")
+        
+        # Test valid command with wake word & fillers & repetitions
+        res3 = refine_voice_prompt("hey javis hey javis um please open chrome browser")
+        self.assertEqual(res3["refined"], "Open chrome browser")
+
 
 if __name__ == "__main__":
     unittest.main()
