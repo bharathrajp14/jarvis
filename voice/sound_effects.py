@@ -47,3 +47,13 @@ def play_processing_bass_chime() -> None:
             winsound.Beep(160, 95)  # 160 Hz deep bass drop
         except Exception as e:
             logger.debug(f"Processing chime failed: {e}")
+
+
+def play_voice_detected_beep() -> None:
+    """Play soft double micro-beep when user voice/speech is detected (880 Hz -> 987 Hz)."""
+    if _HAS_WINSOUND and sys.platform == "win32":
+        try:
+            winsound.Beep(880, 35)   # A5
+            winsound.Beep(987, 45)   # B5
+        except Exception as e:
+            logger.debug(f"Voice detected beep failed: {e}")

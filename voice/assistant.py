@@ -529,8 +529,10 @@ class BRVoiceAssistant:
                 self.ui.write_log("SYS: Calibrating microphone noise threshold...")
                 try:
                     self.r.adjust_for_ambient_noise(source, duration=self._ambient_calibration)
-                    if self.r.energy_threshold > 500:
-                        self.r.energy_threshold = 400
+                    if self.r.energy_threshold > 300:
+                        self.r.energy_threshold = 180
+                    self.r.phrase_threshold = 0.08
+                    self.r.dynamic_energy_ratio = 1.25
                     mic.drain()  # ⚡ instant flush instead of sleep + manual loop
                     self.ui.set_state("LISTENING")
                     self.ui.write_log(f"SYS: Microphone active (Device {mic.device_index}). Hands-free mode active. Listening for 'Jarvis' or 'Hey Jarvis'...")
@@ -557,6 +559,13 @@ class BRVoiceAssistant:
                                 phrase_time_limit=self._wake_phrase_limit,
                             )
                         )
+
+                        # ⚡ Play soft double micro-beep as soon as voice is detected
+                        try:
+                            from voice.sound_effects import play_voice_detected_beep
+                            play_voice_detected_beep()
+                        except Exception:
+                            pass
 
                         # ⚡ ULTRAFAST wake decoding
                         text = await self._transcribe_wake(audio)
