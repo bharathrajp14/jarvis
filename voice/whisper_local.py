@@ -205,16 +205,17 @@ def _transcribe_faster(engine, audio_input, language: str, detect: bool, initial
     """Transcribe using faster-whisper (supports file path or numpy array in memory)."""
     prompt = initial_prompt or DEFAULT_INITIAL_PROMPT
     kwargs = {
-        "beam_size": 1,
+        "beam_size": 2,
+        "best_of": 2,
         "vad_filter": True,
-        "vad_parameters": dict(min_silence_duration_ms=250, speech_pad_ms=100),
+        "vad_parameters": dict(min_speech_duration_ms=100, min_silence_duration_ms=180, speech_pad_ms=120),
         "initial_prompt": prompt,
         "condition_on_previous_text": False,
         "temperature": 0.0,
         "no_speech_threshold": 0.6,
         "compression_ratio_threshold": 2.4,
         "log_prob_threshold": -1.0,
-        "repetition_penalty": 1.2,
+        "repetition_penalty": 1.15,
     }
     if not detect and language:
         kwargs["language"] = language

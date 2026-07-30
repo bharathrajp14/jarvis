@@ -392,20 +392,42 @@ class GeminiBackend(BaseBackend):
 
         # Direct Google Gemini API path
         try:
-            if hasattr(self, "client") and self.client and hasattr(self.client, "models"):
-                b64 = base64.b64encode(audio_bytes).decode("ascii")
-                contents = [{
-                    "role": "user",
-                    "parts": [
-                        {"inline_data": {"mime_type": mime_type, "data": b64}},
-                        {"text": "Transcribe this audio clip exactly. Output only the transcription, no intro, no comments."},
-                    ]
-                }]
-                response = self.client.models.generate_content(
+            b64 = base64.b64encode(audio_bytes).decode("ascii")
+            contents = [{
+                "role": "user",
+                "parts": [
+                    {"inline_data": {"mime_type": mime_type, "data": b64}},
+                    {"text": "Transcribe this audio clip exactly. Output only the transcription, no intro, no comments."},
+                ]
+            }]
+
+            target_client = getattr(self, "_client", None) or getattr(self, "client", None)
+            if target_client:
+                # 1. google.genai Client v1.0+ (client.models.generate_content is callable)
+                models_attr = getattr(target_client, "models", None)
+                if models_attr and callable(getattr(models_attr, "generate_content", None)):
+                    response = models_attr.generate_content(
+                        model=self.model or "gemini-2.5-flash",
+                        contents=contents,
+                    )
+                    return (response.text or "").strip()
+                # 2. Direct model or legacy generativeai instance (client.generate_content is callable)
+                elif callable(getattr(target_client, "generate_content", None)):
+                    response = target_client.generate_content(contents)
+                    return (response.text or "").strip()
+
+            # 3. Direct google.genai Client fallback
+            try:
+                from google import genai
+                key = getattr(self, "api_key", None) or _load_api_key()
+                g_client = genai.Client(api_key=key)
+                response = g_client.models.generate_content(
                     model=self.model or "gemini-2.5-flash",
                     contents=contents,
                 )
                 return (response.text or "").strip()
+            except Exception:
+                pass
         except Exception as e:
             print(f"[Gemini Direct] Transcription failed: {e}")
 

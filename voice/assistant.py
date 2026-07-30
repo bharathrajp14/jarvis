@@ -269,7 +269,7 @@ class BRVoiceAssistant:
             from voice.multilingual import get_whisper_code
             if whisper_available():
                 lang_code = get_whisper_code() or "en"
-                prompt = "Jarvis, Javis, BR, open Brave, Chrome, search, system control, python script, email, whatsapp, calendar, list files."
+                prompt = "This is a clear spoken voice command for JARVIS AI assistant to control applications, open web pages, send messages, and execute tasks."
                 text = await loop.run_in_executor(
                     None, lambda: whisper_transcribe(
                         audio.get_wav_data(),
