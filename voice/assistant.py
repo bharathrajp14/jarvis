@@ -61,8 +61,8 @@ class BRVoiceAssistant:
         # Load configurable settings
         self.name = os.environ.get("JARVIS_ASSISTANT_NAME", "BR").strip()
         self.wake_word = os.environ.get("JARVIS_WAKE_WORD", "jarvis").strip().lower()
-        self._wake_listen_timeout = 1.5       # max seconds to wait for speech start
-        self._wake_phrase_limit = 1.0         # ⚡ ULTRAFAST 1.0s max capture window for wake phrase
+        self._wake_listen_timeout = 2.0       # max seconds to wait for speech start
+        self._wake_phrase_limit = 4.0         # ⚡ 4.0s capture window for single-breath wake + command
         self._command_timeout = 5.0           # seconds to wait for command speech
         self._command_phrase_limit = 20.0     # allow long complex multi-sentence commands
         self._ambient_calibration = 0.25      # ⚡ 250ms ultra-fast ambient noise calibration
@@ -548,10 +548,10 @@ class BRVoiceAssistant:
                             continue
 
                         # ⚡ Dynamic micro-endpoint tuning for ultra-snappy wake detection
-                        self.r.pause_threshold = 0.20
-                        self.r.non_speaking_duration = 0.12
+                        self.r.pause_threshold = 0.25
+                        self.r.non_speaking_duration = 0.15
 
-                        # ⚡ Listen for short wake-word audio (1.0s max capture)
+                        # ⚡ Listen for wake phrase (4.0s limit captures single-breath wake+command)
                         audio = await self._loop.run_in_executor(
                             None, lambda: self.r.listen(
                                 source,
@@ -582,6 +582,12 @@ class BRVoiceAssistant:
                                 self.ui.write_log(f"SYS: Command captured: '{embedded_cmd}'")
                                 await self._switch_to_new_command(embedded_cmd)
                                 continue
+
+                            # Drain microphone buffer so chime echo is not recorded as voice input
+                            try:
+                                mic.drain()
+                            except Exception:
+                                pass
 
                             # Restore full command listening thresholds for active command capture
                             self.r.pause_threshold = 0.45
