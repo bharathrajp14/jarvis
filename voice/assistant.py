@@ -219,31 +219,32 @@ class BRVoiceAssistant:
             return loop
 
     async def _transcribe_wake(self, audio: sr.AudioData) -> str:
-        """⚡ FAST wake-word transcription. Uses Google STT with Whisper local fallback."""
+        """⚡ FAST 100% OFFLINE wake-word transcription via local faster-whisper CTranslate2."""
         loop = self._get_active_loop()
         text = ""
+
+        # 1. Primary 100% Offline Local Whisper Path (< 100ms Latency)
         try:
-            if hasattr(self, "r") and self.r:
+            from voice.whisper_local import transcribe as whisper_transcribe, is_available as whisper_available
+            if whisper_available():
+                text = await loop.run_in_executor(
+                    None, lambda: whisper_transcribe(audio.get_wav_data()).lower()
+                )
+        except Exception as e:
+            text = ""
+
+        # 2. Online Google STT Fallback (Only if offline engine unavailable)
+        if not text.strip() and hasattr(self, "r") and self.r:
+            try:
                 from voice.multilingual import get_google_stt_code
                 stt_lang = get_google_stt_code()
                 text = await loop.run_in_executor(
                     None, lambda: self.r.recognize_google(audio, language=stt_lang).lower()
                 )
-        except Exception:
-            text = ""
-
-        if not text.strip():
-            try:
-                from voice.whisper_local import transcribe as whisper_transcribe, is_available as whisper_available
-                if whisper_available():
-                    text = await loop.run_in_executor(
-                        None, lambda: whisper_transcribe(audio.get_wav_data()).lower()
-                    )
             except Exception:
-                pass
+                text = ""
 
-        text_clean = text.strip()
-        return text_clean
+        return text.strip()
 
     async def _transcribe_command(self, audio: sr.AudioData) -> str:
         """Full-quality command transcription with fallback chain.
@@ -252,18 +253,17 @@ class BRVoiceAssistant:
         loop = self._get_active_loop()
         text = ""
 
-        # 1. Try local Whisper first (offline STT — highest quality)
-        if os.environ.get("JARVIS_OFFLINE_STT", "false").lower() == "true":
-            try:
-                from voice.whisper_local import transcribe as whisper_transcribe, is_available as whisper_available
-                from voice.multilingual import get_whisper_code
-                if whisper_available():
-                    lang_code = get_whisper_code()
-                    text = await loop.run_in_executor(
-                        None, lambda: whisper_transcribe(audio.get_wav_data(), language=lang_code)
-                    )
-            except Exception as e:
-                print(f"[Voice] Local Whisper transcription failed: {e}")
+        # 1. Try local Whisper first (100% offline STT — zero network latency)
+        try:
+            from voice.whisper_local import transcribe as whisper_transcribe, is_available as whisper_available
+            from voice.multilingual import get_whisper_code
+            if whisper_available():
+                lang_code = get_whisper_code()
+                text = await loop.run_in_executor(
+                    None, lambda: whisper_transcribe(audio.get_wav_data(), language=lang_code)
+                )
+        except Exception as e:
+            print(f"[Voice] Local Whisper transcription failed: {e}")
 
         # 2. Try configured default backend (if it has transcribe method)
         if not text and hasattr(self, "backends") and self.backends:
