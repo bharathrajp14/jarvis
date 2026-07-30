@@ -90,7 +90,7 @@ def is_available() -> bool:
     return False
 
 
-DEFAULT_INITIAL_PROMPT = "Jarvis, Hey Jarvis, BR, open Brave, Chrome, search, system control, python script, email, whatsapp, calendar, list files, terminal."
+DEFAULT_INITIAL_PROMPT = "Jarvis, Javis, Hey Jarvis, Hey Javis, BR, open Brave, Chrome, search, system control, python script, email, whatsapp, calendar, list files, terminal."
 
 
 def transcribe(audio_bytes: bytes, language: str = "en", detect_language: bool = False, initial_prompt: str = "") -> str:

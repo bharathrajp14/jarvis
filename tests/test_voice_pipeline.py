@@ -85,6 +85,14 @@ class TestVoicePipeline(unittest.TestCase):
         self.assertIsNotNone(assistant.orchestrator)
         self.assertIsInstance(assistant.backends, dict)
 
+    def test_javis_wake_word(self):
+        from voice.assistant import BRVoiceAssistant
+        assistant = BRVoiceAssistant(ui=None)
+        self.assertTrue(assistant._is_wake_phrase("hey javis open chrome"))
+        self.assertTrue(assistant._is_wake_phrase("javis check battery status"))
+        cmd = assistant._extract_command_from_wake("hey javis open brave browser")
+        self.assertEqual(cmd, "open brave browser")
+
 
 if __name__ == "__main__":
     unittest.main()

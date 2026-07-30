@@ -19,7 +19,7 @@ FILLER_PATTERNS = [
 ]
 
 PREFIX_BLOAT_PATTERNS = [
-    r"^(hey\s+jarvis|ok\s+jarvis|hi\s+jarvis|hello\s+jarvis|br\s+jarvis|hey\s+br|jarvis|jervis|garvis|harvis|br)\b[\s,:\.\!]*",
+    r"^(hey\s+jarvis|hey\s+javis|ok\s+jarvis|ok\s+javis|hi\s+jarvis|hi\s+javis|hello\s+jarvis|hello\s+javis|br\s+jarvis|hey\s+br|jarvis|javis|jervis|garvis|harvis|br)\b[\s,:\.\!]*",
     r"^(please\s+can\s+you|can\s+you\s+please|could\s+you\s+please|please|can\s+you|could\s+you|would\s+you)\b[\s,:\.\!]*",
 ]
 

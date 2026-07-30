@@ -179,20 +179,20 @@ class BRVoiceAssistant:
         recognizer.phrase_threshold = 0.1           # Min speech length to register
 
     def _is_wake_phrase(self, text: str) -> bool:
-        """Return True when transcript contains explicit wake word ('jarvis', 'hey jarvis', or phonetic variants)."""
+        """Return True when transcript contains explicit wake word ('jarvis', 'javis', 'hey jarvis', or phonetic variants)."""
         normalized = re.sub(r"[^a-z0-9\s]", " ", text.lower()).strip()
         if not normalized:
             return False
 
-        # Regex check for jarvis and common phonetic STT mishearings
-        if re.search(r"\b(jarvis|jarves|jarvas|jervis|javis|garvis|charvis|harvis|travis|jarvs|hey\s+jarvis|ok\s+jarvis|hi\s+jarvis|hello\s+jarvis|hey\s+br|br)\b", normalized):
+        # Regex check for jarvis, javis, and common phonetic STT mishearings
+        if re.search(r"\b(jarvis|javis|jarves|jarvas|jervis|garvis|charvis|harvis|travis|jarvs|hey\s+jarvis|hey\s+javis|ok\s+jarvis|ok\s+javis|hi\s+jarvis|hi\s+javis|hello\s+jarvis|hello\s+javis|hey\s+br|br)\b", normalized):
             return True
 
         wake_word = self.wake_word.lower().strip()
         if wake_word and wake_word in normalized:
             return True
 
-        fuzzy_matches = ("jarvis", "hey jarvis", "ok jarvis", "hi jarvis", "hello jarvis", "wake up", "hey assistant")
+        fuzzy_matches = ("jarvis", "javis", "hey jarvis", "hey javis", "ok jarvis", "ok javis", "hi jarvis", "hi javis", "hello jarvis", "hello javis", "wake up", "hey assistant")
         return any(target in normalized for target in fuzzy_matches)
 
     def _extract_command_from_wake(self, text: str) -> str:
@@ -200,7 +200,7 @@ class BRVoiceAssistant:
         if not text:
             return ""
         norm = text.lower().strip()
-        pat = r"^(hey\s+jarvis|ok\s+jarvis|hi\s+jarvis|hello\s+jarvis|br\s+jarvis|hey\s+br|jarvis|jarves|jarvas|jervis|javis|garvis|charvis|harvis)\b[\s,:\.\!]*"
+        pat = r"^(hey\s+jarvis|hey\s+javis|ok\s+jarvis|ok\s+javis|hi\s+jarvis|hi\s+javis|hello\s+jarvis|hello\s+javis|br\s+jarvis|hey\s+br|jarvis|javis|jarves|jarvas|jervis|garvis|charvis|harvis)\b[\s,:\.\!]*"
         cleaned = re.sub(pat, "", norm, flags=re.IGNORECASE).strip()
         return cleaned if len(cleaned) > 2 else ""
 
@@ -231,7 +231,7 @@ class BRVoiceAssistant:
                     None, lambda: whisper_transcribe(
                         audio.get_wav_data(),
                         language="en",
-                        initial_prompt="Jarvis, Hey Jarvis, BR"
+                        initial_prompt="Jarvis, Javis, Hey Jarvis, Hey Javis, BR"
                     ).lower()
                 )
         except Exception:
@@ -251,9 +251,7 @@ class BRVoiceAssistant:
         return text.strip()
 
     async def _transcribe_command(self, audio: sr.AudioData) -> str:
-        """Full-quality command transcription with fallback chain.
-        Used ONLY after wake word is detected — accuracy matters here.
-        """
+        """Full-quality command transcription with fallback chain."""
         loop = self._get_active_loop()
         text = ""
 
@@ -263,7 +261,7 @@ class BRVoiceAssistant:
             from voice.multilingual import get_whisper_code
             if whisper_available():
                 lang_code = get_whisper_code() or "en"
-                prompt = "Jarvis, BR, open Brave, Chrome, search, system control, python script, email, whatsapp, calendar, list files."
+                prompt = "Jarvis, Javis, BR, open Brave, Chrome, search, system control, python script, email, whatsapp, calendar, list files."
                 text = await loop.run_in_executor(
                     None, lambda: whisper_transcribe(
                         audio.get_wav_data(),
