@@ -120,13 +120,21 @@ def get_pruned_tool_prompt_block(user_prompt: str = "") -> str:
     low = user_prompt.lower()
     
     # Core high-frequency tools always available
-    essential_tools = {"open_app", "web_search", "file_read", "file_write", "run_code", "computer_settings", "window_manager"}
+    essential_tools = {
+        "open_app", "web_search", "file_read", "file_write", "run_code", "computer_settings", "window_manager",
+        "list_installed_applications", "list_running_applications", "send_whatsapp", "create_calendar_event",
+        "list_calendar_events", "send_email", "gmail_login", "automate_app", "run_automation_workflow"
+    }
     
     # Domain keyword matching for targeted tool inclusion
     domain_map = {
         ("search", "google", "find", "who is", "what is", "news", "price", "weather"): {"web_search", "fetch_page"},
         ("file", "read", "write", "save", "folder", "directory", "document", "txt", "csv", "json", "pdf", "docx"): {"file_read", "file_write", "file_list", "file_delete", "file_search"},
-        ("app", "open", "launch", "close", "brave", "chrome", "edge", "notepad", "calculator", "window", "process"): {"open_app", "computer_settings", "window_manager"},
+        ("app", "open", "launch", "close", "brave", "chrome", "edge", "notepad", "calculator", "window", "process", "installed", "running"): {"open_app", "computer_settings", "window_manager", "list_installed_applications", "list_running_applications", "search_applications", "get_app_launch_history", "get_app_usage_statistics"},
+        ("whatsapp", "chat", "message", "contact", "text", "send"): {"send_whatsapp", "schedule_whatsapp_message", "manage_whatsapp_contacts"},
+        ("calendar", "event", "schedule", "task", "meeting", "reminder"): {"create_calendar_event", "list_calendar_events", "search_calendar_events", "delete_calendar_event"},
+        ("email", "gmail", "mail", "inbox", "smtp", "login", "send"): {"send_email", "schedule_email", "manage_email_contacts", "gmail_login", "get_gmail_auth_status", "gmail_logout"},
+        ("automate", "workflow", "macro", "script", "system"): {"automate_app", "run_automation_workflow", "execute_system_automation"},
         ("screen", "see", "look", "click", "vision", "ocr", "capture", "display"): {"screen_find", "screen_click", "smart_click"},
         ("code", "python", "script", "execute", "eval", "debug", "run"): {"run_code", "scratchpad_write", "scratchpad_eval"},
         ("system", "volume", "brightness", "wifi", "battery", "restart", "shutdown", "diagnostic", "cpu", "ram"): {"computer_settings", "system_diagnostic"},
@@ -501,6 +509,13 @@ def _import_plugins():
         "tools.browser_automation",
         "tools.qa_testing_tool",
         "tools.autonomous_browser_agent",
+        "tools.app_analyzer_tools",
+        "tools.app_tracker_tools",
+        "tools.automation_tools",
+        "tools.whatsapp_tools",
+        "tools.calendar_tools",
+        "tools.gmail_auth_tools",
+        "tools.smart_email_tools",
     ]
 
     for p in plugins:

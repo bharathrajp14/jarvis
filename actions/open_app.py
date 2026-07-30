@@ -195,28 +195,42 @@ def open_app(
         player.write_log(f"[open_app] {app_name}")
 
     try:
+        success = False
         if target_url:
             import webbrowser
             if _OS == "Windows":
                 try:
                     subprocess.Popen(f'start chrome "{target_url}"', shell=True)
-                    return f"Opened Chrome to {target_url}."
+                    success = True
+                    msg = f"Opened Chrome to {target_url}."
                 except Exception:
                     webbrowser.open(target_url)
-                    return f"Opened {target_url} in browser."
+                    success = True
+                    msg = f"Opened {target_url} in browser."
             else:
                 webbrowser.open(target_url)
-                return f"Opened {target_url} in default browser."
-
-        if _OS == "Linux":
+                success = True
+                msg = f"Opened {target_url} in default browser."
+        elif _OS == "Linux":
             if _launch_linux(normalized) or _launch_linux(app_name):
-                return f"Opened {app_name}."
+                success = True
+                msg = f"Opened {app_name}."
         elif _OS == "Darwin":
             if _launch_mac(normalized) or _launch_mac(app_name):
-                return f"Opened {app_name}."
+                success = True
+                msg = f"Opened {app_name}."
         else:
             if _launch_windows(normalized) or _launch_windows(app_name):
-                return f"Opened {app_name}."
+                success = True
+                msg = f"Opened {app_name}."
+
+        if success:
+            try:
+                from actions.app_tracker import log_app_launch
+                log_app_launch(app_name=app_name, source="jarvis_automated", details={"url": target_url})
+            except Exception:
+                pass
+            return msg
 
         return f"Could not launch application: '{app_name}' on {_OS}."
     except Exception as e:

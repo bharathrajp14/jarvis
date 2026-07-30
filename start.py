@@ -838,20 +838,28 @@ def show_audio_status():
 def launch_live_os():
     _banner()
     console.print("[bold cyan]Launching Live Autonomous OS Visual Controller ('Antigravity Mode')[/]\n")
-    goal = " ".join(sys.argv[2:]) if len(sys.argv) > 2 else ""
+    args = sys.argv[2:]
+    is_bg = False
+    if "--background" in args or "-bg" in args:
+        is_bg = True
+        args = [a for a in args if a not in ["--background", "-bg"]]
+
+    goal = " ".join(args).strip()
     if not goal:
         goal = Prompt.ask("  [cyan]❯[/] Enter Live OS Control Goal")
     if not goal:
         console.print("[red]No goal specified.[/]")
         return
-    steps_input = Prompt.ask("  [cyan]❯[/] Max Steps [0 = Unlimited ♾️, 50, 100, 500]", default="0")
-    try:
-        max_steps = int(steps_input)
-    except Exception:
-        max_steps = 0
-    from actions.live_os_control import live_os_control_action
-    res = live_os_control_action({"goal": goal, "max_steps": max_steps})
-    console.print(f"\n[bold green]{res}[/]")
+    max_steps = 0  # Automatic Conscious Step Allocation
+
+    if is_bg:
+        from actions.live_os_control import launch_live_os_background
+        res = launch_live_os_background(goal, max_steps=max_steps)
+        console.print(f"\n[bold green]{res}[/]")
+    else:
+        from actions.live_os_control import live_os_control_action
+        res = live_os_control_action({"goal": goal, "max_steps": max_steps})
+        console.print(f"\n[bold green]{res}[/]")
 
 
 # ── Main Entry ───────────────────────────────────────────────────────────────

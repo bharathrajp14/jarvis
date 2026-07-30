@@ -202,3 +202,15 @@ class ConversationStore:
                 "turn_count": row["turn_count"]
             })
         return sessions
+
+    def close(self) -> None:
+        """Close database connection."""
+        if self._conn:
+            try:
+                self._conn.close()
+            except Exception:
+                pass
+            self._conn = None
+
+    def __del__(self):
+        self.close()

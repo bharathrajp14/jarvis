@@ -135,8 +135,14 @@ class SessionStore:
     def close(self) -> None:
         """Close the database connection."""
         if self._conn:
-            self._conn.close()
+            try:
+                self._conn.close()
+            except Exception:
+                pass
             self._conn = None
+
+    def __del__(self):
+        self.close()
 
     # ── Session lifecycle ─────────────────────────────────────────────────
 

@@ -22,7 +22,7 @@ _DEFAULTS = {
     "gemini_general":   "gemini-3.6-flash-high",
     "gemini_agent":     "gemini-3.6-flash-medium",
     "gemini_fast":      "gemini-3-flash",
-    "gemini_vision":    "gemini-3.1-flash-image",
+    "gemini_vision":    "gemini-3.6-flash",
     "gemini_lite":      "gemini-3.1-flash-lite",
     "claude":           "claude-sonnet-4-6",
     "gpt":              "gemini-3.6-flash-high",

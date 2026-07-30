@@ -14,7 +14,16 @@ from email.mime.multipart import MIMEMultipart
 from tools.registry import register_tool
 
 
+def _sync_auth():
+    try:
+        from actions.gmail_auth import get_gmail_auth_manager
+        get_gmail_auth_manager()
+    except Exception:
+        pass
+
+
 def _send_email(to_email: str, subject: str, body: str) -> str:
+    _sync_auth()
     smtp_server = os.environ.get("SMTP_SERVER", "smtp.gmail.com")
     smtp_port = int(os.environ.get("SMTP_PORT", "587"))
     smtp_user = os.environ.get("SMTP_USER", "").strip()
@@ -44,6 +53,7 @@ def _send_email(to_email: str, subject: str, body: str) -> str:
 
 
 def _fetch_emails(limit: int = 5) -> str:
+    _sync_auth()
     imap_server = os.environ.get("IMAP_SERVER", "imap.gmail.com")
     imap_user = os.environ.get("IMAP_USER", "").strip()
     imap_password = os.environ.get("IMAP_PASSWORD", "").strip()

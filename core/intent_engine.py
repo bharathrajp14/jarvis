@@ -40,9 +40,33 @@ class DeterministicIntentEngine:
         "taskmgr": ["taskmgr", "taskmgr.exe"],
         "task manager": ["taskmgr", "taskmgr.exe"],
         "explorer": ["explorer", "explorer.exe"],
+        "file explorer": ["explorer", "explorer.exe"],
         "settings": ["ms-settings:"],
         "control panel": ["control"],
+        "vlc": ["vlc", "vlc.exe"],
+        "snipping tool": ["snippingtool", "snippingtool.exe"],
+        "wordpad": ["write", "write.exe"],
     }
+
+    @classmethod
+    def launch_app_by_name(cls, app_name: str) -> bool:
+        """Launch a desktop application by friendly name using native OS commands."""
+        name = app_name.lower().strip()
+        executables = cls.APP_MAPPINGS.get(name, [name])
+        for exe in executables:
+            if exe.startswith("ms-"):
+                try:
+                    os.system(f"start {exe}")
+                    return True
+                except Exception:
+                    pass
+            else:
+                try:
+                    subprocess.Popen([exe], shell=True)
+                    return True
+                except Exception:
+                    pass
+        return False
 
     @classmethod
     def open_url_in_browser(cls, url: str, browser_name: str = "") -> bool:
@@ -126,6 +150,35 @@ class DeterministicIntentEngine:
         """
         clean = text.lower().strip().rstrip(".!;")
         lines = [line.strip().lower() for line in text.splitlines() if line.strip()]
+
+        # 00a. Match Online Productivity Suite Intent (e.g. "open excel sheets in online", "excel online", "word online", "google sheets")
+        clean_no_punct = clean.replace(".", " ").replace(",", " ")
+        if any(kw in clean_no_punct for kw in ["excel sheet", "excel sheets", "excel online", "online excel", "word online", "online word", "google sheets", "sheets online", "google docs", "docs online"]):
+            excel_pos = min([clean_no_punct.find(w) for w in ["excel", "sheet"] if w in clean_no_punct] or [999999])
+            word_pos = min([clean_no_punct.find(w) for w in ["word", "doc"] if w in clean_no_punct] or [999999])
+            
+            if excel_pos <= word_pos:
+                target_url = "https://excel.new"
+                app_name = "Online Excel Sheets"
+            else:
+                target_url = "https://word.new"
+                app_name = "Online Word"
+            
+            target_browser = ""
+            for b in ["brave", "chrome", "edge", "firefox", "opera"]:
+                if b in clean:
+                    target_browser = b
+                    break
+            success = cls.open_url_in_browser(target_url, browser_name=target_browser)
+            if success:
+                b_name = target_browser.title() if target_browser else "default browser"
+                return {
+                    "executed": True,
+                    "intent": "open_online_app",
+                    "target": target_url,
+                    "result": f"Opened {app_name} at {target_url} in {b_name} (0-Token Execution).",
+                    "tokens_saved": 2400,
+                }
 
         # 00. Match Website URL Intent (e.g. "open github.com", "go to reddit.com", "launch https://google.com in brave")
         url_match = re.search(r"^(?:open|launch|go\s+to|visit)\s+((?:https?://)?[a-zA-Z0-9\.-]+\.(?:com|org|net|io|dev|ai|co|gov|edu|in)(?:/\S*)?)", clean, re.IGNORECASE)

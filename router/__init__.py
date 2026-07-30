@@ -4,11 +4,12 @@ Re-exports AgentRouter and AgentProfile for unified import.
 """
 from __future__ import annotations
 
-from router.core import AgentRouter, AgentProfile, ROUTING_RULES, load_available_backends
+from router.core import AgentRouter, AgentProfile, ROUTING_RULES, load_available_backends, get_router
 
 __all__ = [
     "AgentRouter",
     "AgentProfile",
     "ROUTING_RULES",
     "load_available_backends",
+    "get_router",
 ]

@@ -179,3 +179,12 @@ class AgentRouter:
                     tried.append((f_profile.value, str(e)))
 
         return f"[BR: All backends failed. Attempted: {tried}]"
+
+
+_router_instance: AgentRouter | None = None
+
+def get_router() -> AgentRouter:
+    global _router_instance
+    if _router_instance is None:
+        _router_instance = AgentRouter()
+    return _router_instance
