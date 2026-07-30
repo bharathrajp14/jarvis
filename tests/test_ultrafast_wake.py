@@ -20,8 +20,9 @@ class TestUltrafastWakeDetection(unittest.TestCase):
         self.assertIsInstance(res, str)
 
     def test_wake_phrase_matching(self):
+        from unittest.mock import MagicMock
         from voice.assistant import BRVoiceAssistant
-        va = BRVoiceAssistant()
+        va = BRVoiceAssistant(ui=MagicMock())
         self.assertTrue(va._is_wake_phrase("jarvis"))
         self.assertTrue(va._is_wake_phrase("javis"))
         self.assertTrue(va._is_wake_phrase("hey jarvis"))
@@ -29,8 +30,9 @@ class TestUltrafastWakeDetection(unittest.TestCase):
         self.assertTrue(va._is_wake_phrase("hi jarvis please"))
 
     def test_embedded_command_extraction(self):
+        from unittest.mock import MagicMock
         from voice.assistant import BRVoiceAssistant
-        va = BRVoiceAssistant()
+        va = BRVoiceAssistant(ui=MagicMock())
         cmd = va._extract_command_from_wake("hey jarvis open brave browser")
         self.assertEqual(cmd.strip(), "open brave browser")
 
