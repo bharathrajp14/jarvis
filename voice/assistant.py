@@ -61,11 +61,11 @@ class BRVoiceAssistant:
         # Load configurable settings
         self.name = os.environ.get("JARVIS_ASSISTANT_NAME", "BR").strip()
         self.wake_word = os.environ.get("JARVIS_WAKE_WORD", "jarvis").strip().lower()
-        self._wake_listen_timeout = 2.5       # max seconds to wait for any speech
-        self._wake_phrase_limit = 6.0         # ⚡ 6.0s capture for wake + continuous command
-        self._command_timeout = 6.0           # seconds to wait for command speech
-        self._command_phrase_limit = 25.0     # ⚡ allow long complex multi-sentence commands
-        self._ambient_calibration = 0.5       # ⚡ halved from 1.0s
+        self._wake_listen_timeout = 2.0       # max seconds to wait for any speech
+        self._wake_phrase_limit = 3.5         # ⚡ Snappy 3.5s capture for passive wake detection
+        self._command_timeout = 5.0           # seconds to wait for command speech
+        self._command_phrase_limit = 20.0     # allow long complex multi-sentence commands
+        self._ambient_calibration = 0.3       # ⚡ 300ms ultra-fast ambient noise calibration
 
         # Initialize 500ms rolling audio pre-roll ring buffer
         try:
@@ -172,11 +172,11 @@ class BRVoiceAssistant:
         """Apply adaptive dynamic energy thresholding and optimal phrase boundary settings."""
         recognizer.dynamic_energy_threshold = True   # Enable adaptive noise floor tracking
         recognizer.dynamic_energy_adjustment_damping = 0.15
-        recognizer.dynamic_energy_ratio = 1.5
-        recognizer.energy_threshold = max(200, getattr(recognizer, "energy_threshold", 300))  # Enforce 200 RMS minimum floor
-        recognizer.pause_threshold = 0.9              # Allow 0.9s pause for natural speech cadence
-        recognizer.non_speaking_duration = 0.4        # Min non-speech duration before phrase end
-        recognizer.phrase_threshold = 0.2          # Min speech length to register
+        recognizer.dynamic_energy_ratio = 1.35
+        recognizer.energy_threshold = max(180, getattr(recognizer, "energy_threshold", 250))  # Enforce 180 RMS floor
+        recognizer.pause_threshold = 0.45             # ⚡ Fast 0.45s endpoint pause (slashes latency)
+        recognizer.non_speaking_duration = 0.25       # Min non-speech duration before phrase end
+        recognizer.phrase_threshold = 0.1           # Min speech length to register
 
     def _is_wake_phrase(self, text: str) -> bool:
         """Return True when transcript contains explicit wake word ('jarvis', 'hey jarvis', or phonetic variants)."""
@@ -228,9 +228,13 @@ class BRVoiceAssistant:
             from voice.whisper_local import transcribe as whisper_transcribe, is_available as whisper_available
             if whisper_available():
                 text = await loop.run_in_executor(
-                    None, lambda: whisper_transcribe(audio.get_wav_data()).lower()
+                    None, lambda: whisper_transcribe(
+                        audio.get_wav_data(),
+                        language="en",
+                        initial_prompt="Jarvis, Hey Jarvis, BR"
+                    ).lower()
                 )
-        except Exception as e:
+        except Exception:
             text = ""
 
         # 2. Online Google STT Fallback (Only if offline engine unavailable)
@@ -258,9 +262,14 @@ class BRVoiceAssistant:
             from voice.whisper_local import transcribe as whisper_transcribe, is_available as whisper_available
             from voice.multilingual import get_whisper_code
             if whisper_available():
-                lang_code = get_whisper_code()
+                lang_code = get_whisper_code() or "en"
+                prompt = "Jarvis, BR, open Brave, Chrome, search, system control, python script, email, whatsapp, calendar, list files."
                 text = await loop.run_in_executor(
-                    None, lambda: whisper_transcribe(audio.get_wav_data(), language=lang_code)
+                    None, lambda: whisper_transcribe(
+                        audio.get_wav_data(),
+                        language=lang_code,
+                        initial_prompt=prompt
+                    )
                 )
         except Exception as e:
             print(f"[Voice] Local Whisper transcription failed: {e}")

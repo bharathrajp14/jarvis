@@ -50,8 +50,8 @@ class TestVoicePipeline(unittest.TestCase):
         r = sr.Recognizer()
         assistant._tune_recognizer(r)
         self.assertTrue(r.dynamic_energy_threshold)
-        self.assertEqual(r.pause_threshold, 0.9)
-        self.assertEqual(assistant._command_phrase_limit, 25.0)
+        self.assertEqual(r.pause_threshold, 0.45)
+        self.assertEqual(assistant._command_phrase_limit, 20.0)
 
     def test_stop_speech_barge_in(self):
         from voice.assistant import BRVoiceAssistant

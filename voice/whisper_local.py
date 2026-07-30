@@ -90,7 +90,10 @@ def is_available() -> bool:
     return False
 
 
-def transcribe(audio_bytes: bytes, language: str = "en", detect_language: bool = False) -> str:
+DEFAULT_INITIAL_PROMPT = "Jarvis, Hey Jarvis, BR, open Brave, Chrome, search, system control, python script, email, whatsapp, calendar, list files, terminal."
+
+
+def transcribe(audio_bytes: bytes, language: str = "en", detect_language: bool = False, initial_prompt: str = "") -> str:
     """
     Transcribe audio bytes using local Whisper (or Groq cloud fast-path).
     Operates 100% in-memory using NumPy float32 arrays — zero disk file creation latency.
@@ -108,6 +111,8 @@ def transcribe(audio_bytes: bytes, language: str = "en", detect_language: bool =
             data = {"model": "whisper-large-v3-turbo", "response_format": "text"}
             if not detect_language and language:
                 data["language"] = language
+            if initial_prompt:
+                data["prompt"] = initial_prompt
             resp = httpx.post(
                 "https://api.groq.com/openai/v1/audio/transcriptions",
                 headers=headers, files=files, data=data, timeout=3.0
@@ -146,9 +151,10 @@ def transcribe(audio_bytes: bytes, language: str = "en", detect_language: bool =
 
     try:
         text = ""
+        prompt = initial_prompt or DEFAULT_INITIAL_PROMPT
         if engine_type == "faster" and float_samples is not None:
             # ⚡ ZERO-DISK IN-MEMORY PATH: Pass numpy float32 directly to CTranslate2 engine
-            text = _transcribe_faster(engine, float_samples, language, detect_language)
+            text = _transcribe_faster(engine, float_samples, language, detect_language, prompt)
         else:
             # Fallback to temp file if numpy conversion failed or using openai-whisper
             with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
@@ -156,9 +162,9 @@ def transcribe(audio_bytes: bytes, language: str = "en", detect_language: bool =
                 tmp_path = tmp.name
             try:
                 if engine_type == "faster":
-                    text = _transcribe_faster(engine, tmp_path, language, detect_language)
+                    text = _transcribe_faster(engine, tmp_path, language, detect_language, prompt)
                 elif engine_type == "openai":
-                    text = _transcribe_openai(engine, tmp_path, language, detect_language)
+                    text = _transcribe_openai(engine, tmp_path, language, detect_language, prompt)
             finally:
                 if tmp_path and os.path.exists(tmp_path):
                     try:
@@ -181,7 +187,8 @@ def transcribe(audio_bytes: bytes, language: str = "en", detect_language: bool =
             "the full gym", "i dont know who that was right now", "i dont know if theyre not here",
             "they claim to be a lot more damucana bird", "perfect that kind candidates",
             "aw the time here baron", "what are you talking about", "what is going on",
-            "what are you doing", "mostly", "lets go for it", "yeah", "sms"
+            "what are you doing", "mostly", "lets go for it", "yeah", "sms",
+            "subtitles by", "translated by", "subscribe", "like and subscribe"
         }
         if normalized in hallucinations:
             return ""
@@ -194,9 +201,18 @@ def transcribe(audio_bytes: bytes, language: str = "en", detect_language: bool =
         return ""
 
 
-def _transcribe_faster(engine, audio_input, language: str, detect: bool) -> str:
+def _transcribe_faster(engine, audio_input, language: str, detect: bool, initial_prompt: str = "") -> str:
     """Transcribe using faster-whisper (supports file path or numpy array in memory)."""
-    kwargs = {"beam_size": 1, "vad_filter": True}  # beam_size=1 gives 3x speedup over beam_size=5
+    prompt = initial_prompt or DEFAULT_INITIAL_PROMPT
+    kwargs = {
+        "beam_size": 1,
+        "vad_filter": True,
+        "vad_parameters": dict(min_silence_duration_ms=250, speech_pad_ms=100),
+        "initial_prompt": prompt,
+        "condition_on_previous_text": False,
+        "temperature": 0.0,
+        "no_speech_threshold": 0.6,
+    }
     if not detect and language:
         kwargs["language"] = language
 
@@ -207,9 +223,15 @@ def _transcribe_faster(engine, audio_input, language: str, detect: bool) -> str:
     return " ".join(text_parts)
 
 
-def _transcribe_openai(engine, audio_path: str, language: str, detect: bool) -> str:
+def _transcribe_openai(engine, audio_path: str, language: str, detect: bool, initial_prompt: str = "") -> str:
     """Transcribe using openai-whisper."""
-    kwargs = {"fp16": _cuda_available()}
+    prompt = initial_prompt or DEFAULT_INITIAL_PROMPT
+    kwargs = {
+        "fp16": _cuda_available(),
+        "initial_prompt": prompt,
+        "temperature": 0.0,
+        "condition_on_previous_text": False,
+    }
     if not detect and language:
         kwargs["language"] = language
 

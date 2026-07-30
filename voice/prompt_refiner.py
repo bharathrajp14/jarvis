@@ -18,6 +18,11 @@ FILLER_PATTERNS = [
     r"\b(um+)\b", r"\b(uh+)\b", r"\b(ah+)\b", r"\b(er+)\b", r"\b(hmm+)\b",
 ]
 
+PREFIX_BLOAT_PATTERNS = [
+    r"^(hey\s+jarvis|ok\s+jarvis|hi\s+jarvis|hello\s+jarvis|br\s+jarvis|hey\s+br|jarvis|jervis|garvis|harvis|br)\b[\s,:\.\!]*",
+    r"^(please\s+can\s+you|can\s+you\s+please|could\s+you\s+please|please|can\s+you|could\s+you|would\s+you)\b[\s,:\.\!]*",
+]
+
 
 class VoicePromptRefiner:
     """Refines raw spoken transcripts into clean, structured execution prompts."""
@@ -46,12 +51,14 @@ class VoicePromptRefiner:
         return {}
 
     def strip_fillers(self, text: str) -> str:
-        """Strip vocal hesitation fillers, stutters, and polite prefix bloat."""
+        """Strip vocal hesitation fillers, stutters, wake words, and polite prefix bloat."""
         cleaned = text.strip()
         prev = ""
         while prev != cleaned:
             prev = cleaned
             for pat in FILLER_PATTERNS:
+                cleaned = re.sub(pat, "", cleaned, flags=re.IGNORECASE).strip()
+            for pat in PREFIX_BLOAT_PATTERNS:
                 cleaned = re.sub(pat, "", cleaned, flags=re.IGNORECASE).strip()
         # Clean double spaces
         cleaned = re.sub(r"\s+", " ", cleaned).strip()
