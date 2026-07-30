@@ -118,13 +118,19 @@ def control_window_state(title_query: str, state: str = "minimize") -> str:
         return f"Error managing window state: {e}"
 
 
-def window_manager_action(action: str = "list", title: str = "", state: str = "focus") -> str:
+def window_manager_action(action: Any = "list", title: str = "", state: str = "focus") -> str:
     """Tool function for inspecting and focusing windows."""
-    act = (action or "list").lower().strip()
+    if isinstance(action, dict):
+        args = action
+        action = args.get("action", "list")
+        title = args.get("title", "")
+        state = args.get("state", "focus")
+
+    act = str(action or "list").lower().strip()
     if act in ("list", "show", "enum"):
         wins = list_desktop_windows()
         if not wins:
-            return "No visible desktop application windows found."
+            return "No visible Desktop Windows found."
         lines = [f"- PID {w['pid']}: {w['title']}" for w in wins if "title" in w]
         return f"🖥️ Active Desktop Windows ({len(lines)}):\n" + "\n".join(lines)
     elif act in ("focus", "switch", "activate"):

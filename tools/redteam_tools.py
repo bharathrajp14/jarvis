@@ -50,7 +50,10 @@ def tool_port_scan(args: dict) -> str:
     recon = _get_recon_engine()
     if not recon:
         return "ERROR: No scope file loaded. Cannot run scoped tools."
-    result = recon.port_scan(args["host"], args.get("ports"))
+    host = str(args.get("host") or args.get("ip") or args.get("target") or "").strip()
+    if not host:
+        return "ERROR: 'host' parameter is required for port_scan."
+    result = recon.port_scan(host, args.get("ports"))
     return json.dumps(result, indent=2)
 
 
@@ -69,7 +72,10 @@ def tool_dns_enum(args: dict) -> str:
     recon = _get_recon_engine()
     if not recon:
         return "ERROR: No scope file loaded."
-    result = recon.dns_enum(args["domain"])
+    domain = str(args.get("domain") or args.get("host") or args.get("target") or "").strip()
+    if not domain:
+        return "ERROR: 'domain' parameter is required for dns_enum."
+    result = recon.dns_enum(domain)
     return json.dumps(result, indent=2)
 
 
@@ -88,7 +94,10 @@ def tool_headers_audit(args: dict) -> str:
     recon = _get_recon_engine()
     if not recon:
         return "ERROR: No scope file loaded."
-    result = recon.headers_audit(args["url"])
+    url = str(args.get("url") or args.get("uri") or args.get("link") or "").strip()
+    if not url:
+        return "ERROR: 'url' parameter is required for headers_audit."
+    result = recon.headers_audit(url)
     return json.dumps(result, indent=2)
 
 
@@ -107,7 +116,10 @@ def tool_whois_lookup(args: dict) -> str:
     recon = _get_recon_engine()
     if not recon:
         return "ERROR: No scope file loaded."
-    return recon.whois(args["domain"])
+    domain = str(args.get("domain") or args.get("host") or args.get("target") or "").strip()
+    if not domain:
+        return "ERROR: 'domain' parameter is required for whois_lookup."
+    return recon.whois(domain)
 
 
 @register_tool(
@@ -125,7 +137,10 @@ def tool_nmap_scan(args: dict) -> str:
     scanner = _get_vuln_scanner()
     if not scanner:
         return "ERROR: No scope file loaded."
-    return scanner.nmap_service_scan(args["host"])
+    host = str(args.get("host") or args.get("ip") or args.get("target") or "").strip()
+    if not host:
+        return "ERROR: 'host' parameter is required for nmap_scan."
+    return scanner.nmap_service_scan(host)
 
 
 @register_tool(
@@ -141,7 +156,8 @@ def tool_nmap_scan(args: dict) -> str:
 )
 def tool_generate_report(args: dict) -> str:
     from redteam.report import generate_report
-    return generate_report(args["data"])
+    data = args.get("data") or args.get("report_data") or {}
+    return generate_report(data)
 
 
 @register_tool(

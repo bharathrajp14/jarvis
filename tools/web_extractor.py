@@ -8,6 +8,7 @@ from __future__ import annotations
 import re
 import urllib.request
 from typing import Dict, Any
+from tools.registry import register_tool
 
 
 def extract_web_content(url: str, max_chars: int = 4000) -> str:
@@ -40,7 +41,21 @@ def extract_web_content(url: str, max_chars: int = 4000) -> str:
         return f"Error extracting content from '{url}': {e}"
 
 
+@register_tool(
+    name="web_extractor",
+    description="Fetch web page HTML and extract clean text content, headers, and main body text.",
+    parameters={
+        "type": "object",
+        "properties": {
+            "url": {"type": "string", "description": "Web page URL to extract"}
+        },
+        "required": ["url"]
+    }
+)
 def web_extractor_action(args: Dict[str, Any]) -> str:
     """Main tool handler for web extraction."""
-    url = str(args.get("url", "")).strip()
+    if isinstance(args, str):
+        url = args.strip()
+    else:
+        url = str(args.get("url") or args.get("uri") or args.get("link") or args.get("target") or "").strip()
     return extract_web_content(url)

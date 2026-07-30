@@ -7,7 +7,8 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
+from tools.registry import register_tool
 
 
 def semantic_file_search(query: str, root_dir: Optional[Path] = None, max_results: int = 15) -> List[Dict[str, Any]]:
@@ -43,9 +44,24 @@ def semantic_file_search(query: str, root_dir: Optional[Path] = None, max_result
     return matches[:max_results]
 
 
+@register_tool(
+    name="semantic_file_search",
+    description="Search workspace files by natural language keywords, filename patterns, or extensions.",
+    parameters={
+        "type": "object",
+        "properties": {
+            "query": {"type": "string", "description": "Search query or file pattern"}
+        },
+        "required": ["query"]
+    }
+)
 def file_search_semantic_action(args: Dict[str, Any]) -> str:
     """Main tool handler for semantic file search."""
-    query = str(args.get("query", "")).strip()
+    if isinstance(args, str):
+        query = args.strip()
+    else:
+        query = str(args.get("query") or args.get("q") or args.get("pattern") or args.get("filename") or "").strip()
+    
     res = semantic_file_search(query)
     if not res:
         return f"No matching files found for query '{query}'."

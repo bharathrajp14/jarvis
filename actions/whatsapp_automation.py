@@ -124,14 +124,17 @@ class WhatsAppAutomation:
 
             if open_browser:
                 try:
-                    # Try OS native URI handler first
+                    # Use native Windows ShellExecute / webbrowser without cmd.exe & splitting
                     if os.name == "nt":
-                        subprocess.Popen(f'start {whatsapp_uri}', shell=True)
+                        try:
+                            os.startfile(whatsapp_url)
+                        except Exception:
+                            webbrowser.open(whatsapp_url)
                     else:
                         webbrowser.open(whatsapp_url)
-                    time.sleep(2.0)
+                    time.sleep(1.5)
                     return f"✅ Opened WhatsApp to send message to {display_name} ({clean_num})."
-                except Exception:
+                except Exception as e:
                     webbrowser.open(whatsapp_url)
                     return f"✅ Opened WhatsApp Web to send message to {display_name} ({clean_num})."
 

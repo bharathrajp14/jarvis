@@ -26,11 +26,16 @@ from actions.whatsapp_automation import get_whatsapp_automation
 )
 def tool_send_whatsapp(args: dict) -> str:
     """Send WhatsApp message to recipient."""
-    recipient = str(args.get("recipient", "")).strip()
-    message = str(args.get("message", "")).strip()
+    if isinstance(args, str):
+        parts = args.split(":", 1)
+        recipient = parts[0].strip() if parts else ""
+        message = parts[1].strip() if len(parts) > 1 else args.strip()
+    else:
+        recipient = str(args.get("recipient") or args.get("phone_number") or args.get("contact") or args.get("to") or args.get("target") or "").strip()
+        message = str(args.get("message") or args.get("text") or args.get("body") or args.get("content") or "").strip()
 
     if not recipient or not message:
-        return "Error: Both 'recipient' and 'message' are required."
+        return "Error: Both 'recipient' and 'message' are required for send_whatsapp."
 
     wa = get_whatsapp_automation()
     return wa.send_message(recipient=recipient, message_text=message)
@@ -51,9 +56,12 @@ def tool_send_whatsapp(args: dict) -> str:
 )
 def tool_schedule_whatsapp_message(args: dict) -> str:
     """Schedule a WhatsApp message for future delivery."""
-    recipient = str(args.get("recipient", "")).strip()
-    message = str(args.get("message", "")).strip()
-    send_at = str(args.get("send_at", "")).strip()
+    if isinstance(args, str):
+        return "Error: 'schedule_whatsapp_message' expects a JSON dictionary."
+
+    recipient = str(args.get("recipient") or args.get("phone_number") or args.get("contact") or args.get("to") or "").strip()
+    message = str(args.get("message") or args.get("text") or args.get("body") or args.get("content") or "").strip()
+    send_at = str(args.get("send_at") or args.get("time") or args.get("date") or "").strip()
 
     if not recipient or not message or not send_at:
         return "Error: 'recipient', 'message', and 'send_at' are all required."
@@ -77,15 +85,19 @@ def tool_schedule_whatsapp_message(args: dict) -> str:
 )
 def tool_manage_whatsapp_contacts(args: dict) -> str:
     """Manage saved contacts mapping."""
-    action = str(args.get("action", "")).strip().lower()
+    if isinstance(args, str):
+        action = args.strip().lower()
+    else:
+        action = str(args.get("action") or "list").strip().lower()
+    
     wa = get_whatsapp_automation()
 
-    if action == "add":
-        name = str(args.get("name", "")).strip()
-        phone = str(args.get("phone_number", "")).strip()
+    if action in ("add", "save", "create"):
+        name = str(args.get("name") or args.get("contact_name") or "").strip()
+        phone = str(args.get("phone_number") or args.get("phone") or args.get("number") or "").strip()
         return wa.add_contact(name=name, phone_number=phone)
 
-    elif action == "list":
+    elif action in ("list", "show", "get"):
         contacts = wa.list_contacts()
         if not contacts:
             return "No saved WhatsApp contacts found."

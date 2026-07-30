@@ -127,39 +127,49 @@ def _launch_mac(app_name: str) -> bool:
 
 
 def _launch_windows(app_name: str) -> bool:
-    # 1. System path check
-    if shutil.which(app_name) or shutil.which(app_name.split(".")[0]):
-        try:
-            subprocess.Popen(
-                app_name,
-                shell=True,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-            )
-            time.sleep(1.5)
-            return True
-        except Exception as e:
-            print(f"[open_app] subprocess failed: {e}")
+    clean = app_name.strip()
 
-    # 2. URI association check
-    if ":" in app_name:
+    # 1. Primary Windows ShellExecute via os.startfile (resolves App Paths registry, UWP apps & protocols)
+    try:
+        os.startfile(clean)
+        time.sleep(1.0)
+        return True
+    except Exception:
+        pass
+
+    # 2. Try with .exe extension fallback
+    if not clean.endswith(".exe"):
         try:
-            subprocess.Popen(f"start {app_name}", shell=True)
+            os.startfile(f"{clean}.exe")
             time.sleep(1.0)
             return True
         except Exception:
             pass
 
-    # 3. GUI Start Menu Search Fallback
+    # 3. Direct executable PATH check
+    if shutil.which(clean) or shutil.which(clean.split(".")[0]):
+        try:
+            subprocess.Popen(
+                clean,
+                shell=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            time.sleep(1.0)
+            return True
+        except Exception as e:
+            print(f"[open_app] subprocess failed: {e}")
+
+    # 4. Windows Start Menu GUI search fallback
     try:
         import pyautogui
         pyautogui.PAUSE = 0.1
         pyautogui.press("win")
-        time.sleep(0.7)
-        pyautogui.write(app_name, interval=0.05)
-        time.sleep(0.9)
+        time.sleep(0.5)
+        pyautogui.write(clean, interval=0.03)
+        time.sleep(0.6)
         pyautogui.press("enter")
-        time.sleep(2.5)
+        time.sleep(1.5)
         return True
     except Exception as e:
         print(f"[open_app] Start Menu search failed: {e}")

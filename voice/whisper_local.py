@@ -213,7 +213,7 @@ def _transcribe_faster(engine, audio_input, language: str, detect: bool, initial
         "temperature": 0.0,
         "no_speech_threshold": 0.6,
         "compression_ratio_threshold": 2.4,
-        "logprob_threshold": -1.0,
+        "log_prob_threshold": -1.0,
         "repetition_penalty": 1.2,
     }
     if not detect and language:
@@ -221,9 +221,6 @@ def _transcribe_faster(engine, audio_input, language: str, detect: bool, initial
 
     segments, info = engine.transcribe(audio_input, **kwargs)
     text_parts = []
-    for segment in segments:
-        text_parts.append(segment.text.strip())
-    return " ".join(text_parts)
     for segment in segments:
         text_parts.append(segment.text.strip())
     return " ".join(text_parts)

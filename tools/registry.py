@@ -516,6 +516,13 @@ def _import_plugins():
         "tools.calendar_tools",
         "tools.gmail_auth_tools",
         "tools.smart_email_tools",
+        "tools.file_search_semantic",
+        "tools.web_extractor",
+        "tools.system_health",
+        "tools.mcp_connector",
+        "tools.redteam_tools",
+        "tools.skills_tools",
+        "tools.web_app_tools",
     ]
 
     for p in plugins:

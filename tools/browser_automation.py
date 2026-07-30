@@ -111,8 +111,15 @@ async def _close_browser():
 )
 def browser_open_url(args: dict) -> str:
     """Open a URL in the persistent browser."""
-    url = args["url"].strip()
-    headless = args.get("headless", False)
+    if isinstance(args, str):
+        url = args.strip()
+        headless = False
+    else:
+        url = str(args.get("url") or args.get("uri") or args.get("link") or args.get("target") or "").strip()
+        headless = args.get("headless", False)
+
+    if not url:
+        return "Browser Open Error: 'url' parameter is required."
 
     async def _open():
         page = await _get_or_create_page(headless=headless)
@@ -139,7 +146,13 @@ def browser_open_url(args: dict) -> str:
 )
 def browser_click(args: dict) -> str:
     """Click an element on the current browser page."""
-    target = args["target"].strip()
+    if isinstance(args, str):
+        target = args.strip()
+    else:
+        target = str(args.get("target") or args.get("selector") or args.get("element") or args.get("text") or "").strip()
+
+    if not target:
+        return "Click Error: 'target' parameter is required."
 
     async def _click():
         page = await _get_or_create_page()
@@ -192,9 +205,17 @@ def browser_click(args: dict) -> str:
 )
 def browser_type(args: dict) -> str:
     """Type text into a web page input element."""
-    target = args["target"].strip()
-    text = args["text"]
-    press_enter = args.get("press_enter", False)
+    if isinstance(args, str):
+        target = "input"
+        text = args.strip()
+        press_enter = False
+    else:
+        target = str(args.get("target") or args.get("selector") or args.get("element") or args.get("field") or "").strip()
+        text = str(args.get("text") or args.get("content") or args.get("value") or "")
+        press_enter = args.get("press_enter", False)
+
+    if not target and not text:
+        return "Type Error: 'target' and 'text' parameters are required."
 
     async def _type():
         page = await _get_or_create_page()
