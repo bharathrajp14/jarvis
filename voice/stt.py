@@ -119,27 +119,36 @@ class SounddeviceMicrophone(_BaseAudioSource):
                 "sounddevice is not installed. Run 'pip install sounddevice' to use voice features."
             )
             
-        # Try opening raw input stream with dynamic fallback samplerates
-        rates_to_try = [self.device_sample_rate, 16000, 44100, 48000, 32000, 8000]
-        rates_to_try = list(dict.fromkeys([int(r) for r in rates_to_try if r is not None]))
-        
+        # Try opening raw input stream with dynamic fallback samplerates and device fallback
+        devices_to_try = [self.device_index]
+        if self.device_index is not None:
+            devices_to_try.append(None)  # System default mic fallback
+
         last_err = None
-        for rate in rates_to_try:
-            try:
-                self.sd_stream = sd.RawInputStream(
-                    samplerate=rate,
-                    blocksize=self.CHUNK,
-                    device=self.device_index,
-                    channels=1,
-                    dtype='int16',
-                    callback=self._callback
-                )
-                self.device_sample_rate = rate
+        for dev in devices_to_try:
+            rates_to_try = [self.device_sample_rate, 16000, 44100, 48000, 32000, 8000]
+            rates_to_try = list(dict.fromkeys([int(r) for r in rates_to_try if r is not None]))
+
+            for rate in rates_to_try:
+                try:
+                    self.sd_stream = sd.RawInputStream(
+                        samplerate=rate,
+                        blocksize=self.CHUNK,
+                        device=dev,
+                        channels=1,
+                        dtype='int16',
+                        callback=self._callback
+                    )
+                    self.device_sample_rate = rate
+                    self.device_index = dev
+                    break
+                except Exception as e:
+                    last_err = e
+                    self.sd_stream = None
+
+            if self.sd_stream is not None:
                 break
-            except Exception as e:
-                last_err = e
-                self.sd_stream = None
-                
+
         if self.sd_stream is None:
             raise RuntimeError(f"Failed to open audio input stream: {last_err}")
 

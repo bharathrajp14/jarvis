@@ -100,10 +100,16 @@ class OpenAIBackend(BaseBackend):
                 kwargs["tools"] = tools
 
             response = self.client.chat.completions.create(**kwargs)
-            return response.choices[0].message.content
+            return response.choices[0].message.content or ""
         except Exception as e:
-            print(f"[OpenAI] Error: {e}")
-            raise
+            print(f"[OpenAI] Primary request failed ({e}) — attempting Gemini fallback...")
+            try:
+                from backends.gemini import GeminiBackend
+                fallback_backend = GeminiBackend()
+                return fallback_backend.complete(messages=messages, system=system, tools=tools)
+            except Exception as ex_fb:
+                print(f"[OpenAI Fallback Error]: {ex_fb}")
+                raise e
 
     def stream(self, messages: list, system: str = "") -> Generator[str, None, None]:
         try:
