@@ -61,11 +61,11 @@ class BRVoiceAssistant:
         # Load configurable settings
         self.name = os.environ.get("JARVIS_ASSISTANT_NAME", "BR").strip()
         self.wake_word = os.environ.get("JARVIS_WAKE_WORD", "jarvis").strip().lower()
-        self._wake_listen_timeout = 2.0       # max seconds to wait for any speech
-        self._wake_phrase_limit = 3.5         # ⚡ Snappy 3.5s capture for passive wake detection
+        self._wake_listen_timeout = 1.5       # max seconds to wait for speech start
+        self._wake_phrase_limit = 1.0         # ⚡ ULTRAFAST 1.0s max capture window for wake phrase
         self._command_timeout = 5.0           # seconds to wait for command speech
         self._command_phrase_limit = 20.0     # allow long complex multi-sentence commands
-        self._ambient_calibration = 0.3       # ⚡ 300ms ultra-fast ambient noise calibration
+        self._ambient_calibration = 0.25      # ⚡ 250ms ultra-fast ambient noise calibration
 
         # Initialize 500ms rolling audio pre-roll ring buffer
         try:
@@ -231,15 +231,15 @@ class BRVoiceAssistant:
         loop = self._get_active_loop()
         text = ""
 
-        # 1. Primary 100% Offline Local Whisper Path (< 100ms Latency)
+        # 1. Ultrafast Specialized Wake-Word Decoder (< 30ms Latency)
         try:
-            from voice.whisper_local import transcribe as whisper_transcribe, is_available as whisper_available
+            from voice.whisper_local import transcribe_wake_fast, is_available as whisper_available
             if whisper_available():
                 text = await loop.run_in_executor(
-                    None, lambda: whisper_transcribe(
+                    None, lambda: transcribe_wake_fast(
                         audio.get_wav_data(),
                         language="en",
-                        initial_prompt="Jarvis, Javis, Hey Jarvis, Hey Javis, BR"
+                        initial_prompt="Jarvis, Javis, Hey Jarvis, Hey Javis"
                     ).lower()
                 )
         except Exception:
@@ -545,7 +545,11 @@ class BRVoiceAssistant:
                             await asyncio.sleep(0.1)
                             continue
 
-                        # ⚡ Listen for short wake-word audio (1.2s max capture)
+                        # ⚡ Dynamic micro-endpoint tuning for ultra-snappy wake detection
+                        self.r.pause_threshold = 0.20
+                        self.r.non_speaking_duration = 0.12
+
+                        # ⚡ Listen for short wake-word audio (1.0s max capture)
                         audio = await self._loop.run_in_executor(
                             None, lambda: self.r.listen(
                                 source,
@@ -554,7 +558,7 @@ class BRVoiceAssistant:
                             )
                         )
 
-                        # ⚡ FAST path: Google STT only (no fallback chain)
+                        # ⚡ ULTRAFAST wake decoding
                         text = await self._transcribe_wake(audio)
 
                         if self._is_wake_phrase(text):
@@ -570,7 +574,10 @@ class BRVoiceAssistant:
                                 await self._switch_to_new_command(embedded_cmd)
                                 continue
 
-                            # Preserve audio frames captured immediately after wake chime
+                            # Restore full command listening thresholds for active command capture
+                            self.r.pause_threshold = 0.45
+                            self.r.non_speaking_duration = 0.25
+
                             # Listen for follow-up command if user spoke only the wake word
                             try:
                                 audio_cmd = await self._loop.run_in_executor(

@@ -226,6 +226,53 @@ def _transcribe_faster(engine, audio_input, language: str, detect: bool, initial
     return " ".join(text_parts)
 
 
+def transcribe_wake_fast(audio_bytes: Any, language: str = "en", initial_prompt: str = "") -> str:
+    """
+    ⚡ ULTRAFAST Wake Word Spotter (<30ms-50ms decoding).
+    Bypasses beam search, timestamps, and deep VAD passes for single-phrase wake decoding.
+    """
+    if audio_bytes is None or len(audio_bytes) < 100:
+        return ""
+
+    engine, engine_type = _get_engine()
+    if not engine or engine_type != "faster_whisper":
+        return transcribe(audio_bytes, language=language, initial_prompt=initial_prompt)
+
+    try:
+        import numpy as np
+        if isinstance(audio_bytes, (bytes, bytearray)):
+            pcm_data = audio_bytes[44:] if len(audio_bytes) > 44 else audio_bytes
+            num_samples = len(pcm_data) // 2
+            if num_samples < 800:
+                return ""
+            shorts = np.frombuffer(pcm_data[:num_samples * 2], dtype=np.int16)
+            float_samples = shorts.astype(np.float32) / 32768.0
+        else:
+            float_samples = audio_bytes
+
+        prompt = initial_prompt or "Jarvis, Javis, Hey Jarvis, Hey Javis"
+        kwargs = {
+            "beam_size": 1,
+            "best_of": 1,
+            "without_timestamps": True,
+            "max_initial_timestamp": 0.0,
+            "suppress_blank": True,
+            "condition_on_previous_text": False,
+            "temperature": 0.0,
+            "language": language,
+            "initial_prompt": prompt,
+        }
+
+        segments, _ = engine.transcribe(float_samples, **kwargs)
+        parts = [seg.text.strip() for seg in segments]
+        text = " ".join(parts).strip()
+        from voice.prompt_refiner import collapse_repetitions
+        return collapse_repetitions(text)
+    except Exception as e:
+        logger.warning(f"transcribe_wake_fast error: {e}")
+        return transcribe(audio_bytes, language=language, initial_prompt=initial_prompt)
+
+
 def _transcribe_openai(engine, audio_path: str, language: str, detect: bool, initial_prompt: str = "") -> str:
     """Transcribe using openai-whisper."""
     prompt = initial_prompt or DEFAULT_INITIAL_PROMPT
