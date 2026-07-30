@@ -16,11 +16,6 @@ from typing import Dict, Any, List, Optional
 
 FILLER_PATTERNS = [
     r"\b(um+)\b", r"\b(uh+)\b", r"\b(ah+)\b", r"\b(er+)\b", r"\b(hmm+)\b",
-    r"^(like|basically|actually|you know|i mean|sort of|kind of)[\s,]+",
-    r",\s*(like|basically|actually|you know|i mean)[\s,]+",
-    r"^(hey|hi|hello|ok|okay)\s+(jarvis|br|assistant)[\s,]*",
-    r"^(jarvis|br)[\s,]+",
-    r"^(can you|could you|please|would you mind|i want you to)\s+",
 ]
 
 

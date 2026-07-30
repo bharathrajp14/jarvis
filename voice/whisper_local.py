@@ -71,7 +71,7 @@ def _cuda_available() -> bool:
     try:
         import torch
         return torch.cuda.is_available()
-    except ImportError:
+    except Exception:
         return False
 
 

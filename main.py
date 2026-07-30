@@ -40,7 +40,8 @@ from voice.assistant import BRVoiceAssistant
 
 def main():
     """Main entry point initializing Tkinter HUD and running Voice Assistant worker."""
-    ui = JarvisUI("face.png")
+    face_path = Path(__file__).resolve().parent / "face.png"
+    ui = JarvisUI(str(face_path) if face_path.exists() else None)
 
     def runner():
         try:

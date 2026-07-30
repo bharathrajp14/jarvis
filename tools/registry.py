@@ -242,6 +242,78 @@ def get_orchestrator_ref() -> Any:
 
 
 try:
+    from actions.reminders import reminder_tool_action
+    register_tool(
+        name="reminder",
+        description="Set or list smart reminders and desktop toast notifications. Args: 'action' ('add' or 'list'), 'text' (reminder message), 'time_str' (e.g. '9:00 AM', '14:30', 'tomorrow 9am'), 'delay_seconds' (optional integer).",
+        parameters={
+            "type": "object",
+            "properties": {
+                "action": {"type": "string", "enum": ["add", "list"]},
+                "text": {"type": "string", "description": "Reminder text"},
+                "time_str": {"type": "string", "description": "Target time (e.g. '9am', '14:30')"},
+                "delay_seconds": {"type": "integer", "description": "Delay in seconds"},
+            },
+            "required": ["action"],
+        }
+    )(reminder_tool_action)
+except Exception as e:
+    print(f"[Tools] Failed to register reminder tool: {e}")
+
+try:
+    from actions.fast_file_search import fast_file_search_action
+    register_tool(
+        name="fast_file_search",
+        description="High-speed desktop file search by filename or text content. Args: 'action' ('name' or 'content'), 'query' (search keyword), 'search_path' (optional directory path), 'extension' (optional file extension).",
+        parameters={
+            "type": "object",
+            "properties": {
+                "action": {"type": "string", "enum": ["name", "content"]},
+                "query": {"type": "string", "description": "Search keyword or filename"},
+                "search_path": {"type": "string", "description": "Root directory path"},
+                "extension": {"type": "string", "description": "File extension filter"},
+            },
+            "required": ["action", "query"],
+        }
+    )(fast_file_search_action)
+except Exception as e:
+    print(f"[Tools] Failed to register fast_file_search tool: {e}")
+
+try:
+    from actions.longform_builder import longform_builder_action
+    register_tool(
+        name="longform_builder",
+        description="Build comprehensive multi-volume books, technical manuals, research publications, and project toolkits automatically. Args: 'title' (book title), 'description' (topic focus), 'year' (publication year), 'folder_name' (optional output subfolder).",
+        parameters={
+            "type": "object",
+            "properties": {
+                "title": {"type": "string", "description": "Title of the book or guide"},
+                "description": {"type": "string", "description": "Detailed topic focus"},
+                "year": {"type": "string", "description": "Target year (default: '2026')"},
+                "folder_name": {"type": "string", "description": "Output folder name inside ./workspace/"},
+            },
+            "required": ["title", "description"],
+        }
+    )(longform_builder_action)
+except Exception as e:
+    print(f"[Tools] Failed to register longform_builder tool: {e}")
+
+try:
+    from actions.system_optimizer import system_optimizer_action
+    register_tool(
+        name="system_optimizer",
+        description="Run automated RAM, garbage collection, and temporary file cache optimization. Returns memory stats.",
+        parameters={
+            "type": "object",
+            "properties": {
+                "action": {"type": "string", "enum": ["optimize"]}
+            }
+        }
+    )(system_optimizer_action)
+except Exception as e:
+    print(f"[Tools] Failed to register system_optimizer tool: {e}")
+
+try:
     from tools.window_manager import window_manager_action
     register_tool(
         name="window_manager",
@@ -255,8 +327,8 @@ try:
             "required": ["action"]
         }
     )(window_manager_action)
-except Exception:
-    pass
+except Exception as e:
+    print(f"[Tools] Failed to register window_manager tool: {e}")
 
 try:
     from tools.web_extractor import web_extractor_action

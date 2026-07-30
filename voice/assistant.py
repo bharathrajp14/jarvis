@@ -42,13 +42,11 @@ class BRVoiceAssistant:
 
     def __init__(self, ui: JarvisUI):
         self.ui = ui
-        # Initialize ReAct Orchestrator & Backend Gateway
+        # Initialize ReAct Orchestrator & Backend Gateway via shared runtime
         try:
-            from orchestrator import JarvisOrchestrator
-            from router import AgentRouter
-            router = AgentRouter()
-            self.orchestrator = JarvisOrchestrator(router=router)
-            self.backends = getattr(getattr(self.orchestrator, "router", None), "backends", {})
+            runtime = build_assistant_runtime()
+            self.orchestrator = runtime.orchestrator
+            self.backends = runtime.backends
         except Exception as e:
             print(f"[Voice] Orchestrator init warning: {e}")
             self.orchestrator = None
@@ -187,7 +185,7 @@ class BRVoiceAssistant:
             return False
 
         # Regex check for jarvis and common phonetic STT mishearings
-        if re.search(r"\b(jarvis|jarves|javis|garvis|charvis|harvis|travis|hey\s+jarvis|ok\s+jarvis|hi\s+jarvis|hello\s+jarvis|hey\s+br|br)\b", normalized):
+        if re.search(r"\b(jarvis|jarves|jarvas|jervis|javis|garvis|charvis|harvis|travis|jarvs|hey\s+jarvis|ok\s+jarvis|hi\s+jarvis|hello\s+jarvis|hey\s+br|br)\b", normalized):
             return True
 
         wake_word = self.wake_word.lower().strip()
@@ -202,13 +200,27 @@ class BRVoiceAssistant:
         if not text:
             return ""
         norm = text.lower().strip()
-        pat = r"^(hey\s+jarvis|ok\s+jarvis|hi\s+jarvis|hello\s+jarvis|br\s+jarvis|hey\s+br|jarvis|jarves|javis|garvis|charvis|harvis)\b[\s,:\.\!]*"
+        pat = r"^(hey\s+jarvis|ok\s+jarvis|hi\s+jarvis|hello\s+jarvis|br\s+jarvis|hey\s+br|jarvis|jarves|jarvas|jervis|javis|garvis|charvis|harvis)\b[\s,:\.\!]*"
         cleaned = re.sub(pat, "", norm, flags=re.IGNORECASE).strip()
         return cleaned if len(cleaned) > 2 else ""
 
+    def _get_active_loop(self) -> asyncio.AbstractEventLoop:
+        """Safely get or create an active event loop for async voice processing."""
+        if self._loop and self._loop.is_running():
+            return self._loop
+        try:
+            return asyncio.get_running_loop()
+        except RuntimeError:
+            if self._loop and not self._loop.is_closed():
+                return self._loop
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            self._loop = loop
+            return loop
+
     async def _transcribe_wake(self, audio: sr.AudioData) -> str:
         """⚡ FAST wake-word transcription. Uses Google STT with Whisper local fallback."""
-        loop = self._loop or asyncio.get_running_loop()
+        loop = self._get_active_loop()
         text = ""
         try:
             if hasattr(self, "r") and self.r:
@@ -237,7 +249,7 @@ class BRVoiceAssistant:
         """Full-quality command transcription with fallback chain.
         Used ONLY after wake word is detected — accuracy matters here.
         """
-        loop = self._loop or asyncio.get_running_loop()
+        loop = self._get_active_loop()
         text = ""
 
         # 1. Try local Whisper first (offline STT — highest quality)
@@ -247,7 +259,7 @@ class BRVoiceAssistant:
                 from voice.multilingual import get_whisper_code
                 if whisper_available():
                     lang_code = get_whisper_code()
-                    text = await self._loop.run_in_executor(
+                    text = await loop.run_in_executor(
                         None, lambda: whisper_transcribe(audio.get_wav_data(), language=lang_code)
                     )
             except Exception as e:
@@ -267,14 +279,14 @@ class BRVoiceAssistant:
 
                 primary = self.backends.get(default_profile)
                 if primary and hasattr(primary, "transcribe"):
-                    text = await self._loop.run_in_executor(
+                    text = await loop.run_in_executor(
                         None, lambda: primary.transcribe(audio.get_wav_data())
                     )
 
                 if not text and default_profile != AgentProfile.GEMINI:
                     gemini = self.backends.get(AgentProfile.GEMINI)
                     if gemini and hasattr(gemini, "transcribe"):
-                        text = await self._loop.run_in_executor(
+                        text = await loop.run_in_executor(
                             None, lambda: gemini.transcribe(audio.get_wav_data())
                         )
             except Exception as e:
@@ -287,7 +299,7 @@ class BRVoiceAssistant:
                 from voice.multilingual import get_whisper_code
                 if whisper_available():
                     lang_code = get_whisper_code()
-                    text = await self._loop.run_in_executor(
+                    text = await loop.run_in_executor(
                         None, lambda: whisper_transcribe(audio.get_wav_data(), language=lang_code)
                     )
             except Exception:
@@ -299,7 +311,7 @@ class BRVoiceAssistant:
                 if hasattr(self, "r") and self.r:
                     from voice.multilingual import get_google_stt_code
                     stt_lang = get_google_stt_code()
-                    text = await self._loop.run_in_executor(
+                    text = await loop.run_in_executor(
                         None, lambda: self.r.recognize_google(audio, language=stt_lang).lower()
                     )
             except Exception:
@@ -322,8 +334,15 @@ class BRVoiceAssistant:
         else:
             self.ui.write_log(f"You: {text_clean}")
 
-        low = text_clean.lower()
-        if any(w in low for w in ["goodbye", "exit", "close", "stop br", "shutdown br", "stop jarvis", "shutdown jarvis"]):
+        low = text_clean.lower().strip()
+        # System shutdown ONLY triggers on exact standalone shutdown commands
+        exact_shutdown_commands = {
+            "exit", "quit", "goodbye", "shutdown", "bye",
+            "shutdown jarvis", "exit jarvis", "close jarvis", "stop jarvis",
+            "shutdown br", "exit br", "stop br"
+        }
+
+        if low in exact_shutdown_commands:
             self.ui.write_log("SYS: Shutting down.")
             self.speak("Goodbye, sir.")
             await asyncio.sleep(2.5)
@@ -418,14 +437,16 @@ class BRVoiceAssistant:
             self._loop = asyncio.new_event_loop()
             asyncio.set_event_loop(self._loop)
 
-        # Initialize AI core backends
+        # Initialize AI core backends if not already initialized in __init__
+        if not self.orchestrator:
+            if self.ui:
+                self.ui.set_state("THINKING")
+                self.ui.write_log("SYS: Initializing AI backends...")
+            runtime = build_assistant_runtime()
+            self.orchestrator = runtime.orchestrator
+            self.backends = runtime.backends
         if self.ui:
-            self.ui.set_state("THINKING")
-            self.ui.write_log("SYS: Initializing AI backends...")
-        runtime = build_assistant_runtime()
-        self.orchestrator = runtime.orchestrator
-        self.backends = runtime.backends
-        self.ui.write_log("SYS: JARVIS Cognitive Core online.")
+            self.ui.write_log("SYS: JARVIS Cognitive Core online.")
 
         # Setup Speech Recognition
         mic_available = False

@@ -170,18 +170,28 @@ def audit_prompt_security(args: dict) -> str:
         "disregard previous instructions",
         "you must now ignore",
         "ignore the above instructions",
-        "ignore instructions above"
+        "ignore instructions above",
+        "dan mode",
+        "developer mode active",
+        "unrestricted mode",
+        "reveal your system prompt",
+        "print system instructions",
+        "output your initial prompt",
+        "send my api key",
+        "bypass security constraints"
     ]
     low_content = content.lower()
     for kw in override_keywords:
         if kw in low_content:
-            return f"INJECTION DETECTED: Override phrase matched '{kw}'"
+            return f"INJECTION DETECTED: Security override phrase matched '{kw}'"
             
     # 2. Fake role markers inside data
     fake_role_markers = [
         "system:",
         "user:",
         "assistant:",
+        "<|im_start|>",
+        "<|im_end|>",
         "### new instructions",
         "### instruction",
         "### response"
@@ -200,6 +210,6 @@ def audit_prompt_security(args: dict) -> str:
     import re
     base64_pat = re.compile(r'[A-Za-z0-9+/]{80,}=*')
     if base64_pat.search(content):
-        return "INJECTION DETECTED: Large base64 block detected"
+        return "INJECTION DETECTED: Large base64 payload block detected"
 
     return "CLEAN"

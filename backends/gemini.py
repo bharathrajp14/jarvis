@@ -45,16 +45,18 @@ class GeminiBackend(BaseBackend):
     """
 
     FALLBACK_MODELS = [
+        "gemini-3.6-flash-high",
         "gemini-3-flash",
-        "gemini-3.5-flash-extra-low",
-        "gemini-3.5-flash-low",
-        "gemini-3.6-flash-low",
         "gemini-3.6-flash-medium",
+        "gemini-3.1-pro-high",
+        "gemini-3.1-flash-lite",
+        "gemini-2.5-flash",
     ]
 
     def __init__(self, model: str = None, api_key: str = None):
         self._use_openai_client = False
         self._client = None
+        self._explicit_model = model
 
         # Check if local proxy gateway should be used (default: True)
         use_proxy = os.environ.get("JARVIS_ROUTE_GEMINI_TO_GATEWAY", "true").lower() == "true"
@@ -68,7 +70,7 @@ class GeminiBackend(BaseBackend):
                 self._client = OpenAI(base_url=base_url, api_key=api_key_val)
                 self._use_openai_client = True
                 self.model = model or self._pick_model()
-                print(f"[Gemini] Routed via local proxy gateway: {base_url} (model: {self.model})")
+                print(f"[Gemini] Routed via local proxy gateway: {base_url} (auto-model routing enabled)")
                 return
             except Exception as e:
                 print(f"[Gemini] Failed to initialize local proxy client: {e}. Falling back to direct Google client.")
@@ -92,6 +94,10 @@ class GeminiBackend(BaseBackend):
     def model_name(self) -> str:
         return self.model
 
+    @property
+    def available(self) -> bool:
+        return self._client is not None or getattr(self, "_genai_client", None) is not None
+
     def _pick_model(self) -> str:
         """Try to use the best available model."""
         try:
@@ -103,12 +109,35 @@ class GeminiBackend(BaseBackend):
             pass
         return self.FALLBACK_MODELS[0]
 
+    def _get_target_model(self, messages: list, system: str = "") -> str:
+        if self._explicit_model:
+            return self._explicit_model
+        try:
+            from config.complexity_router import select_model_for_prompt
+            return select_model_for_prompt(messages=messages, system=system)
+        except Exception:
+            return self.model
+
     @property
     def client(self):
         return self._client
 
-    def complete(self, messages: list, system: str = "", tools: list = None) -> str:
-        """Standard completion — used by the ReAct orchestrator."""
+    def complete(self, messages: list, system: str = "", tools: list = None, max_tokens: int = None) -> str:
+        """Standard completion — used by the ReAct orchestrator with flexible token budget."""
+        try:
+            from config.complexity_router import (
+                analyze_complexity,
+                get_recommended_token_limit,
+                prune_messages_to_fit_budget,
+            )
+            complexity = analyze_complexity(messages=messages, system=system)
+            max_output_tokens = get_recommended_token_limit(complexity, user_max_tokens=max_tokens)
+            messages = prune_messages_to_fit_budget(messages, system=system)
+        except Exception:
+            max_output_tokens = max_tokens or 2048
+
+        target_model = self._get_target_model(messages, system)
+
         if self._use_openai_client:
             full_messages = []
             if system and system.strip():
@@ -126,19 +155,21 @@ class GeminiBackend(BaseBackend):
 
             try:
                 response = self._client.chat.completions.create(
-                    model=self.model,
+                    model=target_model,
                     messages=full_messages,
+                    max_tokens=max_output_tokens,
                 )
                 return response.choices[0].message.content or ""
             except Exception as e:
-                print(f"[Gemini Proxy] Model {self.model} failed: {e} — trying fallbacks...")
+                print(f"[Gemini Proxy] Model {target_model} failed: {e} — trying fallbacks...")
                 for fallback in self.FALLBACK_MODELS:
-                    if fallback == self.model:
+                    if fallback == target_model:
                         continue
                     try:
                         response = self._client.chat.completions.create(
                             model=fallback,
                             messages=full_messages,
+                            max_tokens=max_output_tokens,
                         )
                         return response.choices[0].message.content or ""
                     except Exception:
@@ -202,6 +233,7 @@ class GeminiBackend(BaseBackend):
 
     def stream(self, messages: list, system: str = "") -> Generator[str, None, None]:
         """Streaming completion."""
+        target_model = self._get_target_model(messages, system)
         if self._use_openai_client:
             full_messages = []
             if system and system.strip():
@@ -219,7 +251,7 @@ class GeminiBackend(BaseBackend):
 
             try:
                 stream_res = self._client.chat.completions.create(
-                    model=self.model,
+                    model=target_model,
                     messages=full_messages,
                     stream=True
                 )
@@ -250,7 +282,7 @@ class GeminiBackend(BaseBackend):
 
         try:
             for chunk in self.client.models.generate_content_stream(
-                model=self.model,
+                model=target_model,
                 contents=contents,
                 config=config if config else None,
             ):

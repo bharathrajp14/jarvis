@@ -25,6 +25,11 @@ class BaseBackend(ABC):
         """Currently active model identifier."""
         ...
 
+    @property
+    def available(self) -> bool:
+        """Return True if backend client is initialized and ready."""
+        return getattr(self, "_client", None) is not None or getattr(self, "client", None) is not None
+
     @abstractmethod
     def complete(self, messages: list[dict], system: str = "", tools: list | None = None) -> str:
         """

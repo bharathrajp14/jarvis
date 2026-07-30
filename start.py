@@ -558,9 +558,9 @@ def doctor(auto_confirm: bool = False):
 def _ensure_log_dir():
     LOG_DIR.mkdir(parents=True, exist_ok=True)
 
-def _run_script(script_name: str, entry_func):
+def _run_script(script_name: str, entry_func: Callable | None = None):
     """Run a sub-script either via subprocess or direct import if frozen."""
-    if getattr(sys, "frozen", False):
+    if getattr(sys, "frozen", False) and entry_func is not None:
         try:
             entry_func()
         except KeyboardInterrupt:
@@ -596,8 +596,11 @@ def _pre_launch_check() -> bool:
 def launch_voice():
     console.print("\n[bold cyan]▶ Starting BR Voice Assistant[/]")
     console.print("[dim]Note: The GUI will open in a new window. Press Ctrl+C to stop.[/]\n")
-    from main import main as voice_main
-    _run_script("main.py", voice_main)
+    if getattr(sys, "frozen", False):
+        from main import main as voice_main
+        _run_script("main.py", voice_main)
+    else:
+        _run_script("main.py", None)
 
 def launch_floating_voice():
     console.print("\n[bold cyan]▶ Starting Floating Gemini Live Voice Overlay[/]")
@@ -609,8 +612,11 @@ def launch_floating_voice():
 def launch_cli():
     console.print("\n[bold cyan]▶ Starting CLI Orchestrator[/]")
     console.print("[dim]Type /quit to exit.[/]\n")
-    from main_mk37 import main as cli_main
-    _run_script("main_mk37.py", cli_main)
+    if getattr(sys, "frozen", False):
+        from main_mk37 import main as cli_main
+        _run_script("main_mk37.py", cli_main)
+    else:
+        _run_script("main_mk37.py", None)
 
 def launch_web_server():
     console.print("\n[bold cyan]▶ Starting BR Web Core Server[/]")
@@ -622,8 +628,11 @@ def launch_web_server():
         webbrowser.open("http://localhost:8000")
     except Exception:
         pass
-    from server import main as server_main
-    _run_script("server.py", server_main)
+    if getattr(sys, "frozen", False):
+        from server import main as server_main
+        _run_script("server.py", server_main)
+    else:
+        _run_script("server.py", None)
 
 def launch_both():
     console.print("\n[bold cyan]▶ Starting Modes in Parallel[/]\n")

@@ -31,11 +31,16 @@ LIB_PATH = NATIVE_DIR / LIB_NAME
 _c_lib: ctypes.CDLL | None = None
 _native_loaded: bool       = False
 _native_version: str       = "Python Fallback"
+_compile_attempted: bool   = False
 
 
 def _init_native():
-    global _c_lib, _native_loaded, _native_version
-    if not LIB_PATH.exists():
+    global _c_lib, _native_loaded, _native_version, _compile_attempted
+    if _native_loaded:
+        return
+
+    if not LIB_PATH.exists() and not _compile_attempted:
+        _compile_attempted = True
         try:
             from setup_native import compile_native
             compile_native()

@@ -13,8 +13,8 @@ from typing import Dict, List, Any, Tuple
 class AdaptiveStepBudget:
     """Adaptive flexible step budget controller with dynamic progress extension."""
 
-    def __init__(self, initial_budget: int = 15, max_ceiling: int = 60):
-        self.initial_budget = max(3, initial_budget)
+    def __init__(self, initial_budget: int = 25, max_ceiling: int = 100):
+        self.initial_budget = max(5, initial_budget)
         self.current_budget = self.initial_budget
         self.max_ceiling = max(self.initial_budget, max_ceiling)
         self.extensions_granted = 0
@@ -39,9 +39,9 @@ class AdaptiveStepBudget:
         unique_tools = set(t.get("tool_name") for t in recent_tools if t.get("tool_name"))
         non_empty_results = sum(1 for t in recent_tools if t.get("result") and len(str(t.get("result")).strip()) > 10)
 
-        # High progress velocity -> grant flexible extension
-        if len(unique_tools) >= 1 and non_empty_results >= 2:
-            extension = 5
+        # Active progress velocity -> grant flexible extension
+        if len(unique_tools) >= 1 or non_empty_results >= 1:
+            extension = 10
             self.current_budget = min(self.max_ceiling, self.current_budget + extension)
             self.extensions_granted += 1
             msg = f"📈 Progress velocity confirmed — Granted +{extension} flexible step extension (Active Budget: {self.current_budget})"
@@ -63,25 +63,29 @@ class StepPlanner:
         # Classify task complexity
         is_complex = any(k in g_low for k in [
             "build", "scaffold", "refactor", "architecture", "multi", "parallel",
-            "implement", "all in", "full", "complete", "pipeline", "scratchpad"
+            "implement", "all in", "full", "complete", "pipeline", "scratchpad",
+            "recreate", "create", "book", "startbook", "manual", "guide",
+            "publication", "document", "workspace", "dataset", "longform", "suite"
         ])
         is_medium = any(k in g_low for k in [
             "search", "analyze", "find", "read", "check", "inspect", "report",
-            "edit", "update", "fix", "write", "test", "run"
+            "edit", "update", "fix", "write", "test", "run", "generate"
         ])
 
         if is_complex:
-            initial_budget = 25
+            initial_budget = 45
+            max_ceiling = 100
             complexity = "HIGH"
             steps = [
                 "Decompose high-level goal into component sub-tasks",
                 "Inspect environment and workspace dependencies",
-                "Execute modular implementation steps",
+                "Execute modular implementation and file generation steps",
                 "Run automated tests and empirical verification",
                 "Generate walkthrough documentation",
             ]
         elif is_medium:
-            initial_budget = 12
+            initial_budget = 25
+            max_ceiling = 80
             complexity = "MEDIUM"
             steps = [
                 "Understand user request and locate target resources",
@@ -89,7 +93,8 @@ class StepPlanner:
                 "Verify correctness and synthesize final answer",
             ]
         else:
-            initial_budget = 6
+            initial_budget = 10
+            max_ceiling = 40
             complexity = "LOW"
             steps = [
                 "Process direct user query or instant action",
@@ -101,5 +106,5 @@ class StepPlanner:
             "complexity": complexity,
             "initial_budget": initial_budget,
             "steps": steps,
-            "budget_controller": AdaptiveStepBudget(initial_budget=initial_budget, max_ceiling=60),
+            "budget_controller": AdaptiveStepBudget(initial_budget=initial_budget, max_ceiling=max_ceiling),
         }

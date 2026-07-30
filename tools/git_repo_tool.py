@@ -1,7 +1,7 @@
 # tools/git_repo_tool.py — Git Repository Controller Tool for JARVIS MK37
 """
-Provides automated Git repository status inspection, diff generation, branch switching,
-commit staging, and push/pull workflows.
+Provides automated Git repository status inspection, diff generation, branch creation & switching,
+commit staging, tag listing, and push/pull workflows.
 """
 from __future__ import annotations
 
@@ -28,18 +28,18 @@ def _run_git(args: list[str], cwd: str | Path = ".") -> tuple[int, str]:
 
 @register_tool(
     name="git_repo_mgr",
-    description="Inspect git repository status, view diffs/logs, switch branches, stage changes, create commits, and pull/push.",
+    description="Inspect git repository status, view diffs/logs, switch branches, create branches, stage changes, create commits, and pull/push.",
     parameters={
         "type": "object",
         "properties": {
             "action": {
                 "type": "string",
-                "enum": ["status", "diff", "log", "branches", "checkout", "stage_all", "commit", "pull", "push"],
+                "enum": ["status", "diff", "log", "branches", "create_branch", "checkout", "stage_all", "commit", "fetch", "pull", "push"],
                 "description": "Git operation to perform"
             },
             "repo_dir": {"type": "string", "description": "Target repository directory path (default: current workspace)"},
             "commit_msg": {"type": "string", "description": "Commit message for 'commit' action"},
-            "branch": {"type": "string", "description": "Branch name for 'checkout', 'pull', or 'push'"}
+            "branch": {"type": "string", "description": "Branch name for 'checkout', 'create_branch', 'pull', or 'push'"}
         },
         "required": ["action"]
     }
@@ -62,15 +62,21 @@ def git_repo_mgr(args: dict) -> str:
         code, out = _run_git(["diff", "HEAD"], cwd=repo_dir)
         if not out:
             return "ℹ️ No unstaged or staged diffs found."
-        return f"📝 Git Diff:\n{out[:2000]}" + ("\n... (truncated)" if len(out) > 2000 else "")
+        return f"📝 Git Diff:\n{out[:2500]}" + ("\n... (truncated)" if len(out) > 2500 else "")
 
     elif action == "log":
-        code, out = _run_git(["log", "-n", "5", "--oneline", "--graph"], cwd=repo_dir)
+        code, out = _run_git(["log", "-n", "8", "--oneline", "--graph"], cwd=repo_dir)
         return f"📜 Recent Git Commit History:\n{out}"
 
     elif action == "branches":
         code, out = _run_git(["branch", "-a"], cwd=repo_dir)
         return f"🌿 Git Branches:\n{out}"
+
+    elif action == "create_branch":
+        if not branch:
+            return "Error: 'branch' parameter required to create branch."
+        code, out = _run_git(["checkout", "-b", branch], cwd=repo_dir)
+        return f"🌿 Created & Switched to Branch '{branch}':\n{out}"
 
     elif action == "checkout":
         if not branch:
@@ -88,6 +94,10 @@ def git_repo_mgr(args: dict) -> str:
         if code == 0:
             return f"✅ Git Commit Created:\n{out}"
         return f"❌ Commit failed or nothing to commit:\n{out}"
+
+    elif action == "fetch":
+        code, out = _run_git(["fetch", "--all"], cwd=repo_dir)
+        return f"🔄 Git Fetch Output:\n{out or 'Up to date.'}"
 
     elif action == "pull":
         cmd = ["pull"]

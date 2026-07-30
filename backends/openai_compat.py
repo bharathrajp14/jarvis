@@ -16,17 +16,14 @@ class OpenAIBackend(BaseBackend):
     """OpenAI-compatible backend with base_url support for local proxies."""
 
     def __init__(self, model: str = None, api_key: str = None, base_url: str = None):
+        self._explicit_model = model or os.environ.get("OPENAI_MODEL", "").strip() or None
         try:
             from config.models import get_model
-            default_model = get_model("gpt") or "gpt-4o"
+            default_model = get_model("gpt") or "gemini-3.6-flash-high"
         except Exception:
-            default_model = "gpt-4o"
+            default_model = "gemini-3.6-flash-high"
 
-        self.model = (
-            model
-            or os.environ.get("OPENAI_MODEL", "").strip()
-            or default_model
-        )
+        self.model = self._explicit_model or default_model
         self.client = None
 
         _api_key = api_key or os.environ.get("OPENAI_API_KEY", "").strip() or "local-proxy-key"
@@ -40,7 +37,7 @@ class OpenAIBackend(BaseBackend):
                     client_kwargs["base_url"] = _base_url
                 self.client = OpenAI(**client_kwargs)
                 suffix = f" via {_base_url}" if _base_url else ""
-                print(f"[OpenAI] [OK] Using model: {self.model}{suffix}")
+                print(f"[OpenAI] [OK] Auto model routing active (default: {self.model}){suffix}")
             except ImportError:
                 print("[OpenAI] Warning: openai package is not installed.")
         else:
@@ -54,6 +51,15 @@ class OpenAIBackend(BaseBackend):
     def model_name(self) -> str:
         return self.model
 
+    def _get_target_model(self, messages: list, system: str = "") -> str:
+        if self._explicit_model:
+            return self._explicit_model
+        try:
+            from config.complexity_router import select_model_for_prompt
+            return select_model_for_prompt(messages=messages, system=system)
+        except Exception:
+            return self.model
+
     def _ensure_client(self):
         if not self.client:
             raise ValueError(
@@ -62,18 +68,33 @@ class OpenAIBackend(BaseBackend):
                 "and the 'openai' pip package is installed."
             )
 
-    def complete(self, messages: list, system: str = "", tools: list = None) -> str:
+    def complete(self, messages: list, system: str = "", tools: list = None, max_tokens: int = None) -> str:
         try:
             self._ensure_client()
+
+            try:
+                from config.complexity_router import (
+                    analyze_complexity,
+                    get_recommended_token_limit,
+                    prune_messages_to_fit_budget,
+                )
+                complexity = analyze_complexity(messages=messages, system=system)
+                max_output_tokens = get_recommended_token_limit(complexity, user_max_tokens=max_tokens)
+                messages = prune_messages_to_fit_budget(messages, system=system)
+            except Exception:
+                max_output_tokens = max_tokens or 2048
 
             full_messages = []
             if system:
                 full_messages.append({"role": "system", "content": system})
             full_messages.extend(messages)
 
+            target_model = self._get_target_model(messages, system)
+
             kwargs = {
-                "model": self.model,
+                "model": target_model,
                 "messages": full_messages,
+                "max_tokens": max_output_tokens,
             }
             if tools:
                 kwargs["tools"] = tools
@@ -93,8 +114,10 @@ class OpenAIBackend(BaseBackend):
                 full_messages.append({"role": "system", "content": system})
             full_messages.extend(messages)
 
+            target_model = self._get_target_model(messages, system)
+
             stream_res = self.client.chat.completions.create(
-                model=self.model,
+                model=target_model,
                 messages=full_messages,
                 stream=True
             )

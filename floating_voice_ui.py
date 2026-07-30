@@ -228,6 +228,39 @@ class FloatingGeminiVoiceUI:
         )
         self.transcript_lbl.pack(fill="x", padx=14, pady=(10, 6))
 
+        # Interactive Quick Action Chips Container (Pika Voice style)
+        self.chips_frame = tk.Frame(self.drawer_frame, bg=C["surface"])
+        self.chips_frame.pack(fill="x", padx=14, pady=(0, 6))
+
+        def _send_chip_command(cmd_text: str):
+            self.transcript_lbl.config(text=f"You: {cmd_text}")
+            if self.assistant and hasattr(self.assistant, "_on_text_command"):
+                self.assistant._on_text_command(cmd_text)
+
+        chips = [
+            ("⚡ Summarize", "summarize my workspace and pending tasks"),
+            ("⏰ Set Reminder", "set reminder for 9am standup"),
+            ("🔍 Find Files", "search for recent document files"),
+        ]
+
+        for label, cmd in chips:
+            btn = tk.Button(
+                self.chips_frame,
+                text=label,
+                command=lambda c=cmd: _send_chip_command(c),
+                bg=C["card"],
+                fg=C["cyan"],
+                activebackground=C["blue"],
+                activeforeground="#ffffff",
+                font=("Segoe UI", 8),
+                bd=0,
+                cursor="hand2",
+                padx=8,
+                pady=2,
+                relief="flat",
+            )
+            btn.pack(side="left", padx=(0, 6))
+
         # Instant Interrupt Button
         self.interrupt_btn = tk.Button(
             self.drawer_frame,
@@ -286,7 +319,10 @@ class FloatingGeminiVoiceUI:
     def trigger_barge_in(self):
         """Immediately stop TTS speech and revert to listening mode."""
         if self.assistant and hasattr(self.assistant, "tts") and self.assistant.tts:
-            self.assistant.tts.stop()
+            try:
+                self.assistant.tts.stop()
+            except Exception:
+                pass
         self.voice_state = "LISTENING"
         self.state_lbl.config(text="LISTENING", fg=C["cyan"])
         self.transcript_lbl.config(text="⚡ Interrupted! Listening for new speech...")

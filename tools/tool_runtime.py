@@ -35,6 +35,7 @@ class ToolRuntimeEngine:
 
         self._tools: Dict[str, ToolDefinition] = {}
         self._handlers: Dict[str, Callable[[Dict[str, Any]], Any]] = {}
+        self._metrics: Dict[str, Dict[str, Any]] = {}
 
         # Register self in DI Container
         self.runtime.container.register_instance(ToolRuntimeEngine, self)
@@ -117,6 +118,12 @@ class ToolRuntimeEngine:
             if tool_def.is_read_only and result is not None:
                 self.memory.cache_tool_result(name, args, result, ttl=180.0)
 
+            # Record telemetry metrics
+            m = self._metrics.setdefault(name, {"calls": 0, "successes": 0, "failures": 0, "total_duration_ms": 0.0})
+            m["calls"] += 1
+            m["successes"] += 1
+            m["total_duration_ms"] += duration_ms
+
             # 6. Telemetry Completion Event
             self.event_bus.publish(ToolExecutionEvent(
                 topic="tool.exec.completed",
@@ -132,6 +139,11 @@ class ToolRuntimeEngine:
         except Exception as e:
             duration_ms = (time.perf_counter() - t0) * 1000.0
             logger.error(f"❌ Tool '{name}' execution error: {e}", exc_info=True)
+            m = self._metrics.setdefault(name, {"calls": 0, "successes": 0, "failures": 0, "total_duration_ms": 0.0})
+            m["calls"] += 1
+            m["failures"] += 1
+            m["total_duration_ms"] += duration_ms
+
             self.event_bus.publish(ToolExecutionEvent(
                 topic="tool.exec.failed",
                 tool_name=name,

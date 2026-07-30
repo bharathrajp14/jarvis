@@ -20,6 +20,9 @@ from skills.loader import (  # noqa: F401
 )
 from skills.executor import execute_skill  # noqa: F401
 
+# Alias for list_all_skills
+list_all_skills = load_skills
+
 # Importing builtin modules registers all built-in skills
 from skills import builtin as _builtin  # noqa: F401
 from skills import builtin_editor as _builtin_editor  # noqa: F401

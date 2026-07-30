@@ -16,27 +16,27 @@ _MODELS_JSON = _CONFIG_DIR / "models.json"
 _DEFAULTS = {
     "voice_live":       "models/gemini-3.1-flash-live-preview",
     "voice_name":       "Charon",
-    "gemini":           "gemini-3-flash",
-    "gemini_code":      "gemini-3-flash",
-    "gemini_reasoning": "gemini-3.6-flash-medium",
-    "gemini_general":   "gemini-3-flash",
-    "gemini_agent":     "gemini-3-flash",
+    "gemini":           "gemini-3.6-flash-high",
+    "gemini_code":      "gemini-3.1-pro-high",
+    "gemini_reasoning": "gemini-3.1-pro-high",
+    "gemini_general":   "gemini-3.6-flash-high",
+    "gemini_agent":     "gemini-3.6-flash-medium",
     "gemini_fast":      "gemini-3-flash",
     "gemini_vision":    "gemini-3.1-flash-image",
-    "gemini_lite":      "gemini-3-flash",
-    "claude":           "gemini-3-flash",
-    "gpt":              "gemini-3-flash",
-    "gpt_mini":         "gemini-3-flash",
-    "gpt_4o":           "gemini-3.6-flash-medium",
+    "gemini_lite":      "gemini-3.1-flash-lite",
+    "claude":           "claude-sonnet-4-6",
+    "gpt":              "gemini-3.6-flash-high",
+    "gpt_mini":         "gemini-3.1-flash-lite",
+    "gpt_4o":           "gemini-3.1-pro-high",
     "ollama":           "llama3.3",
     "nvidia":           "meta/llama-3.1-70b-instruct",
     "mistral":          "mistral-large-latest",
-    "default_backend":  "gpt",
-    "planner_model":    "gemini-3-flash",
+    "default_backend":  "gemini",
+    "planner_model":    "gemini-3.6-flash-high",
     "fast_model":       "gemini-3-flash",
     "openai_base_url":  "http://127.0.0.1:8045/v1",
-    "openai_api_key":   "sk-1bbc6e7e09c447e699690ffadb469f89",
-    "openai_model":     "gemini-3-flash",
+    "openai_api_key":   "sk-aae07922d4a64fc29e6d9f54542a564f",
+    "openai_model":     "gemini-3.6-flash-high",
 }
 
 _ENV_MAP = {
@@ -97,36 +97,38 @@ def get_model(backend: str) -> str:
     return get_model_config().get(backend, _DEFAULTS.get(backend, ""))
 
 
-def get_model_for_task(task_type: str) -> str:
+def get_model_for_task(
+    task_type: str | None = None,
+    messages: list[dict] | None = None,
+    system: str = ""
+) -> str:
     """
-    Intelligently select the best specialized Gemini model for a given task type.
-    
-    Task categories:
-      - 'code' / 'coding' / 'architecture' -> gemini-3.1-pro-high
-      - 'reasoning' / 'math' / 'logic'    -> gemini-3.1-pro-high
-      - 'agent' / 'planner' / 'workflow'  -> gemini-3-flash-agent
-      - 'vision' / 'ocr' / 'screen'       -> gemini-3.1-flash-image
-      - 'fast' / 'status' / 'quick'       -> gemini-3.5-flash-low
-      - 'lite' / 'autocomplete'           -> gemini-3.1-flash-lite
-      - default / 'general' / 'search'    -> gemini-3-flash
+    Intelligently select the best specialized Gemini model for a given task type and/or prompt payload complexity.
     """
+    if messages is not None:
+        try:
+            from config.complexity_router import select_model_for_prompt
+            return select_model_for_prompt(messages=messages, system=system, task_type=task_type)
+        except Exception as e:
+            print(f"[Config] Complexity router error: {e}")
+
     cfg = get_model_config()
     task = (task_type or "general").lower()
 
     if task in ("code", "coding", "architecture", "refactor", "debug"):
-        return cfg.get("gemini_code", "gemini-pro-agent")
+        return cfg.get("gemini_code", "gemini-3.1-pro-high")
     elif task in ("reasoning", "math", "logic", "audit", "security"):
-        return cfg.get("gemini_reasoning", "gemini-pro-agent")
+        return cfg.get("gemini_reasoning", "gemini-3.1-pro-high")
     elif task in ("agent", "planner", "workflow", "dag", "multi_step"):
-        return cfg.get("gemini_agent", "gemini-3-flash-agent")
+        return cfg.get("gemini_agent", "gemini-3.6-flash-medium")
     elif task in ("vision", "ocr", "screen", "image", "ui_scan"):
-        return cfg.get("gemini_vision", "gemini-3-flash")
+        return cfg.get("gemini_vision", "gemini-3.1-flash-image")
     elif task in ("fast", "status", "quick", "summary", "log"):
-        return cfg.get("gemini_fast", "gemini-3.5-flash-low")
+        return cfg.get("gemini_fast", "gemini-3-flash")
     elif task in ("lite", "autocomplete", "prefix", "token"):
-        return cfg.get("gemini_lite", "gemini-3.5-flash-extra-low")
+        return cfg.get("gemini_lite", "gemini-3.1-flash-lite")
     else:
-        return cfg.get("gemini_general", "gemini-3-flash")
+        return cfg.get("gemini_general", "gemini-3.6-flash-high")
 
 
 def ensure_models_json():

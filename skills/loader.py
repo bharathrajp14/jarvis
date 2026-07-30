@@ -44,10 +44,16 @@ def _get_skill_paths() -> list[Path]:
     if env_dirs:
         extra_dirs = [Path(d.strip()) for d in env_dirs.split(",") if d.strip()]
 
+    pkg_skills = Path(__file__).resolve().parent
+
     return [
+        pkg_skills,                                   # package built-in dir (skills/)
         *extra_dirs,
-        Path.home() / ".jarvis" / "skills",         # user-level
-        Path.cwd() / ".jarvis" / "skills",           # project-level (priority)
+        Path.home() / ".gemini" / "config" / "skills", # global customization root
+        Path.home() / ".jarvis" / "skills",           # user-level
+        Path.cwd() / ".agents" / "skills",            # workspace customization root
+        Path.cwd() / "skills",                        # project-level skills/
+        Path.cwd() / ".jarvis" / "skills",            # project-level .jarvis/skills/
     ]
 
 
@@ -155,12 +161,22 @@ def load_skills(include_builtins: bool = True) -> list[SkillDef]:
 
     # Scan directories in order (later = higher priority)
     skill_paths = _get_skill_paths()
+    pkg_skills_str = str(Path(__file__).resolve().parent)
+
     for skill_dir in skill_paths:
         if not skill_dir.is_dir():
             continue
-        src = "project" if str(skill_dir).startswith(str(Path.cwd())) else "user"
+        src = "project" if str(skill_dir).startswith(str(Path.cwd())) else ("builtin" if str(skill_dir) == pkg_skills_str else "user")
+        
+        # 1. Scan single *.md files
         for md_file in sorted(skill_dir.glob("*.md")):
             skill = _parse_skill_file(md_file, source=src)
+            if skill:
+                seen[skill.name] = skill
+
+        # 2. Scan directory skill packages (skills/<name>/SKILL.md)
+        for skill_md in sorted(skill_dir.glob("*/SKILL.md")):
+            skill = _parse_skill_file(skill_md, source=src)
             if skill:
                 seen[skill.name] = skill
 

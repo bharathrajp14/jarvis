@@ -58,7 +58,7 @@ class SounddeviceMicrophone(_BaseAudioSource):
         if self.device_index is None and _HAS_SD:
             try:
                 devices = sd.query_devices()
-                def_idx = sd.default.device[0]
+                def_idx = getattr(sd.default, "device", [None])[0]
                 virtual_keywords = ["virtual", "audiorelay", "cable", "mapper", "stereo mix"]
                 physical_keywords = ["airbass", "headset", "microphone array", "realtek", "intel", "jabra", "bthhfenum"]
 
@@ -77,6 +77,8 @@ class SounddeviceMicrophone(_BaseAudioSource):
                     def_name = def_dev.get("name", "").lower()
                     if def_dev.get("max_input_channels", 0) > 0 and not any(vk in def_name for vk in virtual_keywords):
                         self.device_index = def_idx
+            except Exception as e:
+                print(f"[SounddeviceMicrophone] Device query error: {e}")
 
                 # 3. Fallback to any non-virtual input device
                 if self.device_index is None:

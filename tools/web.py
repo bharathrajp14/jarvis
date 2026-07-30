@@ -1,5 +1,16 @@
-# tools/web.py
+# tools/web.py — Upgraded Robust Multi-Engine Web Search & Scraping System
+"""
+Universal high-resilience web search & page extractor for BR-JARVIS.
+Combines DuckDuckGo, Wikipedia API, Gemini Search Grounding, and HTTP/Playwright scrapers.
+"""
 from __future__ import annotations
+
+import asyncio
+import json
+import re
+import urllib.parse
+import urllib.request
+from pathlib import Path
 
 _DDG_AVAILABLE = False
 try:
@@ -24,39 +35,148 @@ try:
 except Exception:
     _PLAYWRIGHT_AVAILABLE = False
 
-async def web_search(query: str, max_results: int = 10) -> list[dict]:
+
+def _clean_text(text: str) -> str:
+    """Clean HTML tags and normalize whitespace."""
+    if not text:
+        return ""
+    clean = re.sub(r"<[^>]+>", " ", text)
+    clean = re.sub(r"\s+", " ", clean).strip()
+    return clean
+
+
+async def search_wikipedia(query: str, max_results: int = 3) -> list[dict]:
+    """Search Wikipedia API for factual summaries."""
+    results = []
+    try:
+        url = f"https://en.wikipedia.org/w/api.php?action=opensearch&search={urllib.parse.quote(query)}&limit={max_results}&namespace=0&format=json"
+        req = urllib.request.Request(url, headers={"User-Agent": "BR-JARVIS/37.5 (AI Assistant)"})
+        loop = asyncio.get_event_loop()
+
+        def _fetch():
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                return json.loads(resp.read().decode("utf-8"))
+
+        data = await loop.run_in_executor(None, _fetch)
+        if len(data) >= 4 and data[1]:
+            titles, snippets, urls = data[1], data[2], data[3]
+            for t, s, u in zip(titles, snippets, urls):
+                results.append({
+                    "title": f"Wikipedia: {t}",
+                    "href": u,
+                    "body": s or f"Wikipedia article for {t}.",
+                    "source": "Wikipedia"
+                })
+    except Exception:
+        pass
+    return results
+
+
+async def search_duckduckgo(query: str, max_results: int = 8) -> list[dict]:
+    """Perform search via DuckDuckGo."""
     if not _DDG_AVAILABLE:
-        return [{"error": "duckduckgo_search/ddgs is not available. Install with: pip install ddgs"}]
-    with DDGS() as ddgs:
-        return list(ddgs.text(query, max_results=max_results))
+        return []
+    loop = asyncio.get_event_loop()
+
+    def _do_ddg():
+        try:
+            with DDGS() as ddgs:
+                return list(ddgs.text(query, max_results=max_results))
+        except Exception as e:
+            print(f"[WebSearch] DDG error: {e}")
+            return []
+
+    results = await loop.run_in_executor(None, _do_ddg)
+    for r in results:
+        r["source"] = "DuckDuckGo"
+        r["title"] = _clean_text(r.get("title", ""))
+        r["body"] = _clean_text(r.get("body", ""))
+    return results
+
+
+async def web_search(query: str, max_results: int = 8) -> list[dict]:
+    """
+    Multi-engine resilient web search.
+    Tries DuckDuckGo -> Wikipedia -> Gemini Grounding fallback chain.
+    """
+    clean_query = query.strip()
+    if not clean_query:
+        return [{"error": "Empty search query provided."}]
+
+    # 1. Primary: DuckDuckGo
+    results = await search_duckduckgo(clean_query, max_results=max_results)
+
+    # 2. Secondary: Wikipedia fallback/supplement
+    if len(results) < 3:
+        wiki_results = await search_wikipedia(clean_query, max_results=3)
+        existing_urls = {r.get("href") for r in results}
+        for wr in wiki_results:
+            if wr["href"] not in existing_urls:
+                results.append(wr)
+
+    # 3. Tertiary: Gemini Grounded Search Fallback if zero results
+    if not results:
+        try:
+            from backends.gemini import GeminiBackend
+            gemini = GeminiBackend()
+            if gemini.available:
+                g_res = gemini.complete_with_search(
+                    query=clean_query,
+                    system="Provide a concise factual search summary with key details and sources."
+                )
+                if g_res and not g_res.startswith("ERROR"):
+                    results.append({
+                        "title": f"Gemini Grounded Search Result: {clean_query}",
+                        "href": "https://google.com/search?q=" + urllib.parse.quote(clean_query),
+                        "body": g_res[:1000],
+                        "source": "Google Search Grounding"
+                    })
+        except Exception:
+            pass
+
+    if not results:
+        return [{"error": f"No web search results found for: '{clean_query}'"}]
+
+    return results[:max_results]
+
 
 async def fetch_page(url: str) -> str:
-    """Fetch rendered HTML page using headless Chromium. Falls back to raw HTTP if playwright missing."""
-    if not _PLAYWRIGHT_AVAILABLE:
-        return f"[WARNING: Playwright not installed. Falling back to raw HTTP fetch.]\n{await fetch_raw(url)}"
-        
-    try:
-        async with async_playwright() as p:
-            browser = await p.chromium.launch()
-            page = await browser.new_page()
-            await page.goto(url, timeout=15000)
-            text = await page.inner_text("body")
-            await browser.close()
-            return text
-    except Exception as e:
-        return f"Error fetching page: {e}"
+    """Fetch rendered HTML page text content."""
+    if _PLAYWRIGHT_AVAILABLE:
+        try:
+            async with async_playwright() as p:
+                browser = await p.chromium.launch()
+                page = await browser.new_page()
+                await page.goto(url, timeout=15000)
+                text = await page.inner_text("body")
+                await browser.close()
+                return _clean_text(text[:10000])
+        except Exception as e:
+            print(f"[WebFetch] Playwright failed: {e} — using HTTP fallback")
+
+    return await fetch_raw(url)
+
 
 async def fetch_raw(url: str) -> str:
-    """Fetch raw page content via HTTP GET."""
-    if not _HTTPX_AVAILABLE:
-        # Fallback to urllib
-        import urllib.request
+    """Fetch raw text/HTML content from URL."""
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"}
+    if _HTTPX_AVAILABLE:
         try:
-            req = urllib.request.Request(url, headers={"User-Agent": "JARVIS/37.5"})
+            async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:
+                resp = await client.get(url, headers=headers)
+                return _clean_text(resp.text[:10000])
+        except Exception as e:
+            return f"HTTP error fetching URL: {e}"
+
+    try:
+        req = urllib.request.Request(url, headers=headers)
+        loop = asyncio.get_event_loop()
+
+        def _fetch_url():
             with urllib.request.urlopen(req, timeout=10) as resp:
                 return resp.read().decode("utf-8", errors="replace")
-        except Exception as e:
-            return f"Error fetching URL: {e}"
-    async with httpx.AsyncClient() as client:
-        r = await client.get(url, timeout=10, follow_redirects=True)
-        return r.text
+
+        raw_text = await loop.run_in_executor(None, _fetch_url)
+        return _clean_text(raw_text[:10000])
+    except Exception as e:
+        return f"Fetch error: {e}"

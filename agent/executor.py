@@ -28,41 +28,16 @@ from agent.error_handler import analyze_error, generate_fix, ErrorDecision
 # ── Tool caller ────────────────────────────────────────────────────────────
 
 def _call_tool(tool: str, parameters: dict, speak: Callable | None = None) -> str:
-    """Dispatch a tool call utilizing the centralized tool registry."""
+    """Dispatch a tool call utilizing the centralized tool registry.
+    
+    All tool name aliasing (e.g., browser_control → open_app) is handled
+    centrally in tools/registry.execute_tool() to avoid duplication.
+    """
     from tools.registry import execute_tool
     
     params = dict(parameters or {})
     
-    # Handle planner tool name & parameter aliases for real physical execution
-    if tool in ("browser_control", "open_browser", "web_browser"):
-        tool = "open_app"
-        url = params.get("url") or params.get("query") or params.get("app_name") or ""
-        params = {"app_name": f"chrome {url}".strip() if url else "chrome"}
-    elif tool in ("computer_control", "system_control", "desktop_type"):
-        tool = "computer_settings"
-        text = params.get("text") or params.get("value") or params.get("description") or ""
-        act = params.get("action", "type_text")
-        if act in ("type", "write", "type_text", "write_text"):
-            act = "type_text"
-        params = {"action": act, "value": text}
-    elif tool in ("file_controller", "file_manager"):
-        act = params.get("action", "write")
-        if act in ("create", "write", "create_file"):
-            tool = "file_write"
-            params = {"path": params.get("name") or params.get("path") or "file.txt", "content": params.get("content", "")}
-        elif act in ("list", "dir", "ls"):
-            tool = "file_list"
-            params = {"path": params.get("path", ".")}
-    elif tool in ("code_helper", "run_code", "python_runner"):
-        tool = "code_helper"
-        act = params.get("action", "run")
-        if act in ("run_code", "execute", "eval"):
-            params["action"] = "run"
-    elif tool in ("generated_code", "web_search_fallback"):
-        tool = "web_search"
-        params = {"query": params.get("description", str(params))[:200]}
-    
-    # Run through centralized registry
+    # Run through centralized registry (handles all aliases internally)
     result = execute_tool(tool, params)
     
     # Strict execution check — do NOT fabricate success via web search if tool is missing

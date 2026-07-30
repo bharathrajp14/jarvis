@@ -1,12 +1,6 @@
-# orchestrator.py — JARVIS MK37 Core Orchestrator (Gemini-Native)
+# orchestrator/core.py — JARVIS MK37 Core Orchestrator (Gemini-Native)
 """
 ReAct (Reason + Act) orchestration loop powered by Gemini.
-Features:
-- Gemini as primary AI engine (only API key required)
-- Intelligent tool routing
-- Persistent memory injection
-- Session history
-- Multi-agent support
 """
 from __future__ import annotations
 
@@ -17,8 +11,6 @@ import time
 from router import AgentRouter
 from memory.working import WorkingMemory
 from tools.registry import get_tool_prompt_block, parse_tool_call, execute_tool, set_orchestrator_ref
-
-# ── System Prompt ──────────────────────────────────────────────────────────
 
 SYSTEM_PROMPT = """You are BR — a superhuman AI operating system and autonomous controller.
 You are intelligent, precise, direct, and capable of executing complex tasks end-to-end.
@@ -66,6 +58,9 @@ You are intelligent, precise, direct, and capable of executing complex tasks end
 | Code tasks | code_helper or dev_agent |
 | Temporary code/eval/scratch space | scratchpad_write / scratchpad_eval |
 | Steam/Epic games | game_updater |
+| Multi-volume books / long guides / manuals | longform_builder |
+| Smart reminders / desktop toasts | reminder |
+| Fast desktop file search | fast_file_search |
 | Multi-step complex tasks | agent_task |
 | Screen analysis | screen_process |
 | YouTube | youtube_video |
@@ -106,7 +101,6 @@ def _format_clean_tool_summary(tool_name: str, tool_args: dict) -> str:
         return f"[Executed Tool: {tool_name}({keys})]"
 
 
-
 class JarvisOrchestrator:
 
     def __init__(self, router: AgentRouter | None = None, use_vector_memory: bool = True):
@@ -119,6 +113,7 @@ class JarvisOrchestrator:
         self.current_mode   = "general"
         self.conversation_store = None
         self._subagent_mgr  = None
+        self._prompted_continuation = False
 
         # History
         self._session_store = None
@@ -176,6 +171,17 @@ class JarvisOrchestrator:
 
     _tool_prompt_cache: str = ""  # class-level cache for tool prompt block
 
+    @staticmethod
+    def _clean_response(text: str) -> str:
+        """Strip tool_call blocks, raw JSON tool invocations, and streaming tokens from LLM response."""
+        cleaned = re.sub(r'```tool_call\s*\n\s*\{.*?\}\s*\n\s*```', '', text, flags=re.DOTALL)
+        cleaned = re.sub(r'\{\s*"tool"\s*:\s*"[^"]+"\s*,\s*"args"\s*:\s*\{.*?\}\s*\}', '', cleaned, flags=re.DOTALL)
+        cleaned = re.sub(r'<\|start\|>.*?<\|call\|>', '', cleaned, flags=re.DOTALL)
+        cleaned = re.sub(r'<\|channel\|>.*?<\|call\|>', '', cleaned, flags=re.DOTALL)
+        cleaned = re.sub(r'<\|message\|>.*?<\|call\|>', '', cleaned, flags=re.DOTALL)
+        cleaned = re.sub(r'<\|.*?\|>', '', cleaned)
+        return cleaned.strip()
+
     def _build_system(self, user_prompt: str = "") -> str:
         name = os.environ.get("JARVIS_ASSISTANT_NAME", "BR").strip()
         sys_prompt = (
@@ -228,10 +234,8 @@ class JarvisOrchestrator:
     def _recall_context(self, user_input: str) -> str:
         if not self.vector_memory:
             return ""
-        # Skip trivial inputs (greetings, short phrases, simple commands)
         if len(user_input.split()) < 4:
             return ""
-        # Skip obvious command patterns that don't benefit from memory recall
         low = user_input.lower().strip()
         if low.startswith(("open ", "launch ", "start ", "close ", "stop ", "/")):
             return ""
@@ -255,7 +259,6 @@ class JarvisOrchestrator:
             pass
 
     def _store_exchange(self, user_input: str, response: str) -> None:
-        """Alias for _save_turn to ensure backwards compatibility."""
         self._save_turn(user_input, response)
 
     def _record_turn(self, role: str, content: str, **kwargs) -> None:
@@ -270,7 +273,6 @@ class JarvisOrchestrator:
             except Exception:
                 pass
         
-        # SQLite Sync
         if self.conversation_store and self._session_id:
             try:
                 self.conversation_store.log_turn(
@@ -286,30 +288,22 @@ class JarvisOrchestrator:
                 pass
 
     def _resolve_context_references(self, user_input: str, augmented: str) -> str:
-        """
-        Resolve pronoun references like 'open it in brave' by injecting the last
-        JARVIS result URL or content into the augmented prompt.
-        """
         low = user_input.lower().strip()
-        # Detect 'open it in <browser>' or 'open in <browser>' or 'show it in <browser>'
         browser_names = ["brave", "chrome", "edge", "firefox", "browser"]
         has_pronoun = any(w in low for w in ["open it", "open this", "show it", "show this", "open in", "show in"])
         has_browser = any(b in low for b in browser_names)
 
         if has_pronoun and has_browser:
-            # Find the last assistant response URL from working memory
             last_url = None
             for msg in reversed(self.working_memory.get()):
                 if msg.get("role") == "assistant" or msg.get("role") == "user":
                     content = msg.get("content", "")
-                    # Extract URL from content
                     import re as _re
                     urls = _re.findall(r'https?://[^\s"<>]+', content)
                     if urls:
                         last_url = urls[-1]
                         break
 
-            # Determine which browser
             target_browser = "brave"
             for b in browser_names:
                 if b in low:
@@ -317,7 +311,6 @@ class JarvisOrchestrator:
                     break
 
             if last_url:
-                # Quick-execute: open URL in chosen browser directly via DeterministicIntentEngine
                 try:
                     from core.intent_engine import DeterministicIntentEngine
                     launched = DeterministicIntentEngine.open_url_in_browser(last_url, browser_name=target_browser)
@@ -328,7 +321,6 @@ class JarvisOrchestrator:
                     print(f"[Context] Browser launch failed: {e}")
                 return augmented + f"\n[SYSTEM CONTEXT: The last result URL was {last_url}. Open it in {target_browser}.]"
             else:
-                # No URL found — inject context so LLM can retrieve from memory
                 return augmented + f"\n[SYSTEM CONTEXT: User wants to open the previous result in {target_browser}. Check conversation history for URL.]"
 
         return augmented
@@ -357,7 +349,6 @@ class JarvisOrchestrator:
         return None
 
     def chat(self, user_input: str) -> str:
-        """Main ReAct loop — handles any user request."""
         mode_result = self._parse_mode(user_input)
         if mode_result:
             return mode_result
@@ -366,7 +357,6 @@ class JarvisOrchestrator:
         if skill_result:
             return skill_result
 
-        # Antigravity 0-Token Intent Bypass
         try:
             from core.intent_engine import DeterministicIntentEngine
             from context.token_manager import TokenBudgetManager
@@ -377,7 +367,6 @@ class JarvisOrchestrator:
         except Exception:
             pass
 
-        # EventBus Task start telemetry
         import uuid
         from events.bus import get_event_bus
         from events.types import TaskEvent
@@ -394,22 +383,17 @@ class JarvisOrchestrator:
 
         memory_ctx = self._recall_context(user_input)
         augmented  = f"{memory_ctx}{user_input}" if memory_ctx else user_input
-
-        # Context-aware pronoun/browser resolution: 'open it in brave/chrome/edge'
         augmented = self._resolve_context_references(user_input, augmented)
 
-        # Smart Context Trimming to maintain sub-300ms inference latency while preserving root user goal
         try:
             if hasattr(self.working_memory, "trim") and len(self.working_memory.get()) > 10:
-                # Preserve root turn at index 0
                 root_msg = self.working_memory.get()[0] if self.working_memory.get() else None
                 self.working_memory.trim(max_turns=10)
                 if root_msg and root_msg not in self.working_memory.get():
-                    self.working_memory.messages.insert(0, root_msg)
+                    self.working_memory.history.insert(0, root_msg)
         except Exception:
             pass
 
-        # CRITICAL: Add user message to working memory BEFORE LLM call
         self.working_memory.add("user", augmented)
         self._record_turn("user", user_input)
 
@@ -417,7 +401,6 @@ class JarvisOrchestrator:
         profile  = self.router.route(keywords)
         system   = self._build_system(user_input)
 
-        # Conscious Step Planning & Adaptive Flexible Step Budget
         from agent.step_planner import StepPlanner
         plan_info = StepPlanner.plan_steps(user_input)
         budget = plan_info["budget_controller"]
@@ -425,7 +408,7 @@ class JarvisOrchestrator:
 
         final_response = ""
         success = True
-        _consecutive_tool: dict = {"name": None, "args_str": None, "count": 0}  # duplicate-call guard
+        _consecutive_tool: dict = {"name": None, "args_str": None, "count": 0}
         tool_history: list = []
         step = 0
 
@@ -439,9 +422,7 @@ class JarvisOrchestrator:
                     summary_prompt = "All planned sub-tasks have finished. Synthesize a clean, direct, human-readable summary of the final output for the user. Do NOT call any tools."
                     self.working_memory.add("user", summary_prompt)
                     sum_resp = self.router.run(profile, self.working_memory.get(), "Do NOT call any tools. Return only natural language summary.")
-                    final_response = re.sub(r'```tool_call\s*\n\s*\{.*?\}\s*\n\s*```', '', sum_resp, flags=re.DOTALL)
-                    final_response = re.sub(r'\{\s*"tool"\s*:\s*"[^"]+"\s*,\s*"args"\s*:\s*\{.*?\}\s*\}', '', final_response, flags=re.DOTALL)
-                    final_response = re.sub(r'<\|.*?\|>', '', final_response).strip()
+                    final_response = self._clean_response(sum_resp)
                 except Exception:
                     pass
                 if not final_response or final_response.startswith("[BR:"):
@@ -471,7 +452,6 @@ class JarvisOrchestrator:
             tool_name, tool_args = parse_tool_call(response)
 
             if tool_name:
-                # ── Duplicate-call guard ──────────────────────────────────
                 import json
                 args_str = json.dumps(tool_args or {}, sort_keys=True)
                 if tool_name == _consecutive_tool["name"] and args_str == _consecutive_tool.get("args_str"):
@@ -485,9 +465,7 @@ class JarvisOrchestrator:
                         summary_prompt = "Tool execution has completed. Provide a clean, direct, human-readable summary of the actions performed. Do NOT call any tools."
                         self.working_memory.add("user", summary_prompt)
                         sum_resp = self.router.run(profile, self.working_memory.get(), "Do NOT call any tools. Return only natural language summary.")
-                        final_response = re.sub(r'```tool_call\s*\n\s*\{.*?\}\s*\n\s*```', '', sum_resp, flags=re.DOTALL)
-                        final_response = re.sub(r'\{\s*"tool"\s*:\s*"[^"]+"\s*,\s*"args"\s*:\s*\{.*?\}\s*\}', '', final_response, flags=re.DOTALL)
-                        final_response = re.sub(r'<\|.*?\|>', '', final_response).strip()
+                        final_response = self._clean_response(sum_resp)
                     except Exception:
                         pass
                     if not final_response or final_response.startswith("[BR:"):
@@ -522,12 +500,7 @@ class JarvisOrchestrator:
                     backend=profile.value, latency_ms=tool_ms,
                 )
 
-                clean = re.sub(r'```tool_call\s*\n\s*\{.*?\}\s*\n\s*```', '', response, flags=re.DOTALL).strip()
-                clean = re.sub(r'\{\s*"tool"\s*:\s*"[^"]+"\s*,\s*"args"\s*:\s*\{.*?\}\s*\}', '', clean, flags=re.DOTALL).strip()
-                clean = re.sub(r'<\|start\|>.*?<\|call\|>', '', clean, flags=re.DOTALL)
-                clean = re.sub(r'<\|channel\|>.*?<\|call\|>', '', clean, flags=re.DOTALL)
-                clean = re.sub(r'<\|message\|>.*?<\|call\|>', '', clean, flags=re.DOTALL)
-                clean = re.sub(r'<\|.*?\|>', '', clean).strip()
+                clean = self._clean_response(response)
                 if clean:
                     self.working_memory.add("assistant", clean)
                 else:
@@ -541,21 +514,15 @@ class JarvisOrchestrator:
                 continue
 
             else:
-                # Multi-task continuation guard: push for completion if user asked for multiple items and loop stopped early
                 is_multitask = any(k in user_input.lower() for k in ("1.", "2.", "3.", "concurrently", "in parallel", "workflow", "together"))
-                if is_multitask and step > 0 and step < 4 and not getattr(self, "_prompted_continuation", False):
+                if is_multitask and step > 0 and step < 4 and not self._prompted_continuation:
                     self._prompted_continuation = True
                     self.working_memory.add("user", "[SYSTEM DIRECTIVE: You completed initial sub-tasks, but the user prompt requested multiple numbered/parallel tasks. Continue executing tools for all remaining items before giving your final text response.]")
                     step += 1
                     continue
 
                 self._prompted_continuation = False
-                final_response = re.sub(r'```tool_call\s*\n\s*\{.*?\}\s*\n\s*```', '', response, flags=re.DOTALL)
-                final_response = re.sub(r'\{\s*"tool"\s*:\s*"[^"]+"\s*,\s*"args"\s*:\s*\{.*?\}\s*\}', '', final_response, flags=re.DOTALL)
-                final_response = re.sub(r'<\|start\|>.*?<\|call\|>', '', final_response, flags=re.DOTALL)
-                final_response = re.sub(r'<\|channel\|>.*?<\|call\|>', '', final_response, flags=re.DOTALL)
-                final_response = re.sub(r'<\|message\|>.*?<\|call\|>', '', final_response, flags=re.DOTALL)
-                final_response = re.sub(r'<\|.*?\|>', '', final_response).strip()
+                final_response = self._clean_response(response)
 
                 if not final_response or final_response.startswith("[BR:"):
                     try:
@@ -566,12 +533,7 @@ class JarvisOrchestrator:
                         )
                         self.working_memory.add("user", nudge)
                         sum_resp = self.router.run(profile, self.working_memory.get(), nudge)
-                        final_response = re.sub(r'```tool_call\s*\n\s*\{.*?\}\s*\n\s*```', '', sum_resp, flags=re.DOTALL)
-                        final_response = re.sub(r'\{\s*"tool"\s*:\s*"[^"]+"\s*,\s*"args"\s*:\s*\{.*?\}\s*\}', '', final_response, flags=re.DOTALL)
-                        final_response = re.sub(r'<\|start\|>.*?<\|call\|>', '', final_response, flags=re.DOTALL)
-                        final_response = re.sub(r'<\|channel\|>.*?<\|call\|>', '', final_response, flags=re.DOTALL)
-                        final_response = re.sub(r'<\|message\|>.*?<\|call\|>', '', final_response, flags=re.DOTALL)
-                        final_response = re.sub(r'<\|.*?\|>', '', final_response).strip()
+                        final_response = self._clean_response(sum_resp)
                     except Exception:
                         pass
 
@@ -630,7 +592,6 @@ class JarvisOrchestrator:
             except Exception:
                 pass
 
-        # SQLite Sync
         if self.conversation_store and self._session_id:
             try:
                 self.conversation_store.end_session(self._session_id, summary=summary)
@@ -641,7 +602,6 @@ class JarvisOrchestrator:
             self._subagent_mgr.shutdown()
 
     def chat_stream(self, user_input: str):
-        """Streaming chat with ReAct loop support — yields tokens as they arrive from the backend."""
         mode_result = self._parse_mode(user_input)
         if mode_result:
             yield mode_result
@@ -652,7 +612,6 @@ class JarvisOrchestrator:
             yield skill_result
             return
 
-        # Antigravity 0-Token Intent Bypass (Streaming)
         try:
             from core.intent_engine import DeterministicIntentEngine
             from context.token_manager import TokenBudgetManager
@@ -669,15 +628,6 @@ class JarvisOrchestrator:
 
         self.working_memory.add("user", augmented)
         self._record_turn("user", user_input)
-        try:
-            from agent.transcript_logger import get_transcript_logger
-            get_transcript_logger(self.session_id).log_step(
-                source="USER_EXPLICIT",
-                step_type="USER_INPUT",
-                content=user_input,
-            )
-        except Exception:
-            pass
 
         keywords = self._extract_keywords(user_input)
         profile = self.router.route(keywords)
@@ -694,7 +644,6 @@ class JarvisOrchestrator:
             full_response = ""
             t_start = time.monotonic()
 
-            # Attempt streaming from the backend with retries
             retry_delay = 1.0
             max_retries = 3
             for attempt in range(max_retries):
@@ -734,7 +683,7 @@ class JarvisOrchestrator:
                     backend=profile.value, latency_ms=tool_ms,
                 )
 
-                clean = re.sub(r'```tool_call\s*\n\s*\{.*?\}\s*\n\s*```', '', full_response, flags=re.DOTALL).strip()
+                clean = self._clean_response(full_response)
                 if clean:
                     self.working_memory.add("assistant", clean)
                 else:

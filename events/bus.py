@@ -78,12 +78,35 @@ class EventBus:
                 })
 
     def publish(self, event: BaseEvent) -> None:
-        """Publish an event from synchronous code contexts."""
-        try:
-            loop = asyncio.get_running_loop()
-            loop.create_task(self.publish_async(event))
-        except RuntimeError:
-            asyncio.run(self.publish_async(event))
+        """Publish an event synchronously. Fires async handlers via existing loop if available."""
+        self.store.append(event)
+        logger.debug(f"📢 EventBus Publish: {event.topic} (ID: {event.event_id[:8]})")
+
+        matching_handlers: List[EventHandler] = []
+        with self._sub_lock:
+            for pattern, handlers in self._subscribers.items():
+                if self._match_topic(event.topic, pattern):
+                    matching_handlers.extend(handlers)
+
+        for handler in matching_handlers:
+            try:
+                if inspect.iscoroutinefunction(handler):
+                    # Try to schedule on an existing running loop
+                    try:
+                        loop = asyncio.get_running_loop()
+                        loop.create_task(handler(event))
+                    except RuntimeError:
+                        # No loop running — skip async handlers in sync context
+                        logger.debug(f"Skipping async handler {getattr(handler, '__name__', '?')} — no event loop")
+                else:
+                    handler(event)
+            except Exception as e:
+                logger.error(f"❌ EventBus handler error on topic '{event.topic}': {e}", exc_info=True)
+                self._dlq.append({
+                    "event": event,
+                    "handler": getattr(handler, "__name__", str(handler)),
+                    "error": str(e)
+                })
 
     def get_dlq(self) -> List[Dict[str, Any]]:
         """Retrieve dead-letter queue records."""
