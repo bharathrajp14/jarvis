@@ -98,7 +98,7 @@ def transcribe(audio_bytes: bytes, language: str = "en", detect_language: bool =
     Transcribe audio bytes using local Whisper (or Groq cloud fast-path).
     Operates 100% in-memory using NumPy float32 arrays — zero disk file creation latency.
     """
-    if not audio_bytes or len(audio_bytes) < 100:
+    if audio_bytes is None or len(audio_bytes) < 100:
         return ""
 
     # ── Groq API Cloud Fast-Path (<100ms Latency) ─────────────────────────────
