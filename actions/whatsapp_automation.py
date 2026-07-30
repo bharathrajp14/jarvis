@@ -198,7 +198,11 @@ class WhatsAppAutomation:
     def _load_scheduled(self) -> List[Dict[str, Any]]:
         if self.scheduled_file.exists():
             try:
-                return json.loads(self.scheduled_file.read_text(encoding="utf-8"))
+                data = json.loads(self.scheduled_file.read_text(encoding="utf-8"))
+                now = time.time()
+                # Filter out stale items scheduled more than 5 minutes in the past
+                valid = [item for item in data if item.get("target_ts", 0) > (now - 300)]
+                return valid
             except Exception:
                 pass
         return []
@@ -224,15 +228,20 @@ class WhatsAppAutomation:
                 self._save_scheduled()
 
                 for item in due_items:
-                    print(f"[WhatsApp Scheduler] ⏰ Triggering scheduled message to {item['recipient']}")
-                    self.send_message(item["recipient"], item["message_text"])
+                    # Ignore old stale items (older than 5 minutes)
+                    if (now - item.get("target_ts", 0)) < 300:
+                        print(f"[WhatsApp Scheduler] ⏰ Triggering scheduled message to {item['recipient']}")
+                        self.send_message(item["recipient"], item["message_text"])
 
             time.sleep(10)
 
 
-# Global singleton instance
-_whatsapp_instance = WhatsAppAutomation()
+# Lazy singleton instance
+_whatsapp_instance: Optional[WhatsAppAutomation] = None
 
 
 def get_whatsapp_automation() -> WhatsAppAutomation:
+    global _whatsapp_instance
+    if _whatsapp_instance is None:
+        _whatsapp_instance = WhatsAppAutomation()
     return _whatsapp_instance
