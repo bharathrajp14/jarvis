@@ -40,7 +40,7 @@ class AdaptiveStepBudget:
         non_empty_results = sum(1 for t in recent_tools if t.get("result") and len(str(t.get("result")).strip()) > 10)
 
         # Active progress velocity -> grant flexible extension
-        if len(unique_tools) >= 1 or non_empty_results >= 1:
+        if non_empty_results >= 1:
             extension = 5 if self.initial_budget <= 10 else 10
             self.current_budget = min(self.max_ceiling, self.current_budget + extension)
             self.extensions_granted += 1
