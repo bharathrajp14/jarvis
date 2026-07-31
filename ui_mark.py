@@ -1752,7 +1752,7 @@ class MainWindow(QMainWindow):
     _cam_frame_sig  = pyqtSignal(bytes)      # live camera frame → HUD area
     _clipboard_sig  = pyqtSignal(str)        # clipboard text changed (thread-safe)
 
-    def __init__(self, face_path: str):
+    def __init__(self, face_path: str = "face.png"):
         super().__init__()
         self._face_path = face_path
 
@@ -3265,7 +3265,7 @@ class _RootShim:
 
 
 class JarvisUI:
-    def __init__(self, face_path: str, size=None):
+    def __init__(self, face_path: str = "face.png", size=None):
         self._app = QApplication.instance() or QApplication(sys.argv)
         self._app.setStyle("Fusion")
         self._win = MainWindow(face_path)
