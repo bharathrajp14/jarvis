@@ -47,7 +47,7 @@ def _execute_forked(
     orchestrator,
     config: dict = None,
 ) -> str:
-    """Run skill as an isolated sub-agent (separate conversation context)."""
+    """Run skill as an isolated sub-agent (separate conversation context) with fallback to inline."""
     try:
         from multi_agent.subagent import SubAgentManager, AgentDefinition
 
@@ -56,7 +56,6 @@ def _execute_forked(
             mgr = SubAgentManager()
             orchestrator._subagent_mgr = mgr
 
-        # Build agent definition from skill
         agent_def = AgentDefinition(
             name=f"skill-{skill.name}",
             description=skill.description,
@@ -74,9 +73,9 @@ def _execute_forked(
             name=f"skill-{skill.name}",
         )
 
-        # Wait for completion
         mgr.wait(task.id, timeout=300)
         return task.result or f"(skill '{skill.name}' completed with no output)"
 
-    except Exception as e:
-        return f"Skill fork error: {e}"
+    except Exception:
+        # Fallback to inline execution if subagent manager is unavailable
+        return _execute_inline(message, orchestrator)
