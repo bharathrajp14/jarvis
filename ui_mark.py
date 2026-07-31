@@ -3353,3 +3353,9 @@ class JarvisUI:
     def stop_speaking(self):
         if not self.muted:
             self.set_state("LISTENING")
+
+
+if __name__ == "__main__":
+    ui = JarvisUI()
+    print("▶ Starting BR JARVIS Cyberpunk HUD UI...")
+    ui.root.mainloop()

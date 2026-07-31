@@ -659,12 +659,12 @@ def launch_dashboard_server():
     _run_script("dashboard/server.py", None)
 
 def launch_mark_ui():
-    console.print("\n[bold cyan]▶ Launching Mark Cyberpunk HUD Interface (PyQt6 Visual Waveform HUD)[/]")
-    ui_script = BASE_DIR / "ui_mark.py"
-    if not ui_script.exists():
-        console.print("[red]✗ Mark UI script not found.[/]")
+    console.print("\n[bold cyan]▶ Launching Mark Cyberpunk HUD Interface (JarvisLive Gemini Session + PyQt6 HUD)[/]")
+    main_mark_script = BASE_DIR / "main_mark.py"
+    if not main_mark_script.exists():
+        console.print("[red]✗ main_mark.py script not found.[/]")
         return
-    _run_script("ui_mark.py", None)
+    _run_script("main_mark.py", None)
 
 def launch_both():
     console.print("\n[bold cyan]▶ Starting Modes in Parallel[/]\n")
