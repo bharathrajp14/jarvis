@@ -43,10 +43,10 @@ class GeminiLiveVoiceLoop:
         self.tts = self.assistant.tts if (self.assistant and hasattr(self.assistant, 'tts') and self.assistant.tts) else NeuralTTS(voice_key="default", rate="+18%")
         self.recognizer = sr.Recognizer()
         
-        # Low-latency STT tuning
-        self.recognizer.pause_threshold = 0.20
-        self.recognizer.non_speaking_duration = 0.06
-        self.recognizer.phrase_threshold = 0.06
+        # Low-latency STT tuning (tuned for clear speech without premature truncation)
+        self.recognizer.pause_threshold = 0.45
+        self.recognizer.non_speaking_duration = 0.20
+        self.recognizer.phrase_threshold = 0.08
         self.recognizer.dynamic_energy_threshold = True
 
         self.is_active = False

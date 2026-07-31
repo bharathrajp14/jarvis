@@ -67,36 +67,43 @@ class ConversationStore:
         """)
         conn.commit()
 
+    def _execute_write(self, sql: str, params: tuple = ()) -> None:
+        """Execute a write statement with automatic retry on database lock."""
+        for attempt in range(5):
+            try:
+                conn = self._get_conn()
+                conn.execute(sql, params)
+                conn.commit()
+                return
+            except sqlite3.OperationalError as e:
+                if "locked" in str(e).lower() or "busy" in str(e).lower():
+                    time.sleep(0.1 * (attempt + 1))
+                else:
+                    raise
+            except Exception as e:
+                print(f"[ConversationStore] Write error: {e}")
+                return
+
     def start_session(self, session_id: str, mode: str = "general", backend: str = "gemini") -> None:
         """Start recording a new session."""
-        conn = self._get_conn()
-        try:
-            conn.execute(
-                """
-                INSERT OR REPLACE INTO sessions (id, start_time, mode, backend, summary, mtime)
-                VALUES (?, datetime('now', 'localtime'), ?, ?, '', ?)
-                """,
-                (session_id, mode, backend, time.time())
-            )
-            conn.commit()
-        except Exception as e:
-            print(f"[ConversationStore] Error starting session: {e}")
+        self._execute_write(
+            """
+            INSERT OR REPLACE INTO sessions (id, start_time, mode, backend, summary, mtime)
+            VALUES (?, datetime('now', 'localtime'), ?, ?, '', ?)
+            """,
+            (session_id, mode, backend, time.time())
+        )
 
     def end_session(self, session_id: str, summary: str = "") -> None:
         """End a session and record its summary consolidation."""
-        conn = self._get_conn()
-        try:
-            conn.execute(
-                """
-                UPDATE sessions 
-                SET end_time = datetime('now', 'localtime'), summary = ?, mtime = ?
-                WHERE id = ?
-                """,
-                (summary, time.time(), session_id)
-            )
-            conn.commit()
-        except Exception as e:
-            print(f"[ConversationStore] Error ending session: {e}")
+        self._execute_write(
+            """
+            UPDATE sessions 
+            SET end_time = datetime('now', 'localtime'), summary = ?, mtime = ?
+            WHERE id = ?
+            """,
+            (summary, time.time(), session_id)
+        )
 
     def log_turn(
         self,
@@ -109,19 +116,14 @@ class ConversationStore:
         latency_ms: int = 0
     ) -> None:
         """Log an individual message exchange turn in the active session."""
-        conn = self._get_conn()
-        try:
-            args_str = json.dumps(tool_args) if tool_args else None
-            conn.execute(
-                """
-                INSERT INTO turns (session_id, timestamp, role, content, tool_name, tool_args, tool_result, latency_ms)
-                VALUES (?, datetime('now', 'localtime'), ?, ?, ?, ?, ?, ?)
-                """,
-                (session_id, role, content, tool_name, args_str, tool_result, latency_ms)
-            )
-            conn.commit()
-        except Exception as e:
-            print(f"[ConversationStore] Error logging turn: {e}")
+        args_str = json.dumps(tool_args) if tool_args else None
+        self._execute_write(
+            """
+            INSERT INTO turns (session_id, timestamp, role, content, tool_name, tool_args, tool_result, latency_ms)
+            VALUES (?, datetime('now', 'localtime'), ?, ?, ?, ?, ?, ?)
+            """,
+            (session_id, role, content, tool_name, args_str, tool_result, latency_ms)
+        )
 
     def get_session_turns(self, session_id: str) -> list[dict[str, Any]]:
         """Retrieve all turns for a specific session."""

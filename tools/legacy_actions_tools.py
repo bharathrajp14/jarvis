@@ -125,8 +125,12 @@ def tool_youtube_video(args: dict) -> str:
     }
 )
 def tool_reminder(args: dict) -> str:
-    from actions.reminder import reminder
-    return reminder(parameters=args) or "Done."
+    from actions.reminders import reminder_tool_action
+    return reminder_tool_action(
+        action="add",
+        text=args.get("message", ""),
+        time_str=f"{args.get('time', '')}",
+    ) or "Done."
 
 
 @register_tool(

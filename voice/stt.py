@@ -37,6 +37,15 @@ class SounddeviceMicrophone(_BaseAudioSource):
     def __init__(self, device=None, sample_rate=16000, chunk_size=512):
         self.device_index = device
         
+        # Validate explicit device index if provided
+        if self.device_index is not None and _HAS_SD:
+            try:
+                devs = sd.query_devices()
+                if not (0 <= self.device_index < len(devs)) or devs[self.device_index].get("max_input_channels", 0) <= 0:
+                    self.device_index = None
+            except Exception:
+                self.device_index = None
+
         # 1. Environment override for audio input device
         env_device = os.environ.get("JARVIS_AUDIO_INPUT_DEVICE")
         if self.device_index is None and env_device:
