@@ -50,7 +50,14 @@ class DeterministicIntentEngine:
 
     @classmethod
     def launch_app_by_name(cls, app_name: str) -> bool:
-        """Launch a desktop application by friendly name using native OS commands."""
+        """Launch a desktop application or document by friendly name using native OS commands."""
+        try:
+            from actions.open_app import open_app
+            res = open_app({"app_name": app_name})
+            return "Opened" in res or "launched" in res.lower() or "success" in res.lower()
+        except Exception:
+            pass
+
         name = app_name.lower().strip()
         executables = cls.APP_MAPPINGS.get(name, [name])
         for exe in executables:
@@ -62,7 +69,10 @@ class DeterministicIntentEngine:
                     pass
             else:
                 try:
-                    subprocess.Popen([exe], shell=True)
+                    if sys.platform == "win32":
+                        os.startfile(exe)
+                    else:
+                        subprocess.Popen([exe])
                     return True
                 except Exception:
                     pass

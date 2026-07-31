@@ -46,13 +46,25 @@ _APP_ALIASES: dict[str, str] = {
 }
 
 
+from pathlib import Path
+
+_BASE_DIR = Path(__file__).resolve().parent.parent
+
 def _normalize(raw: str) -> str:
-    key = raw.lower().strip()
-    if key in _APP_ALIASES:
-        return _APP_ALIASES[key]
+    key = raw.strip()
+    if not key:
+        return ""
+
+    # Do not normalize file paths, directory paths, or URLs
+    if os.path.exists(key) or (_BASE_DIR / key).exists() or key.startswith(("http://", "https://", "file://", "./", "../")):
+        return key
+
+    low_key = key.lower()
+    if low_key in _APP_ALIASES:
+        return _APP_ALIASES[low_key]
 
     for alias_key, val in _APP_ALIASES.items():
-        if alias_key in key or key in alias_key:
+        if alias_key == low_key:
             return val
     return raw
 
@@ -117,6 +129,33 @@ def _launch_linux(app_name: str) -> bool:
     return False
 
 
+def _launch_file_or_doc(target_path: str) -> str | None:
+    """Check if target_path is an existing file or directory and launch it via OS default handler."""
+    try:
+        clean = target_path.strip().strip("'\"")
+        p = Path(clean)
+        if not p.is_absolute():
+            p_base = (_BASE_DIR / clean).resolve()
+            if p_base.exists():
+                p = p_base
+            else:
+                p = p.resolve()
+
+        if p.exists():
+            abs_path = str(p)
+            print(f"[open_app] Launching file/document path: '{target_path}' -> '{abs_path}'")
+            if _OS == "Windows":
+                os.startfile(abs_path)
+            elif _OS == "Darwin":
+                subprocess.Popen(["open", abs_path])
+            else:
+                subprocess.Popen(["xdg-open", abs_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            return f"Opened '{p.name}' ({abs_path})."
+    except Exception as e:
+        print(f"[open_app] File/document launch error: {e}")
+    return None
+
+
 def _launch_mac(app_name: str) -> bool:
     try:
         subprocess.Popen(["open", "-a", app_name])
@@ -127,7 +166,23 @@ def _launch_mac(app_name: str) -> bool:
 
 
 def _launch_windows(app_name: str) -> bool:
-    clean = app_name.strip()
+    clean = app_name.strip().strip("'\"")
+
+    # 0. Document / File path resolution
+    try:
+        p = Path(clean)
+        if not p.is_absolute():
+            p_base = (_BASE_DIR / clean).resolve()
+            if p_base.exists():
+                p = p_base
+            else:
+                p = p.resolve()
+        if p.exists():
+            os.startfile(str(p))
+            time.sleep(1.0)
+            return True
+    except Exception:
+        pass
 
     # 1. Primary Windows ShellExecute via os.startfile (resolves App Paths registry, UWP apps & protocols)
     try:
@@ -188,6 +243,13 @@ def open_app(
 
     if not app_name:
         return "No application name provided."
+
+    # 0. Check if app_name is an existing document, file, or directory path
+    doc_res = _launch_file_or_doc(app_name)
+    if doc_res:
+        if player:
+            player.write_log(f"[open_app] {app_name}")
+        return doc_res
 
     target_url = (parameters or {}).get("url", "").strip()
     if not target_url:
