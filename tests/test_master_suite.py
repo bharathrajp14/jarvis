@@ -43,7 +43,7 @@ class TestMasterSuiteRunner(unittest.TestCase):
             str(root / "tests" / "test_ui_multitask.py"),
             str(root / "tests" / "test_voice_pipeline.py"),
             str(root / "tests" / "test_antigravity_system.py"),
-            str(root / "tests" / "test_flaw_corrections.py"),
+            str(root / "tests" / "test_regression_fixes.py"),
             str(root / "tests" / "test_clipboard_read.py"),
             "-W", "ignore::DeprecationWarning"
         ])

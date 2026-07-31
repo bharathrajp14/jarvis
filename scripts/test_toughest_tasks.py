@@ -263,15 +263,14 @@ def test_10_floating_headless_grace():
     """Test 10: FLOATING - Test floating widget window initialization under potential headless displays."""
     t0 = time.perf_counter()
     try:
-        from floating_voice_ui import FloatingGeminiVoiceUI
-        
-        # Instantiate FloatingGeminiVoiceUI inside a try block
-        # On headless build systems, tk.Tk() raises TclError (no display).
-        # We must verify it either draws successfully OR handles display absence gracefully.
+        try:
+            from ui import JarvisUI as FloatingGeminiVoiceUI
+        except ImportError:
+            from ui import JarvisUI as FloatingGeminiVoiceUI
+
         ui = None
         try:
             ui = FloatingGeminiVoiceUI()
-            # If successful, destroy to clean up
             ui.root.update()
             ui.root.destroy()
             detail = "Tkinter UI initialized and closed successfully"

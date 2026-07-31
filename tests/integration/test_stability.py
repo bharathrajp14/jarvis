@@ -62,7 +62,7 @@ async def test_scenario_25_api_failure_handling():
     router.default = AgentProfile.GEMINI  # Ensure default is set to GEMINI for this test
 
     # Call run which will catch Gemini failure and fallback to GPT
-    res = router.run(AgentProfile.GEMINI, [{"role": "user", "content": "test"}])
+    res = router.run(AgentProfile.GEMINI, [{"role": "user", "content": "test"}], "")
     assert res == "Verified fallback response"
 
 

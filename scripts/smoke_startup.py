@@ -53,11 +53,8 @@ def main() -> int:
         from router import AgentRouter, AgentProfile
 
         router = AgentRouter({})
-        try:
-            router.run(AgentProfile.GEMINI, [], "")
-            raise AssertionError("Expected RuntimeError when no backends are configured")
-        except RuntimeError as err:
-            assert "no backends available" in str(err).lower()
+        res = router.run(AgentProfile.GEMINI, [], "")
+        assert "all backends failed" in res.lower() or "no backends available" in res.lower()
 
     def check_skills_registry():
         from skills import load_skills

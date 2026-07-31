@@ -12,7 +12,7 @@ passed = 0
 failed = 0
 errors = []
 
-def test(name, func):
+def run_audit(name, func):
     global passed, failed
     try:
         func()
@@ -22,6 +22,8 @@ def test(name, func):
         print(f"  [FAIL] {name}: {e}")
         errors.append((name, traceback.format_exc()))
         failed += 1
+
+test = run_audit
 
 print("=" * 60)
 print("  JARVIS MK37 -- Deep Audit")
@@ -36,7 +38,7 @@ def t_perm_allow_all():
     for tool in ["keyboard_type","cursor_click","run_code","file_write",
                  "web_search","screen_find","focus_window","nmap_scan"]:
         assert p.check(tool) == True, f"{tool} should be allowed in ALLOW_ALL"
-test("ALLOW_ALL permits all tools", t_perm_allow_all)
+run_audit("ALLOW_ALL permits all tools", t_perm_allow_all)
 
 def t_perm_global_singleton():
     from permissions import PERMISSIONS, PermissionMode
@@ -544,11 +546,8 @@ print("\n" + "=" * 60)
 print(f"  Results: {passed} passed, {failed} failed")
 print("=" * 60)
 
-if errors:
-    print("\nFailed test details:")
-    for name, tb in errors:
-        print(f"\n--- {name} ---")
-        print(tb)
+def test_deep_audit_suite():
+    assert failed == 0, f"Deep audit had {failed} failures: {errors}"
 
 if __name__ == "__main__":
     sys.exit(1 if failed else 0)
