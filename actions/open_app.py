@@ -147,11 +147,12 @@ def _launch_windows(app_name: str) -> bool:
             pass
 
     # 3. Direct executable PATH check
-    if shutil.which(clean) or shutil.which(clean.split(".")[0]):
+    exe_path = shutil.which(clean) or shutil.which(clean.split(".")[0])
+    if exe_path:
         try:
             subprocess.Popen(
-                clean,
-                shell=True,
+                [exe_path],
+                shell=False,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
             )
@@ -210,9 +211,9 @@ def open_app(
             import webbrowser
             if _OS == "Windows":
                 try:
-                    subprocess.Popen(f'start chrome "{target_url}"', shell=True)
+                    os.startfile(target_url)
                     success = True
-                    msg = f"Opened Chrome to {target_url}."
+                    msg = f"Opened {target_url} in default browser."
                 except Exception:
                     webbrowser.open(target_url)
                     success = True
