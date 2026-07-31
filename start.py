@@ -650,6 +650,14 @@ def launch_web_server():
     else:
         _run_script("server.py", None)
 
+def launch_dashboard_server():
+    console.print("\n[bold cyan]▶ Launching Remote PWA QR Mobile Dashboard (Port 8000)[/]")
+    dash_script = BASE_DIR / "dashboard" / "server.py"
+    if not dash_script.exists():
+        console.print("[red]✗ Dashboard server not found.[/]")
+        return
+    _run_script("dashboard/server.py", None)
+
 def launch_both():
     console.print("\n[bold cyan]▶ Starting Modes in Parallel[/]\n")
     if getattr(sys, "frozen", False):
@@ -945,6 +953,7 @@ def main():
     elif mode in ("floating", "float", "overlay"): launch_floating_voice()
     elif mode in ("cli", "c", "terminal"): launch_cli() if _pre_launch_check() else None
     elif mode in ("both", "b", "all"): launch_both() if _pre_launch_check() else None
+    elif mode in ("dashboard", "pwa", "mobile", "qr"): launch_dashboard_server()
     elif mode in ("webserver", "web", "server"): launch_web_server()
     elif mode in ("status", "health"): show_status()
     elif mode in ("doctor", "fix"): doctor()
