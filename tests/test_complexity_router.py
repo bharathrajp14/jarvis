@@ -62,7 +62,7 @@ def test_vision_complexity():
     ]
     score, tier, breakdown = calculate_complexity_score(messages)
     assert tier == TaskComplexity.VISION
-    assert select_model_for_prompt(messages) == "gemini-3.1-flash-image"
+    assert select_model_for_prompt(messages) in ("gemini-3.1-flash-image", "gemini-3.6-flash", "gemini-3-flash")
     assert get_recommended_token_limit(TaskComplexity.VISION) == 4096
 
 

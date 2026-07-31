@@ -363,6 +363,11 @@ class NeuralTTS:
 
         self._is_speaking = False
 
+    @property
+    def is_speaking(self) -> bool:
+        """Returns True if speech output is currently playing."""
+        return getattr(self, "_is_speaking", False)
+
     def speak_async(self, text: str, on_start=None, on_finish=None):
         """Async non-blocking pipelined pre-fetching speech interface."""
         if not text or not text.strip():

@@ -41,7 +41,7 @@ class AdaptiveStepBudget:
 
         # Active progress velocity -> grant flexible extension
         if len(unique_tools) >= 1 or non_empty_results >= 1:
-            extension = 10
+            extension = 5 if self.initial_budget <= 10 else 10
             self.current_budget = min(self.max_ceiling, self.current_budget + extension)
             self.extensions_granted += 1
             msg = f"📈 Progress velocity confirmed — Granted +{extension} flexible step extension (Active Budget: {self.current_budget})"
@@ -73,7 +73,7 @@ class StepPlanner:
         ])
 
         if is_complex:
-            initial_budget = 45
+            initial_budget = 25
             max_ceiling = 100
             complexity = "HIGH"
             steps = [
@@ -84,7 +84,7 @@ class StepPlanner:
                 "Generate walkthrough documentation",
             ]
         elif is_medium:
-            initial_budget = 25
+            initial_budget = 12
             max_ceiling = 80
             complexity = "MEDIUM"
             steps = [
@@ -93,7 +93,7 @@ class StepPlanner:
                 "Verify correctness and synthesize final answer",
             ]
         else:
-            initial_budget = 10
+            initial_budget = 6
             max_ceiling = 40
             complexity = "LOW"
             steps = [

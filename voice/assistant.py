@@ -489,8 +489,10 @@ class BRVoiceAssistant:
         def animation_sync_loop():
             while True:
                 try:
-                    is_speaking = self.tts.is_speaking
-                    self.ui.speaking = is_speaking
+                    is_speaking = getattr(self.tts, "is_speaking", getattr(self.tts, "_is_speaking", False))
+                    if callable(is_speaking):
+                        is_speaking = is_speaking()
+                    self.ui.speaking = bool(is_speaking)
                     if is_speaking:
                         if self.ui._state != "SPEAKING":
                             self.ui.set_state("SPEAKING")
