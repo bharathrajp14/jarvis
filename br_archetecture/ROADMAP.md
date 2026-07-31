@@ -1,6 +1,18 @@
 # 🛣️ BR JARVIS — System Development Roadmap
 
-This document outlines the multi-phase implementation roadmap for the BR JARVIS AI Operating System (Current Release: **v37.31.0**).
+This document outlines the multi-phase implementation roadmap for the BR JARVIS AI Operating System (Current Release: **v38.2.5 / v37.5.0**).
+
+---
+
+## 🟢 Phase 8: Runtime Singleton, Security Hardening & Stream Safety (COMPLETED — v38.2.5)
+
+- [x] **Thread-Safe Runtime Singleton Factory** (`core/bootstrap.py`) — `threading.Lock` double-checked locking singleton ensuring shared working memory and event bus across GUI, CLI, and Web Server.
+- [x] **Permission Mode Enforcement & Destructive Tool Traps** (`permissions.py`, `tools/registry.py`) — `CONFIRM_DESTRUCTIVE` mode with `DESTRUCTIVE_TOOLS` filter set and `check_permission()` pre-execution enforcement.
+- [x] **Web Server CORS & Host Hardening** (`server.py`) — Localhost binding (`127.0.0.1`), explicit CORS origins whitelist, and API request thread locking (`_CHAT_LOCK`).
+- [x] **Chat Stream Safety & Duplicate Guard** (`orchestrator/core.py`) — `StepPlanner` budgeting, 4-call duplicate tool call abort limiter, and 4KB output string truncation.
+- [x] **Input Sanitization & URL Whitelisting** (`core/intent_engine.py`) — Shell injection elimination (`subprocess.Popen()`) and scheme validation (blocking `file:`, `javascript:`).
+- [x] **PyAutoGUI Emergency Failsafe** (`actions/live_os_control.py`) — Default screen corner failsafe protection enabled by default.
+- [x] **Dynamic Connector Telemetry & API Key Centralization** (`server.py`, `config/__init__.py`) — Real-time `TOOL_REGISTRY` status check and `get_gemini_api_key()` single source of truth.
 
 ---
 

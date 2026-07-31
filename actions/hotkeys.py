@@ -67,7 +67,7 @@ class HotkeyManager:
                 action = hk.get("action", "")
                 if keys and action:
                     keyboard.add_hotkey(keys, self._trigger_action, args=(action, keys))
-                    print(f"  ● Registered hotkey: {keys} -> {action}")
+                    print(f"  [+] Registered hotkey: {keys} -> {action}")
 
             # Keep thread alive
             while self._running:

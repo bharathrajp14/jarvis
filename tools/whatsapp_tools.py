@@ -14,7 +14,7 @@ from actions.whatsapp_automation import get_whatsapp_automation
 
 @register_tool(
     name="send_whatsapp",
-    description="Send a WhatsApp message directly to any contact name (e.g. 'Mom', 'John') or phone number (e.g. '+1234567890').",
+    description="Send a WhatsApp message or greeting directly to any contact name (e.g. 'Appa', 'Mom', 'John') or phone number. NEVER use open_app or run_code to send WhatsApp messages; ALWAYS use send_whatsapp.",
     parameters={
         "type": "object",
         "properties": {
@@ -83,18 +83,20 @@ def tool_schedule_whatsapp_message(args: dict) -> str:
         "required": ["action"]
     }
 )
-def tool_manage_whatsapp_contacts(args: dict) -> str:
+def tool_manage_whatsapp_contacts(args: dict | str) -> str:
     """Manage saved contacts mapping."""
     if isinstance(args, str):
         action = args.strip().lower()
+        args_dict: dict = {}
     else:
-        action = str(args.get("action") or "list").strip().lower()
+        args_dict = args if isinstance(args, dict) else {}
+        action = str(args_dict.get("action") or "list").strip().lower()
     
     wa = get_whatsapp_automation()
 
     if action in ("add", "save", "create"):
-        name = str(args.get("name") or args.get("contact_name") or "").strip()
-        phone = str(args.get("phone_number") or args.get("phone") or args.get("number") or "").strip()
+        name = str(args_dict.get("name") or args_dict.get("contact_name") or "").strip()
+        phone = str(args_dict.get("phone_number") or args_dict.get("phone") or args_dict.get("number") or "").strip()
         return wa.add_contact(name=name, phone_number=phone)
 
     elif action in ("list", "show", "get"):

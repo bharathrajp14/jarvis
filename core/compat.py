@@ -148,7 +148,7 @@ except ImportError:
     ClaudeBackend = None  # type: ignore[assignment,misc]
 
 try:
-    from backends.openai import OpenAIBackend
+    from backends.openai_compat import OpenAIBackend
 except ImportError:
     OpenAIBackend = None  # type: ignore[assignment,misc]
 

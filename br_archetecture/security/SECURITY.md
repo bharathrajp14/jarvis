@@ -1,15 +1,15 @@
 # 🛡️ BR JARVIS — Security Architecture, Guardian Core & Path Policy
 
 > **Document Status**: Production Architecture Specification  
-> **Subsystem**: Guardian Core, PathPolicy, Permission Modes, Secret Scanning & RedTeaming  
-> **Module Path**: `guardian/`, `permissions.py`, `redteam/`  
-> **Version**: MK37.31.0  
+> **Subsystem**: Guardian Core, PathPolicy, Permission Modes, Secret Scanning, Server Hardening & Metacharacter Sanitization  
+> **Module Path**: `guardian/`, `permissions.py`, `redteam/`, `server.py`, `core/intent_engine.py`  
+> **Version**: MK38.2.5 / v37.5.0  
 
 ---
 
 ## 1. Executive Summary
 
-BR JARVIS enforces a zero-trust multi-layered safety architecture. The **Guardian Core** (`guardian/`) acts as the immutable safety engine holding system integrity hashes, an emergency kill-switch (`kill_switch.py`), pre-upgrade snapshots (`snapshot.py`), automated rollbacks (`rollback.py`), and append-only audit logs (`audit_log.py`). File access is governed by **PathPolicy** (`guardian/path_policy.py` & `permissions.py`) across 3 security tiers, enforcing cloud-context exclusions for sensitive paths and strict secret scanning routines.
+BR JARVIS enforces a zero-trust multi-layered safety architecture. The **Guardian Core** (`guardian/`) acts as the immutable safety engine holding system integrity hashes, an emergency kill-switch (`kill_switch.py`), pre-upgrade snapshots (`snapshot.py`), automated rollbacks (`rollback.py`), and append-only audit logs (`audit_log.py`). Tool execution is strictly governed by **PermissionPolicy** (`permissions.py` & `tools/registry.py`) featuring `CONFIRM_DESTRUCTIVE` mode with pre-execution tool traps for `DESTRUCTIVE_TOOLS`. File access is controlled by **PathPolicy** across 3 security tiers. The Web Server (`server.py`) binds to localhost (`127.0.0.1`), enforces explicit CORS whitelisting, and uses thread locking for API request serialization. Intent handling (`core/intent_engine.py`) validates URL schemes (`http://`/`https://` safe schemes, blocking `javascript:`, `file:`, `data:`, `vbscript:`) and avoids shell execution via `subprocess.Popen(..., shell=False)`.
 
 ---
 

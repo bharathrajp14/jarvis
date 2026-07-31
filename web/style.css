@@ -36,6 +36,14 @@
     padding: 0;
 }
 
+.hidden-file-input {
+    display: none !important;
+}
+
+.mb-15 {
+    margin-bottom: 15px !important;
+}
+
 body {
     background-color: var(--bg-dark);
     color: var(--text-main);
@@ -745,17 +753,10 @@ body {
     color: var(--text-muted);
 }
 
-/* Floating Gemini Live Overlay Bar */
+/* Floating Voice Bar Removed to restore UI clickability */
 .floating-voice-bar {
-    position: fixed;
-    bottom: 28px;
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 12px;
-    z-index: 90;
+    display: none !important;
+    pointer-events: none !important;
 }
 
 .live-screen-trigger {
@@ -1103,4 +1104,274 @@ body {
     border-radius: 4px;
     background: var(--accent-blue);
     transition: width 0.3s ease;
+}
+
+/* ── STATUS BADGES ── */
+.status-badge {
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 20px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.status-badge.connected {
+    background: rgba(0, 230, 118, 0.15);
+    color: #00e676;
+    border: 1px solid rgba(0, 230, 118, 0.3);
+}
+
+.status-badge.not_configured {
+    background: rgba(255, 171, 0, 0.15);
+    color: #ffab00;
+    border: 1px solid rgba(255, 171, 0, 0.3);
+}
+
+/* ── RAG DROPZONE ENHANCEMENTS ── */
+.rag-dropzone {
+    border: 2px dashed rgba(0, 242, 254, 0.3);
+    border-radius: 16px;
+    padding: 36px 20px;
+    text-align: center;
+    background: rgba(10, 15, 26, 0.5);
+    transition: var(--transition-normal);
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.rag-dropzone:hover, .rag-dropzone.drag-over {
+    border-color: var(--accent-cyan);
+    background: rgba(0, 242, 254, 0.08);
+    box-shadow: 0 0 25px rgba(0, 242, 254, 0.2);
+    transform: scale(1.01);
+}
+
+.drop-icon {
+    font-size: 36px;
+}
+
+.drop-text {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-main);
+}
+
+.drop-sub {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.btn-link {
+    background: none;
+    border: none;
+    color: var(--accent-cyan);
+    text-decoration: underline;
+    cursor: pointer;
+    font-weight: 600;
+    padding: 0;
+}
+
+/* ── CONTACTS HUB STYLES ── */
+.contacts-bar {
+    margin-bottom: 20px;
+}
+
+.contacts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 16px;
+}
+
+.contact-card {
+    background: rgba(13, 17, 28, 0.75);
+    -webkit-backdrop-filter: blur(14px);
+    backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    transition: var(--transition-normal);
+
+}
+
+.contact-card:hover {
+    border-color: var(--accent-purple);
+    box-shadow: 0 10px 30px rgba(121, 40, 202, 0.2);
+    transform: translateY(-2px);
+}
+
+.contact-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.contact-avatar {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent-purple) 0%, var(--accent-blue) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    font-weight: 700;
+    color: #fff;
+}
+
+.contact-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.contact-name {
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--text-main);
+}
+
+.contact-alias {
+    font-size: 11px;
+    color: var(--accent-cyan);
+    font-family: var(--font-code);
+}
+
+.contact-details {
+    font-size: 12px;
+    color: var(--text-muted);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.contact-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 6px;
+}
+
+.contact-act-btn {
+    flex: 1;
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-main);
+    font-size: 11px;
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.contact-act-btn:hover {
+    background: var(--accent-blue);
+    border-color: var(--accent-cyan);
+    color: #fff;
+}
+
+.empty-state {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-muted);
+
+}
+
+.empty-state .icon {
+    font-size: 48px;
+    display: block;
+    margin-bottom: 12px;
+}
+
+/* ── FORM HINTS & MODAL UTILS ── */
+.form-hint {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 4px;
+    display: block;
+}
+
+.auth-mode-desc {
+    font-size: 13px;
+    color: var(--text-sub);
+    line-height: 1.5;
+    background: rgba(0, 242, 254, 0.05);
+    border-left: 3px solid var(--accent-cyan);
+    padding: 10px 14px;
+    border-radius: 0 8px 8px 0;
+    margin-top: 14px;
+}
+
+/* ── TOAST NOTIFICATIONS ── */
+.toast-container {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
+}
+
+.toast-item {
+    pointer-events: auto;
+    min-width: 280px;
+    max-width: 380px;
+    background: rgba(11, 15, 25, 0.95);
+    -webkit-backdrop-filter: blur(20px);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 12px;
+    padding: 14px 18px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    animation: toastSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.toast-item.success {
+    border-left: 4px solid var(--accent-green);
+}
+
+.toast-item.error {
+    border-left: 4px solid #ff1744;
+}
+
+.toast-item.info {
+    border-left: 4px solid var(--accent-cyan);
+}
+
+.toast-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.toast-title {
+    font-weight: 700;
+    font-size: 13px;
+    color: #fff;
+}
+
+.toast-message {
+    font-size: 12px;
+    color: var(--text-sub);
+}
+
+@keyframes toastSlideIn {
+    from {
+        opacity: 0;
+        transform: translateX(100px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
 }

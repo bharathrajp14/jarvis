@@ -80,6 +80,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 container.classList.remove('active');
             }
         });
+        if (viewId === 'contactsView' && typeof window.fetchContacts === 'function') {
+            window.fetchContacts();
+        }
     };
 
     navItems.forEach(item => {
@@ -372,25 +375,56 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ── CONNECTORS & SKILLS DYNAMIC LOADERS ──
+    // ── TOAST NOTIFICATIONS ──
+    window.showToast = function(title, message, type = 'info') {
+        const container = document.getElementById('toastContainer');
+        if (!container) return;
+        const toast = document.createElement('div');
+        toast.className = `toast-item ${type}`;
+        toast.innerHTML = `
+            <div class="toast-content">
+                <div class="toast-title">${title}</div>
+                <div class="toast-message">${message}</div>
+            </div>
+        `;
+        container.appendChild(toast);
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateX(100px)';
+            setTimeout(() => toast.remove(), 300);
+        }, 4000);
+    };
+
+    // ── CONNECTORS HUB FETCH ──
     function fetchConnectors() {
         fetch(`${API_BASE}/api/connectors`)
             .then(res => res.json())
             .then(data => {
                 const grid = document.getElementById('connectorsGrid');
                 if (!grid || !data.connectors) return;
-                grid.innerHTML = data.connectors.map(c => `
-                    <div class="connector-card">
-                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-                            <span style="font-size: 24px;">${c.icon}</span>
-                            <span class="status-badge connected">${c.status}</span>
+                grid.innerHTML = data.connectors.map(c => {
+                    const st = (c.status || 'NOT_CONFIGURED').toLowerCase();
+                    const badgeClass = st === 'connected' ? 'connected' : 'not_configured';
+                    const actBtn = c.name.includes('Google') ?
+                        `<button class="act-btn" onclick="openGoogleAuthModal()">🔑 Google Login</button>` :
+                        c.name.includes('Contacts') ?
+                        `<button class="act-btn" onclick="openContactImportModal()">📥 Import Contacts</button>` :
+                        `<button class="act-btn" onclick="executeQuickCommand('run ${c.name} connector')">⚡ Action</button>`;
+
+                    return `
+                        <div class="connector-card">
+                            <div class="c-header">
+                                <span class="c-icon">${c.icon}</span>
+                                <span class="status-badge ${badgeClass}">${c.status}</span>
+                            </div>
+                            <h4 class="c-title">${c.name}</h4>
+                            <p class="c-desc">${c.desc}</p>
+                            <div class="c-actions">
+                                ${actBtn}
+                            </div>
                         </div>
-                        <h4 style="margin: 4px 0; font-family: var(--font-heading); color: #fff;">${c.name}</h4>
-                        <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 10px;">${c.desc}</p>
-                        <div style="font-size: 11px; color: var(--accent-cyan); font-family: monospace;">
-                            ${c.tools.join(', ')}
-                        </div>
-                    </div>
-                `).join('');
+                    `;
+                }).join('');
             })
             .catch(() => {});
     }
@@ -404,18 +438,359 @@ document.addEventListener('DOMContentLoaded', () => {
                 grid.innerHTML = skills.map(s => `
                     <div class="skill-card">
                         <div style="display: flex; align-items: center; justify-content: space-between;">
-                            <h4 style="margin: 0; color: var(--accent-purple); font-family: var(--font-heading);">${s.name}</h4>
-                            <span class="status-badge" style="background: rgba(121, 40, 202, 0.2); color: #00f2fe;">Built-in</span>
+                            <h4 style="margin: 0; color: var(--accent-cyan); font-family: var(--font-code); font-size: 15px;">⚡ /${s.name}</h4>
+                            <span class="status-badge connected">Built-in</span>
                         </div>
-                        <p style="font-size: 12px; color: var(--text-muted); margin: 8px 0;">${s.description}</p>
-                        <div style="font-size: 11px; color: var(--text-main); font-family: monospace;">
-                            Triggers: ${s.triggers.join(', ')}
+                        <p class="s-desc">${s.description}</p>
+                        <div class="s-trigger">
+                            Triggers: ${(s.triggers || []).join(', ')}
                         </div>
                     </div>
                 `).join('');
             })
             .catch(() => {});
     }
+
+    // ── CONTACTS HUB ──
+    let allContacts = [];
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    window.fetchContacts = function(query = '') {
+        const url = query ? `${API_BASE}/api/contacts?query=${encodeURIComponent(query)}` : `${API_BASE}/api/contacts`;
+        fetch(url)
+            .then(res => res.json())
+            .then(data => {
+                allContacts = data.contacts || [];
+                renderContacts(allContacts);
+            })
+            .catch(() => {});
+    };
+
+    function renderContacts(list) {
+        const grid = document.getElementById('contactsGrid');
+        if (!grid) return;
+
+        if (!list || list.length === 0) {
+            grid.innerHTML = `
+                <div class="empty-state">
+                    <span class="icon">📱</span>
+                    <p>No mobile contacts found matching search filter.</p>
+                </div>
+            `;
+            return;
+        }
+
+        const displayList = list.slice(0, 80);
+        grid.innerHTML = displayList.map(c => {
+            const initial = c.name ? c.name.charAt(0).toUpperCase() : '?';
+            const rawName = c.name || 'Unnamed';
+            const safeName = escapeHtml(rawName);
+            const aliasList = (c.aliases || []).filter(a => a.toLowerCase() !== rawName.toLowerCase());
+            const aliasText = aliasList.join(', ');
+
+            return `
+                <div class="contact-card">
+                    <div class="contact-header">
+                        <div class="contact-avatar">${initial}</div>
+                        <div class="contact-info">
+                            <div class="contact-name">${safeName}</div>
+                            ${aliasText ? `<div class="contact-alias">"${escapeHtml(aliasText)}"</div>` : ''}
+                        </div>
+                    </div>
+                    <div class="contact-details">
+                        ${c.phone_number ? `<div>📞 ${escapeHtml(c.phone_number)}</div>` : ''}
+                        ${c.email ? `<div>✉️ ${escapeHtml(c.email)}</div>` : ''}
+                        ${c.notes ? `<div style="font-size: 10px; color: var(--text-muted);">${escapeHtml(c.notes)}</div>` : ''}
+                    </div>
+                    <div class="contact-actions">
+                        <button class="contact-act-btn" onclick="executeQuickCommand('send whatsapp to ${safeName}')">💬 WhatsApp</button>
+                        <button class="contact-act-btn" onclick="executeQuickCommand('send email to ${safeName}')">✉️ Email</button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    const contactSearchInput = document.getElementById('contactSearchInput');
+    if (contactSearchInput) {
+        contactSearchInput.addEventListener('input', (e) => {
+            const q = e.target.value.trim();
+            fetchContacts(q);
+        });
+    }
+
+    window.openAddContactModal = function() {
+        const name = prompt("Enter contact full name:");
+        if (!name) return;
+        const phone = prompt("Enter phone number (e.g. +1234567890):") || "";
+        const email = prompt("Enter email address:") || "";
+        const alias = prompt("Enter nickname / alias (e.g. 'Mom'):") || "";
+
+        fetch(`${API_BASE}/api/chat`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt: `manage_contacts action='add' name='${name}' phone_number='${phone}' email='${email}' aliases=['${alias}']` })
+        })
+        .then(res => res.json())
+        .then(data => {
+            showToast('Contact Saved', `Saved contact '${name}'`, 'success');
+            fetchContacts();
+            fetchConnectors();
+        })
+        .catch(() => showToast('Error', 'Failed saving contact', 'error'));
+    };
+
+    // ── FILE IMPORT TRIGGER HELPERS ──
+    window.triggerFileImport = function(type = 'universal') {
+        let inputId = 'universalFileInput';
+        if (type === 'knowledge') inputId = 'fileImportInput';
+        else if (type === 'contact') inputId = 'contactFileInput';
+
+        const input = document.getElementById(inputId);
+        if (input) {
+            input.value = '';
+            input.click();
+        } else {
+            console.warn('File input element not found:', inputId);
+        }
+    };
+
+    window.triggerVoiceDictation = function() {
+        switchView('voiceView');
+        showToast('Voice Dictation Active', 'Speak or say "JARVIS" to send voice commands...', 'info');
+    };
+
+    // ── FILE & CONTACT DRAG AND DROP INGESTION ──
+    function initDragAndDrop() {
+        const ragZone = document.getElementById('ragDropzone');
+        const fileInput = document.getElementById('fileImportInput');
+        const contactZone = document.getElementById('contactDropzone');
+        const contactFileInput = document.getElementById('contactFileInput');
+        const universalInput = document.getElementById('universalFileInput');
+
+        // Drag & Drop events for Knowledge zone
+        if (ragZone) {
+            ['dragenter', 'dragover'].forEach(evt => {
+                ragZone.addEventListener(evt, (e) => {
+                    e.preventDefault();
+                    ragZone.classList.add('drag-over');
+                }, false);
+            });
+            ['dragleave', 'drop'].forEach(evt => {
+                ragZone.addEventListener(evt, (e) => {
+                    e.preventDefault();
+                    ragZone.classList.remove('drag-over');
+                }, false);
+            });
+            ragZone.addEventListener('drop', (e) => {
+                if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                    uploadKnowledgeFiles(e.dataTransfer.files);
+                }
+            });
+        }
+
+        // Drag & Drop events for Contact zone
+        if (contactZone) {
+            ['dragenter', 'dragover'].forEach(evt => {
+                contactZone.addEventListener(evt, (e) => {
+                    e.preventDefault();
+                    contactZone.classList.add('drag-over');
+                }, false);
+            });
+            ['dragleave', 'drop'].forEach(evt => {
+                contactZone.addEventListener(evt, (e) => {
+                    e.preventDefault();
+                    contactZone.classList.remove('drag-over');
+                }, false);
+            });
+            contactZone.addEventListener('drop', (e) => {
+                if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                    uploadContactFile(e.dataTransfer.files[0]);
+                }
+            });
+        }
+
+        // Input change listeners
+        if (fileInput) {
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files && e.target.files.length > 0) {
+                    uploadKnowledgeFiles(e.target.files);
+                }
+            });
+        }
+
+        if (contactFileInput) {
+            contactFileInput.addEventListener('change', (e) => {
+                if (e.target.files && e.target.files.length > 0) {
+                    uploadContactFile(e.target.files[0]);
+                }
+            });
+        }
+
+        if (universalInput) {
+            universalInput.addEventListener('change', (e) => {
+                if (e.target.files && e.target.files.length > 0) {
+                    uploadKnowledgeFiles(e.target.files);
+                }
+            });
+        }
+    }
+
+    function uploadKnowledgeFiles(fileList) {
+        for (let i = 0; i < fileList.length; i++) {
+            const file = fileList[i];
+            const formData = new FormData();
+            formData.append('file', file);
+
+            showToast('Uploading File', `Ingesting '${file.name}' into vector memory...`, 'info');
+
+            fetch(`${API_BASE}/api/import/file`, {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    showToast('Import Success', data.message, 'success');
+                    appendLog(`[FILE_IMPORT] Ingested ${file.name} into vector RAG store`, 'sys');
+                } else {
+                    showToast('Import Warning', data.message || 'File import complete.', 'info');
+                }
+            })
+            .catch(err => {
+                showToast('Import Failed', `Error importing ${file.name}: ${err}`, 'error');
+            });
+        }
+    }
+
+    function uploadContactFile(file) {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        showToast('Importing Contacts', `Parsing contacts from '${file.name}'...`, 'info');
+
+        fetch(`${API_BASE}/api/import/contacts`, {
+            method: 'POST',
+            body: formData
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success' && data.result) {
+                const r = data.result;
+                showToast('Contacts Imported', `Imported ${r.imported_new} new contacts. Total store: ${r.total_store}`, 'success');
+                closeContactImportModal();
+                fetchContacts();
+                fetchConnectors();
+            } else {
+                showToast('Import Failed', data.detail || 'Could not parse contact file.', 'error');
+            }
+        })
+        .catch(err => {
+            showToast('Import Error', `Error parsing file: ${err}`, 'error');
+        });
+    }
+
+    window.submitContactImportByPath = function() {
+        const pathInput = document.getElementById('contactFilePathInput');
+        if (!pathInput || !pathInput.value.trim()) {
+            showToast('Path Required', 'Please enter a valid file path on your computer.', 'error');
+            return;
+        }
+        const filePath = pathInput.value.trim();
+        const formData = new FormData();
+        formData.append('file_path', filePath);
+
+        showToast('Importing Contacts', `Reading file at '${filePath}'...`, 'info');
+
+        fetch(`${API_BASE}/api/import/contacts`, {
+            method: 'POST',
+            body: formData
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'success' && data.result) {
+                const r = data.result;
+                showToast('Contacts Imported', `Imported ${r.imported_new} new contacts. Total store: ${r.total_store}`, 'success');
+                closeContactImportModal();
+                fetchContacts();
+                fetchConnectors();
+            } else {
+                showToast('Import Failed', data.detail || 'Could not find or parse file.', 'error');
+            }
+        })
+        .catch(err => showToast('Error', `Import error: ${err}`, 'error'));
+    };
+
+    // ── GOOGLE AUTH MODAL HANDLERS ──
+    window.openGoogleAuthModal = function() {
+        const modal = document.getElementById('googleAuthModal');
+        if (modal) modal.classList.add('active');
+    };
+
+    window.closeGoogleAuthModal = function() {
+        const modal = document.getElementById('googleAuthModal');
+        if (modal) modal.classList.remove('active');
+    };
+
+    window.toggleGoogleAuthMode = function() {
+        const sel = document.getElementById('googleAuthMode');
+        const appGroup = document.getElementById('googleAppPasswordGroup');
+        const modeDesc = document.getElementById('googleAuthModeDesc');
+        const btn = document.getElementById('submitGoogleAuthBtn');
+
+        if (!sel) return;
+        if (sel.value === 'credentials') {
+            if (appGroup) appGroup.style.display = 'block';
+            if (modeDesc) modeDesc.innerHTML = 'Enter your Gmail email and 16-character Google App Password for automated headless email access.';
+            if (btn) btn.textContent = 'SAVE GOOGLE CREDENTIALS';
+        } else {
+            if (appGroup) appGroup.style.display = 'none';
+            if (modeDesc) modeDesc.innerHTML = 'Clicking <strong>Initiate Google Login</strong> will open Google\'s official sign-in page in your default browser.';
+            if (btn) btn.textContent = 'INITIATE GOOGLE LOGIN';
+        }
+    };
+
+    window.submitGoogleAuth = function() {
+        const sel = document.getElementById('googleAuthMode');
+        const mode = sel ? sel.value : 'browser';
+
+        if (mode === 'credentials') {
+            const email = (document.getElementById('googleEmail') || {}).value || '';
+            const pwd = (document.getElementById('googleAppPassword') || {}).value || '';
+
+            if (!email || !pwd) {
+                showToast('Fields Required', 'Please provide both Gmail email and 16-character App Password.', 'error');
+                return;
+            }
+
+            executeQuickCommand(`gmail_login mode='credentials' email='${email}' app_password='${pwd}'`);
+        } else {
+            executeQuickCommand(`gmail_login mode='browser'`);
+        }
+
+        closeGoogleAuthModal();
+        showToast('Google Auth', 'Google login request transmitted to JARVIS.', 'info');
+    };
+
+    // ── CONTACT IMPORT MODAL HANDLERS ──
+    window.openContactImportModal = function() {
+        const modal = document.getElementById('contactImportModal');
+        if (modal) modal.classList.add('active');
+    };
+
+    window.closeContactImportModal = function() {
+        const modal = document.getElementById('contactImportModal');
+        if (modal) modal.classList.remove('active');
+    };
 
     // ── DYNAMIC BACKEND MODEL SELECTOR & SYNCHRONIZER ──
     function initBackendModelSelector() {
@@ -451,10 +826,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
         }
 
-        // Load initially
         syncModels();
 
-        // Listen for user change and switch backend on the server
         backendSelector.addEventListener('change', (e) => {
             const selectedBackend = e.target.value;
             appendLog(`[SYSTEM] Switching backend to ${selectedBackend.toUpperCase()}...`, 'sys');
@@ -483,6 +856,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initBackendModelSelector();
     fetchConnectors();
     fetchSkills();
+    initDragAndDrop();
 
     initParticleCanvas();
     setInterval(fetchTelemetry, 5000);

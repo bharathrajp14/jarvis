@@ -23,8 +23,27 @@ from typing import FrozenSet
 
 class PermissionMode(str, Enum):
     ALLOW_ALL = "allow_all"
+    CONFIRM_DESTRUCTIVE = "confirm_destructive"
     CONFIRM_ALL = "confirm_all"
     DENY_ALL = "deny_all"
+
+
+# Tools that require confirmation under CONFIRM_DESTRUCTIVE mode
+DESTRUCTIVE_TOOLS: FrozenSet[str] = frozenset(
+    {
+        "file_delete",
+        "file_write",
+        "run_code",
+        "scratchpad_eval",
+        "computer_settings",
+        "system_cleanup",
+        "system_optimizer",
+        "process_kill",
+        "run_automation_workflow",
+        "execute_system_automation",
+        "game_updater",
+    }
+)
 
 
 ALWAYS_ALLOWED: FrozenSet[str] = frozenset(
@@ -90,6 +109,11 @@ class PermissionPolicy:
         if name in self.deny_names:
             return False
         if self.mode == PermissionMode.ALLOW_ALL:
+            return True
+        if self.mode == PermissionMode.CONFIRM_DESTRUCTIVE:
+            # Allow everything except destructive tools (unless explicitly allowed)
+            if name in DESTRUCTIVE_TOOLS and name not in self.allow_names:
+                return False
             return True
         if self.mode == PermissionMode.CONFIRM_ALL:
             return name in ALWAYS_ALLOWED or name in self.allow_names

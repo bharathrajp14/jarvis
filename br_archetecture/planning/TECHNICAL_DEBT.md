@@ -2,13 +2,13 @@
 
 > **Document Status**: Production Architecture Specification  
 > **Scope**: Codebase Debt Audits, Refactoring Targets & Maintenance Roadmap  
-> **Version**: MK38.2.0  
+> **Version**: MK38.2.5 / v37.5.0  
 
 ---
 
 ## 1. Executive Debt Audit Overview
 
-The BR JARVIS MK38 codebase (~185 Python files, 30+ packages) achieves a **100% test pass rate** across all 110 Pytest verification tests (`pytest tests/`). Full project analysis reveals key technical debt targets that are actively being refactored and optimized.
+The BR JARVIS MK38 codebase (~185 Python files, 30+ packages) achieves a **100% test pass rate** across all 120 Pytest verification tests (`pytest tests/`). Full project analysis reveals key technical debt targets that are actively being refactored and optimized.
 
 ---
 
@@ -22,22 +22,27 @@ The BR JARVIS MK38 codebase (~185 Python files, 30+ packages) achieves a **100% 
   - `ui/tabs/settings_tab.py`: API keys & system settings dialogs.
   - `ui/widgets/canvas_hud.py`: Face canvas & waveform HUD visualizers.
 
-### 2. Path Policy Permission Check Bypass (`permissions.py`) [RESOLVED]
-- **Status**: ✅ **RESOLVED in v38.2.0**
-- **Fix**: Updated `check_permission(tool_name, args)` to evaluate target path arguments against `TIER_2_PATTERNS` (`system32`, `.ssh`, `login data`, `id_rsa`, `.pem`), preventing unauthorized file access.
+### 2. Runtime Singleton Factory (`core/bootstrap.py`) [RESOLVED]
+- **Status**: ✅ **RESOLVED in v38.2.5**
+- **Fix**: Implemented double-checked locking mechanism (`threading.Lock`) in `build_assistant_runtime()`. Voice GUI, CLI, and Web Server now share a unified runtime instance, eliminating split working memory and duplicate backend connection pools.
 
-### 3. ReAct Working Memory Context Window Bloat (`orchestrator.py`) [RESOLVED]
-- **Status**: ✅ **RESOLVED in v38.2.0**
-- **Fix**: Truncated `tool_result` strings added to `working_memory` at line 508 to a maximum of 4000 characters with `[... output truncated for context efficiency ...]`.
+### 3. Permission System Enforcement (`permissions.py`, `tools/registry.py`) [RESOLVED]
+- **Status**: ✅ **RESOLVED in v38.2.5**
+- **Fix**: Added `CONFIRM_DESTRUCTIVE` mode to `PermissionMode` enum and wired pre-execution permission traps into `execute_tool()`.
 
-### 4. Concurrent SQLite Database Lock Contention (`memory/`) [RESOLVED]
-- **Status**: ✅ **RESOLVED in v37.31.0**
-- **Fix**: Enabled SQLite Write-Ahead Logging (`PRAGMA journal_mode=WAL;`), increased busy timeouts (`PRAGMA busy_timeout=20000;`), and set `timeout=20.0` across `memory/lessons.py` and `memory/conversation_store.py`.
+### 4. Web Server CORS & Request Thread Serialization (`server.py`) [RESOLVED]
+- **Status**: ✅ **RESOLVED in v38.2.5**
+- **Fix**: Bound server host to `127.0.0.1` by default, restricted CORS to explicit localhost whitelist, and added `_CHAT_LOCK` thread serialization to API endpoints.
 
-### 5. `asyncio.get_event_loop()` Python 3.14 Deprecation [RESOLVED]
-- **Status**: ✅ **RESOLVED in v37.31.0**
-- **Fix**: Replaced legacy `asyncio.get_event_loop()` calls with `asyncio.get_running_loop()` and `asyncio.get_event_loop_policy().get_event_loop()` across `voice/assistant.py` and `core/lifecycle.py`.
+### 5. Stream Safety Guards & Duplicate Tool Call Shield (`orchestrator/core.py`) [RESOLVED]
+- **Status**: ✅ **RESOLVED in v38.2.5**
+- **Fix**: Integrated `StepPlanner` budgeting, 4-call duplicate tool call detection/interception, and 4KB output truncation in streaming mode.
 
-### 5. Synchronous WebSocket Broadcast Queue (`server.py`)
-- **Issue**: `WSBroadcastStream` broadcasts stdout to WebSocket clients synchronously; slow or disconnected clients can block process stdout.
-- **Refactoring Strategy**: Replace direct WebSocket sends with an asynchronous non-blocking background queue (`asyncio.Queue`).
+### 6. Input Sanitization & URL Scheme Protection (`core/intent_engine.py`) [RESOLVED]
+- **Status**: ✅ **RESOLVED in v38.2.5**
+- **Fix**: Replaced shell execution `os.system()` with `subprocess.Popen()` and enforced URL scheme whitelisting (blocking `javascript:`, `file:`, `data:`, `vbscript:` schemes).
+
+### 7. Centralized API Key Loading (`config/__init__.py`) [RESOLVED]
+- **Status**: ✅ **RESOLVED in v38.2.5**
+- **Fix**: Centralized Gemini API key loading into `config.get_gemini_api_key()` across backends, vector store, and live OS control.
+

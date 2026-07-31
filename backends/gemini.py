@@ -15,27 +15,7 @@ from typing import Generator
 from backends.base import BaseBackend
 
 
-def _load_api_key() -> str:
-    """Load Gemini API key from env or config/api_keys.json."""
-    for env in ("GEMINI_API_KEY", "GOOGLE_API_KEY"):
-        val = os.environ.get(env, "").strip()
-        if val:
-            return val
-
-    cfg_path = Path(__file__).parent.parent / "config" / "api_keys.json"
-    if cfg_path.exists():
-        try:
-            data = json.loads(cfg_path.read_text(encoding="utf-8"))
-            key = data.get("gemini_api_key", "").strip()
-            if key:
-                return key
-        except Exception:
-            pass
-
-    raise ValueError(
-        "No Gemini API key found.\n"
-        "Set GEMINI_API_KEY env var OR add 'gemini_api_key' to config/api_keys.json"
-    )
+from config import get_gemini_api_key as _load_api_key
 
 
 class GeminiBackend(BaseBackend):
@@ -185,11 +165,19 @@ class GeminiBackend(BaseBackend):
                         c = msg.get("content")
                         if c: contents.append({"role": role, "parts": [{"text": str(c)}]})
                     if not contents: contents = [{"role": "user", "parts": [{"text": "Hello"}]}]
-                    resp = direct_client.models.generate_content(model="gemini-2.5-flash", contents=contents)
+                    cfg_kwargs = {}
+                    if system and system.strip():
+                        cfg_kwargs["system_instruction"] = system.strip()
+                    resp = direct_client.models.generate_content(
+                        model="gemini-2.5-flash",
+                        contents=contents,
+                        config=cfg_kwargs if cfg_kwargs else None
+                    )
                     return resp.text or ""
                 except Exception as ex_direct:
                     print(f"[Gemini Direct Fallback Error]: {ex_direct}")
-                    raise e
+                    # Return error string gracefully instead of crashing ReAct loop
+                    return f"ERROR: Proxy gateway and direct Gemini fallback both unavailable ({e})"
 
         # Direct Google client path
         contents = []

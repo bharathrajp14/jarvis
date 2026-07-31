@@ -63,7 +63,8 @@ class DeterministicIntentEngine:
         for exe in executables:
             if exe.startswith("ms-"):
                 try:
-                    os.system(f"start {exe}")
+                    # Use subprocess instead of os.system to avoid shell injection
+                    subprocess.Popen(["cmd", "/c", "start", exe], shell=False)
                     return True
                 except Exception:
                     pass
@@ -81,6 +82,15 @@ class DeterministicIntentEngine:
     @classmethod
     def open_url_in_browser(cls, url: str, browser_name: str = "") -> bool:
         """Open a URL in a specific browser (Brave, Chrome, Edge, Firefox) or fallback to default."""
+        # Validate URL scheme to prevent file:// and javascript: injection
+        _SAFE_SCHEMES = ("http://", "https://")
+        url = url.strip()
+        if not url.startswith(_SAFE_SCHEMES):
+            if not url.startswith(("file:", "javascript:", "data:", "vbscript:")):
+                url = f"https://{url}"
+            else:
+                return False  # Block dangerous URL schemes
+
         target = (browser_name or "").lower().strip()
         
         if "brave" in target:
@@ -1587,6 +1597,138 @@ class DeterministicIntentEngine:
                     "target": url,
                     "result": f"Searching Wikipedia for '{query}' (0-Token Execution).",
                     "tokens_saved": 2200,
+                }
+            except Exception:
+                pass
+
+        # 9. Match Compound Multi-Channel Intents & Standalone WhatsApp / Email Intents
+        WA_KW = r"(?:whats?\s*app|wats?\s*app|wapp)"
+        MAIL_KW = r"(?:g\s*mail|email|mail)"
+
+        # 9a. Dual-Channel: "Say hi (to) dharani in watsapp and gmail" or "Send hello (to) mom on whatsapp and email"
+        dual_say_match = re.search(rf"^(?:say|send|tell|text|mail)\s+(.+?)\s+(?:to\s+)?(.+?)\s+(?:in|on|via|through)\s+{WA_KW}\s+(?:and|&)\s+{MAIL_KW}\b", clean)
+        if not dual_say_match:
+            dual_say_match = re.search(rf"^(?:say|send|tell|text|mail)\s+(.+?)\s+(?:to\s+)?(.+?)\s+(?:in|on|via|through)\s+{MAIL_KW}\s+(?:and|&)\s+{WA_KW}\b", clean)
+
+        if dual_say_match:
+            msg_text = dual_say_match.group(1).strip()
+            recipient = dual_say_match.group(2).strip()
+            results = []
+            try:
+                from actions.whatsapp_automation import get_whatsapp_automation
+                wa = get_whatsapp_automation()
+                wa_res = wa.send_message(recipient=recipient, message_text=msg_text)
+                results.append(f"WhatsApp: {wa_res}")
+            except Exception as e:
+                results.append(f"WhatsApp error: {e}")
+
+            try:
+                from actions.smart_email_sender import SmartEmailSender
+                es = SmartEmailSender()
+                subj = msg_text.title() if len(msg_text) < 30 else "Message from JARVIS"
+                em_res = es.send_email(recipient=recipient, subject=subj, body=msg_text)
+                results.append(f"Gmail: {em_res}")
+            except Exception as e:
+                results.append(f"Gmail error: {e}")
+
+            return {
+                "executed": True,
+                "intent": "multi_channel_send",
+                "target": recipient,
+                "result": " | ".join(results) + " (0-Token Multi-Channel Execution)",
+                "tokens_saved": 4000,
+            }
+
+        # 9b. Standalone Email / Gmail Intents
+        email_say_match = re.search(rf"^(?:say|send|tell|mail)\s+(.+?)\s+(?:to\s+)?(.+?)\s+(?:in|on|via|through)\s+{MAIL_KW}\b", clean)
+        if email_say_match:
+            msg_text = email_say_match.group(1).strip()
+            recipient = email_say_match.group(2).strip()
+            try:
+                from actions.smart_email_sender import SmartEmailSender
+                es = SmartEmailSender()
+                subj = msg_text.title() if len(msg_text) < 30 else "Message from JARVIS"
+                em_res = es.send_email(recipient=recipient, subject=subj, body=msg_text)
+                return {
+                    "executed": True,
+                    "intent": "email_send",
+                    "target": recipient,
+                    "result": f"{em_res} (0-Token Instant Execution)",
+                    "tokens_saved": 2500,
+                }
+            except Exception:
+                pass
+
+        email_send_match = re.search(rf"^send\s+(?:an?\s+)?{MAIL_KW}\s+(?:to\s+)?(.+?)\s*(?:saying|with|:)\s*(.+)$", clean)
+        if email_send_match:
+            recipient = email_send_match.group(1).strip()
+            msg_text = email_send_match.group(2).strip()
+            try:
+                from actions.smart_email_sender import SmartEmailSender
+                es = SmartEmailSender()
+                subj = msg_text.title() if len(msg_text) < 30 else "Message from JARVIS"
+                em_res = es.send_email(recipient=recipient, subject=subj, body=msg_text)
+                return {
+                    "executed": True,
+                    "intent": "email_send",
+                    "target": recipient,
+                    "result": f"{em_res} (0-Token Instant Execution)",
+                    "tokens_saved": 2500,
+                }
+            except Exception:
+                pass
+
+        # 9c. Standalone WhatsApp Instant Message Intents
+        wa_say_match = re.search(rf"^(?:say|send|tell|text)\s+(.+?)\s+(?:to\s+)?(.+?)\s+(?:in|on|via)\s+{WA_KW}\b", clean)
+        if wa_say_match:
+            msg_text = wa_say_match.group(1).strip()
+            recipient = wa_say_match.group(2).strip()
+            try:
+                from actions.whatsapp_automation import get_whatsapp_automation
+                wa = get_whatsapp_automation()
+                res = wa.send_message(recipient=recipient, message_text=msg_text)
+                return {
+                    "executed": True,
+                    "intent": "whatsapp_send",
+                    "target": recipient,
+                    "result": f"{res} (0-Token Instant Execution)",
+                    "tokens_saved": 2500,
+                }
+            except Exception:
+                pass
+
+        wa_send_match = re.search(rf"^send\s+(?:a\s+)?{WA_KW}\s+(?:message\s+)?(?:to\s+)?(.+?)\s*(?:saying|with|:)\s*(.+)$", clean)
+        if wa_send_match:
+            recipient = wa_send_match.group(1).strip()
+            msg_text = wa_send_match.group(2).strip()
+            try:
+                from actions.whatsapp_automation import get_whatsapp_automation
+                wa = get_whatsapp_automation()
+                res = wa.send_message(recipient=recipient, message_text=msg_text)
+                return {
+                    "executed": True,
+                    "intent": "whatsapp_send",
+                    "target": recipient,
+                    "result": f"{res} (0-Token Instant Execution)",
+                    "tokens_saved": 2500,
+                }
+            except Exception:
+                pass
+
+        wa_colon_match = re.search(rf"^{WA_KW}\s+(?:message\s+)?(?:to\s+)?(.+?)\s*(?:saying|with|:)\s*(.+)$", clean)
+        if wa_colon_match:
+            recipient = wa_colon_match.group(1).strip()
+            msg_text = wa_colon_match.group(2).strip()
+            try:
+                from actions.whatsapp_automation import get_whatsapp_automation
+                wa = get_whatsapp_automation()
+                res = wa.send_message(recipient=recipient, message_text=msg_text)
+                return {
+                    "executed": True,
+                    "intent": "whatsapp_send",
+                    "target": recipient,
+                    "result": f"{res} (0-Token Instant Execution)",
+                    "tokens_saved": 2500,
                 }
             except Exception:
                 pass

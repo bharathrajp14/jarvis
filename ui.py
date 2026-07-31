@@ -1485,23 +1485,28 @@ class JarvisUI:
     # ══════════════════════════════════════════════════════════════════════
 
     def set_state(self, state: str):
-        self._prev_state = self._state
-        self._state      = state
-        if state == "MUTED":
-            self.speaking = False
-        elif state == "SPEAKING":
-            self.speaking = True
-        elif state == "THINKING":
-            self.speaking = False
-        elif state == "LISTENING":
-            self.speaking = False
-            if self._is_sleeping:
-                self.root.after_idle(self._wake_up_from_sleep_orb)
-        elif state == "PROCESSING":
-            self.speaking = False
-        else:
-            self.speaking = False
-        self.status_text = state
+        def _apply():
+            self._prev_state = self._state
+            self._state      = state
+            if state == "MUTED":
+                self.speaking = False
+            elif state == "SPEAKING":
+                self.speaking = True
+            elif state == "THINKING":
+                self.speaking = False
+            elif state == "LISTENING":
+                self.speaking = False
+                if self._is_sleeping:
+                    self._wake_up_from_sleep_orb()
+            elif state == "PROCESSING":
+                self.speaking = False
+            else:
+                self.speaking = False
+            self.status_text = state
+        try:
+            self.root.after_idle(_apply)
+        except Exception:
+            _apply()
 
     def write_log(self, text: str):
         ts = time.strftime("[%H:%M:%S]  ")

@@ -54,9 +54,9 @@ except ImportError:
 
 # ── Constants ────────────────────────────────────────────────────────────────
 
-VERSION = "37.5.0"
-BUILD   = "2026-07-21"
-CODENAME = "MARK XXXVII"
+VERSION = "38.0.0"
+BUILD   = "2026-07-31"
+CODENAME = "MARK XXXVIII"
 
 BASE_DIR = Path(__file__).resolve().parent
 PYTHON   = sys.executable
@@ -273,7 +273,7 @@ def _install_playwright_browsers():
 
 def doctor(auto_confirm: bool = False):
     _banner()
-    console.print("[bold magenta]⚡ JARVIS MK37 Advanced System Doctor & Self-Healing Repair Engine ⚡[/]\n")
+    console.print("[bold magenta]⚡ JARVIS MK38 Advanced System Doctor & Self-Healing Repair Engine ⚡[/]\n")
 
     if not sys.stdin.isatty():
         auto_confirm = True
@@ -306,8 +306,11 @@ def doctor(auto_confirm: bool = False):
         "chromadb": "chromadb",
         "anthropic": "anthropic",
         "python-docx": "docx",
+        "pypdf": "pypdf",
         "fpdf2": "fpdf",
         "openpyxl": "openpyxl",
+        "keyboard": "keyboard",
+        "cryptography": "cryptography",
     }
     
     missing_pip: list[tuple[str, str]] = []
@@ -467,6 +470,19 @@ def doctor(auto_confirm: bool = False):
         console.print(f"  [green]✓ Tool Registry:[/] {len(TOOL_SCHEMAS)} registered tool definitions")
     except Exception as tl_err:
         console.print(f"  [yellow]⚠ Tool Registry note: {tl_err}[/]")
+
+    try:
+        from memory.contact_manager import get_contact_store
+        c_store = get_contact_store()
+        console.print(f"  [green]✓ Mobile Contacts Store:[/] {c_store.get_count()} contacts loaded (.vcf/.csv parser active)")
+    except Exception as cs_err:
+        console.print(f"  [yellow]⚠ Mobile Contacts Store note: {cs_err}[/]")
+
+    try:
+        from actions.file_importer import import_file_to_knowledge
+        console.print(f"  [green]✓ Multi-File Knowledge Importer:[/] Ingestion engine active (.pdf, .docx, .txt, .md, .csv, .vcf)")
+    except Exception as fi_err:
+        console.print(f"  [yellow]⚠ Knowledge Importer note: {fi_err}[/]")
 
     console.print()
 

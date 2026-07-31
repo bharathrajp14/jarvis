@@ -83,23 +83,7 @@ class GeminiEmbeddingFunction(_BaseClass):
         return embeddings
 
 
-def _load_api_key() -> str:
-    """Load Gemini API key from env or config/api_keys.json."""
-    for env in ("GEMINI_API_KEY", "GOOGLE_API_KEY"):
-        val = os.environ.get(env, "").strip()
-        if val:
-            return val
-
-    cfg_path = Path(__file__).resolve().parent.parent / "config" / "api_keys.json"
-    if cfg_path.exists():
-        try:
-            data = json.loads(cfg_path.read_text(encoding="utf-8"))
-            key = data.get("gemini_api_key", "").strip()
-            if key:
-                return key
-        except Exception:
-            pass
-    return ""
+from config import get_gemini_api_key as _load_api_key
 
 
 class TextSimilarityMemory:

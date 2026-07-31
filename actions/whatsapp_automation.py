@@ -85,16 +85,25 @@ class WhatsAppAutomation:
         rec_clean = recipient.strip()
         rec_lower = rec_clean.lower()
 
-        # Check saved contacts dictionary
+        # 1. Primary UnifiedContactStore lookup (vCard contacts, relationship synonyms "Appa", "Amma", "Dad", "Mom")
+        try:
+            from memory.contact_manager import get_contact_store
+            store = get_contact_store()
+            match = store.resolve_name(rec_clean)
+            if match and match.get("phone_number"):
+                return match["name"], match["phone_number"]
+        except Exception as e:
+            logger.debug(f"UnifiedContactStore resolution error: {e}")
+
+        # 2. Local fallback contacts dictionary
         if rec_lower in self._contacts:
             return rec_clean, self._contacts[rec_lower]
 
-        # Partial matching for contact names
         for c_name, c_phone in self._contacts.items():
             if rec_lower in c_name or c_name in rec_lower:
                 return c_name.title(), c_phone
 
-        # If it's pure numbers/phone format
+        # 3. Direct numeric phone format
         digits = re.sub(r"[^\d+]", "", rec_clean)
         if len(digits) >= 7:
             return rec_clean, digits
@@ -124,15 +133,16 @@ class WhatsAppAutomation:
 
             if open_browser:
                 try:
-                    # Use native Windows ShellExecute / webbrowser without cmd.exe & splitting
                     if os.name == "nt":
                         try:
+                            os.startfile(whatsapp_uri)
+                        except Exception:
                             os.startfile(whatsapp_url)
+                    else:
+                        try:
+                            webbrowser.open(whatsapp_uri)
                         except Exception:
                             webbrowser.open(whatsapp_url)
-                    else:
-                        webbrowser.open(whatsapp_url)
-                    time.sleep(1.5)
                     return f"✅ Opened WhatsApp to send message to {display_name} ({clean_num})."
                 except Exception as e:
                     webbrowser.open(whatsapp_url)

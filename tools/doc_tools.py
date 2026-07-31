@@ -18,12 +18,12 @@ from typing import Any
 from tools.registry import register_tool
 
 try:
-    import docx
-    from docx.shared import Inches, Pt, RGBColor
-    from docx.enum.text import WD_ALIGN_PARAGRAPH
-    from docx.enum.table import WD_TABLE_ALIGNMENT
-    from docx.oxml import OxmlElement
-    from docx.oxml.ns import qn
+    import docx  # type: ignore
+    from docx.shared import Inches, Pt, RGBColor  # type: ignore
+    from docx.enum.text import WD_ALIGN_PARAGRAPH  # type: ignore
+    from docx.enum.table import WD_TABLE_ALIGNMENT  # type: ignore
+    from docx.oxml import OxmlElement  # type: ignore
+    from docx.oxml.ns import qn  # type: ignore
     _DOCX_AVAILABLE = True
 except ImportError:
     _DOCX_AVAILABLE = False
@@ -368,6 +368,19 @@ def _build_executive_docx(title: str, subtitle: str, author: str, content: str, 
     return str(out_path)
 
 
+def _pdf_cell(pdf, w, h, text="", ln=False, align="L"):
+    """Helper for fpdf2 / fpdf compatibility."""
+    try:
+        if ln:
+            pdf.cell(w, h, text=text, align=align, new_x="LMARGIN", new_y="NEXT")
+        else:
+            pdf.cell(w, h, text=text, align=align)
+    except Exception:
+        try:
+            pdf.cell(w, h, txt=text, ln=ln, align=align)
+        except Exception:
+            pdf.cell(w, h, text)
+
 # ── Advanced PDF Builder ───────────────────────────────────────────────────
 def _build_executive_pdf(title: str, subtitle: str, author: str, content: str, out_path: Path) -> str:
     """Build a styled PDF document using FPDF."""
@@ -376,12 +389,12 @@ def _build_executive_pdf(title: str, subtitle: str, author: str, content: str, o
     
     # Title
     pdf.set_font("Helvetica", size=18, style="B")
-    pdf.cell(0, 10, txt=title.encode("latin-1", "replace").decode("latin-1"), ln=True, align="L")
+    _pdf_cell(pdf, 0, 10, text=title.encode("latin-1", "replace").decode("latin-1"), ln=True, align="L")
     
     if subtitle:
         pdf.set_font("Helvetica", size=11, style="I")
         pdf.set_text_color(100, 110, 120)
-        pdf.cell(0, 8, txt=subtitle.encode("latin-1", "replace").decode("latin-1"), ln=True, align="L")
+        _pdf_cell(pdf, 0, 8, text=subtitle.encode("latin-1", "replace").decode("latin-1"), ln=True, align="L")
         pdf.set_text_color(0, 0, 0)
     pdf.ln(6)
 
@@ -395,12 +408,12 @@ def _build_executive_pdf(title: str, subtitle: str, author: str, content: str, o
         if line_clean.startswith("# "):
             pdf.ln(4)
             pdf.set_font("Helvetica", size=14, style="B")
-            pdf.cell(0, 8, txt=line_clean[2:], ln=True)
+            _pdf_cell(pdf, 0, 8, text=line_clean[2:], ln=True)
             pdf.ln(2)
         elif line_clean.startswith("## "):
             pdf.ln(3)
             pdf.set_font("Helvetica", size=12, style="B")
-            pdf.cell(0, 7, txt=line_clean[3:], ln=True)
+            _pdf_cell(pdf, 0, 7, text=line_clean[3:], ln=True)
             pdf.ln(2)
         elif line_clean.startswith("- ") or line_clean.startswith("* "):
             pdf.set_font("Helvetica", size=10)
@@ -558,8 +571,11 @@ def document_creator(args: dict) -> str:
 )
 def create_word_document(args: dict) -> str:
     """Create Word document via document_creator engine."""
-    args["format"] = "docx"
-    return document_creator(args)
+    args_copy = dict(args) if isinstance(args, dict) else {}
+    args_copy["format"] = "docx"
+    if not args_copy.get("content"):
+        args_copy["content"] = args_copy.get("title", "Document Content")
+    return document_creator(args_copy)
 
 
 @register_tool(
@@ -578,8 +594,11 @@ def create_word_document(args: dict) -> str:
 )
 def create_pdf_document(args: dict) -> str:
     """Create PDF document via document_creator engine."""
-    args["format"] = "pdf"
-    return document_creator(args)
+    args_copy = dict(args) if isinstance(args, dict) else {}
+    args_copy["format"] = "pdf"
+    if not args_copy.get("content"):
+        args_copy["content"] = args_copy.get("title", "Document Content")
+    return document_creator(args_copy)
 
 
 @register_tool(

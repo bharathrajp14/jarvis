@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import threading
 from dataclasses import dataclass
 from typing import Optional
 
@@ -19,27 +20,49 @@ class AssistantRuntime:
     event_bus: Optional[EventBus] = None
 
 
+# ── Singleton Guard ──────────────────────────────────────────────────────────
+_runtime_instance: AssistantRuntime | None = None
+_runtime_lock = threading.Lock()
+
+
 def build_assistant_runtime(*, use_vector_memory: bool = True) -> AssistantRuntime:
-    """Create the shared backend/router/orchestrator stack for BR entry points with CoreRuntime & EventBus integration."""
-    core_runtime = get_runtime()
-    event_bus = get_event_bus()
+    """Create or return the shared singleton backend/router/orchestrator stack.
 
-    backends = load_available_backends()
-    router = AgentRouter(backends)
-    orchestrator = JarvisOrchestrator(router, use_vector_memory=use_vector_memory)
+    Thread-safe: multiple entry points (voice thread, server lifespan, CLI)
+    will all receive the same AssistantRuntime instance, preventing duplicate
+    backend connections, split working memory, and invisible event buses.
+    """
+    global _runtime_instance
 
-    # Register components in container
-    core_runtime.container.register_instance(AgentRouter, router)
-    core_runtime.container.register_instance(JarvisOrchestrator, orchestrator)
-    core_runtime.container.register_instance(EventBus, event_bus)
+    # Fast path — already built (no lock needed for read of immutable ref)
+    if _runtime_instance is not None:
+        return _runtime_instance
 
-    # Publish system startup event
-    event_bus.publish(SystemEvent(topic="system.startup", state="RUNNING", payload={"backends_count": len(backends)}))
+    with _runtime_lock:
+        # Double-checked locking
+        if _runtime_instance is not None:
+            return _runtime_instance
 
-    return AssistantRuntime(
-        backends=backends,
-        router=router,
-        orchestrator=orchestrator,
-        core_runtime=core_runtime,
-        event_bus=event_bus,
-    )
+        core_runtime = get_runtime()
+        event_bus = get_event_bus()
+
+        backends = load_available_backends()
+        router = AgentRouter(backends)
+        orchestrator = JarvisOrchestrator(router, use_vector_memory=use_vector_memory)
+
+        # Register components in container
+        core_runtime.container.register_instance(AgentRouter, router)
+        core_runtime.container.register_instance(JarvisOrchestrator, orchestrator)
+        core_runtime.container.register_instance(EventBus, event_bus)
+
+        # Publish system startup event
+        event_bus.publish(SystemEvent(topic="system.startup", state="RUNNING", payload={"backends_count": len(backends)}))
+
+        _runtime_instance = AssistantRuntime(
+            backends=backends,
+            router=router,
+            orchestrator=orchestrator,
+            core_runtime=core_runtime,
+            event_bus=event_bus,
+        )
+        return _runtime_instance

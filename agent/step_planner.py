@@ -93,18 +93,20 @@ class StepPlanner:
                 "Verify correctness and synthesize final answer",
             ]
         else:
-            initial_budget = 6
-            max_ceiling = 40
+            initial_budget = 3
+            max_ceiling = 20
             complexity = "LOW"
             steps = [
-                "Process direct user query or instant action",
-                "Synthesize concise response",
+                "Execute direct user action or response",
             ]
+
+        is_fast_path = complexity == "LOW" or any(k in g_low for k in ["whatsapp", "hello", "call", "open", "status", "say", "email"])
 
         return {
             "goal": goal,
             "complexity": complexity,
             "initial_budget": initial_budget,
+            "is_fast_path": is_fast_path,
             "steps": steps,
             "budget_controller": AdaptiveStepBudget(initial_budget=initial_budget, max_ceiling=max_ceiling),
         }

@@ -562,18 +562,11 @@ class BRVoiceAssistant:
                             )
                         )
 
-                        # ⚡ Play soft double micro-beep as soon as voice is detected
-                        try:
-                            from voice.sound_effects import play_voice_detected_beep
-                            play_voice_detected_beep()
-                        except Exception:
-                            pass
-
                         # ⚡ ULTRAFAST wake decoding
                         text = await self._transcribe_wake(audio)
 
                         if self._is_wake_phrase(text):
-                            # Instant audio feedback & listening HUD trigger
+                            # Instant soft audio feedback & listening HUD trigger when wake word is listened & detected
                             self._play_listening_chime()
                             self.ui.set_state("LISTENING")
                             self.ui.write_log("SYS: 🎙️ Wake word detected. Active listening mode...")

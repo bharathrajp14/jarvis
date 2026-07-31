@@ -2,7 +2,7 @@
 
 > **Document Status**: Active Production Task Backlog  
 > **Scope**: Feature Engineering, Bug Resolutions, Modular Refactoring, Security Hardening, & Multi-Agent Swarm  
-> **Last Updated**: July 2026 (MK38.2.0 Release & Active Maintenance Backlog)  
+> **Last Updated**: July 2026 (MK38.2.5 Release & Active Maintenance Backlog)  
 
 ---
 
@@ -12,10 +12,10 @@
 |---|---|---|---|---|
 | 🚀 **MK38 Core Cognitive Upgrades** | 5 | 5 | 0 | All P0 Completed ✅ |
 | 🚀 **MK37 Core Upgrades** | 12 | 12 | 0 | All P0/P1 Completed ✅ |
-| 🔴 **Active Bug Fixes (BUG-001 to BUG-012)** | 12 | 12 | 0 | All P0/P1 Resolved & Verified ✅ |
+| 🔴 **Active Bug Fixes (BUG-001 to BUG-018)** | 18 | 18 | 0 | All P0/P1 Resolved & Verified ✅ |
 | 🧠 **Phase 7: Advanced Autonomy & Swarm** | 4 | 0 | 4 | 2 High (P0), 2 Medium (P1) |
-| 🧹 **Phase 8: Modularization & Tech Debt** | 4 | 0 | 4 | 2 High (P0), 2 Medium (P1) |
-| 🛡️ **Phase 9: Security & Autonomy Audit** | 3 | 0 | 3 | 1 High (P0), 2 Medium (P1) |
+| 🧹 **Phase 8: Modularization & Tech Debt** | 4 | 4 | 0 | All Completed ✅ |
+| 🛡️ **Phase 9: Security & Autonomy Audit** | 3 | 3 | 0 | All Completed ✅ |
 
 ---
 

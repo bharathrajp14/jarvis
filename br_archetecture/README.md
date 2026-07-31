@@ -1,6 +1,6 @@
 # 🧠 BR JARVIS — Engineering Knowledge Base Index
 
-Welcome to the **BR JARVIS (Project BR / JARVIS MK37)** Engineering Knowledge Base. This directory serves as the persistent architectural brain, technical documentation, and long-term design memory for the BR JARVIS AI Operating System (Version 37.31.0).
+Welcome to the **BR JARVIS (Project BR / JARVIS MK37 & MK38)** Engineering Knowledge Base. This directory serves as the persistent architectural brain, technical documentation, and long-term design memory for the BR JARVIS AI Operating System (Version 38.2.5 / v37.5.0).
 
 ---
 
@@ -12,8 +12,8 @@ br_archetecture/
 ├── fullproject.md                     # Master Full Project Specification & Architecture
 ├── PROJECT_VISION.md                  # Project BR vision, philosophy & objectives
 ├── ROADMAP.md                         # Multi-phase development roadmap & milestone status
-├── CHANGELOG.md                       # Architectural execution changelog (v37.31.0)
-├── full_repository_audit.md           # Deep engineering audit report & bug tracking (BUG-001 to BUG-012)
+├── CHANGELOG.md                       # Architectural execution changelog (v38.2.5 / v37.5.0)
+├── full_repository_audit.md           # Deep engineering audit report & bug tracking (BUG-001 to BUG-018)
 ├── architecture/
 │   ├── ARCHITECTURE.md                # System topology, data flow & component graph
 │   └── PROJECT_STRUCTURE.md            # Codebase directory mapping (~180 Python files, 30+ packages)
@@ -55,38 +55,32 @@ br_archetecture/
 
 ---
 
-## 🚀 Key Architectural Innovations in MK38 (v38.2.0)
+## 🚀 Key Architectural Innovations in MK38 (v38.2.5)
 
-1. **Meta-Cognition Engine & Pre-Execution Risk Assessment (`reasoning/meta_cognition.py`)**:
+1. **Thread-Safe Runtime Singleton (`core/bootstrap.py`)**:
+   - Thread-safe double-checked locking mechanism (`threading.Lock`) ensuring GUI, CLI, and Web Server share a unified working memory, router, and event bus.
+2. **Permission System & Enforced Policy (`permissions.py` & `tools/registry.py`)**:
+   - Implemented `CONFIRM_DESTRUCTIVE` permission mode with `DESTRUCTIVE_TOOLS` filter set and direct pre-execution checking in `execute_tool()`.
+3. **Web Server Security Hardening (`server.py`)**:
+   - Default localhost binding (`127.0.0.1`), explicit CORS origin whitelist, lifespan-deferred WebSocket log broadcasting, and `_CHAT_LOCK` thread serialization for API requests.
+4. **Chat Stream Safety & Duplicate-Call Guard (`orchestrator/core.py`)**:
+   - StepPlanner step budgeting, 4-call duplicate tool call detection/interception, and 4KB output truncation in streaming mode.
+5. **PyAutoGUI Failsafe Protection (`actions/live_os_control.py` & `actions/game_updater.py`)**:
+   - Default screen corner failsafe protection enabled by default, configurable via `JARVIS_DISABLE_FAILSAFE=true`.
+6. **Input Sanitization & URL Scheme Protection (`core/intent_engine.py`)**:
+   - Replaced `os.system()` with shell-free `subprocess.Popen()` and enforced URL scheme whitelisting (blocking `javascript:`, `file:`, `data:`, `vbscript:` schemes).
+7. **Dynamic App Connector Telemetry (`server.py`)**:
+   - Real-time status lookup against `TOOL_REGISTRY` returning `CONNECTED` or `NOT_CONFIGURED` based on registered tool functions.
+8. **Centralized API Key Resolution (`config/__init__.py`)**:
+   - Single authoritative `get_gemini_api_key()` utility consumed by backends, memory, and actions.
+9. **Meta-Cognition Engine & Pre-Execution Risk Assessment (`reasoning/meta_cognition.py`)**:
    - Evaluates goal confidence ($0.0 \text{ to } 1.0$), CoT step depth, missing context, and risk levels (`LOW`, `MEDIUM`, `HIGH`, `CRITICAL`) with destructive action interception.
-2. **Speculative Drafting & Execution Engine (`reasoning/speculative.py`, `orchestrator/speculative.py`)**:
+10. **Speculative Drafting & Execution Engine (`reasoning/speculative.py`, `orchestrator/speculative.py`)**:
    - Generates speculative draft tool calls using fast deterministic rules and parallel validation, accelerating tool execution loops by up to 60%.
-3. **Trajectory Experience Replay Database (`memory/experience_replay.py`)**:
+11. **Trajectory Experience Replay Database (`memory/experience_replay.py`)**:
    - SQLite WAL database persisting execution trajectories (`trajectory_id`, `goal_query`, `success_status`, `step_count`, `tool_sequence`, `failure_reason`) and similarity pattern retrieval (`get_similar_failures()`).
-4. **Temporal Knowledge Graph 2.0 (`memory/temporal_kg.py`)**:
+12. **Temporal Knowledge Graph 2.0 (`memory/temporal_kg.py`)**:
    - Time-stamped relational edge world model $(e_1, r, e_2, t_{\text{start}}, t_{\text{end}})$ supporting point-in-time snapshot queries (`query_as_of`).
-5. **Semantic Workspace Code Intelligence Graph (`workspace/code_graph.py`)**:
-   - AST code structure indexer providing zero-token symbol definition resolution (`find_definition`) and reference lookups (`find_references`).
-6. **Closed-Loop Cognitive Cycle & Verification Engine (`reasoning/cognitive_loop.py` & `agent/critic_agent.py`)**:
-   - Explicit `Observe -> Think -> Critic -> Improve -> Retry` evaluation cycle generating structured `SelfEvaluationPayload` metrics (`confidence_score`, `reasoning_depth`, `failure_risk`).
-4. **Multi-Objective Model Router (`router.py`)**:
-   - Multi-objective optimization router selecting backends by balancing Quality, Token Cost, and Latency.
-5. **Ebbinghaus Memory Decay Engine (`memory/decay.py`)**:
-   - Dynamic retention decay engine scoring memory items and partitioning them into `RETAIN`, `ARCHIVE`, and `PRUNE` categories.
-6. **Ultra-Fast Silero VAD Voice Subsystem (`voice/silero_vad.py`)**:
-   - High-precision ONNX Silero VAD acoustic segmenter eliminating silence noise and clipping (<10ms latency).
-7. **Zero-Disk Whisper Audio Streaming (`voice/whisper_local.py`)**:
-   - Pure in-memory audio byte buffer ASR transcription with RMS acoustic silence gating and hallucination suppression.
-8. **CDP DOM Bridge Vision Tier (`vision/dom_bridge.py`)**:
-   - Tier 2 CDP Chrome/Edge Browser accessibility DOM inspection bridge for instant element extraction without visual snapshot reliance.
-9. **Antigravity Scratchpad Subsystem (`agent/scratchpad.py` & `tools/scratchpad_tools.py`)**:
-   - Isolated workspace at `./scratch/` for transient scripts in Python, Node.js, PowerShell, and Bash with stdout/stderr capture via `scratchpad_eval`.
-10. **Autonomous Planning Mode & GFM Artifact Engine (`agent/planning_mode.py` & `agent/artifacts.py`)**:
-    - Dynamic task complexity classifier (`warrants_plan`), `implementation_plan.md` & `walkthrough.md` generation with GitHub-style alerts (`> [!IMPORTANT]`, `> [!NOTE]`), Mermaid diagrams, and clickable `file:///` URIs.
-8. **50+ Zero-Token Deterministic Intent Engine (`core/intent_engine.py`)**:
-   - Zero-token intent triggers covering Git status/branch, RAM flush, CPU telemetry, display resolution, battery stats, network ping, and active window state with <5ms latency.
-9. **7-Tier Hybrid Vision Engine (`vision/`)**:
-   - Combines Tier 1 Windows Accessibility API (`accessibility.py`), Tier 2 CDP Browser DOM Bridge (`dom_bridge.py`), and Tesseract OCR into a unified `SemanticUIGraph`.
 
 ---
 

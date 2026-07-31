@@ -1,16 +1,23 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="BR JARVIS — AI Desktop Operating System: Master Product, UI, UX, Performance, and Voice Interface.">
+    <meta name="description"
+        content="BR JARVIS — AI Desktop Operating System: Master Product, UI, UX, Performance, and Voice Interface.">
     <link rel="manifest" href="/web/manifest.json">
-    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230b0f19'/><text y='.85em' x='10' font-size='70'>🧠</text></svg>">
+    <link rel="apple-touch-icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%230b0f19'/><text y='.85em' x='10' font-size='70'>🧠</text></svg>">
     <title>BR JARVIS — AI Desktop Operating System</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧠</text></svg>">
-    <link rel="stylesheet" href="/web/style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧠</text></svg>">
+    <link rel="stylesheet" href="/web/style.css?v=38.2.8">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap"
+        rel="stylesheet">
 </head>
+
 <body class="theme-graphite">
     <!-- Visual background layers -->
     <div class="glow-bg"></div>
@@ -77,7 +84,7 @@
 
         <!-- ── MAIN 3-PANEL LAYOUT ── -->
         <main class="os-body">
-            
+
             <!-- LEFT PANEL: Navigation & Workspaces -->
             <aside class="os-panel left-panel">
                 <div class="nav-section">
@@ -103,6 +110,9 @@
                         </button>
                         <button class="nav-item" data-view="knowledgeView">
                             <span class="icon">📚</span> Knowledge RAG
+                        </button>
+                        <button class="nav-item" data-view="contactsView">
+                            <span class="icon">📱</span> Contacts & People
                         </button>
                         <button class="nav-item" data-view="connectorsView">
                             <span class="icon">🔗</span> App Connectors Hub
@@ -144,7 +154,7 @@
 
             <!-- CENTER PANEL: Primary Workspace & Views -->
             <section class="os-panel center-panel">
-                
+
                 <!-- VIEW 1: DASHBOARD HOME -->
                 <div class="view-container active" id="dashboardView">
                     <div class="dashboard-grid">
@@ -154,11 +164,15 @@
                                 <span class="badge">LIVE</span>
                             </div>
                             <div class="brief-content">
-                                <p class="greeting">Welcome back, Sir. All 15 subsystems are initialized and operating within performance budgets.</p>
+                                <p class="greeting">Welcome back, Sir. All 15 subsystems are initialized and operating
+                                    within performance budgets.</p>
                                 <div class="brief-stats">
-                                    <div class="stat"><span class="num">42/42</span><span class="label">Audit Tests Passed</span></div>
-                                    <div class="stat"><span class="num">0.2ms</span><span class="label">Intent Engine Latency</span></div>
-                                    <div class="stat"><span class="num">90+</span><span class="label">Active Tool Plugins</span></div>
+                                    <div class="stat"><span class="num">42/42</span><span class="label">Audit Tests
+                                            Passed</span></div>
+                                    <div class="stat"><span class="num">0.2ms</span><span class="label">Intent Engine
+                                            Latency</span></div>
+                                    <div class="stat"><span class="num">90+</span><span class="label">Active Tool
+                                            Plugins</span></div>
                                 </div>
                             </div>
                         </div>
@@ -168,9 +182,12 @@
                                 <h3>⚡ Instant Actions</h3>
                             </div>
                             <div class="action-buttons">
-                                <button class="act-btn" onclick="executeQuickCommand('open excel')">📊 Launch Excel Report</button>
-                                <button class="act-btn" onclick="executeQuickCommand('run system audit')">🔍 Run System Audit</button>
-                                <button class="act-btn" onclick="executeQuickCommand('search AI news')">🌐 Fetch AI News</button>
+                                <button class="act-btn" onclick="executeQuickCommand('open excel')">📊 Launch Excel
+                                    Report</button>
+                                <button class="act-btn" onclick="executeQuickCommand('run system audit')">🔍 Run System
+                                    Audit</button>
+                                <button class="act-btn" onclick="executeQuickCommand('search AI news')">🌐 Fetch AI
+                                    News</button>
                                 <button class="act-btn" onclick="switchView('voiceView')">🎙️ Start Voice Live</button>
                             </div>
                         </div>
@@ -182,7 +199,8 @@
                             <div class="memory-preview" id="dashMemoryPreview">
                                 <div class="mem-chip">User Preference: Dark Graphite Theme First</div>
                                 <div class="mem-chip">Lesson Learned: Always format code with syntax highlighting</div>
-                                <div class="mem-chip">System Rule: PathPolicy Tier 2 Cloud Context Exclusion Active</div>
+                                <div class="mem-chip">System Rule: PathPolicy Tier 2 Cloud Context Exclusion Active
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -198,7 +216,8 @@
                     <div class="chat-messages" id="chatWindow">
                         <div class="msg-bubble system">
                             <div class="msg-author">JARVIS OS</div>
-                            <div class="msg-body">Systems online. ReAct orchestration loop standing by for directives.</div>
+                            <div class="msg-body">Systems online. ReAct orchestration loop standing by for directives.
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -217,17 +236,22 @@
                         </div>
 
                         <h2 class="voice-heading" id="voiceStateTitle">LISTENING...</h2>
-                        <p class="voice-sub" id="voiceStateSub">Whisper Local ASR Active • Say "Stop" to interrupt instantly</p>
+                        <p class="voice-sub" id="voiceStateSub">Whisper Local ASR Active • Say "Stop" to interrupt
+                            instantly</p>
 
                         <div class="voice-metrics-grid">
-                            <div class="v-metric"><span class="val">140ms</span><span class="lbl">STT Latency</span></div>
-                            <div class="v-metric"><span class="val">&lt;350ms</span><span class="lbl">First Token</span></div>
-                            <div class="v-metric"><span class="val">480ms</span><span class="lbl">TTS Playback</span></div>
+                            <div class="v-metric"><span class="val">140ms</span><span class="lbl">STT Latency</span>
+                            </div>
+                            <div class="v-metric"><span class="val">&lt;350ms</span><span class="lbl">First Token</span>
+                            </div>
+                            <div class="v-metric"><span class="val">480ms</span><span class="lbl">TTS Playback</span>
+                            </div>
                         </div>
 
                         <div class="voice-controls">
                             <button class="v-btn mic-btn" id="voiceToggleBtn">🎙️ Mic Active</button>
-                            <button class="v-btn screen-btn" onclick="openScreenShareModal()">🖥️ Share Screen with Live</button>
+                            <button class="v-btn screen-btn" onclick="openScreenShareModal()">🖥️ Share Screen with
+                                Live</button>
                         </div>
                     </div>
                 </div>
@@ -263,7 +287,8 @@
                         <h2>🧠 5-Tier Memory & Lesson Store Explorer</h2>
                     </div>
                     <div class="memory-search-bar">
-                        <input type="text" id="memorySearchInput" placeholder="Search memories, lessons, vector RAG database...">
+                        <input type="text" id="memorySearchInput"
+                            placeholder="Search memories, lessons, vector RAG database...">
                         <button class="btn btn-primary" id="openAddMemoryModalBtn">+ Save Memory</button>
                     </div>
                     <div class="memory-list" id="memoryListContainer">
@@ -274,15 +299,46 @@
                     </div>
                 </div>
 
-                <!-- VIEW 6: KNOWLEDGE RAG -->
+                <!-- VIEW 6: KNOWLEDGE RAG & FILE INGESTION -->
                 <div class="view-container" id="knowledgeView">
                     <div class="view-header">
-                        <h2>📚 Knowledge Base & Vector RAG Store</h2>
+                        <h2>📚 Knowledge Base & Document Ingestion</h2>
+                        <span class="sub font-mono">ChromaDB Vector Store • Persistent Memory</span>
                     </div>
                     <div class="knowledge-content">
-                        <p>Local ChromaDB vector database with dense sentence-transformer embeddings.</p>
-                        <div class="rag-dropzone" id="ragDropzone">
-                            <span>📄 Drag & Drop PDF, DOCX, or Code files to ingest into Vector RAG</span>
+                        <p>Ingest documents (.pdf, .docx, .txt, .md, .csv, .vcf) into JARVIS persistent memory and dense
+                            vector RAG similarity search.</p>
+                        <div class="rag-dropzone" id="ragDropzone" onclick="triggerFileImport('knowledge')">
+                            <input type="file" id="fileImportInput" class="hidden-file-input" title="Import Knowledge Documents" aria-label="Import Knowledge Documents"
+                                accept=".pdf,.docx,.txt,.md,.csv,.xlsx,.vcf,.json" multiple>
+                            <div class="drop-icon">📄</div>
+                            <span class="drop-text">Drag & Drop PDF, DOCX, TXT, CSV, or Mobile VCF files here</span>
+                            <span class="drop-sub">or <button type="button" class="btn-link"
+                                    onclick="event.stopPropagation(); triggerFileImport('knowledge');">browse files on
+                                    computer</button></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- VIEW 7: CONTACTS & PEOPLE HUB -->
+                <div class="view-container" id="contactsView">
+                    <div class="view-header">
+                        <h2>📱 Mobile Contacts & People Hub</h2>
+                        <div class="view-actions">
+                            <button class="btn btn-secondary" onclick="openContactImportModal()">📥 Import .VCF /
+                                .CSV</button>
+                            <button class="btn btn-primary" onclick="openAddContactModal()">+ Add Contact</button>
+                        </div>
+                    </div>
+                    <div class="contacts-bar">
+                        <input type="text" id="contactSearchInput"
+                            placeholder="Search contacts by name, alias ('Mom'), phone, or email..." class="os-input">
+                    </div>
+                    <div class="contacts-grid" id="contactsGrid">
+                        <div class="empty-state">
+                            <span class="icon">📱</span>
+                            <p>No mobile contacts imported yet. Click <strong>Import .VCF / .CSV</strong> to import
+                                contacts from Android/iPhone export files.</p>
                         </div>
                     </div>
                 </div>
@@ -291,62 +347,22 @@
                 <div class="view-container" id="connectorsView">
                     <div class="view-header">
                         <h2>🔗 App Connectors & Cloud Integrations</h2>
-                        <span class="sub font-mono">Gmail • Notion • GitHub • Google Calendar • Slack</span>
+                        <span class="sub font-mono">Google Account • Mobile Contacts • Notion • GitHub • Calendar •
+                            WhatsApp</span>
                     </div>
-                    <div class="connectors-grid">
+                    <div class="connectors-grid" id="connectorsGrid">
+                        <!-- Dynamically populated by app.js fetchConnectors() -->
                         <div class="connector-card active">
                             <div class="c-header">
                                 <span class="c-icon">✉️</span>
-                                <span class="c-title">Gmail Connector</span>
+                                <span class="c-title">Gmail / Google Account</span>
                                 <span class="c-badge connected">CONNECTED</span>
                             </div>
-                            <p class="c-desc">Search unread emails, send executive drafts, and monitor inbox messages.</p>
+                            <p class="c-desc">Search unread emails, send executive drafts, and manage inbox.</p>
                             <div class="c-actions">
-                                <button class="act-btn" onclick="executeQuickCommand('check unread emails in gmail')">📩 Read Unread Emails</button>
-                            </div>
-                        </div>
-                        <div class="connector-card active">
-                            <div class="c-header">
-                                <span class="c-icon">📝</span>
-                                <span class="c-title">Notion Connector</span>
-                                <span class="c-badge connected">CONNECTED</span>
-                            </div>
-                            <p class="c-desc">Query workspace databases, search pages, and create project documentation.</p>
-                            <div class="c-actions">
-                                <button class="act-btn" onclick="executeQuickCommand('search notion for project specs')">🔍 Search Workspace</button>
-                            </div>
-                        </div>
-                        <div class="connector-card active">
-                            <div class="c-header">
-                                <span class="c-icon">🐙</span>
-                                <span class="c-title">GitHub Connector</span>
-                                <span class="c-badge connected">CONNECTED</span>
-                            </div>
-                            <p class="c-desc">Audit open Pull Requests, list repository issues, and check CI workflow runs.</p>
-                            <div class="c-actions">
-                                <button class="act-btn" onclick="executeQuickCommand('list open github pull requests')">🐙 Audit GitHub PRs</button>
-                            </div>
-                        </div>
-                        <div class="connector-card active">
-                            <div class="c-header">
-                                <span class="c-icon">📅</span>
-                                <span class="c-title">Google Calendar</span>
-                                <span class="c-badge connected">CONNECTED</span>
-                            </div>
-                            <p class="c-desc">Retrieve upcoming meetings, check schedule availability, and organize events.</p>
-                            <div class="c-actions">
-                                <button class="act-btn" onclick="executeQuickCommand('check upcoming meetings on calendar')">📅 Inspect Schedule</button>
-                            </div>
-                        </div>
-                        <div class="connector-card active">
-                            <div class="c-header">
-                                <span class="c-icon">💬</span>
-                                <span class="c-title">Slack / Discord</span>
-                                <span class="c-badge connected">CONNECTED</span>
-                            </div>
-                            <p class="c-desc">Broadcast build notifications, post release logs, and send channel updates.</p>
-                            <div class="c-actions">
-                                <button class="act-btn" onclick="executeQuickCommand('post update to slack dev channel')">💬 Post Alert</button>
+                                <button class="act-btn" onclick="openGoogleAuthModal()">🔑 Google Login / Auth</button>
+                                <button class="act-btn" onclick="executeQuickCommand('check unread emails in gmail')">📩
+                                    Read Emails</button>
                             </div>
                         </div>
                     </div>
@@ -357,27 +373,8 @@
                     <div class="view-header">
                         <h2>⚡ Skill Studio (70+ Built-in & Custom Skills)</h2>
                     </div>
-                    <div class="skills-grid" id="skillsGridContainer">
-                        <div class="skill-card">
-                            <div class="s-title">⚡ /gmail</div>
-                            <div class="s-desc">Check unread Gmail messages and generate executive summary digest.</div>
-                            <span class="s-trigger">Triggers: /gmail, check emails</span>
-                        </div>
-                        <div class="skill-card">
-                            <div class="s-title">⚡ /notion</div>
-                            <div class="s-desc">Search Notion databases and create new workspace pages.</div>
-                            <span class="s-trigger">Triggers: /notion, search notion</span>
-                        </div>
-                        <div class="skill-card">
-                            <div class="s-title">⚡ /github</div>
-                            <div class="s-desc">List active Pull Requests and run code review audit.</div>
-                            <span class="s-trigger">Triggers: /github, check prs</span>
-                        </div>
-                        <div class="skill-card">
-                            <div class="s-title">⚡ /commit</div>
-                            <div class="s-desc">Review git diff and synthesize a well-formatted git commit message.</div>
-                            <span class="s-trigger">Triggers: /commit</span>
-                        </div>
+                    <div class="skills-grid" id="skillsGrid">
+                        <!-- Dynamically populated by app.js fetchSkills() -->
                     </div>
                 </div>
 
@@ -443,21 +440,29 @@
                         </div>
                         <div class="form-row">
                             <label for="settingIntegrity">Guardian Integrity Check Interval (sec)</label>
-                            <input type="number" id="settingIntegrity" value="300" class="os-input" title="Guardian Integrity Check Interval in Seconds" placeholder="300">
+                            <input type="number" id="settingIntegrity" value="300" class="os-input"
+                                title="Guardian Integrity Check Interval in Seconds" placeholder="300">
                         </div>
                     </div>
                 </div>
 
                 <!-- UNIVERSAL INPUT CONTAINER (Fixed at bottom of Center Panel) -->
                 <div class="universal-input-area" id="universalInputArea">
+                    <input type="file" id="universalFileInput" class="hidden-file-input" title="Attach Universal Files" aria-label="Attach Universal Files"
+                        accept=".pdf,.docx,.txt,.md,.csv,.xlsx,.vcf,.json" multiple>
                     <div class="input-toolbar">
                         <span class="role-chip" id="inputRoleChip">ROLE: CODER</span>
-                        <button class="tool-icon-btn" id="attachFileBtn" title="Attach Files / Folders">📎</button>
-                        <button class="tool-icon-btn" id="screenCapBtn" title="Capture Screen Frame">📷</button>
-                        <button class="tool-icon-btn" id="dictateBtn" title="Voice Dictation">🎙️</button>
+                        <button type="button" class="tool-icon-btn" id="attachFileBtn"
+                            onclick="triggerFileImport('universal')" title="Attach Files / Folders">📎</button>
+                        <button type="button" class="tool-icon-btn" id="screenCapBtn" onclick="openScreenShareModal()"
+                            title="Capture Screen Frame">📷</button>
+                        <button type="button" class="tool-icon-btn" id="dictateBtn" onclick="triggerVoiceDictation()"
+                            title="Voice Dictation">🎙️</button>
                     </div>
                     <div class="input-row">
-                        <input type="text" id="chatInput" placeholder="Type natural language command or directive... (Drag & Drop files supported)" autocomplete="off">
+                        <input type="text" id="chatInput"
+                            placeholder="Type natural language command or directive... (Drag & Drop files supported)"
+                            autocomplete="off">
                         <button class="send-btn" id="sendChatBtn">TRANSMIT ⚡</button>
                     </div>
                 </div>
@@ -524,27 +529,7 @@
             </aside>
         </main>
 
-        <!-- ── GEMINI LIVE-STYLE PERSISTENT FLOATING VOICE OVERLAY BAR ── -->
-        <div class="floating-voice-bar" id="floatingVoiceBar">
-            <button class="live-screen-trigger" onclick="openScreenShareModal()">
-                <span class="screen-icon">🖥️</span> Share screen with Live
-            </button>
 
-            <div class="live-controls-pill">
-                <button class="pill-btn add-btn" title="Add Attachment">+</button>
-                <div class="audio-wave-dots" id="liveWaveDots">
-                    <span class="dot"></span>
-                    <span class="dot"></span>
-                    <span class="dot"></span>
-                    <span class="dot"></span>
-                    <span class="dot"></span>
-                    <span class="dot"></span>
-                    <span class="dot"></span>
-                </div>
-                <button class="pill-btn mic-toggle" id="liveMicToggleBtn" title="Toggle Mic">🎙️</button>
-                <button class="pill-btn close-btn" id="liveCloseBtn" title="Close Live Mode">✕</button>
-            </div>
-        </div>
 
         <!-- ── SCREEN CAST PERMISSION MODAL (Matching Reference Image) ── -->
         <div class="modal" id="screenCastModal">
@@ -558,7 +543,9 @@
                     </select>
                 </div>
                 <p class="cast-warning-text">
-                    While sharing, recording, or casting, BR JARVIS can capture any information that is displayed on your screen or played from your device. Be mindful of sensitive information such as passwords, payment details, messages, photos, audio and videos.
+                    While sharing, recording, or casting, BR JARVIS can capture any information that is displayed on
+                    your screen or played from your device. Be mindful of sensitive information such as passwords,
+                    payment details, messages, photos, audio and videos.
                 </p>
                 <div class="cast-modal-actions">
                     <button class="btn btn-secondary" onclick="closeScreenShareModal()">Cancel</button>
@@ -572,7 +559,8 @@
             <div class="modal-content palette-content">
                 <div class="palette-search-row">
                     <span class="search-icon">🔍</span>
-                    <input type="text" id="cmdPaletteInput" placeholder="Search commands, tools, models, memories, or projects... (Esc to exit)">
+                    <input type="text" id="cmdPaletteInput"
+                        placeholder="Search commands, tools, models, memories, or projects... (Esc to exit)">
                 </div>
                 <div class="palette-results" id="cmdPaletteResults">
                     <div class="p-item active" onclick="executePaletteCommand('view:chatView')">
@@ -609,7 +597,8 @@
                     </div>
                     <div class="form-group">
                         <label for="memContent">Memory Content</label>
-                        <textarea id="memContent" rows="5" placeholder="Write memory rule or content here..."></textarea>
+                        <textarea id="memContent" rows="5"
+                            placeholder="Write memory rule or content here..."></textarea>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -617,10 +606,86 @@
                     <button class="btn btn-primary" id="saveMemoryBtn">SAVE ENTRY</button>
                 </div>
             </div>
+            <!-- ── GOOGLE AUTHENTICATION MODAL ── -->
+            <div class="modal" id="googleAuthModal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>🔑 GOOGLE ACCOUNT & GMAIL LOGIN</h3>
+                        <button class="close-modal-btn" onclick="closeGoogleAuthModal()">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label for="googleAuthMode">Authentication Mode</label>
+                            <select id="googleAuthMode" class="os-select" onchange="toggleGoogleAuthMode()">
+                                <option value="browser">Interactive Browser OAuth (Google Sign-In)</option>
+                                <option value="credentials">Google App Password (Automated Headless)</option>
+                            </select>
+                        </div>
+
+                        <div id="googleAppPasswordGroup" class="hidden-file-input">
+                            <div class="form-group">
+                                <label for="googleEmail">Google / Gmail Email Address</label>
+                                <input type="email" id="googleEmail" class="os-input" placeholder="you@gmail.com">
+                            </div>
+                            <div class="form-group">
+                                <label for="googleAppPassword">Google App Password (16 Characters)</label>
+                                <input type="password" id="googleAppPassword" class="os-input"
+                                    placeholder="xxxx xxxx xxxx xxxx">
+                                <small class="form-hint">Generated at myaccount.google.com/apppasswords</small>
+                            </div>
+                        </div>
+
+                        <p class="auth-mode-desc" id="googleAuthModeDesc">
+                            Clicking <strong>Initiate Google Login</strong> will open Google's official sign-in page in
+                            your default browser.
+                        </p>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" onclick="closeGoogleAuthModal()">Cancel</button>
+                        <button class="btn btn-primary" id="submitGoogleAuthBtn" onclick="submitGoogleAuth()">INITIATE
+                            GOOGLE LOGIN</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── CONTACT IMPORT MODAL ── -->
+            <div class="modal" id="contactImportModal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>📥 IMPORT MOBILE CONTACTS (.VCF / .CSV)</h3>
+                        <button class="close-modal-btn" onclick="closeContactImportModal()">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="rag-dropzone mb-15" id="contactDropzone"
+                            onclick="triggerFileImport('contact')">
+                            <input type="file" id="contactFileInput" class="hidden-file-input" title="Import Mobile Contacts" aria-label="Import Mobile Contacts" accept=".vcf,.csv,.txt"
+                                multiple>
+                            <div class="drop-icon">📱</div>
+                            <span class="drop-text">Drag & Drop .VCF vCard or .CSV contact list here</span>
+                            <span class="drop-sub">or <button type="button" class="btn-link"
+                                    onclick="event.stopPropagation(); triggerFileImport('contact');">browse
+                                    file</button></span>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="contactFilePathInput">Or Enter File Path on Computer</label>
+                            <input type="text" id="contactFilePathInput" class="os-input"
+                                placeholder="C:\Users\username\Downloads\contacts.vcf">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" onclick="closeContactImportModal()">Cancel</button>
+                        <button class="btn btn-primary" onclick="submitContactImportByPath()">IMPORT FROM PATH</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── TOAST NOTIFICATIONS CONTAINER ── -->
+            <div class="toast-container" id="toastContainer"></div>
+
         </div>
 
-    </div>
-
-    <script src="/web/app.js"></script>
+        <script src="/web/app.js?v=38.2.8"></script>
 </body>
+
 </html>

@@ -34,6 +34,7 @@ comtypes; sys_platform == 'win32'
 pycaw; sys_platform == 'win32'
 win10toast; sys_platform == 'win32'
 pywinauto; sys_platform == 'win32'
-send2trash
-# Optional: Global system hotkeys (pip install keyboard)
-# keyboard>=0.13.5; sys_platform == 'win32'
+cryptography>=42.0.0
+keyboard>=0.13.5; sys_platform == 'win32'
+PySide6>=6.6.0
+faster-whisper>=1.0.0

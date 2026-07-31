@@ -87,6 +87,17 @@ class SmartEmailSender:
         rec_clean = recipient.strip()
         rec_lower = rec_clean.lower()
 
+        # 1. Primary UnifiedContactStore lookup (vCard contacts, relationship synonyms "Appa", "Amma", "Dad", "Mom")
+        try:
+            from memory.contact_manager import get_contact_store
+            store = get_contact_store()
+            match = store.resolve_name(rec_clean)
+            if match and match.get("email"):
+                return match["name"], match["email"]
+        except Exception:
+            pass
+
+        # 2. Local fallback contacts dictionary
         if rec_lower in self._contacts:
             return rec_clean, self._contacts[rec_lower]
 
@@ -94,7 +105,7 @@ class SmartEmailSender:
             if rec_lower in c_name or c_name in rec_lower:
                 return c_name.title(), c_email
 
-        # If already formatted as an email address
+        # 3. Direct email address format
         if "@" in rec_clean:
             return rec_clean, rec_clean
 

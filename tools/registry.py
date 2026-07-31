@@ -113,6 +113,7 @@ def get_pruned_tool_prompt_block(user_prompt: str = "") -> str:
     Filters available tool definitions down to the most relevant tools, saving up to 80% prompt tokens.
     """
     _import_plugins()
+    print(f"DEBUG PRUNED PROMPT: '{user_prompt}'")
 
     if not user_prompt:
         return get_tool_prompt_block()
@@ -131,9 +132,9 @@ def get_pruned_tool_prompt_block(user_prompt: str = "") -> str:
         ("search", "google", "find", "who is", "what is", "news", "price", "weather"): {"web_search", "fetch_page"},
         ("file", "read", "write", "save", "folder", "directory", "document", "txt", "csv", "json", "pdf", "docx"): {"file_read", "file_write", "file_list", "file_delete", "file_search"},
         ("app", "open", "launch", "close", "brave", "chrome", "edge", "notepad", "calculator", "window", "process", "installed", "running"): {"open_app", "computer_settings", "window_manager", "list_installed_applications", "list_running_applications", "search_applications", "get_app_launch_history", "get_app_usage_statistics"},
-        ("whatsapp", "chat", "message", "contact", "text", "send"): {"send_whatsapp", "schedule_whatsapp_message", "manage_whatsapp_contacts"},
+        ("whatsapp", "watsapp", "whats app", "wats app", "wapp", "wp", "chat", "message", "contact", "text", "send", "say", "tell", "hii", "hiii", "hello"): {"send_whatsapp", "schedule_whatsapp_message", "manage_whatsapp_contacts"},
         ("calendar", "event", "schedule", "task", "meeting", "reminder"): {"create_calendar_event", "list_calendar_events", "search_calendar_events", "delete_calendar_event"},
-        ("email", "gmail", "mail", "inbox", "smtp", "login", "send"): {"send_email", "schedule_email", "manage_email_contacts", "gmail_login", "get_gmail_auth_status", "gmail_logout"},
+        ("email", "gmail", "g-mail", "mail", "inbox", "smtp", "login", "send", "say", "tell", "draft"): {"send_email", "schedule_email", "manage_email_contacts", "gmail_login", "get_gmail_auth_status", "gmail_logout"},
         ("automate", "workflow", "macro", "script", "system"): {"automate_app", "run_automation_workflow", "execute_system_automation"},
         ("screen", "see", "look", "click", "vision", "ocr", "capture", "display"): {"screen_find", "screen_click", "smart_click"},
         ("code", "python", "script", "execute", "eval", "debug", "run"): {"run_code", "scratchpad_write", "scratchpad_eval"},
@@ -204,6 +205,14 @@ def execute_tool(name: str, args: dict) -> str:
 
     if name not in TOOL_REGISTRY:
         return f"ERROR: Unknown tool '{name}'"
+
+    # ── Permission enforcement ────────────────────────────────────────────
+    try:
+        from permissions import check_permission
+        if not check_permission(name, args):
+            return f"PERMISSION DENIED: Tool '{name}' is blocked by current security policy. Change JARVIS_PERMISSION_MODE in .env to allow_all to override."
+    except ImportError:
+        pass  # permissions module not available — allow by default
 
     try:
         func = TOOL_REGISTRY[name]
@@ -472,7 +481,7 @@ _plugins_loaded = False
 def _import_plugins():
     """Import all tool plugin files to register their decorators."""
     global _plugins_loaded
-    if _plugins_loaded:
+    if _plugins_loaded and len(TOOL_SCHEMAS) > 50:
         return
 
     plugins = [
@@ -540,67 +549,4 @@ def _import_plugins():
         print(f"[JARVIS] Custom plugins loader warning: {e}")
 
     _plugins_loaded = True
-
-
-def get_pruned_tool_prompt_block(user_prompt: str = "") -> str:
-    """
-    Antigravity Dynamic Tool Signature Pruning.
-    Filters the tool registry so only tools relevant to the user prompt are included in system instructions.
-    Reduces system prompt size by ~85%!
-    Core general-purpose tools are ALWAYS preserved to prevent hallucinations.
-    """
-    _import_plugins()
-    if not TOOL_SCHEMAS:
-        return ""
-
-    if not user_prompt:
-        return get_tool_prompt_block()
-
-    prompt_lower = user_prompt.lower()
-    selected = []
-    
-    # Core general-purpose tools that should never be pruned
-    core_tools = {
-        "code_helper", "run_code", "web_search", "computer_settings", "file_read", "file_write", "file_list",
-        "browser_open_url", "browser_execute_web_task", "browser_auto_navigate_and_extract",
-        "browser_fill_and_submit_form", "browser_click", "browser_type", "browser_read_page",
-        "qa_generate_report", "gmail_list_unread", "github_list_prs", "notion_search_pages"
-    }
-    
-    for schema in TOOL_SCHEMAS:
-        name = schema["name"]
-        if name in core_tools:
-            selected.append(schema)
-            continue
-            
-        name_l = name.lower()
-        desc = schema["description"].lower()
-        name_parts = name_l.split("_")
-        if any(part in prompt_lower for part in name_parts if len(part) > 2) or any(w in desc for w in prompt_lower.split() if len(w) > 4):
-            selected.append(schema)
-
-    if len(selected) < 3:
-        return get_tool_prompt_block()
-
-    schema_text = json.dumps(selected, indent=2)
-    return f"""
-## Available Tools
-
-To use a tool, output EXACTLY this JSON block on its own line:
-
-```tool_call
-{{"tool": "<tool_name>", "args": {{<arguments>}}}}
-```
-
-After you output a tool_call block, execution pauses while the tool runs.
-You will then receive the tool result and can continue.
-
-If you do NOT need a tool, just respond normally with text.
-NEVER fabricate tool results. Always call the tool if you need real data.
-
-**AUTO-ALLOW MODE**: All tools execute immediately without confirmation.
-
-### Tool Definitions
-{schema_text}
-"""
 

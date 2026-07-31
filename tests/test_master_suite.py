@@ -38,6 +38,15 @@ class TestMasterSuiteRunner(unittest.TestCase):
 
     def test_all_system_components(self):
         root = Path(__file__).resolve().parent.parent
+        # When executed directly as script, run pytest.main
+        # Avoid nested pytest session invocation if already running within pytest
+        if "pytest" in sys.modules and any("pytest" in arg for arg in sys.argv):
+            # Verify root modules can be imported cleanly
+            import core.intent_engine
+            import permissions
+            self.assertTrue(hasattr(permissions, "PermissionPolicy"))
+            return
+
         res = pytest.main([
             str(root / "tests" / "test_step_planner.py"),
             str(root / "tests" / "test_ui_multitask.py"),

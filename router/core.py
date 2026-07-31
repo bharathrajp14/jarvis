@@ -180,6 +180,29 @@ class AgentRouter:
 
         return f"[BR: All backends failed. Attempted: {tried}]"
 
+    def get_status(self) -> dict[str, Any]:
+        """Return status dictionary of loaded model backends for API telemetry."""
+        status = {}
+        for profile, backend in self.backends.items():
+            key = profile.value if hasattr(profile, "value") else str(profile)
+            status[key] = {
+                "name": getattr(backend, "name", key),
+                "model": getattr(backend, "model_name", key),
+                "available": getattr(backend, "available", False),
+                "is_default": (profile == self.default),
+            }
+        return status
+
+    def switch_backend(self, backend_name: str) -> str:
+        """Switch active default backend profile."""
+        name_lower = backend_name.lower().strip()
+        for profile in self.backends.keys():
+            key = profile.value if hasattr(profile, "value") else str(profile)
+            if key.lower() == name_lower:
+                self.default = profile
+                return f"Successfully switched default backend to {key.upper()}"
+        return f"Unknown backend profile '{backend_name}'. Available: {[p.value if hasattr(p, 'value') else str(p) for p in self.backends.keys()]}"
+
 
 _router_instance: AgentRouter | None = None
 

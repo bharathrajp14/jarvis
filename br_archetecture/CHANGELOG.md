@@ -2,7 +2,32 @@
 
 All major architectural updates, subsystem additions, and core refactorings are recorded in this document.
 
-## [38.2.0] — 2026-07-25
+## [38.2.5 / 37.5.0] — 2026-07-31
+
+### Thread-Safe Runtime Singleton, Security Hardening & Stream Safety Upgrades
+- **Thread-Safe Runtime Singleton (`core/bootstrap.py`)**:
+  - Implemented double-checked locking mechanism (`threading.Lock`) in `build_assistant_runtime()`. Voice, CLI, and Web Server entry points now share a single runtime instance, eliminating split working memory and duplicate backend connection pools.
+- **Permission System & Destructive Action Interception (`permissions.py`, `tools/registry.py`)**:
+  - Added `CONFIRM_DESTRUCTIVE` mode to `PermissionMode` enum and defined `DESTRUCTIVE_TOOLS` filter set.
+  - Wired `check_permission()` into `execute_tool()` in `tools/registry.py` to trap unauthorized destructive actions before tool execution.
+- **Web Server Security & Request Serialization (`server.py`)**:
+  - Restricted CORS to explicit localhost/local origins (with `JARVIS_CORS_ORIGINS` override).
+  - Bound server host to `127.0.0.1` by default to prevent unauthorized LAN exposure.
+  - Deferred stdout WebSocket log broadcasting until async loop activation (`_ws_stream._active = True`).
+  - Added `_CHAT_LOCK` thread serialization to `/v1/chat/completions` to prevent working memory race conditions.
+- **Chat Stream Safety & Duplicate-Call Guard (`orchestrator/core.py`)**:
+  - Integrated `StepPlanner` step budgeting into `chat_stream()`.
+  - Added consecutive duplicate tool call detection (`_consecutive_tool` counter) that aborts loop after 4 identical tool executions.
+  - Added 4KB output string truncation for tool results in streaming mode.
+- **PyAutoGUI Failsafe Protection (`actions/live_os_control.py`, `actions/game_updater.py`)**:
+  - Enabled PyAutoGUI failsafe by default (`JARVIS_DISABLE_FAILSAFE=true` opt-out), restoring user mouse-corner emergency abort capability.
+- **Input Sanitization & URL Scheme Whitelisting (`core/intent_engine.py`)**:
+  - Replaced shell execution `os.system()` with `subprocess.Popen()` to prevent metacharacter injection.
+  - Enforced URL scheme whitelisting (`http://` and `https://` safe schemes; explicitly blocking `javascript:`, `file:`, `data:`, `vbscript:` schemes).
+- **Dynamic App Connector Status (`server.py`)**:
+  - `/api/connectors` queries `TOOL_REGISTRY` in real-time, returning accurate `CONNECTED` or `NOT_CONFIGURED` status.
+- **Centralized API Key Resolution (`config/__init__.py`)**:
+  - Created `get_gemini_api_key()` as single source of truth for API key loading across backends, vector store, and live OS control.
 
 ### BR JARVIS MK38 Cognitive Operating System & World Intelligence Subsystems
 - **Meta-Cognition Engine (`reasoning/meta_cognition.py`)**:

@@ -20,7 +20,7 @@ from contextlib import asynccontextmanager
 from typing import Set, Generator, AsyncGenerator
 
 import uvicorn
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Query
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Query, UploadFile, File, Form
 from fastapi.responses import HTMLResponse, FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -73,6 +73,7 @@ def _strip_rich(text: str) -> str:
 class WSBroadcastStream:
     def __init__(self, original):
         self.original = original
+        self._active = False  # Only broadcast when async loop is available
 
     def write(self, text):
         try:
@@ -82,7 +83,7 @@ class WSBroadcastStream:
                 self.original.write(text.encode('ascii', errors='replace').decode('ascii'))
             except Exception:
                 pass
-        if text.strip():
+        if self._active and text.strip():
             clean = _strip_rich(text.strip())
             if clean:
                 try:
@@ -99,7 +100,8 @@ class WSBroadcastStream:
         return hasattr(self.original, 'isatty') and self.original.isatty()
 
 
-sys.stdout = WSBroadcastStream(sys.stdout)
+_ws_stream = WSBroadcastStream(sys.stdout)
+sys.stdout = _ws_stream
 
 
 async def broadcast_log(line: str):
@@ -128,9 +130,12 @@ async def lifespan(app: FastAPI):
     runtime = build_assistant_runtime()
     ORCHESTRATOR = runtime.orchestrator
     get_queue()
+    # Activate WebSocket log broadcasting now that the async loop is running
+    _ws_stream._active = True
     print("[Server] ✓ JARVIS Core ready.")
     yield
     # Shutdown
+    _ws_stream._active = False
     if ORCHESTRATOR:
         try:
             ORCHESTRATOR.shutdown()
@@ -152,9 +157,21 @@ if not SERVER_API_KEY:
         pass
 
 # Enable CORS for cross-origin dashboard hosting
+# Restrict CORS to localhost origins to prevent cross-site request forgery.
+# Use JARVIS_CORS_ORIGINS env var to add custom origins (comma-separated).
+_cors_origins = os.environ.get("JARVIS_CORS_ORIGINS", "").strip()
+_allowed_origins = [
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+if _cors_origins:
+    _allowed_origins.extend([o.strip() for o in _cors_origins.split(",") if o.strip()])
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -238,6 +255,10 @@ async def run_generator_in_thread(gen_func, *args, **kwargs) -> AsyncGenerator[s
         yield item
 
 
+# ── Thread lock for serializing concurrent API requests ────────────────────
+_CHAT_LOCK = threading.Lock()
+
+
 # ── OpenAI-Compatible Endpoint ────────────────────────────────────────────────
 @app.post("/v1/chat/completions")
 async def openai_chat_completions(req: OpenAIChatRequest):
@@ -246,18 +267,7 @@ async def openai_chat_completions(req: OpenAIChatRequest):
     if not ORCHESTRATOR:
         raise HTTPException(status_code=503, detail="JARVIS not initialized")
 
-    # Format messages to orchestrator's history layout
-    formatted_history = []
-    for msg in req.messages[:-1]:
-        formatted_history.append({"role": msg.role, "content": msg.content})
-
-    # Set working memory history to context (excluding last prompt)
-    ORCHESTRATOR.working_memory.history = formatted_history
     last_user_prompt = req.messages[-1].content
-
-    # Determine backend profile based on keywords
-    keywords = ORCHESTRATOR._extract_keywords(last_user_prompt)
-    profile = ORCHESTRATOR.router.route(keywords)
 
     if req.stream:
         # Async SSE generator
@@ -288,7 +298,12 @@ async def openai_chat_completions(req: OpenAIChatRequest):
         return StreamingResponse(sse_streamer(), media_type="text/event-stream")
     else:
         try:
-            response_text = await asyncio.to_thread(ORCHESTRATOR.chat, last_user_prompt)
+            # Thread-safe: serialize concurrent API requests through a lock
+            def _run_chat():
+                with _CHAT_LOCK:
+                    return ORCHESTRATOR.chat(last_user_prompt)
+
+            response_text = await asyncio.to_thread(_run_chat)
             return {
                 "id": f"chatcmpl-{uuid.uuid4().hex}",
                 "object": "chat.completion",
@@ -422,15 +437,116 @@ async def get_skills_list():
 
 @app.get("/api/connectors")
 async def get_connectors_list():
-    """List registered App Connectors and active signatures."""
+    """List registered App Connectors with real-time availability & auth status."""
+    from tools.registry import TOOL_REGISTRY, _import_plugins
+    _import_plugins()
+
+    def _check_tools(tool_names: list[str]) -> str:
+        return "CONNECTED" if any(t in TOOL_REGISTRY for t in tool_names) else "NOT_CONFIGURED"
+
+    # Check Google Auth status
+    gmail_status = "NOT_CONFIGURED"
+    gmail_desc = "Access inbox, list unread emails, send messages"
+    try:
+        from actions.gmail_auth import get_gmail_auth_manager
+        g_st = get_gmail_auth_manager().get_status()
+        if g_st.get("logged_in"):
+            gmail_status = "CONNECTED"
+            gmail_desc = f"Connected as {g_st.get('email')} ({g_st.get('auth_method')})"
+        else:
+            gmail_status = _check_tools(["gmail_login", "send_email"])
+    except Exception:
+        gmail_status = _check_tools(["gmail_login", "send_email"])
+
+    # Check Contacts count
+    contacts_count = 0
+    try:
+        from memory.contact_manager import get_contact_store
+        contacts_count = get_contact_store().get_count()
+    except Exception:
+        pass
+
     connectors = [
-        {"name": "Gmail", "icon": "✉️", "status": "CONNECTED", "tools": ["gmail_list_unread", "gmail_send_email"], "desc": "Access inbox, list unread emails, send messages"},
-        {"name": "Notion", "icon": "📝", "status": "CONNECTED", "tools": ["notion_search_pages", "notion_create_page"], "desc": "Search workspaces, create pages and notes"},
-        {"name": "GitHub", "icon": "🐙", "status": "CONNECTED", "tools": ["github_list_prs", "github_create_issue"], "desc": "List pull requests, open issues and review code"},
-        {"name": "Google Calendar", "icon": "📅", "status": "CONNECTED", "tools": ["calendar_list_events", "calendar_create_event"], "desc": "Schedule meetings, inspect agenda and events"},
-        {"name": "Slack", "icon": "💬", "status": "CONNECTED", "tools": ["slack_send_message"], "desc": "Send channels messages and post team notifications"},
+        {"name": "Gmail / Google Account", "icon": "✉️", "status": gmail_status, "tools": ["gmail_login", "send_email"], "desc": gmail_desc},
+        {"name": "Mobile Contacts Store", "icon": "📱", "status": "CONNECTED" if contacts_count > 0 else "NOT_CONFIGURED", "tools": ["import_contacts", "manage_contacts", "resolve_contact"], "desc": f"{contacts_count} saved contacts (.vcf/.csv import supported)"},
+        {"name": "Notion", "icon": "📝", "status": _check_tools(["notion_search_pages", "notion_create_page"]), "tools": ["notion_search_pages", "notion_create_page"], "desc": "Search workspaces, create pages and notes"},
+        {"name": "GitHub", "icon": "🐙", "status": _check_tools(["github_list_prs", "github_create_issue"]), "tools": ["github_list_prs", "github_create_issue"], "desc": "List pull requests, open issues and review code"},
+        {"name": "Google Calendar", "icon": "📅", "status": _check_tools(["create_calendar_event", "list_calendar_events"]), "tools": ["create_calendar_event", "list_calendar_events"], "desc": "Schedule meetings, inspect agenda and events"},
+        {"name": "WhatsApp Automation", "icon": "💬", "status": _check_tools(["send_whatsapp", "manage_whatsapp_contacts"]), "tools": ["send_whatsapp", "manage_whatsapp_contacts"], "desc": "Send instant & scheduled messages by contact name"},
     ]
     return {"connectors": connectors}
+
+
+@app.post("/api/import/contacts")
+async def import_contacts_endpoint(
+    file: UploadFile = File(None),
+    content: str = Form(None),
+    file_path: str = Form(None),
+):
+    """Import contacts from uploaded .vcf/.csv file or file path."""
+    from memory.contact_manager import get_contact_store
+    store = get_contact_store()
+
+    if file:
+        file_bytes = await file.read()
+        text_str = file_bytes.decode("utf-8", errors="replace")
+        if file.filename.lower().endswith(".vcf") or "BEGIN:VCARD" in text_str.upper():
+            res = store.import_vcf(text_str)
+        else:
+            res = store.import_csv(text_str)
+        return {"status": "success", "file_name": file.filename, "result": res}
+
+    if file_path:
+        p = Path(file_path)
+        if not p.exists():
+            raise HTTPException(status_code=404, detail=f"File not found at '{file_path}'")
+        if p.suffix.lower() == ".vcf":
+            res = store.import_vcf(p)
+        else:
+            res = store.import_csv(p)
+        return {"status": "success", "file_name": p.name, "result": res}
+
+    if content:
+        if "BEGIN:VCARD" in content.upper():
+            res = store.import_vcf(content)
+        else:
+            res = store.import_csv(content)
+        return {"status": "success", "result": res}
+
+    raise HTTPException(status_code=400, detail="Provide a file upload, file_path, or text content to import.")
+
+
+@app.get("/api/contacts")
+async def get_contacts_endpoint(query: str = Query("", description="Search filter query")):
+    """Get contacts list from UnifiedContactStore with optional search filter."""
+    from memory.contact_manager import get_contact_store
+    store = get_contact_store()
+    results = store.search_contacts(query) if query else store.get_all_contacts()
+    return {"total": len(results), "contacts": results}
+
+
+@app.post("/api/import/file")
+async def import_file_endpoint(
+    file: UploadFile = File(None),
+    file_path: str = Form(None),
+):
+    """Import document or knowledge file (.pdf, .docx, .txt, .md, .csv, .vcf) into JARVIS memory & vector store."""
+    from actions.file_importer import import_file_to_knowledge
+
+    if file:
+        temp_dir = Path.cwd() / "workspace" / "uploads"
+        temp_dir.mkdir(parents=True, exist_ok=True)
+        save_path = temp_dir / file.filename
+        file_bytes = await file.read()
+        save_path.write_bytes(file_bytes)
+        res = import_file_to_knowledge(save_path)
+        return res
+
+    if file_path:
+        res = import_file_to_knowledge(file_path)
+        return res
+
+    raise HTTPException(status_code=400, detail="Provide a file upload or file_path to import.")
 
 
 @app.get("/api/memory")
@@ -597,7 +713,8 @@ app.mount("/web", StaticFiles(directory=str(WEB_DIR)), name="web")
 
 def main():
     port = int(os.environ.get("BR_SERVER_PORT", 8000))
-    host = os.environ.get("BR_SERVER_HOST", "0.0.0.0")
+    # Default to localhost-only binding for security. Set BR_SERVER_HOST=0.0.0.0 to expose to LAN.
+    host = os.environ.get("BR_SERVER_HOST", "127.0.0.1")
 
     # Kill stale process on the port (Windows)
     if platform.system() == "Windows":

@@ -191,7 +191,8 @@ class JarvisOrchestrator:
             "2. ISOLATED WORKSPACE: When creating apps, projects, backend services, or games, ALWAYS put all generated files inside a dedicated subfolder under `./workspace/<ProjectName>/` (e.g. `./workspace/FoodDeliveryApp/` or `./workspace/Games/TicTacToe/`). NEVER dump loose files into the root codebase directory!\n"
             "3. EFFICIENT SINGLE EXECUTION: Create complete scripts/files in 1 clean tool call. Do NOT make 10-20 consecutive file_write calls in a loop.\n"
             "4. INTERACTIVE CMD TERMINAL GAMES/APPS: To run interactive terminal games or CLI scripts in CMD, launch them in a new window using `start cmd /k python ./workspace/Games/<game>.py` so a native CMD window opens for the user to play interactively!\n"
-            "5. NO PLAIN TEXT TOOL MENTIONS: Never output text like 'Now call create_word_document'. Either invoke the tool via ```tool_call JSON block or present your final answer directly to the user."
+            "5. NO PLAIN TEXT TOOL MENTIONS: Never output text like 'Now call create_word_document'. Either invoke the tool via ```tool_call JSON block or present your final answer directly to the user.\n"
+            "6. MESSAGING & COMMUNICATIONS: To send WhatsApp messages or emails, ALWAYS use `send_whatsapp` or `send_email`. NEVER use `open_app` or Python auto-typing scripts via `run_code`."
         )
         parts = [sys_prompt]
         mode_text = MODES.get(self.current_mode, "")
@@ -633,7 +634,22 @@ class JarvisOrchestrator:
         profile = self.router.route(keywords)
         system = self._build_system()
 
-        for step in range(MAX_REACT_STEPS):
+        # ── StepPlanner budget + duplicate-call guard (matches chat() safety) ──
+        from agent.step_planner import StepPlanner
+        import json as _json
+        plan_info = StepPlanner.plan_steps(user_input)
+        budget = plan_info["budget_controller"]
+        _consecutive_tool: dict = {"name": None, "args_str": None, "count": 0}
+        tool_history: list = []
+
+        step = 0
+        while True:
+            # Budget check
+            should_continue, budget_msg, was_extended = budget.evaluate(step, tool_history)
+            if not should_continue:
+                yield f"\n\n[JARVIS: Step budget reached ({budget_msg}). Returning results.]\n"
+                break
+
             backend = self.router.backends.get(profile)
             if backend is None:
                 backend = self.router.backends.get(self.router.default)
@@ -668,13 +684,38 @@ class JarvisOrchestrator:
             tool_name, tool_args = parse_tool_call(full_response)
 
             if tool_name:
+                # ── Duplicate-call detection ──
+                args_str = _json.dumps(tool_args or {}, sort_keys=True)
+                if tool_name == _consecutive_tool["name"] and args_str == _consecutive_tool.get("args_str"):
+                    _consecutive_tool["count"] += 1
+                else:
+                    _consecutive_tool = {"name": tool_name, "args_str": args_str, "count": 1}
+
+                if _consecutive_tool["count"] >= 4:
+                    yield f"\n[JARVIS] ⛔ Duplicate-call limit reached (x{_consecutive_tool['count']}). Stopping to prevent infinite token burn.\n"
+                    break
+
                 yield f"\n[JARVIS] 🔧 Step {step+1}: {tool_name}...\n"
                 t_tool = time.monotonic()
-                try:
-                    tool_result = execute_tool(tool_name, tool_args or {})
-                except Exception as tool_err:
-                    tool_result = f"[Tool Error: {tool_name} failed — {tool_err}. Try an alternative approach.]"
+
+                if _consecutive_tool["count"] >= 3:
+                    tool_result = (
+                        f"[SYSTEM NOTICE: '{tool_name}' has been executed {_consecutive_tool['count']} times consecutively with identical arguments. "
+                        f"DO NOT call '{tool_name}' again. Use the tool result provided above to directly answer the user's request now.]"
+                    )
+                else:
+                    try:
+                        tool_result = execute_tool(tool_name, tool_args or {})
+                    except Exception as tool_err:
+                        tool_result = f"[Tool Error: {tool_name} failed — {tool_err}. Try an alternative approach.]"
                 tool_ms = int((time.monotonic() - t_tool) * 1000)
+
+                tool_history.append({
+                    "step": step,
+                    "tool_name": tool_name,
+                    "args": tool_args,
+                    "result": tool_result,
+                })
 
                 self._record_turn(
                     "assistant", full_response[:2000],
@@ -689,13 +730,17 @@ class JarvisOrchestrator:
                 else:
                     self.working_memory.add("assistant", _format_clean_tool_summary(tool_name, tool_args))
 
-                self.working_memory.add("user", f"[Tool Result for '{tool_name}']:\n{tool_result}")
+                # Truncate large tool results for context efficiency
+                str_res = str(tool_result)
+                if len(str_res) > 4000:
+                    str_res = str_res[:2000] + "\n\n[... output truncated for context efficiency ...]\n\n" + str_res[-1500:]
+                self.working_memory.add("user", f"[Tool Result for '{tool_name}']:\n{str_res}")
                 yield f"[Tool Result: {tool_name} complete]\n"
+                step += 1
                 continue
             else:
                 self._record_turn("assistant", full_response[:5000], backend=profile.value, latency_ms=latency_ms)
                 self.working_memory.add("assistant", full_response)
                 self._store_exchange(user_input, full_response)
                 break
-        else:
-            yield "\n\n[JARVIS: Max steps reached. Returning current results.]"
+

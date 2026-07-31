@@ -43,24 +43,15 @@ def _base_dir() -> Path:
     return Path(__file__).resolve().parent.parent
 
 
-def _get_api_key() -> str:
-    for env in ("GEMINI_API_KEY", "GOOGLE_API_KEY"):
-        val = os.environ.get(env, "").strip()
-        if val:
-            return val
-    try:
-        cfg_path = _base_dir() / "config" / "api_keys.json"
-        if cfg_path.exists():
-            return json.loads(cfg_path.read_text(encoding="utf-8")).get("gemini_api_key", "").strip()
-    except Exception:
-        pass
-    return ""
+from config import get_gemini_api_key as _get_api_key
 
 
 
 try:
     import pyautogui
-    pyautogui.FAILSAFE = False
+    # Keep failsafe ON by default (move mouse to corner to abort).
+    # Set JARVIS_DISABLE_FAILSAFE=true in .env to disable for headless/automated use.
+    pyautogui.FAILSAFE = os.environ.get("JARVIS_DISABLE_FAILSAFE", "false").lower() != "true"
 except Exception:
     pass
 
