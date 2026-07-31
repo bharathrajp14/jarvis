@@ -1,5 +1,4 @@
 import json
-import platform
 import subprocess
 import sys
 import time
@@ -10,13 +9,13 @@ try:
     pyautogui.FAILSAFE = True
     pyautogui.PAUSE    = 0.06
     _PYAUTOGUI = True
-except Exception:
+except ImportError:
     _PYAUTOGUI = False
 
 try:
     import pyperclip
     _PYPERCLIP = True
-except Exception:
+except ImportError:
     _PYPERCLIP = False
 
 def _base_dir() -> Path:
@@ -29,9 +28,9 @@ def _get_os() -> str:
         cfg = json.loads(
             (_base_dir() / "config" / "api_keys.json").read_text(encoding="utf-8")
         )
-        return cfg.get("os_system", platform.system().lower()).lower()
+        return cfg.get("os_system", "windows").lower()
     except Exception:
-        return platform.system().lower()
+        return "windows"
 
 
 def _require_pyautogui():
@@ -81,14 +80,12 @@ def _open_app(app_name: str) -> bool:
         elif os_name == "mac":
             result = subprocess.run(
                 ["open", "-a", app_name],
-                capture_output=True, text=True,
-                encoding="utf-8", errors="replace", timeout=10,
+                capture_output=True, text=True, timeout=10,
             )
             if result.returncode != 0:
                 result = subprocess.run(
                     ["open", "-a", f"{app_name}.app"],
-                    capture_output=True, text=True,
-                encoding="utf-8", errors="replace", timeout=10,
+                    capture_output=True, text=True, timeout=10,
                 )
             time.sleep(2.5)
             return result.returncode == 0
@@ -150,17 +147,13 @@ def _desktop_send(app_name: str, receiver: str, message: str) -> str:
     time.sleep(0.2)
     pyautogui.press("enter")
     time.sleep(0.3)
-
     return f"Message sent to {receiver} via {app_name}."
-
 
 def _send_whatsapp(receiver: str, message: str) -> str:
     return _desktop_send("WhatsApp", receiver, message)
 
-
 def _send_telegram(receiver: str, message: str) -> str:
     return _desktop_send("Telegram", receiver, message)
-
 
 def _send_signal(receiver: str, message: str) -> str:
     return _desktop_send("Signal", receiver, message)

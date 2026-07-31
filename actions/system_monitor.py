@@ -1,218 +1,200 @@
-# actions/system_monitor.py
 """
-System monitoring tool for JARVIS MK37.
-Gathers CPU, RAM, disk, network, and process information.
-
-Returns structured system health data. Uses psutil with fallback
-to OS commands if psutil is not installed.
-
-Cross-platform: Windows, Linux, macOS.
+System Monitor — background metric checks with voice alert support.
+Zero subprocess calls on all platforms — uses ctypes/pynvml/psutil/wmi only.
 """
-import json
-import os
+import ctypes
 import platform
-import subprocess
 import time
 
-_OS = platform.system()
+import psutil
+
+_OS = platform.system()  # "Windows" | "Darwin" | "Linux"
+
+DEFAULT_THRESHOLDS = {
+    "cpu":  90.0,
+    "ram":  90.0,
+    "temp": 85.0,
+    "gpu":  95.0,
+}
+
+_COOLDOWN   = 300
+_CPU_STREAK = 3
+
+# ── NVML DLL cache (Windows: nvml.dll, Linux: libnvidia-ml.so.1) ─────────────
+_nvml_lib: object = None
+_nvml_ok:  object = None   # None=untested  True=works  False=unavailable
 
 
-def _get_root_disk_path() -> str:
-    """Return the root disk path for the current OS."""
-    if _OS == "Windows":
-        return os.environ.get("SystemDrive", "C:\\") + "\\"
-    return "/"
-
-
-def _get_psutil_info() -> dict:
-    """Gather system info using psutil."""
-    import psutil
-
-    cpu_pct = psutil.cpu_percent(interval=1)
-    cpu_count = psutil.cpu_count()
-    cpu_freq = psutil.cpu_freq()
-
-    mem = psutil.virtual_memory()
-
-    # Cross-platform disk usage
+def _nvml_gpu() -> float:
+    """GPU utilisation via NVML — zero subprocess on all platforms."""
+    global _nvml_lib, _nvml_ok
+    if _nvml_ok is False:
+        return -1.0
     try:
-        disk = psutil.disk_usage(_get_root_disk_path())
+        class _Util(ctypes.Structure):
+            _fields_ = [("gpu", ctypes.c_uint), ("memory", ctypes.c_uint)]
+
+        if _nvml_lib is None:
+            if _OS == "Windows":
+                candidates = ("nvml", r"C:\Windows\System32\nvml.dll")
+                _load = ctypes.WinDLL
+            else:
+                candidates = (
+                    "libnvidia-ml.so.1",
+                    "libnvidia-ml.so",
+                    "libnvidia-ml.dylib",
+                )
+                _load = ctypes.CDLL
+            for name in candidates:
+                try:
+                    lib = _load(name)
+                    lib.nvmlInit_v2()
+                    _nvml_lib = lib
+                    break
+                except Exception:
+                    continue
+
+        if _nvml_lib is None:
+            _nvml_ok = False
+            return -1.0
+
+        dev = ctypes.c_void_p()
+        _nvml_lib.nvmlDeviceGetHandleByIndex_v2(0, ctypes.byref(dev))
+        u = _Util()
+        _nvml_lib.nvmlDeviceGetUtilizationRates(dev, ctypes.byref(u))
+        _nvml_ok = True
+        return float(u.gpu)
     except Exception:
-        disk = None
+        _nvml_ok = False
+        return -1.0
 
-    # Top 10 processes by memory
-    top_procs = []
+
+def _get_gpu_usage() -> float:
+    # pynvml — subprocess-free, works everywhere if installed
     try:
-        for proc in sorted(
-            psutil.process_iter(["pid", "name", "memory_percent", "cpu_percent"]),
-            key=lambda p: p.info.get("memory_percent", 0) or 0,
-            reverse=True,
-        )[:10]:
-            top_procs.append({
-                "pid": proc.info["pid"],
-                "name": proc.info["name"] or "unknown",
-                "memory_pct": round(proc.info.get("memory_percent", 0) or 0, 1),
-                "cpu_pct": round(proc.info.get("cpu_percent", 0) or 0, 1),
-            })
-    except (psutil.AccessDenied, psutil.NoSuchProcess):
+        import pynvml  # type: ignore
+        pynvml.nvmlInit()
+        h = pynvml.nvmlDeviceGetHandleByIndex(0)
+        return float(pynvml.nvmlDeviceGetUtilizationRates(h).gpu)
+    except Exception:
         pass
 
-    # Network
+    return _nvml_gpu()
+
+
+def _get_cpu_temp() -> float:
+    # psutil — works on Linux; occasionally Windows with proper drivers
     try:
-        net = psutil.net_io_counters()
-        net_info = {
-            "bytes_sent_mb": round(net.bytes_sent / (1024**2), 1),
-            "bytes_recv_mb": round(net.bytes_recv / (1024**2), 1),
-        }
+        temps = psutil.sensors_temperatures()
+        for name in ["coretemp", "k10temp", "cpu_thermal", "acpitz",
+                     "cpu-thermal", "zenpower", "it8688"]:
+            if name in temps and temps[name]:
+                return temps[name][0].current
+        for entries in temps.values():
+            if entries:
+                return entries[0].current
     except Exception:
-        net_info = {"bytes_sent_mb": "N/A", "bytes_recv_mb": "N/A"}
+        pass
 
-    try:
-        boot = time.time() - psutil.boot_time()
-        uptime_hours = round(boot / 3600, 1)
-    except Exception:
-        uptime_hours = "N/A"
-
-    result = {
-        "os": f"{platform.system()} {platform.release()} ({platform.machine()})",
-        "hostname": platform.node(),
-        "uptime_hours": uptime_hours,
-        "cpu": {
-            "cores": cpu_count,
-            "usage_pct": cpu_pct,
-            "freq_mhz": round(cpu_freq.current, 0) if cpu_freq else "N/A",
-        },
-        "memory": {
-            "total_gb": round(mem.total / (1024**3), 1),
-            "used_gb": round(mem.used / (1024**3), 1),
-            "available_gb": round(mem.available / (1024**3), 1),
-            "usage_pct": mem.percent,
-        },
-        "network": net_info,
-        "top_processes": top_procs,
-    }
-
-    if disk:
-        result["disk"] = {
-            "total_gb": round(disk.total / (1024**3), 1),
-            "used_gb": round(disk.used / (1024**3), 1),
-            "free_gb": round(disk.free / (1024**3), 1),
-            "usage_pct": disk.percent,
-        }
-    else:
-        result["disk"] = {"error": "Could not read disk usage"}
-
-    return result
-
-
-def _get_fallback_info() -> dict:
-    """Gather basic system info without psutil using OS commands."""
-    info = {
-        "os": f"{platform.system()} {platform.release()} ({platform.machine()})",
-        "hostname": platform.node(),
-    }
-
+    # Windows: wmi module (pure Python COM, zero subprocess)
     if _OS == "Windows":
         try:
-            result = subprocess.run(
-                ["powershell", "-NoProfile", "-Command",
-                 "$cpu=(Get-CimInstance Win32_Processor).LoadPercentage;"
-                 "$mem=Get-CimInstance Win32_OperatingSystem;"
-                 "$total=[math]::Round($mem.TotalVisibleMemorySize/1MB,1);"
-                 "$free=[math]::Round($mem.FreePhysicalMemory/1MB,1);"
-                 "Write-Output \"$cpu|$total|$free\""],
-                capture_output=True, text=True,
-                encoding="utf-8", errors="replace", timeout=10
-            )
-            if result.returncode == 0:
-                parts = result.stdout.strip().split("|")
-                if len(parts) >= 3:
-                    info["cpu_usage_pct"] = parts[0]
-                    info["memory_total_gb"] = parts[1]
-                    info["memory_free_gb"] = parts[2]
-        except Exception:
-            pass
-    elif _OS == "Darwin":
-        # macOS
-        try:
-            result = subprocess.run(["uptime"], capture_output=True, text=True,
-                                    encoding="utf-8", errors="replace", timeout=5)
-            info["uptime"] = result.stdout.strip()
-        except Exception:
-            pass
-        try:
-            result = subprocess.run(["df", "-h", "/"], capture_output=True, text=True,
-                                    encoding="utf-8", errors="replace", timeout=5)
-            info["disk"] = result.stdout.strip()
-        except Exception:
-            pass
-    else:
-        # Linux
-        try:
-            result = subprocess.run(["uptime"], capture_output=True, text=True,
-                                    encoding="utf-8", errors="replace", timeout=5)
-            info["uptime"] = result.stdout.strip()
-        except Exception:
-            pass
-        try:
-            result = subprocess.run(["free", "-h"], capture_output=True, text=True,
-                                    encoding="utf-8", errors="replace", timeout=5)
-            info["memory"] = result.stdout.strip()
-        except Exception:
-            pass
-        try:
-            result = subprocess.run(["df", "-h", "/"], capture_output=True, text=True,
-                                    encoding="utf-8", errors="replace", timeout=5)
-            info["disk"] = result.stdout.strip()
+            import wmi  # type: ignore
+            w = wmi.WMI(namespace="root/wmi")
+            tz = w.MSAcpi_ThermalZoneTemperature()
+            if tz:
+                return (tz[0].CurrentTemperature / 10.0) - 273.15
         except Exception:
             pass
 
-    return info
+    return -1.0
 
 
-def system_monitor(parameters: dict = None, player=None) -> str:
+def get_system_status() -> dict:
+    """Snapshot of current system metrics for the system_status tool."""
+    cpu  = psutil.cpu_percent(interval=0.2)
+    ram  = psutil.virtual_memory()
+    temp = _get_cpu_temp()
+    gpu  = _get_gpu_usage()
+
+    boot_time   = psutil.boot_time()
+    uptime_secs = time.time() - boot_time
+    uptime_h    = int(uptime_secs // 3600)
+    uptime_m    = int((uptime_secs % 3600) // 60)
+
+    return {
+        "cpu_percent":   round(cpu, 1),
+        "ram_percent":   round(ram.percent, 1),
+        "ram_used_gb":   round(ram.used   / 1024 ** 3, 1),
+        "ram_total_gb":  round(ram.total  / 1024 ** 3, 1),
+        "cpu_temp_c":    round(temp, 1) if temp > 0 else None,
+        "gpu_percent":   round(gpu,  1) if gpu  >= 0 else None,
+        "uptime":        f"{uptime_h}h {uptime_m}m",
+        "process_count": len(psutil.pids()),
+    }
+
+
+class SystemMonitor:
     """
-    Main entry point for the system_monitor tool.
-
-    Parameters:
-        action: "full" | "cpu" | "memory" | "disk" | "processes" | "quick"
+    Stateful monitor — cooldown state persists across session reconnections.
+    Call check() periodically; returns a [SYSTEM_ALERT] string or None.
     """
-    params = parameters or {}
-    action = params.get("action", "full").lower()
 
-    try:
+    def __init__(self, thresholds: dict | None = None):
+        self.thresholds   = {**DEFAULT_THRESHOLDS, **(thresholds or {})}
+        self._last_alert: dict[str, float] = {}
+        self._cpu_streak  = 0
+
+    def _can_alert(self, key: str) -> bool:
+        return (time.monotonic() - self._last_alert.get(key, 0)) > _COOLDOWN
+
+    def _record(self, key: str):
+        self._last_alert[key] = time.monotonic()
+
+    def check(self) -> str | None:
         try:
-            data = _get_psutil_info()
-        except ImportError:
-            data = _get_fallback_info()
-            return (
-                f"System Info (basic — install psutil for full data):\n"
-                f"{json.dumps(data, indent=2)}"
-            )
+            cpu  = psutil.cpu_percent(interval=None)
+            ram  = psutil.virtual_memory().percent
+            temp = _get_cpu_temp()
+            gpu  = _get_gpu_usage()
+        except Exception:
+            return None
 
-        if action == "cpu":
-            return f"CPU: {data['cpu']['cores']} cores, {data['cpu']['usage_pct']}% used, {data['cpu']['freq_mhz']} MHz"
-        elif action == "memory":
-            m = data["memory"]
-            return f"RAM: {m['used_gb']}/{m['total_gb']} GB ({m['usage_pct']}% used), {m['available_gb']} GB free"
-        elif action == "disk":
-            d = data.get("disk", {})
-            if "error" in d:
-                return f"Disk: {d['error']}"
-            return f"Disk: {d['used_gb']}/{d['total_gb']} GB ({d['usage_pct']}% used), {d['free_gb']} GB free"
-        elif action == "processes":
-            lines = ["Top 10 Processes by Memory:"]
-            for p in data.get("top_processes", []):
-                lines.append(f"  PID {p['pid']:6d} | {p['name']:25s} | MEM {p['memory_pct']:5.1f}% | CPU {p['cpu_pct']:5.1f}%")
-            return "\n".join(lines)
-        elif action == "quick":
-            disk_pct = data.get("disk", {}).get("usage_pct", "?")
-            return (
-                f"System: {data['os']} | Up: {data.get('uptime_hours', '?')}h\n"
-                f"CPU: {data['cpu']['usage_pct']}% | RAM: {data['memory']['usage_pct']}% | Disk: {disk_pct}%"
-            )
+        alerts: list[str] = []
+
+        if cpu >= self.thresholds["cpu"]:
+            self._cpu_streak += 1
+            if self._cpu_streak >= _CPU_STREAK and self._can_alert("cpu"):
+                alerts.append(
+                    f"[SYSTEM_ALERT] CPU usage has been critically high ({cpu:.0f}%) "
+                    "for several seconds. Warn the user in their language and suggest "
+                    "closing heavy applications."
+                )
+                self._record("cpu")
+                self._cpu_streak = 0
         else:
-            return json.dumps(data, indent=2)
+            self._cpu_streak = 0
 
-    except Exception as e:
-        return f"System monitor error: {e}"
+        if ram >= self.thresholds["ram"] and self._can_alert("ram"):
+            alerts.append(
+                f"[SYSTEM_ALERT] RAM is at {ram:.0f}% — nearly exhausted. "
+                "Warn the user in their language and suggest freeing memory."
+            )
+            self._record("ram")
+
+        if temp > 0 and temp >= self.thresholds["temp"] and self._can_alert("temp"):
+            alerts.append(
+                f"[SYSTEM_ALERT] CPU temperature is {temp:.0f}°C — above the safe limit. "
+                "Warn the user in their language and advise reducing system load "
+                "or checking cooling."
+            )
+            self._record("temp")
+
+        if gpu >= 0 and gpu >= self.thresholds["gpu"] and self._can_alert("gpu"):
+            alerts.append(
+                f"[SYSTEM_ALERT] GPU load is at {gpu:.0f}%. "
+                "Briefly inform the user in their language."
+            )
+            self._record("gpu")
+
+        return " ".join(alerts) if alerts else None

@@ -5,7 +5,6 @@ import base64
 import io
 import json
 import re
-import os
 import sys
 import threading
 import time
@@ -64,37 +63,33 @@ def _save_config_key(key: str, value) -> None:
 
 
 def _get_api_key() -> str:
-    for env in ("GEMINI_API_KEY", "GOOGLE_API_KEY"):
-        val = os.environ.get(env, "").strip()
-        if val:
-            return val
     key = _load_config().get("gemini_api_key", "")
     if not key:
-        raise RuntimeError("GEMINI_API_KEY / GOOGLE_API_KEY not found in env or config.")
+        raise RuntimeError("gemini_api_key not found in config.")
     return key
-
 
 
 def _get_os() -> str:
     return _load_config().get("os_system", "windows").lower()
 
-from config.models import get_model
-_LIVE_MODEL         = get_model("voice_live") or "models/gemini-3.1-flash-live-preview"
+_LIVE_MODEL         = "models/gemini-2.5-flash-native-audio-preview-12-2025"
 _CHANNELS           = 1
 _RECEIVE_SAMPLE_RATE = 24_000
 _CHUNK_SIZE         = 1_024
 
-_IMG_MAX_W = 640
-_IMG_MAX_H = 360
-_JPEG_Q    = 60
+_IMG_MAX_W = 1280
+_IMG_MAX_H = 720
+_JPEG_Q    = 82
 
 _SYSTEM_PROMPT = (
-    "You are JARVIS, an advanced AI assistant. "
-    "Analyze the provided image with precision and intelligence. "
-    "Be concise and direct — maximum two sentences unless the user's question "
-    "requires more detail. "
-    "Address the user respectfully. "
-    "Always call the appropriate tool; never simulate results."
+    "You are JARVIS, Tony Stark's AI assistant. "
+    "You are given an image from either the user's screen or their webcam. "
+    "Analyze what you see with detail and intelligence. "
+    "Describe objects, text, people, components, and their context clearly. "
+    "For technical questions (circuits, code, hardware) give specific, expert answers. "
+    "Be concise — 2-4 sentences — unless the question demands more detail. "
+    "Speak directly to the user ('I can see...', 'You have...'). "
+    "Address the user as 'sir' depending on the language they used."
 )
 
 
@@ -293,7 +288,7 @@ class _VisionSession:
                         tg.create_task(self._recv_loop())
                         tg.create_task(self._play_loop())
 
-            except Exception as eg:
+            except* Exception as eg:
                 for exc in eg.exceptions:
                     print(f"[Vision] ⚠️  Session error: {exc}")
             finally:
@@ -325,6 +320,7 @@ class _VisionSession:
                 print(f"[Vision] 📤 Sent {len(image_bytes):,} bytes — '{user_text[:60]}'")
             except Exception as e:
                 print(f"[Vision] ⚠️  Send error: {e}")
+                raise  # propagate to TaskGroup → triggers session reconnect
 
     async def _recv_loop(self) -> None:
         transcript: list[str] = []
@@ -349,6 +345,15 @@ class _VisionSession:
                             self._player.write_log(f"Jarvis: {full}")
                             print(f"[Vision] 💬 {full}")
                     transcript = []
+                    # Auto-close camera ~2s after JARVIS finishes speaking
+                    if self._player and hasattr(self._player, "stop_camera_stream"):
+                        async def _deferred_close():
+                            await asyncio.sleep(2.0)
+                            try:
+                                self._player.stop_camera_stream()
+                            except Exception:
+                                pass
+                        asyncio.create_task(_deferred_close())
 
         except Exception as e:
             print(f"[Vision] ⚠️  Recv error: {e}")
@@ -415,6 +420,16 @@ def screen_process(
         if angle == "camera":
             image_bytes, mime_type = _capture_camera()
             print(f"[Vision] 📷 Camera: {len(image_bytes):,} bytes")
+            if player and hasattr(player, "start_camera_stream"):
+                try:
+                    player.start_camera_stream()
+                except Exception as _e:
+                    print(f"[Vision] ⚠️  Camera stream failed: {_e}")
+            elif player and hasattr(player, "show_camera_frame"):
+                try:
+                    player.show_camera_frame(image_bytes)
+                except Exception as _e:
+                    print(f"[Vision] ⚠️  Camera preview failed: {_e}")
         else:
             image_bytes, mime_type = _capture_screen()
             print(f"[Vision] 🖥️  Screen: {len(image_bytes):,} bytes")

@@ -1,14 +1,3 @@
-# actions/dev_agent.py — JARVIS MK37 Project Builder (Gemini-Powered)
-"""
-Builds complete multi-file software projects using Gemini.
-- Plans file structure
-- Writes all files with dependency awareness
-- Installs dependencies
-- Opens VSCode
-- Runs and auto-fixes errors
-"""
-from __future__ import annotations
-
 import subprocess
 import sys
 import json
@@ -17,14 +6,33 @@ import time
 from pathlib import Path
 
 
-def _get_gemini():
-    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-    from backends.gemini import GeminiBackend
-    return GeminiBackend()
+def get_base_dir():
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).parent
+    return Path(__file__).resolve().parent.parent
 
 
+BASE_DIR         = get_base_dir()
+API_CONFIG_PATH  = BASE_DIR / "config" / "api_keys.json"
 PROJECTS_DIR     = Path.home() / "Desktop" / "JarvisProjects"
-MAX_FIX_ATTEMPTS = 4
+MAX_FIX_ATTEMPTS = 5
+MODEL_PLANNER    = "gemini-2.5-flash"
+MODEL_WRITER     = "gemini-2.5-flash"
+
+def _get_api_key() -> str:
+    with open(API_CONFIG_PATH, "r", encoding="utf-8") as f:
+        return json.load(f)["gemini_api_key"]
+
+
+def _get_model(model_name: str):
+    from google import genai
+    _c = genai.Client(api_key=_get_api_key())
+
+    class _W:
+        def generate_content(self, contents):
+            return _c.models.generate_content(model=model_name, contents=contents)
+
+    return _W()
 
 
 def _strip_fences(text: str) -> str:
@@ -34,237 +42,427 @@ def _strip_fences(text: str) -> str:
     return text.strip()
 
 
-def _is_error(output: str) -> bool:
+def _is_rate_limit(error: Exception) -> bool:
+    msg = str(error).lower()
+    return "429" in msg or "quota" in msg or "resource_exhausted" in msg
+
+
+def _parse_traceback(output: str, project_files: list[str]) -> tuple[str | None, int | None]:
+
+    pattern = re.compile(r'File ["\']([^"\']+\.py)["\'],\s+line\s+(\d+)', re.IGNORECASE)
+    matches = pattern.findall(output)
+
+    for raw_path, line_str in reversed(matches):
+        raw_name = Path(raw_path).name
+        for pf in project_files:
+            if Path(pf).name == raw_name or pf == raw_path or raw_path.endswith(pf):
+                return pf, int(line_str)
+
+    return None, None
+
+
+def _classify_error(output: str) -> str:
+
     low = output.lower()
-    if "timed out" in low: return False
-    return any(x in low for x in [
-        "traceback", "exception", "error:", "syntaxerror",
-        "nameerror", "typeerror", "importerror", "modulenotfounderror",
-        "filenotfounderror", "valueerror", "keyerror",
-    ])
+
+    if any(x in low for x in ("no module named", "modulenotfounderror", "importerror")):
+        return "dependency_error"
+
+    if "syntaxerror" in low or "invalid syntax" in low:
+        return "syntax_error"
+    
+    if "cannot import" in low or "importerror" in low:
+        return "import_error"
+
+    if any(x in low for x in (
+        "traceback", "exception", "error:", "nameerror", "typeerror",
+        "attributeerror", "valueerror", "keyerror", "indexerror",
+        "zerodivisionerror", "filenotfounderror", "permissionerror",
+    )):
+        return "runtime_error"
+
+    return "none"
+
+
+def _has_error(output: str, run_command: str) -> bool:
+    
+    low = output.lower()
+
+    if "timed out" in low:
+        return False
+
+    if not output.strip():
+        return False
+
+    error_type = _classify_error(output)
+    return error_type != "none"
+
+class RateLimitError(Exception):
+    pass
 
 
 def _plan_project(description: str, language: str) -> dict:
-    gemini = _get_gemini()
+    model = _get_model(MODEL_PLANNER)
 
-    prompt = f"""You are a senior software architect. Create a minimal, complete file plan.
+    prompt = f"""You are a senior software architect. Create a minimal, complete file plan for this project.
 
 Language: {language}
-Project: {description}
+Description: {description}
 
-Return ONLY valid JSON:
+Return ONLY valid JSON — no markdown, no explanation:
 {{
   "project_name": "snake_case_name",
   "entry_point": "main.py",
-  "run_command": "python main.py",
-  "dependencies": ["requests"],
   "files": [
     {{
-      "path": "utils/helpers.py",
-      "description": "Helper functions",
-      "imports": []
+      "path": "main.py",
+      "description": "Entry point — what it does and which modules it imports",
+      "imports": ["utils.helpers", "core.engine"]
     }},
     {{
-      "path": "main.py",
-      "description": "Entry point — imports utils.helpers",
-      "imports": ["utils.helpers"]
+      "path": "utils/helpers.py",
+      "description": "Helper utilities — what functions it exposes",
+      "imports": []
     }}
-  ]
+  ],
+  "run_command": "python main.py",
+  "dependencies": ["requests"]
 }}
 
-Rules:
-1. Files must be in DEPENDENCY ORDER — files with no imports first
-2. imports[] = other project files this file imports (dot-notation)
-3. Keep minimal — only what is truly needed
-4. Standard library modules do NOT go in dependencies[]"""
+Critical rules:
+1. List files in DEPENDENCY ORDER — files with no imports come first, entry point comes last.
+2. The "imports" field must list every other project module this file imports (dot-notation, e.g. "utils.helpers").
+3. Keep it minimal — only files truly needed.
+4. Entry point must be in the files list.
+5. Use relative paths only (e.g. "utils/helpers.py", not absolute paths).
+6. Standard library modules (os, sys, json, etc.) do NOT go in "dependencies".
 
-    response = gemini.complete([{"role": "user", "content": prompt}])
-    text = re.sub(r"```(?:json)?", "", response).strip().rstrip("`").strip()
-    start = text.find("{"); end = text.rfind("}") + 1
-    if start != -1:
-        text = text[start:end]
-    return json.loads(text)
+JSON:"""
 
+    try:
+        response = model.generate_content(prompt)
+        raw = _strip_fences(response.text)
+        return json.loads(raw)
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Planner returned invalid JSON: {e}\nRaw: {response.text[:300]}")
+    except Exception as e:
+        if _is_rate_limit(e):
+            raise RateLimitError(str(e))
+        raise
 
-def _write_file(file_info: dict, description: str, all_files: list, language: str,
-                project_dir: Path, already_written: dict) -> str:
-    gemini = _get_gemini()
+def _write_file(
+    file_info: dict,
+    project_description: str,
+    all_files: list[dict],
+    language: str,
+    project_dir: Path,
+    already_written: dict[str, str],
+) -> str:
+    model = _get_model(MODEL_WRITER)
 
-    file_path    = file_info["path"]
-    file_desc    = file_info.get("description", "")
+    file_path = file_info["path"]
+    file_desc = file_info.get("description", "")
     file_imports = file_info.get("imports", [])
 
-    # Build context from already-written dependency files
-    dep_context = ""
+    file_list = "\n".join(
+        f"  [{i+1}] {f['path']}: {f.get('description', '')}"
+        for i, f in enumerate(all_files)
+    )
+
+    dependency_context = ""
     for dep_dotted in file_imports:
         dep_path = dep_dotted.replace(".", "/") + ".py"
         if dep_path in already_written:
-            dep_context += f"\n\n--- {dep_path} (import from this) ---\n{already_written[dep_path][:1500]}"
+            code_snippet = already_written[dep_path][:2000]
+            dependency_context += f"\n\n--- {dep_path} (you must import from this) ---\n{code_snippet}"
 
-    files_list = "\n".join(f"  - {f['path']}: {f.get('description', '')}" for f in all_files)
+    lang_rules = ""
+    if language.lower() == "python":
+        lang_rules = """
+Python-specific rules:
+- Use type hints for all function signatures.
+- Add docstrings for all public functions and classes.
+- Use if __name__ == "__main__": guard in the entry point.
+- For relative imports within the project, use: from utils.helpers import foo  (match the project structure exactly).
+- Do NOT use implicit relative imports (from . import ...) unless it's a proper package with __init__.py.
+- If this is a package subdirectory, create __init__.py files where needed."""
+    elif language.lower() in ("javascript", "typescript", "js", "ts"):
+        lang_rules = """
+JS/TS-specific rules:
+- Use ES modules (import/export), not CommonJS (require).
+- Add JSDoc comments for all exported functions.
+- Handle promise rejections with try/catch in async functions."""
 
-    prompt = (
-        f"You are a senior {language} developer writing production-quality code.\n\n"
-        f"Project goal: {description}\n\n"
-        f"All project files (in order):\n{files_list}\n\n"
-        f"{dep_context if dep_context else ''}\n\n"
-        f"Write COMPLETE, WORKING code for: {file_path}\n"
-        f"Purpose: {file_desc}\n"
-        f"{'Imports from: ' + ', '.join(file_imports) if file_imports else 'No project-internal imports.'}\n\n"
-        f"Rules:\n"
-        f"- Output ONLY raw code. No explanation, no markdown, no backticks.\n"
-        f"- Write COMPLETE, RUNNABLE code. No placeholders, no TODOs.\n"
-        f"- Use correct import paths matching the file structure.\n"
-        f"- Add proper error handling."
-    )
+    prompt = f"""You are a senior {language} developer writing production-quality code for a real project.
 
-    response = gemini.complete([{"role": "user", "content": prompt}])
-    code      = _strip_fences(response)
+Project goal: {project_description}
 
-    full_path = project_dir / file_path
-    full_path.parent.mkdir(parents=True, exist_ok=True)
-    full_path.write_text(code, encoding="utf-8")
-    print(f"[DevAgent] ✅ Written: {file_path} ({len(code)} chars)")
-    return code
+Complete project file structure (in dependency order):
+{file_list}
 
+{f"Dependencies this file must import from other project files:{dependency_context}" if dependency_context else ""}
 
-def _install_dependencies(deps: list, project_dir: Path) -> str:
-    if not deps:
-        return "No external dependencies."
-    to_install = []
-    for dep in deps:
-        pkg = re.split(r"[>=<!]", dep)[0].strip()
-        r = subprocess.run([sys.executable, "-m", "pip", "show", pkg],
-                           capture_output=True, text=True,
-                           encoding="utf-8", errors="replace")
-        if r.returncode != 0:
-            to_install.append(dep)
-    if not to_install:
-        return "All dependencies already installed."
+Your task: Write the complete, working code for: {file_path}
+Purpose of this file: {file_desc}
+{f"This file imports from: {', '.join(file_imports)}" if file_imports else "This file has no project-internal imports."}
+
+{lang_rules}
+
+General rules:
+- Output ONLY raw code. Absolutely no explanation, no markdown, no triple backticks.
+- Write COMPLETE, RUNNABLE code — no placeholders, no "# TODO", no "pass" stubs.
+- Every import must either be from the standard library, listed dependencies, or the project files shown above.
+- Match import paths EXACTLY to the file paths in the project structure (e.g. if file is "utils/helpers.py", import as "from utils.helpers import ...").
+- Use proper error handling (try/except) where I/O or network calls are made.
+- The code must work correctly when the project entry point is run from the project root directory.
+
+Code for {file_path}:"""
+
     try:
-        subprocess.run(
+        response = model.generate_content(prompt)
+        code = _strip_fences(response.text)
+
+        full_path = project_dir / file_path
+        full_path.parent.mkdir(parents=True, exist_ok=True)
+        full_path.write_text(code, encoding="utf-8")
+
+        print(f"[DevAgent] ✅ Written: {file_path} ({len(code)} chars)")
+        return code
+
+    except Exception as e:
+        if _is_rate_limit(e):
+            raise RateLimitError(str(e))
+        raise
+
+def _install_dependencies(dependencies: list[str], project_dir: Path) -> str:
+    if not dependencies:
+        return "No external dependencies."
+
+    to_install = []
+    for dep in dependencies:
+        pkg_name = re.split(r"[>=<!]", dep)[0].strip()
+        result = subprocess.run(
+            [sys.executable, "-m", "pip", "show", pkg_name],
+            capture_output=True, text=True
+        )
+        if result.returncode != 0:
+            to_install.append(dep)
+        else:
+            print(f"[DevAgent] ✓ Already installed: {pkg_name}")
+
+    if not to_install:
+        return f"All dependencies already installed: {', '.join(dependencies)}"
+
+    print(f"[DevAgent] 📦 Installing: {to_install}")
+    try:
+        result = subprocess.run(
             [sys.executable, "-m", "pip", "install"] + to_install,
             capture_output=True, text=True,
-            encoding="utf-8", errors="replace", timeout=120
+            encoding="utf-8", errors="replace",
+            timeout=120, cwd=str(project_dir)
         )
-        return f"Installed: {', '.join(to_install)}"
+        if result.returncode == 0:
+            return f"Installed: {', '.join(to_install)}"
+        return f"Install warning (non-fatal): {result.stderr[:200]}"
+    except subprocess.TimeoutExpired:
+        return "Dependency install timed out (non-fatal)."
     except Exception as e:
         return f"Install error (non-fatal): {e}"
 
-
-def _open_vscode(project_dir: Path):
-    for cmd in ["code", "cursor"]:
+def _open_vscode(project_dir: Path) -> bool:
+    vscode_candidates = [
+        "code",
+        rf"C:\Users\{Path.home().name}\AppData\Local\Programs\Microsoft VS Code\bin\code.cmd",
+        r"C:\Program Files\Microsoft VS Code\bin\code.cmd",
+    ]
+    for cmd in vscode_candidates:
         try:
-            subprocess.Popen([cmd, str(project_dir)], shell=True,
-                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.Popen(
+                [cmd, str(project_dir)],
+                shell=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL
+            )
             time.sleep(1.5)
-            return
+            print(f"[DevAgent] 💻 VSCode opened: {project_dir}")
+            return True
         except Exception:
             continue
-
+    return False
 
 def _run_project(run_command: str, project_dir: Path, timeout: int = 30) -> str:
-    parts = run_command.split()
-    if parts and parts[0].lower() in ("python", "python3"):
-        parts[0] = sys.executable
+    print(f"[DevAgent] 🚀 Running: {run_command}")
     try:
+        parts = run_command.split()
+        if parts[0].lower() == "python":
+            parts[0] = sys.executable
+
         result = subprocess.run(
-            parts, capture_output=True, text=True,
+            parts,
+            capture_output=True, text=True,
             encoding="utf-8", errors="replace",
-            timeout=timeout, cwd=str(project_dir)
+            timeout=timeout,
+            cwd=str(project_dir)
         )
+
         stdout = result.stdout.strip()
         stderr = result.stderr.strip()
-        parts_out = []
-        if stdout: parts_out.append(f"STDOUT:\n{stdout}")
-        if stderr: parts_out.append(f"STDERR:\n{stderr}")
-        return "\n\n".join(parts_out) if parts_out else "Ran with no output."
+
+        combined_parts = []
+        if stdout:
+            combined_parts.append(f"STDOUT:\n{stdout}")
+        if stderr:
+            combined_parts.append(f"STDERR:\n{stderr}")
+
+        return "\n\n".join(combined_parts) if combined_parts else "Ran with no output."
+
     except subprocess.TimeoutExpired:
-        return f"Timed out after {timeout}s — long-running app is likely working."
+        return f"Timed out after {timeout}s — long-running app (server/GUI) is likely working."
+    except FileNotFoundError as e:
+        return f"Command not found: {e}"
     except Exception as e:
         return f"Run error: {e}"
 
-
-def _fix_project(error_output: str, description: str, all_files: list,
-                 file_codes: dict, language: str, project_dir: Path, entry_point: str) -> dict:
-    gemini = _get_gemini()
-
-    # Find the most likely file to fix
-    fix_path = entry_point
-    for pattern in [r'File ["\']([^"\']+\.py)["\']', r'in ([a-zA-Z_/]+\.py)']:
-        m = re.search(pattern, error_output)
-        if m:
-            candidate = m.group(1).replace("\\", "/")
-            if any(candidate in k or k in candidate for k in file_codes):
-                for k in file_codes:
-                    if candidate in k or k in candidate:
-                        fix_path = k
-                        break
-            break
-
-    current_code = file_codes.get(fix_path, "")
-    other_context = ""
-    for fp, code in file_codes.items():
-        if fp != fix_path:
-            other_context += f"\n--- {fp} ---\n{code[:800]}\n"
-
-    prompt = (
-        f"Fix this broken {language} file. Output ONLY the fixed code.\n\n"
-        f"Project goal: {description}\n\n"
-        f"Error:\n{error_output[:2000]}\n\n"
-        f"Other files for context:\n{other_context[:2000]}\n\n"
-        f"Fix this file ({fix_path}):\n{current_code}"
+def _try_auto_install(error_output: str, project_dir: Path) -> bool:
+    """ModuleNotFoundError varsa eksik paketi otomatik kurmaya çalışır."""
+    pattern = re.compile(
+        r"No module named ['\"]([a-zA-Z0-9_\-\.]+)['\"]", re.IGNORECASE
     )
+    match = pattern.search(error_output)
+    if not match:
+        return False
 
-    response = gemini.complete([{"role": "user", "content": prompt}])
-    fixed = _strip_fences(response)
-
-    full_path = project_dir / fix_path
-    full_path.parent.mkdir(parents=True, exist_ok=True)
-    full_path.write_text(fixed, encoding="utf-8")
-    print(f"[DevAgent] 🔧 Fixed: {fix_path}")
-    return {fix_path: fixed}
-
-
-def _auto_install_missing(error: str, project_dir: Path) -> bool:
-    m = re.search(r"No module named ['\"]([a-zA-Z0-9_\-.]+)['\"]", error)
-    if not m: return False
-    pkg = m.group(1).split(".")[0].replace("_", "-")
-    print(f"[DevAgent] 📦 Auto-installing: {pkg}")
+    pkg = match.group(1).replace("_", "-").split(".")[0]
+    print(f"[DevAgent] 🔧 Auto-installing missing package: {pkg}")
     try:
         result = subprocess.run(
             [sys.executable, "-m", "pip", "install", pkg],
             capture_output=True, text=True,
-            encoding="utf-8", errors="replace", timeout=60
+            encoding="utf-8", errors="replace",
+            timeout=60, cwd=str(project_dir)
         )
         return result.returncode == 0
     except Exception:
         return False
 
+def _fix_files(
+    error_output: str,
+    project_description: str,
+    all_files: list[dict],
+    file_codes: dict[str, str],
+    language: str,
+    project_dir: Path,
+    entry_point: str,
+) -> dict[str, str]:
 
-def dev_agent(parameters: dict, response=None, player=None, session_memory=None, speak=None) -> str:
-    p            = parameters or {}
-    description  = p.get("description", "").strip()
-    language     = p.get("language", "python").strip()
-    project_name = p.get("project_name", "").strip()
-    timeout      = int(p.get("timeout", 30))
+    model = _get_model(MODEL_PLANNER)
 
-    if not description:
-        return "Please describe the project to build."
+    error_file, error_line = _parse_traceback(error_output, list(file_codes.keys()))
+    error_type = _classify_error(error_output)
+
+    files_to_fix: list[str] = []
+
+    if error_file:
+        files_to_fix.append(error_file)
+        if error_type == "import_error":
+            for fi in all_files:
+                if error_file.replace("/", ".").replace(".py", "") in fi.get("imports", []):
+                    p = fi["path"]
+                    if p not in files_to_fix:
+                        files_to_fix.append(p)
+    else:
+        files_to_fix.append(entry_point)
+
+    updated_codes: dict[str, str] = {}
+
+    for fix_path in files_to_fix:
+        current_code = file_codes.get(fix_path, "")
+
+        other_ctx = ""
+        for fp, code in file_codes.items():
+            if fp != fix_path and code:
+                snippet = code[:1500] + ("..." if len(code) > 1500 else "")
+                other_ctx += f"\n--- {fp} ---\n{snippet}\n"
+
+        line_hint = f"\nError appears to be near line {error_line} in this file." if (
+            error_line and fix_path == error_file
+        ) else ""
+
+        prompt = f"""You are an expert {language} debugger. Fix the broken file below.
+
+Project goal: {project_description}
+
+All project files:
+{chr(10).join(f"  - {f['path']}: {f.get('description', '')}" for f in all_files)}
+
+Other files for context (read-only — fix only the target file):
+{other_ctx[:3500]}
+
+File to fix: {fix_path}{line_hint}
+Error type: {error_type}
+
+Error output:
+{error_output[:2500]}
+
+Current (broken) code:
+{current_code}
+
+Rules:
+- Output ONLY the complete fixed code. No explanation, no markdown, no backticks.
+- Fix ALL errors visible in the error output.
+- Keep all existing correct logic — do not remove working features.
+- Ensure import paths match the actual project file structure exactly.
+- Do NOT introduce new bugs or remove error handling.
+
+Fixed code for {fix_path}:"""
+
+        try:
+            response = model.generate_content(prompt)
+            fixed = _strip_fences(response.text)
+
+            full_path = project_dir / fix_path
+            full_path.parent.mkdir(parents=True, exist_ok=True)
+            full_path.write_text(fixed, encoding="utf-8")
+
+            updated_codes[fix_path] = fixed
+            print(f"[DevAgent] 🔧 Fixed: {fix_path}")
+
+        except Exception as e:
+            if _is_rate_limit(e):
+                raise RateLimitError(str(e))
+            print(f"[DevAgent] ⚠️ Could not fix {fix_path}: {e}")
+
+    return updated_codes
+
+def _build_project(
+    description: str,
+    language: str,
+    project_name: str,
+    timeout: int,
+    speak=None,
+    player=None,
+) -> str:
 
     def log(msg: str):
         print(f"[DevAgent] {msg}")
-        if player: player.write_log(f"[DevAgent] {msg}")
+        if player:
+            player.write_log(f"[DevAgent] {msg}")
 
     log("Planning project structure...")
     try:
         plan = _plan_project(description, language)
-    except Exception as e:
-        return f"Planning failed: {e}"
+    except RateLimitError:
+        msg = "Rate limit reached, sir. Please try again in a moment."
+        if speak: speak(msg)
+        return msg
+    except ValueError as e:
+        msg = f"Planning failed: {e}"
+        if speak: speak(msg)
+        return msg
 
-    proj_name   = project_name or plan.get("project_name", "jarvis_project")
-    proj_name   = re.sub(r"[^\w\-]", "_", proj_name)
-    project_dir = PROJECTS_DIR / proj_name
+    proj_name    = project_name or plan.get("project_name", "jarvis_project")
+    proj_name    = re.sub(r"[^\w\-]", "_", proj_name)
+    project_dir  = PROJECTS_DIR / proj_name
     project_dir.mkdir(parents=True, exist_ok=True)
 
     files        = plan.get("files", [])
@@ -274,61 +472,131 @@ def dev_agent(parameters: dict, response=None, player=None, session_memory=None,
 
     log(f"Project: {proj_name} | Files: {len(files)} | Entry: {entry_point}")
 
-    # Sort by dependency count (leaf files first)
-    sorted_files = sorted(files, key=lambda f: len(f.get("imports", [])))
+    def _dep_sort_key(fi: dict) -> int:
+        return len(fi.get("imports", []))
+
+    sorted_files = sorted(files, key=_dep_sort_key)
+
     file_codes: dict[str, str] = {}
 
     for file_info in sorted_files:
-        path = file_info.get("path", "")
-        if not path: continue
-        log(f"Writing {path}...")
-        try:
-            code = _write_file(file_info, description, files, language, project_dir, file_codes)
-            file_codes[path] = code
-            time.sleep(0.3)
-        except Exception as e:
-            log(f"Failed to write {path}: {e}")
+        file_path = file_info.get("path", "")
+        if not file_path:
+            continue
+
+        log(f"Writing {file_path}...")
+        for attempt in range(2):
+            try:
+                code = _write_file(
+                    file_info=file_info,
+                    project_description=description,
+                    all_files=files,
+                    language=language,
+                    project_dir=project_dir,
+                    already_written=file_codes,
+                )
+                file_codes[file_path] = code
+                time.sleep(0.4)
+                break
+            except RateLimitError:
+                if attempt == 0:
+                    log("Rate limit — waiting 20s...")
+                    time.sleep(20)
+                else:
+                    log(f"Rate limit retry failed for {file_path}, skipping.")
+            except Exception as e:
+                log(f"Failed to write {file_path}: {e}")
+                break
 
     if not file_codes:
-        return "Could not write any project files."
+        msg = "I could not write any project files, sir."
+        if speak: speak(msg)
+        return msg
 
-    # Install dependencies
-    dep_result = _install_dependencies(dependencies, project_dir)
-    log(dep_result)
+    if dependencies:
+        install_result = _install_dependencies(dependencies, project_dir)
+        log(install_result)
 
-    # Open VSCode
     _open_vscode(project_dir)
 
     last_output   = ""
-    auto_installs = 0
+    auto_installs = 0  
 
     for attempt in range(1, MAX_FIX_ATTEMPTS + 1):
-        log(f"Running (attempt {attempt}/{MAX_FIX_ATTEMPTS})...")
+        log(f"Running project (attempt {attempt}/{MAX_FIX_ATTEMPTS})...")
         last_output = _run_project(run_command, project_dir, timeout)
-        log(f"Output: {last_output[:120]}")
+        log(f"Output preview: {last_output[:150]}")
 
-        if not _is_error(last_output):
-            msg = f"Project '{proj_name}' is working after {attempt} attempt(s). Saved to: {project_dir}"
+        if not _has_error(last_output, run_command):
+            msg = (
+                f"Project '{proj_name}' is working, sir. "
+                f"Built in {attempt} attempt{'s' if attempt > 1 else ''}. "
+                f"Saved to: {project_dir}"
+            )
             if speak: speak(msg)
             return f"{msg}\n\nOutput:\n{last_output}"
 
-        if attempt < MAX_FIX_ATTEMPTS:
-            # Try auto-install first
-            if "modulenotfounderror" in last_output.lower() and auto_installs < 3:
-                if _auto_install_missing(last_output, project_dir):
-                    auto_installs += 1
-                    log("Dependency installed, retrying...")
-                    time.sleep(1)
-                    continue
+        if attempt == MAX_FIX_ATTEMPTS:
+            break
 
-            log("Fixing errors...")
-            try:
-                updated = _fix_project(last_output, description, files, file_codes, language, project_dir, entry_point)
-                file_codes.update(updated)
+        error_type = _classify_error(last_output)
+        if error_type == "dependency_error" and auto_installs < 3:
+            installed = _try_auto_install(last_output, project_dir)
+            if installed:
+                auto_installs += 1
+                log("Missing dependency installed, retrying...")
                 time.sleep(1)
-            except Exception as e:
-                log(f"Fix step failed: {e}")
+                continue
 
-    msg = f"Built '{proj_name}' but could not fully fix after {MAX_FIX_ATTEMPTS} attempts. Check {project_dir}."
+        log(f"Fixing errors (type: {error_type})...")
+        try:
+            updated = _fix_files(
+                error_output=last_output,
+                project_description=description,
+                all_files=files,
+                file_codes=file_codes,
+                language=language,
+                project_dir=project_dir,
+                entry_point=entry_point,
+            )
+            file_codes.update(updated)
+            time.sleep(1)
+        except RateLimitError:
+            msg = "Rate limit reached during fix. Project saved, check it manually in VSCode."
+            if speak: speak(msg)
+            return msg
+        except Exception as e:
+            log(f"Fix step failed: {e}")
+
+    msg = (
+        f"I couldn't fully fix '{proj_name}' after {MAX_FIX_ATTEMPTS} attempts, sir. "
+        f"Project is saved at {project_dir} — open it in VSCode and check manually."
+    )
     if speak: speak(msg)
-    return f"{msg}\n\nLast error:\n{last_output[:400]}"
+    return f"{msg}\n\nLast error:\n{last_output[:600]}"
+
+
+def dev_agent(
+    parameters: dict,
+    response=None,
+    player=None,
+    session_memory=None,
+    speak=None,
+) -> str:
+    p            = parameters or {}
+    description  = p.get("description", "").strip()
+    language     = p.get("language", "python").strip()
+    project_name = p.get("project_name", "").strip()
+    timeout      = int(p.get("timeout", 30))
+
+    if not description:
+        return "Please describe the project you want me to build, sir."
+
+    return _build_project(
+        description  = description,
+        language     = language,
+        project_name = project_name,
+        timeout      = timeout,
+        speak        = speak,
+        player       = player,
+    )

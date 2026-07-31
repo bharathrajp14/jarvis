@@ -1,5 +1,5 @@
 """
-BackgroundMonitor — user-configured topic watching for BR JARVIS.
+BackgroundMonitor — user-configured topic watching.
 Checks DDG news once per day per topic; alerts JARVIS when a new headline appears.
 No crypto, no finance, no uninvited tracking.
 """
@@ -9,16 +9,24 @@ import re
 from datetime import datetime
 from pathlib import Path
 
-# ── Blocked categories ────────────────────────────────────────────────────────
+
+# ── Blocked categories (never monitor regardless of what user says) ────────────
+
 _BLOCKED = {
+    # Marka / varlık adları — her dilde aynı yazılır
     "bitcoin", "ethereum", "dogecoin", "solana", "binance",
     "nft", "blockchain", "defi", "altcoin", "memecoin", "coin", "token",
-    "crypto", "kripto", "cripto", "krypto", "cryptocurrency",
+    # "kripto" kökünün farklı dillerdeki yazılışları
+    "crypto", "kripto", "cripto", "krypto", "крипто", "仮想通貨", "暗号資産",
+    "cryptocurrency",
 }
 
 def _is_blocked(topic: str) -> bool:
     t = topic.lower()
     return any(word in t for word in _BLOCKED)
+
+
+# ── Slug / hash helpers ────────────────────────────────────────────────────────
 
 def _slug(topic: str) -> str:
     return re.sub(r"[^a-z0-9]+", "_", topic.lower().strip())[:40].strip("_")
@@ -26,30 +34,28 @@ def _slug(topic: str) -> str:
 def _title_hash(title: str) -> str:
     return hashlib.md5(title.encode("utf-8", errors="ignore")).hexdigest()[:12]
 
+
 # ── Memory I/O ─────────────────────────────────────────────────────────────────
+
 def _load() -> dict:
-    try:
-        from memory.memory_manager import load_memory
-        data = load_memory().get("monitors", {})
-        return data if isinstance(data, dict) else {}
-    except Exception:
-        return {}
+    from memory.memory_manager import load_memory
+    data = load_memory().get("monitors", {})
+    return data if isinstance(data, dict) else {}
 
 def _save(monitors: dict) -> None:
-    try:
-        from memory.memory_manager import load_memory, MEMORY_PATH, _lock
-        memory = load_memory()
-        memory["monitors"] = monitors
-        with _lock:
-            MEMORY_PATH.parent.mkdir(parents=True, exist_ok=True)
-            MEMORY_PATH.write_text(
-                json.dumps(memory, indent=2, ensure_ascii=False),
-                encoding="utf-8",
-            )
-    except Exception as e:
-        print(f"[Monitor] Save error: {e}")
+    from memory.memory_manager import load_memory, MEMORY_PATH, _lock
+    memory = load_memory()
+    memory["monitors"] = monitors
+    with _lock:
+        MEMORY_PATH.parent.mkdir(parents=True, exist_ok=True)
+        MEMORY_PATH.write_text(
+            json.dumps(memory, indent=2, ensure_ascii=False),
+            encoding="utf-8",
+        )
+
 
 # ── Public API ─────────────────────────────────────────────────────────────────
+
 def add_monitor(topic: str) -> str:
     topic = topic.strip()
     if not topic:
@@ -70,14 +76,17 @@ def add_monitor(topic: str) -> str:
     print(f"[Monitor] ➕ Added: {topic}")
     return f"Now monitoring: {topic}"
 
+
 def remove_monitor(topic: str) -> str:
     topic = topic.strip().lower()
     monitors = _load()
+    # exact slug match first
     slug = _slug(topic)
     if slug in monitors:
         label = monitors.pop(slug)["topic"]
         _save(monitors)
         return f"Stopped monitoring: {label}"
+    # partial match fallback
     for key, val in list(monitors.items()):
         if topic in val.get("topic", "").lower():
             label = monitors.pop(key)["topic"]
@@ -85,8 +94,10 @@ def remove_monitor(topic: str) -> str:
             return f"Stopped monitoring: {label}"
     return f"Not found in monitored topics: {topic}"
 
+
 def list_monitors() -> list[str]:
     return [v.get("topic", k) for k, v in _load().items()]
+
 
 def check_all() -> list[str]:
     """
@@ -105,7 +116,7 @@ def check_all() -> list[str]:
 
     for slug, data in monitors.items():
         if data.get("last_check") == today:
-            continue
+            continue                     # already checked today
 
         topic = data.get("topic", slug)
         try:
@@ -125,7 +136,7 @@ def check_all() -> list[str]:
             changed = True
 
             if h == data.get("last_hash"):
-                continue
+                continue                 # same headline as last check — no alert
 
             monitors[slug]["last_hash"] = h
 

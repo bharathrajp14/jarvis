@@ -10,7 +10,7 @@ try:
 except ImportError:
     _SEND2TRASH = False
 
-_OS = platform.system()
+_OS = platform.system()  # "Windows" | "Darwin" | "Linux"
 
 _SAFE_ROOTS: list[Path] = [
     Path.home(),
@@ -477,13 +477,6 @@ def file_controller(
     action = params.get("action", "").lower().strip()
     path   = params.get("path", "desktop")
     name   = params.get("name", "")
-
-    if action in ("create_dir", "create_directory", "mkdir", "make_dir"):
-        action = "create_folder"
-    elif action in ("create", "touch"):
-        action = "create_file"
-    elif action in ("rm", "remove"):
-        action = "delete"
 
     if player:
         player.write_log(f"[file] {action} {name or path}")

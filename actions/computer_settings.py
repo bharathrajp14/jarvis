@@ -1,3 +1,4 @@
+#computer_settings.py
 import json
 import re
 import sys
@@ -11,16 +12,21 @@ try:
     pyautogui.FAILSAFE = True
     pyautogui.PAUSE    = 0.05
     _PYAUTOGUI = True
-except Exception:
+except ImportError:
     _PYAUTOGUI = False
 
 try:
     import pyperclip
     _PYPERCLIP = True
-except Exception:
+except ImportError:
     _PYPERCLIP = False
 
-_OS = platform.system()
+_OS = platform.system()  # "Windows" | "Darwin" | "Linux"
+
+if _OS == "Windows":
+    _WIN_HIDE: dict = {"creationflags": subprocess.CREATE_NO_WINDOW}
+else:
+    _WIN_HIDE: dict = {}
 
 
 def _get_base_dir() -> Path:
@@ -29,26 +35,15 @@ def _get_base_dir() -> Path:
     return Path(__file__).resolve().parent.parent
 
 def _get_api_key() -> str:
-    import os
-    for env in ("GEMINI_API_KEY", "GOOGLE_API_KEY"):
-        val = os.environ.get(env, "").strip()
-        if val:
-            return val
-    try:
-        path = _get_base_dir() / "config" / "api_keys.json"
-        if path.exists():
-            data = json.loads(path.read_text(encoding="utf-8"))
-            return data.get("gemini_api_key", "").strip()
-    except Exception:
-        pass
-    return ""
-
+    path = _get_base_dir() / "config" / "api_keys.json"
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)["gemini_api_key"]
 
 def _get_macos_wifi_interface() -> str:
     try:
         result = subprocess.run(
             ["networksetup", "-listallhardwareports"],
-            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=5
+            capture_output=True, text=True, timeout=5
         )
         lines = result.stdout.splitlines()
         for i, line in enumerate(lines):
@@ -60,46 +55,6 @@ def _get_macos_wifi_interface() -> str:
         pass
     return "en0" 
 
-def _linux_volume_cmd(action: str, value: int | str = None):
-    """Try pactl -> wpctl -> amixer fallback for robust Linux audio control across distros."""
-    if action == "up":
-        cmds = [
-            ["pactl", "set-sink-volume", "@DEFAULT_SINK@", "+10%"],
-            ["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", "10%+"],
-            ["amixer", "-q", "set", "Master", "10%+"],
-        ]
-    elif action == "down":
-        cmds = [
-            ["pactl", "set-sink-volume", "@DEFAULT_SINK@", "-10%"],
-            ["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", "10%-"],
-            ["amixer", "-q", "set", "Master", "10%-"],
-        ]
-    elif action == "mute":
-        cmds = [
-            ["pactl", "set-sink-mute", "@DEFAULT_SINK@", "toggle"],
-            ["wpctl", "set-mute", "@DEFAULT_AUDIO_SINK@", "toggle"],
-            ["amixer", "-q", "set", "Master", "toggle"],
-        ]
-    elif action == "set":
-        val_str = str(value)
-        val_float = round(float(value) / 100.0, 2)
-        cmds = [
-            ["pactl", "set-sink-volume", "@DEFAULT_SINK@", f"{val_str}%"],
-            ["wpctl", "set-volume", "@DEFAULT_AUDIO_SINK@", str(val_float)],
-            ["amixer", "-q", "set", "Master", f"{val_str}%"],
-        ]
-    else:
-        return
-
-    for c in cmds:
-        try:
-            res = subprocess.run(c, capture_output=True, timeout=2)
-            if res.returncode == 0:
-                return
-        except Exception:
-            pass
-
-
 def volume_up():
     if _OS == "Windows":
         for _ in range(5): pyautogui.press("volumeup")
@@ -108,7 +63,8 @@ def volume_up():
             "set volume output volume (output volume of (get volume settings) + 10)"],
             capture_output=True)
     else:
-        _linux_volume_cmd("up")
+        subprocess.run(["pactl", "set-sink-volume", "@DEFAULT_SINK@", "+10%"],
+            capture_output=True)
 
 def volume_down():
     if _OS == "Windows":
@@ -118,7 +74,8 @@ def volume_down():
             "set volume output volume (output volume of (get volume settings) - 10)"],
             capture_output=True)
     else:
-        _linux_volume_cmd("down")
+        subprocess.run(["pactl", "set-sink-volume", "@DEFAULT_SINK@", "-10%"],
+            capture_output=True)
 
 def volume_mute():
     if _OS == "Windows":
@@ -127,22 +84,12 @@ def volume_mute():
         subprocess.run(["osascript", "-e", "set volume with output muted"],
             capture_output=True)
     else:
-        _linux_volume_cmd("mute")
+        subprocess.run(["pactl", "set-sink-mute", "@DEFAULT_SINK@", "toggle"],
+            capture_output=True)
 
 def volume_set(value: int):
     value = max(0, min(100, int(value)))
     if _OS == "Windows":
-        # Method 1: Modern pycaw (pycaw >= 2.0)
-        try:
-            from pycaw.pycaw import AudioUtilities
-            devices = AudioUtilities.GetSpeakers()
-            if hasattr(devices, "EndpointVolume"):
-                devices.EndpointVolume.SetMasterVolumeLevelScalar(value / 100.0, None)
-                return f"Volume set to {value}%."
-        except Exception:
-            pass
-
-        # Method 2: Legacy pycaw (pycaw < 2.0)
         try:
             import math
             from ctypes import cast, POINTER
@@ -153,7 +100,7 @@ def volume_set(value: int):
             vol       = cast(interface, POINTER(IAudioEndpointVolume))
             vol_db    = -65.25 if value == 0 else max(-65.25, 20 * math.log10(value / 100))
             vol.SetMasterVolumeLevel(vol_db, None)
-            return f"Volume set to {value}%."
+            return
         except Exception as e:
             print(f"[Settings] pycaw failed, using keypress fallback: {e}")
             pyautogui.press("volumemute")
@@ -163,104 +110,9 @@ def volume_set(value: int):
             capture_output=True)
         return
     else:
-        _linux_volume_cmd("set", value)
+        subprocess.run(["pactl", "set-sink-volume", "@DEFAULT_SINK@", f"{value}%"],
+            capture_output=True)
         return
-
-def _win_brightness_change(delta: int):
-    """Change Windows brightness by delta %. Multi-fallback chain."""
-    # Method 1: WMI (works on laptops)
-    try:
-        result = subprocess.run(
-            ["powershell", "-NoProfile", "-Command",
-             f"$cur = (Get-CimInstance -Namespace root/wmi -ClassName WmiMonitorBrightness).CurrentBrightness;"
-             f"$new = [math]::Max(0, [math]::Min(100, $cur + ({delta})));"
-             f"$m = Get-CimInstance -Namespace root/wmi -ClassName WmiMonitorBrightnessMethods;"
-             f"$m | Invoke-CimMethod -MethodName WmiSetBrightness -Arguments @{{Timeout=1; Brightness=$new}};"
-             f"Write-Output $new"],
-            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=8
-        )
-        if result.returncode == 0 and result.stdout.strip():
-            return f"Brightness {'increased' if delta > 0 else 'decreased'} to {result.stdout.strip()}%."
-    except Exception:
-        pass
-
-    # Method 2: PowerShell Set-Brightness (Windows 10/11)
-    try:
-        subprocess.run(
-            ["powershell", "-NoProfile", "-Command",
-             f"$b = (Get-Ciminstance -Namespace root/WMI -ClassName WmiMonitorBrightness).CurrentBrightness;"
-             f"$n = [math]::Max(0,[math]::Min(100,$b+{delta}));"
-             f"(Get-WmiObject -Namespace root/wmi -Class WmiMonitorBrightnessMethods).WmiSetBrightness(1,$n)"],
-            capture_output=True, timeout=8
-        )
-        return f"Brightness adjusted by {delta:+d}%."
-    except Exception:
-        pass
-
-    # Method 3: nircmd (if installed)
-    try:
-        cmd = "changebrightness" if delta > 0 else "changebrightness"
-        subprocess.run(["nircmd.exe", cmd, str(delta)], capture_output=True, timeout=5)
-        return f"Brightness adjusted by {delta:+d}% (nircmd)."
-    except FileNotFoundError:
-        pass
-    except Exception:
-        pass
-
-    # Method 4: Simulate brightness keys
-    try:
-        import pyautogui
-        steps = abs(delta) // 10
-        for _ in range(max(1, steps)):
-            pyautogui.press("brightnessup" if delta > 0 else "brightnessdown")
-        return f"Brightness adjusted via keyboard keys."
-    except Exception:
-        pass
-
-    return f"Could not change brightness. Desktop PCs may not support software brightness control."
-
-
-def _win_brightness_set(value: int):
-    """Set Windows brightness to exact value. Multi-fallback chain."""
-    value = max(0, min(100, int(value)))
-    # Method 1: CIM/WMI
-    try:
-        result = subprocess.run(
-            ["powershell", "-NoProfile", "-Command",
-             f"$m = Get-CimInstance -Namespace root/wmi -ClassName WmiMonitorBrightnessMethods;"
-             f"$m | Invoke-CimMethod -MethodName WmiSetBrightness -Arguments @{{Timeout=1; Brightness={value}}};"
-             f"Write-Output 'OK'"],
-            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=8
-        )
-        if result.returncode == 0:
-            return f"Brightness set to {value}%."
-    except Exception:
-        pass
-
-    # Method 2: Legacy WMI
-    try:
-        subprocess.run(
-            ["powershell", "-NoProfile", "-Command",
-             f"(Get-WmiObject -Namespace root/wmi -Class WmiMonitorBrightnessMethods)"
-             f".WmiSetBrightness(1, {value})"],
-            capture_output=True, timeout=8
-        )
-        return f"Brightness set to {value}%."
-    except Exception:
-        pass
-
-    # Method 3: nircmd
-    try:
-        subprocess.run(["nircmd.exe", "setbrightness", str(value)],
-                      capture_output=True, timeout=5)
-        return f"Brightness set to {value}% (nircmd)."
-    except FileNotFoundError:
-        pass
-    except Exception:
-        pass
-
-    return f"Could not set brightness to {value}%. Desktop monitors may not support software brightness control."
-
 
 def brightness_up():
     if _OS == "Darwin":
@@ -275,12 +127,21 @@ def brightness_up():
             subprocess.run(
                 'xrandr --output $(xrandr | grep " connected" | head -1 | cut -d " " -f1)'
                 ' --brightness $(python3 -c "import subprocess; '
-                'b=float(subprocess.check_output([\\"xrandr\\",\\"--verbose\\"]).decode()'
-                '.split(\\"Brightness:\\")[1].split()[0]); print(min(1.0,b+0.1))")',
+                'b=float(subprocess.check_output([\"xrandr\",\"--verbose\"]).decode()'
+                '.split(\"Brightness:\")[1].split()[0]); print(min(1.0,b+0.1))")',
                 shell=True, capture_output=True
             )
     else:
-        return _win_brightness_change(10)
+        try:
+            subprocess.run(
+                ["powershell", "-Command",
+                 "(Get-WmiObject -Namespace root/wmi -Class WmiMonitorBrightnessMethods)"
+                 ".WmiSetBrightness(1, [math]::Min(100, "
+                 "(Get-WmiObject -Namespace root/wmi -Class WmiMonitorBrightness).CurrentBrightness + 10))"],
+                capture_output=True, timeout=5, **_WIN_HIDE
+            )
+        except Exception as e:
+            print(f"[Settings] Brightness up failed on Windows: {e}")
 
 def brightness_down():
     if _OS == "Darwin":
@@ -295,80 +156,21 @@ def brightness_down():
             subprocess.run(
                 'xrandr --output $(xrandr | grep " connected" | head -1 | cut -d " " -f1)'
                 ' --brightness $(python3 -c "import subprocess; '
-                'b=float(subprocess.check_output([\\"xrandr\\",\\"--verbose\\"]).decode()'
-                '.split(\\"Brightness:\\")[1].split()[0]); print(max(0.1,b-0.1))")',
+                'b=float(subprocess.check_output([\"xrandr\",\"--verbose\"]).decode()'
+                '.split(\"Brightness:\")[1].split()[0]); print(max(0.1,b-0.1))")',
                 shell=True, capture_output=True
             )
     else:
-        return _win_brightness_change(-10)
-
-def brightness_set(value: int):
-    """Set brightness to a specific percentage (0-100)."""
-    value = max(0, min(100, int(value)))
-    if _OS == "Windows":
-        return _win_brightness_set(value)
-    elif _OS == "Darwin":
         try:
-            subprocess.run(["osascript", "-e",
-                f'tell application "System Events" to set value of slider 1 of '
-                f'group 1 of window "Display" of process "System Preferences" to {value / 100.0}'],
-                capture_output=True, timeout=5)
-        except Exception:
-            for _ in range(16):
-                subprocess.run(["osascript", "-e",
-                    'tell application "System Events" to key code 145'],
-                    capture_output=True)
-            steps = int(value / 100.0 * 16)
-            for _ in range(steps):
-                subprocess.run(["osascript", "-e",
-                    'tell application "System Events" to key code 144'],
-                    capture_output=True)
-    else:
-        if subprocess.run(["which", "brightnessctl"],
-                capture_output=True).returncode == 0:
-            subprocess.run(["brightnessctl", "set", f"{value}%"], capture_output=True)
-        else:
-            brightness = value / 100.0
             subprocess.run(
-                f'xrandr --output $(xrandr | grep " connected" | head -1 | cut -d " " -f1)'
-                f' --brightness {brightness}',
-                shell=True, capture_output=True
+                ["powershell", "-Command",
+                 "(Get-WmiObject -Namespace root/wmi -Class WmiMonitorBrightnessMethods)"
+                 ".WmiSetBrightness(1, [math]::Max(0, "
+                 "(Get-WmiObject -Namespace root/wmi -Class WmiMonitorBrightness).CurrentBrightness - 10))"],
+                capture_output=True, timeout=5, **_WIN_HIDE
             )
-
-def brightness_get() -> str:
-    """Get current brightness level."""
-    if _OS == "Windows":
-        try:
-            result = subprocess.run(
-                ["powershell", "-NoProfile", "-Command",
-                 "(Get-CimInstance -Namespace root/wmi -ClassName WmiMonitorBrightness).CurrentBrightness"],
-                capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=5
-            )
-            if result.returncode == 0 and result.stdout.strip():
-                return f"Current brightness: {result.stdout.strip()}%"
-        except Exception:
-            pass
-        return "Could not read brightness level."
-    elif _OS == "Darwin":
-        try:
-            result = subprocess.run(
-                ["osascript", "-e", 'tell application "System Events" to get brightness of display 1'],
-                capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=5
-            )
-            return f"Current brightness: {result.stdout.strip()}"
-        except Exception:
-            return "Could not read brightness on macOS."
-    else:
-        try:
-            result = subprocess.run(["brightnessctl", "get"], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=5)
-            max_result = subprocess.run(["brightnessctl", "max"], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=5)
-            cur = int(result.stdout.strip())
-            mx = int(max_result.stdout.strip())
-            pct = int(cur / mx * 100)
-            return f"Current brightness: {pct}%"
-        except Exception:
-            return "Could not read brightness on Linux."
-
+        except Exception as e:
+            print(f"[Settings] Brightness down failed on Windows: {e}")
 
 def close_app():
     if _OS == "Darwin": pyautogui.hotkey("command", "q")
@@ -404,7 +206,14 @@ def maximize_window():
 def snap_left():
     if _OS == "Windows":
         pyautogui.hotkey("win", "left")
-    elif _OS == "Linux":
+    elif _OS == "Darwin":
+        # macOS has no built-in snap; try Rectangle app shortcut if installed
+        try:
+            subprocess.run(["open", "-a", "Rectangle"], capture_output=True, timeout=1)
+        except Exception:
+            pass
+        pyautogui.hotkey("ctrl", "option", "left")
+    else:  # Linux
         try:
             subprocess.run(["wmctrl", "-r", ":ACTIVE:", "-e", "0,0,0,960,1080"],
                 capture_output=True)
@@ -414,7 +223,13 @@ def snap_left():
 def snap_right():
     if _OS == "Windows":
         pyautogui.hotkey("win", "right")
-    elif _OS == "Linux":
+    elif _OS == "Darwin":
+        try:
+            subprocess.run(["open", "-a", "Rectangle"], capture_output=True, timeout=1)
+        except Exception:
+            pass
+        pyautogui.hotkey("ctrl", "option", "right")
+    else:  # Linux
         try:
             subprocess.run(["wmctrl", "-r", ":ACTIVE:", "-e", "0,960,0,960,1080"],
                 capture_output=True)
@@ -673,7 +488,7 @@ def toggle_wifi():
                  "$adapter = Get-NetAdapter | Where-Object {$_.PhysicalMediaType -eq 'Native 802.11'};"
                  "if ($adapter.Status -eq 'Up') { Disable-NetAdapter -Name $adapter.Name -Confirm:$false }"
                  "else { Enable-NetAdapter -Name $adapter.Name -Confirm:$false }"],
-                capture_output=True, timeout=10
+                capture_output=True, timeout=10, **_WIN_HIDE
             )
         except Exception as e:
             print(f"[Settings] toggle_wifi Windows failed: {e}")
@@ -687,7 +502,7 @@ def toggle_wifi():
 
 def restart_computer():
     if _OS == "Windows":
-        subprocess.run(["shutdown", "/r", "/t", "10"], capture_output=True)
+        subprocess.run(["shutdown", "/r", "/t", "10"], capture_output=True, **_WIN_HIDE)
     elif _OS == "Darwin":
         subprocess.run(["osascript", "-e",
             'tell application "System Events" to restart'],
@@ -713,7 +528,6 @@ ACTION_MAP: dict[str, callable] = {
     "toggle_mute":         volume_mute,
     "brightness_up":       brightness_up,
     "brightness_down":     brightness_down,
-    "brightness_get":      brightness_get,
     "sleep_display":       sleep_display,
     "screen_off":          sleep_display,
     "pause_video":         pause_video,
@@ -774,18 +588,11 @@ _DANGEROUS_ACTIONS = {"restart", "shutdown"}
 
 def _detect_action(description: str) -> dict:
 
-    try:
-        from config.models import get_model
-        model_name = get_model("gemini") or "gemini-3.5-flash"
-    except Exception:
-        model_name = "gemini-3.5-flash"
-
-    import google.generativeai as genai
-    genai.configure(api_key=_get_api_key())
-    model = genai.GenerativeModel(model_name)
+    from google import genai as _genai
+    _client = _genai.Client(api_key=_get_api_key())
 
     available = ", ".join(sorted(ACTION_MAP.keys())) + \
-                ", volume_set, brightness_set, type_text, press_key, reload_n"
+                ", volume_set, type_text, press_key, reload_n"
 
     prompt = f"""You are an intent detector for a computer control assistant.
 
@@ -799,18 +606,14 @@ Return ONLY a valid JSON object:
 Rules:
 - Pick the single best matching action from the available list.
 - For volume_set: value is an integer 0-100.
-- For brightness_set: value is an integer 0-100.
-- For brightness_up/brightness_down: value is null.
 - For type_text: value is the exact text to type.
 - For press_key: value is the key name (e.g. "f5", "tab", "enter").
 - For reload_n: value is an integer (number of times to reload).
-- "increase brightness" â†’ brightness_up, "reduce brightness" â†’ brightness_down
-- "set brightness to 50" â†’ brightness_set with value 50
 - If no clear match, pick the closest action.
 - Return ONLY the JSON, no explanation, no markdown."""
 
     try:
-        resp = model.generate_content(prompt)
+        resp = _client.models.generate_content(model="gemini-2.5-flash-lite", contents=prompt)
         text = re.sub(r"```(?:json)?", "", resp.text).strip().rstrip("`").strip()
         return json.loads(text)
     except Exception as e:
@@ -854,19 +657,12 @@ def computer_settings(
                 f"Please confirm by calling again with confirmed=yes."
             )
 
-    if action in ("volume", "volume_set"):
+    if action == "volume_set":
         try:
             volume_set(int(value or 50))
             return f"Volume set to {value}%."
         except Exception as e:
             return f"Could not set volume: {e}"
-
-    if action in ("brightness", "brightness_set"):
-        try:
-            brightness_set(int(value or 50))
-            return f"Brightness set to {value}%."
-        except Exception as e:
-            return f"Could not set brightness: {e}"
 
     if action in ("type_text", "write_on_screen", "type", "write"):
         text = str(value or params.get("text", "")).strip()

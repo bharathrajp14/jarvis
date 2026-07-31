@@ -1,3 +1,4 @@
+#desktop.py
 import os
 import sys
 import json
@@ -11,10 +12,10 @@ from datetime import datetime
 try:
     import pyautogui
     _PYAUTOGUI = True
-except Exception:
+except ImportError:
     _PYAUTOGUI = False
 
-_OS = platform.system()
+_OS = platform.system()  # "Windows" | "Darwin" | "Linux"
 
 
 def _get_base_dir() -> Path:
@@ -23,19 +24,9 @@ def _get_base_dir() -> Path:
     return Path(__file__).resolve().parent.parent
 
 def _get_api_key() -> str:
-    for env in ("GEMINI_API_KEY", "GOOGLE_API_KEY"):
-        val = os.environ.get(env, "").strip()
-        if val:
-            return val
-    try:
-        path = _get_base_dir() / "config" / "api_keys.json"
-        if path.exists():
-            with open(path, "r", encoding="utf-8") as f:
-                return json.load(f).get("gemini_api_key", "").strip()
-    except Exception:
-        pass
-    return ""
-
+    path = _get_base_dir() / "config" / "api_keys.json"
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)["gemini_api_key"]
     
 def _get_desktop() -> Path:
     if _OS == "Linux":
@@ -112,11 +103,8 @@ def _execute_generated_code(code: str, player=None) -> str:
 
 def _ask_gemini_for_desktop_action(task: str) -> str:
 
-    import google.generativeai as genai
-    from config.models import get_model
-    genai.configure(api_key=_get_api_key())
-    model_name = get_model("gemini") or "gemini-3.5-flash"
-    model = genai.GenerativeModel(model_name)
+    from google import genai as _genai
+    _client = _genai.Client(api_key=_get_api_key())
 
     desktop = str(_get_desktop())
 
@@ -154,7 +142,7 @@ Output ONLY the Python code. No explanation, no markdown, no backticks.
 Task: {task}"""
 
     try:
-        response = model.generate_content(prompt)
+        response = _client.models.generate_content(model="gemini-2.5-flash", contents=prompt)
         code = response.text.strip()
         if code.startswith("```"):
             lines = code.split("\n")
@@ -280,8 +268,7 @@ def get_current_wallpaper() -> str:
             )
             result = subprocess.run(
                 ["osascript", "-e", script],
-                capture_output=True, text=True,
-                encoding="utf-8", errors="replace"
+                capture_output=True, text=True
             )
             return f"Current wallpaper: {result.stdout.strip()}"
 
@@ -290,8 +277,7 @@ def get_current_wallpaper() -> str:
             if "gnome" in desktop_env or "unity" in desktop_env:
                 result = subprocess.run(
                     ["gsettings", "get", "org.gnome.desktop.background", "picture-uri"],
-                    capture_output=True, text=True,
-                    encoding="utf-8", errors="replace"
+                    capture_output=True, text=True
                 )
                 return f"Current wallpaper: {result.stdout.strip()}"
             return "Wallpaper path retrieval not supported for this desktop environment."
