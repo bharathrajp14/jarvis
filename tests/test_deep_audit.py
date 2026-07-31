@@ -12,7 +12,7 @@ passed = 0
 failed = 0
 errors = []
 
-def run_audit(name, func):
+def _run_audit(name, func):
     global passed, failed
     try:
         func()
@@ -22,8 +22,6 @@ def run_audit(name, func):
         print(f"  [FAIL] {name}: {e}")
         errors.append((name, traceback.format_exc()))
         failed += 1
-
-test = run_audit
 
 print("=" * 60)
 print("  JARVIS MK37 -- Deep Audit")
@@ -38,7 +36,7 @@ def t_perm_allow_all():
     for tool in ["keyboard_type","cursor_click","run_code","file_write",
                  "web_search","screen_find","focus_window","nmap_scan"]:
         assert p.check(tool) == True, f"{tool} should be allowed in ALLOW_ALL"
-run_audit("ALLOW_ALL permits all tools", t_perm_allow_all)
+_run_audit("ALLOW_ALL permits all tools", t_perm_allow_all)
 
 def t_perm_global_singleton():
     from permissions import PERMISSIONS, PermissionMode
@@ -130,7 +128,7 @@ def t_agent_all_builtins():
             assert defs[name].source == "built-in"
     except ModuleNotFoundError:
         pass
-run_audit("All 8 built-in agent types", t_agent_all_builtins)
+_run_audit("All 8 built-in agent types", t_agent_all_builtins)
 
 def t_agent_editor_tools():
     try:
@@ -140,7 +138,7 @@ def t_agent_editor_tools():
         assert "file_read" in ed.tools
     except ModuleNotFoundError:
         pass
-run_audit("Editor agent has keyboard tools", t_agent_editor_tools)
+_run_audit("Editor agent has keyboard tools", t_agent_editor_tools)
 
 def t_agent_md_parse():
     try:
@@ -159,7 +157,7 @@ def t_agent_md_parse():
         assert "test agent" in d.system_prompt.lower()
     except ModuleNotFoundError:
         pass
-run_audit("Agent .md parsing", t_agent_md_parse)
+_run_audit("Agent .md parsing", t_agent_md_parse)
 
 def t_subagent_depth_limit():
     try:
@@ -170,7 +168,7 @@ def t_subagent_depth_limit():
         assert "depth" in task.result.lower()
     except ModuleNotFoundError:
         pass
-run_audit("SubAgent depth limit", t_subagent_depth_limit)
+_run_audit("SubAgent depth limit", t_subagent_depth_limit)
 
 # == 4. Persistent Memory ==
 print("\n>> Persistent Memory")
@@ -417,7 +415,7 @@ def t_router_fallback():
     r.default = AgentProfile.GEMINI
     p = r.route(["code"])
     assert p == AgentProfile.GEMINI
-run_audit("Router fallback to default", t_router_fallback)
+_run_audit("Router fallback to default", t_router_fallback)
 
 def t_router_run():
     from router import AgentRouter, AgentProfile
@@ -427,14 +425,14 @@ def t_router_run():
     r = AgentRouter({AgentProfile.GEMINI: MockBackend()})
     result = r.run(AgentProfile.GEMINI, [{"role": "user", "content": "hi"}], "sys")
     assert result == "test response"
-run_audit("Router.run works", t_router_run)
+_run_audit("Router.run works", t_router_run)
 
 def t_router_run_missing():
     from router import AgentRouter, AgentProfile
     r = AgentRouter({})
     res = r.run(AgentProfile.CLAUDE, [], "")
     assert "all backends failed" in res.lower() or "no backends available" in res.lower()
-run_audit("Router.run handles missing backend", t_router_run_missing)
+_run_audit("Router.run handles missing backend", t_router_run_missing)
 
 # == 12. Cross-module Integration ==
 print("\n>> Cross-module Integration")
@@ -453,13 +451,13 @@ def t_skill_executor_inline():
     result = execute_skill(skill, "test commit", MockOrch())
     assert "executed" in result
     assert "Skill: commit" in result
-run_audit("Skill executor inline mode", t_skill_executor_inline)
+_run_audit("Skill executor inline mode", t_skill_executor_inline)
 
 def t_full_syntax_check():
     import py_compile
     for fpath in ["start.py", "server.py", "ui.py", "permissions.py"]:
         py_compile.compile(fpath, doraise=True)
-run_audit("Key files syntax-valid", t_full_syntax_check)
+_run_audit("Key files syntax-valid", t_full_syntax_check)
 
 def t_backend_complete_signature():
     """Verify all backends have the correct complete(messages, system) signature."""
