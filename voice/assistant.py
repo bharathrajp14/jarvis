@@ -263,22 +263,32 @@ class BRVoiceAssistant:
         loop = self._get_active_loop()
         text = ""
 
-        # 1. Try local Whisper first (100% offline STT — zero network latency)
+        # 0. Try dedicated Gemini Listening API key (if online & configured)
         try:
-            from voice.whisper_local import transcribe as whisper_transcribe, is_available as whisper_available
-            from voice.multilingual import get_whisper_code
-            if whisper_available():
-                lang_code = get_whisper_code() or "en"
-                prompt = "This is a clear spoken voice command for JARVIS AI assistant to control applications, open web pages, send messages, and execute tasks."
-                text = await loop.run_in_executor(
-                    None, lambda: whisper_transcribe(
-                        audio.get_wav_data(),
-                        language=lang_code,
-                        initial_prompt=prompt
-                    )
-                )
+            from voice.gemini_stt import transcribe_audio_online
+            text = await loop.run_in_executor(
+                None, lambda: transcribe_audio_online(audio.get_wav_data(), timeout_seconds=4.5)
+            )
         except Exception as e:
-            print(f"[Voice] Local Whisper transcription failed: {e}")
+            text = ""
+
+        # 1. Try local Whisper (100% offline STT fallback or primary when offline)
+        if not text:
+            try:
+                from voice.whisper_local import transcribe as whisper_transcribe, is_available as whisper_available
+                from voice.multilingual import get_whisper_code
+                if whisper_available():
+                    lang_code = get_whisper_code() or "en"
+                    prompt = "This is a clear spoken voice command for JARVIS AI assistant to control applications, open web pages, send messages, and execute tasks."
+                    text = await loop.run_in_executor(
+                        None, lambda: whisper_transcribe(
+                            audio.get_wav_data(),
+                            language=lang_code,
+                            initial_prompt=prompt
+                        )
+                    )
+            except Exception as e:
+                print(f"[Voice] Local Whisper transcription failed: {e}")
 
         # 2. Try configured default backend (if it has transcribe method)
         if not text and hasattr(self, "backends") and self.backends:
