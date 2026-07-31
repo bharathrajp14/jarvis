@@ -330,7 +330,16 @@ class BRVoiceAssistant:
                         None, lambda: self.r.recognize_google(audio, language=stt_lang).lower()
                     )
             except Exception:
-                text = ""
+                pass
+
+        if text and text.strip():
+            try:
+                from voice.prompt_refiner import VoicePromptRefiner
+                refined = VoicePromptRefiner.get_instance().refine(text)
+                if refined and refined.get("refined"):
+                    text = refined["refined"]
+            except Exception:
+                pass
 
         return text
 
@@ -562,11 +571,18 @@ class BRVoiceAssistant:
                             )
                         )
 
+                        # ⚡ Play soft double micro-beep as soon as voice is detected
+                        try:
+                            from voice.sound_effects import play_voice_detected_beep
+                            play_voice_detected_beep()
+                        except Exception:
+                            pass
+
                         # ⚡ ULTRAFAST wake decoding
                         text = await self._transcribe_wake(audio)
 
                         if self._is_wake_phrase(text):
-                            # Instant soft audio feedback & listening HUD trigger when wake word is listened & detected
+                            # Instant audio feedback & listening HUD trigger
                             self._play_listening_chime()
                             self.ui.set_state("LISTENING")
                             self.ui.write_log("SYS: 🎙️ Wake word detected. Active listening mode...")
@@ -585,8 +601,8 @@ class BRVoiceAssistant:
                                 pass
 
                             # Restore full command listening thresholds for active command capture
-                            self.r.pause_threshold = 0.45
-                            self.r.non_speaking_duration = 0.25
+                            self.r.pause_threshold = 0.70
+                            self.r.non_speaking_duration = 0.30
 
                             # Listen for follow-up command if user spoke only the wake word
                             try:
