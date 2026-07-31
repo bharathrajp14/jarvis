@@ -658,6 +658,14 @@ def launch_dashboard_server():
         return
     _run_script("dashboard/server.py", None)
 
+def launch_mark_ui():
+    console.print("\n[bold cyan]▶ Launching Mark Cyberpunk HUD Interface (PyQt6 Visual Waveform HUD)[/]")
+    ui_script = BASE_DIR / "ui_mark.py"
+    if not ui_script.exists():
+        console.print("[red]✗ Mark UI script not found.[/]")
+        return
+    _run_script("ui_mark.py", None)
+
 def launch_both():
     console.print("\n[bold cyan]▶ Starting Modes in Parallel[/]\n")
     if getattr(sys, "frozen", False):
@@ -949,7 +957,8 @@ def main():
         }
         mode = mode_map.get(choice_input, choice_input)
 
-    if mode in ("voice", "v", "gui"): launch_voice() if _pre_launch_check() else None
+    if mode in ("markui", "hud", "cyberpunk"): launch_mark_ui()
+    elif mode in ("voice", "v", "gui"): launch_voice() if _pre_launch_check() else None
     elif mode in ("floating", "float", "overlay"): launch_floating_voice()
     elif mode in ("cli", "c", "terminal"): launch_cli() if _pre_launch_check() else None
     elif mode in ("both", "b", "all"): launch_both() if _pre_launch_check() else None
