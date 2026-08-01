@@ -251,6 +251,13 @@ window.GRAPH = {
       "group": "captures",
       "path": "captures\\20260801_194243_prompt_packs_make_excellent_free.md",
       "excerpt": "# prompt packs make excellent free gifts...\n\nCaptured: 2026-08-01 19:42:43\n\nprompt packs make excellent free gifts\n"
+    },
+    {
+      "id": 36,
+      "label": "20260801 195245 Prompt Packs Make Excellent Free",
+      "group": "captures",
+      "path": "captures\\20260801_195245_prompt_packs_make_excellent_free.md",
+      "excerpt": "# prompt packs make excellent free gifts...\n\nCaptured: 2026-08-01 19:52:45\n\nprompt packs make excellent free gifts\n"
     }
   ],
   "links": [
