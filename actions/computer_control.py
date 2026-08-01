@@ -199,6 +199,33 @@ def _press(key: str) -> str:
     return f"Pressed: {key}"
 
 
+def _screen_size() -> tuple[int, int]:
+    if _PYAUTOGUI:
+        w, h = pyautogui.size()
+        return (int(w), int(h))
+    return (1920, 1080)
+
+
+def _take_screenshot_bytes() -> bytes:
+    _require_pyautogui()
+    img = pyautogui.screenshot()
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    return buf.getvalue()
+
+
+def _double_click(x=None, y=None) -> str:
+    return _click(x, y, button="left", clicks=2)
+
+
+def _right_click(x=None, y=None) -> str:
+    return _click(x, y, button="right", clicks=1)
+
+
+def _type_text(text: str, interval: float = 0.03) -> str:
+    return _type(text, interval)
+
+
 def _scroll(direction: str = "down", amount: int = 3) -> str:
     _require_pyautogui()
     vertical   = direction in ("up", "down")
