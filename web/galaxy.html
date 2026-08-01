@@ -106,40 +106,92 @@
     document.getElementById('stats-line').innerText =
       `${data.nodes.length} Neural Nodes · Interactive 3D Orbit Active`;
 
-    const Graph = ForceGraph3D()
-      (document.getElementById('3d-graph'))
-      .graphData(data)
-      .nodeLabel('label')
-      .nodeAutoColorBy('group')
-      .nodeVal(node => 5)
-      .linkWidth(1.5)
-      .linkColor(() => 'rgba(0, 212, 255, 0.3)')
-      .onNodeClick(node => {
-        // Fly camera to node
-        const distance = 40;
-        const distRatio = 1 + distance/Math.hypot(node.x, node.y, node.z);
-        Graph.cameraPosition(
-          { x: node.x * distRatio, y: node.y * distRatio, z: node.z * distRatio },
-          node,
-          2000
-        );
+    let Graph = null;
 
-        // Show side panel
-        document.getElementById('panel-title').innerText = node.label;
-        document.getElementById('panel-tag').innerText = `GROUP: ${node.group.toUpperCase()}`;
-        document.getElementById('panel-text').innerText = node.excerpt;
-        document.getElementById('side-panel').style.display = 'block';
-      });
+    if (typeof ForceGraph3D !== 'undefined') {
+      Graph = ForceGraph3D()
+        (document.getElementById('3d-graph'))
+        .graphData(data)
+        .nodeLabel('label')
+        .nodeAutoColorBy('group')
+        .nodeVal(node => 5)
+        .linkWidth(1.5)
+        .linkColor(() => 'rgba(0, 212, 255, 0.3)')
+        .onNodeClick(node => {
+          // Fly camera to node
+          const distance = 40;
+          const distRatio = 1 + distance/Math.hypot(node.x, node.y, node.z);
+          Graph.cameraPosition(
+            { x: node.x * distRatio, y: node.y * distRatio, z: node.z * distRatio },
+            node,
+            2000
+          );
 
-    // Slow idle rotation
-    let angle = 0;
-    setInterval(() => {
-      angle += 0.002;
-      Graph.cameraPosition({
-        x: 180 * Math.sin(angle),
-        z: 180 * Math.cos(angle)
-      });
-    }, 50);
+          // Show side panel
+          document.getElementById('panel-title').innerText = node.label;
+          document.getElementById('panel-tag').innerText = `GROUP: ${node.group.toUpperCase()}`;
+          document.getElementById('panel-text').innerText = node.excerpt;
+          document.getElementById('side-panel').style.display = 'block';
+        });
+
+      // Slow idle rotation
+      let angle = 0;
+      setInterval(() => {
+        angle += 0.002;
+        if (Graph) {
+          Graph.cameraPosition({
+            x: 180 * Math.sin(angle),
+            z: 180 * Math.cos(angle)
+          });
+        }
+      }, 50);
+    } else {
+      // Standalone Cyberpunk 2D/3D Canvas Fallback
+      console.warn('[GALAXY] 3d-force-graph CDN unavailable — Launching Standalone Canvas Galaxy Visualizer...');
+      const container = document.getElementById('3d-graph');
+      const cvs = document.createElement('canvas');
+      cvs.width = window.innerWidth;
+      cvs.height = window.innerHeight;
+      container.appendChild(cvs);
+      const ctx = cvs.getContext('2d');
+
+      const nodes = data.nodes.map((n, i) => ({
+        ...n,
+        cx: (Math.random() - 0.5) * cvs.width * 0.7,
+        cy: (Math.random() - 0.5) * cvs.height * 0.7,
+        cz: (Math.random() - 0.5) * 500,
+      }));
+
+      let rot = 0;
+      function drawFallback() {
+        ctx.fillStyle = '#020408';
+        ctx.fillRect(0, 0, cvs.width, cvs.height);
+        rot += 0.003;
+
+        const cx = cvs.width / 2;
+        const cy = cvs.height / 2;
+
+        nodes.forEach(n => {
+          const rx = n.cx * Math.cos(rot) - n.cz * Math.sin(rot);
+          const rz = n.cx * Math.sin(rot) + n.cz * Math.cos(rot) + 600;
+          const scale = 500 / Math.max(1, rz);
+          const px = cx + rx * scale;
+          const py = cy + n.cy * scale;
+
+          ctx.beginPath();
+          ctx.arc(px, py, Math.max(2, 5 * scale), 0, Math.PI * 2);
+          ctx.fillStyle = '#00d4ff';
+          ctx.fill();
+
+          ctx.fillStyle = 'rgba(216, 248, 255, 0.7)';
+          ctx.font = `${Math.max(8, Math.round(11 * scale))}px 'Courier New', monospace`;
+          ctx.fillText(n.label, px + 8, py + 4);
+        });
+
+        requestAnimationFrame(drawFallback);
+      }
+      drawFallback();
+    }
 
     function closePanel() {
       document.getElementById('side-panel').style.display = 'none';
@@ -149,12 +201,14 @@
     window.flyToNode = function(nodeId) {
       const node = data.nodes.find(n => n.id === nodeId);
       if (node) {
-        const distRatio = 1 + 40/Math.hypot(node.x, node.y, node.z);
-        Graph.cameraPosition(
-          { x: node.x * distRatio, y: node.y * distRatio, z: node.z * distRatio },
-          node,
-          2000
-        );
+        if (Graph) {
+          const distRatio = 1 + 40/Math.hypot(node.x, node.y, node.z);
+          Graph.cameraPosition(
+            { x: node.x * distRatio, y: node.y * distRatio, z: node.z * distRatio },
+            node,
+            2000
+          );
+        }
         document.getElementById('panel-title').innerText = node.label;
         document.getElementById('panel-tag').innerText = `GROUP: ${node.group.toUpperCase()}`;
         document.getElementById('panel-text').innerText = node.excerpt;

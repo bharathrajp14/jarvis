@@ -199,15 +199,54 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    let currentStreamBubble = null;
+    let currentStreamBody = null;
+    let currentStreamText = '';
+
+    function appendChatStreamChunk(chunk) {
+        if (!chatWindow) return;
+        if (!chunk) return;
+        if (!currentStreamBubble) {
+            currentStreamBubble = document.createElement('div');
+            currentStreamBubble.className = 'msg-bubble system streaming';
+            currentStreamBubble.innerHTML = `
+                <div class="msg-author">JARVIS</div>
+                <div class="msg-body"></div>
+            `;
+            chatWindow.appendChild(currentStreamBubble);
+            currentStreamBody = currentStreamBubble.querySelector('.msg-body');
+            currentStreamText = '';
+        }
+        currentStreamText += chunk;
+        if (currentStreamBody) {
+            currentStreamBody.innerHTML = formatMarkdown(currentStreamText);
+        }
+        chatWindow.scrollTop = chatWindow.scrollHeight;
+    }
+
+    function finalizeChatStream() {
+        if (currentStreamBubble) {
+            currentStreamBubble.classList.remove('streaming');
+            currentStreamBubble = null;
+            currentStreamBody = null;
+            currentStreamText = '';
+        }
+    }
+
     function handleServerMessage(data) {
         if (data.type === 'telemetry') {
             if (data.cpu !== undefined) setGauge(cpuRing, cpuValue, data.cpu);
             if (data.ram !== undefined) setGauge(ramRing, ramValue, data.ram);
             if (data.disk !== undefined) setGauge(diskRing, diskValue, data.disk);
-        } else if (data.type === 'stream_chunk') {
-            appendChatStreamChunk(data.text);
+        } else if (data.type === 'stream_start') {
+            finalizeChatStream();
+        } else if (data.type === 'stream_chunk' || data.type === 'token') {
+            appendChatStreamChunk(data.text || data.chunk || data.token || '');
+        } else if (data.type === 'stream_end') {
+            finalizeChatStream();
         } else if (data.type === 'chat_response') {
-            appendChatMessage('JARVIS', data.response, 'system');
+            finalizeChatStream();
+            appendChatMessage('JARVIS', data.response || data.text || '', 'system');
         } else if (data.type === 'log') {
             appendLog(data.message, 'log');
         }
