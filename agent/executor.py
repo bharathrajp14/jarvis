@@ -342,7 +342,7 @@ class AgentExecutor:
         )
 
         try:
-            from gemini_backend import GeminiBackend
+            from backends.gemini import GeminiBackend
             gemini = GeminiBackend()
 
             steps_str = "\n".join(

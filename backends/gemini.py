@@ -30,7 +30,7 @@ class GeminiBackend(BaseBackend):
         "gemini-3.6-flash-medium",
         "gemini-3.1-pro-high",
         "gemini-3.1-flash-lite",
-        "gemini-2.5-flash",
+        "gemini-2.0-flash",
     ]
 
     def __init__(self, model: str = None, api_key: str = None):
@@ -395,7 +395,7 @@ class GeminiBackend(BaseBackend):
                 models_attr = getattr(target_client, "models", None)
                 if models_attr and callable(getattr(models_attr, "generate_content", None)):
                     response = models_attr.generate_content(
-                        model=self.model or "gemini-2.5-flash",
+                        model=self.model or "gemini-2.0-flash",
                         contents=contents,
                     )
                     return (response.text or "").strip()
@@ -410,7 +410,7 @@ class GeminiBackend(BaseBackend):
                 key = getattr(self, "api_key", None) or _load_api_key()
                 g_client = genai.Client(api_key=key)
                 response = g_client.models.generate_content(
-                    model=self.model or "gemini-2.5-flash",
+                    model=self.model or "gemini-2.0-flash",
                     contents=contents,
                 )
                 return (response.text or "").strip()

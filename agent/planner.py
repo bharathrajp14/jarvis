@@ -14,7 +14,7 @@ from pathlib import Path
 def _get_gemini():
     """Get GeminiBackend instance."""
     sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-    from gemini_backend import GeminiBackend
+    from backends.gemini import GeminiBackend
     return GeminiBackend()
 
 

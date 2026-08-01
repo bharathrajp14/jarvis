@@ -44,6 +44,7 @@ def main() -> int:
 
         assert PERMISSIONS.mode in (
             PermissionMode.ALLOW_ALL,
+            PermissionMode.CONFIRM_DESTRUCTIVE,
             PermissionMode.CONFIRM_ALL,
             PermissionMode.DENY_ALL,
         )

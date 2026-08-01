@@ -16,12 +16,13 @@ import signal
 import subprocess
 import sys
 import threading
+import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, TextIO, TypedDict, cast
+from typing import Any, TextIO, TypedDict, cast, Callable
 
 try:
-    from dotenv import load_dotenv
+    from dotenv import load_dotenv  # type: ignore[import-not-found]
     load_dotenv()
 except ImportError:
     pass
@@ -41,11 +42,11 @@ if sys.platform == "win32":
 
 # Setup Rich formatting
 try:
-    from rich.console import Console
-    from rich.panel import Panel
-    from rich.table import Table
-    from rich.text import Text
-    from rich.prompt import Prompt
+    from rich.console import Console  # type: ignore[import-not-found]
+    from rich.panel import Panel  # type: ignore[import-not-found]
+    from rich.table import Table  # type: ignore[import-not-found]
+    from rich.text import Text  # type: ignore[import-not-found]
+    from rich.prompt import Prompt  # type: ignore[import-not-found]
     console = Console()
 except ImportError:
     # Very basic fallback if rich isn't installed (though it should be for JARVIS)
@@ -96,7 +97,7 @@ def _check_env() -> EnvStatus:
     status["config_file"] = config_file.exists()
 
     try:
-        import dotenv
+        import dotenv  # type: ignore[import-not-found]
         if env_file.exists():
             dotenv.load_dotenv(env_file)
     except ImportError:
@@ -364,7 +365,7 @@ def doctor(auto_confirm: bool = False):
                 break
             elif b in ("gcc", "clang", "cl"):
                 try:
-                    from setup_native import find_compiler
+                    from scripts.setup_native import find_compiler
                     fc = find_compiler()
                     if fc:
                         found = Path(fc).name
@@ -513,7 +514,7 @@ def doctor(auto_confirm: bool = False):
     # 8. OS Auto-Startup & System Integration Audit
     console.print("[bold cyan]8. OS Auto-Startup & System Integration Audit[/]")
     try:
-        from install_startup import status as check_autostart
+        from scripts.install_startup import status as check_autostart
         check_autostart()
     except Exception as se:
         console.print(f"  [yellow]⚠ Auto-Startup Check Note: {se}[/]")
@@ -621,9 +622,17 @@ def launch_voice():
 def launch_floating_voice():
     console.print("\n[bold cyan]▶ Starting Floating Gemini Live Voice Overlay[/]")
     console.print("[dim]Note: The frameless floating pill window will open above all windows.[/]\n")
-    from floating_voice_ui import FloatingGeminiVoiceUI
+    try:
+        from desktop_ui.floating import FloatingGeminiVoiceUI  # type: ignore[import-not-found]
+    except ImportError:
+        try:
+            from floating_voice_ui import FloatingGeminiVoiceUI  # type: ignore[import-not-found]
+        except ImportError:
+            from ui import JarvisUI as FloatingGeminiVoiceUI  # type: ignore[assignment]
+
     app = FloatingGeminiVoiceUI()
-    app.run()
+    if hasattr(app, "run"):
+        app.run()
 
 def launch_cli():
     console.print("\n[bold cyan]▶ Starting CLI Orchestrator[/]")
@@ -634,16 +643,37 @@ def launch_cli():
     else:
         _run_script("main_mk37.py", None)
 
-def launch_web_server():
+def _wait_for_server_ready(port: int, timeout: float = 12.0) -> bool:
+    import socket
+    start_t = time.time()
+    while time.time() - start_t < timeout:
+        try:
+            with socket.create_connection(("127.0.0.1", port), timeout=0.5):
+                return True
+        except (OSError, ConnectionRefusedError):
+            time.sleep(0.3)
+    return False
+
+
+def launch_web_server(open_url: str = None):
+    port = int(os.environ.get("PORT", os.environ.get("BR_SERVER_PORT", "8000")))
+    target_url = open_url or f"http://127.0.0.1:{port}"
     console.print("\n[bold cyan]▶ Starting BR Web Core Server[/]")
-    console.print(f"  [green]Server Running on[/] http://localhost:8000")
-    console.print(f"  [green]Dashboard Interface[/] Access [cyan]http://localhost:8000[/]")
+    console.print(f"  [green]Server Running on[/] http://127.0.0.1:{port}")
+    console.print(f"  [green]Interface URL[/] Access [cyan]{target_url}[/]")
     console.print("[dim]Press Ctrl+C to shut down.[/]\n")
-    try:
-        import webbrowser
-        webbrowser.open("http://localhost:8000")
-    except Exception:
-        pass
+
+    def _async_open():
+        if _wait_for_server_ready(port):
+            try:
+                import webbrowser
+                webbrowser.open(target_url)
+                console.print(f"[bold green]✓ Interface opened in browser: {target_url}[/]")
+            except Exception as e:
+                console.print(f"[yellow]⚠ Open browser manually at: {target_url} ({e})[/]")
+
+    threading.Thread(target=_async_open, daemon=True).start()
+
     if getattr(sys, "frozen", False):
         from server import main as server_main
         _run_script("server.py", server_main)
@@ -894,6 +924,14 @@ def launch_live_os():
         console.print(f"\n[bold green]{res}[/]")
 
 
+def launch_galaxy():
+    _banner()
+    console.print("[bold cyan]Launching Interactive 3D Knowledge Galaxy Viewer...[/]\n")
+    port = int(os.environ.get("PORT", os.environ.get("BR_SERVER_PORT", "8000")))
+    url = f"http://127.0.0.1:{port}/web/galaxy.html"
+    launch_web_server(open_url=url)
+
+
 # ── Main Entry ───────────────────────────────────────────────────────────────
 
 def main():
@@ -922,20 +960,22 @@ def main():
         table.add_row("8", "AUDIO", "Audio Hardware Meter & Native C RMS Signal Diagnostics")
         table.add_row("9", "LIVE OS", "Autonomous Visual Computer Control ('Antigravity Mode')")
         table.add_row("10", "FLOATING", "Frameless Glassmorphic Floating Live Voice Widget")
+        table.add_row("11", "3D GALAXY", "Interactive 3D Knowledge Galaxy & Fly-To-Source Viewer")
         
         console.print(Panel(table, title="[bold cyan]◈ SELECT MODULE SEQUENCE ◈[/]", border_style="cyan", padding=(0, 2)))
         console.print()
         
         valid_choices = [
-            "1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
+            "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11",
             "voice", "cli", "both", "web", "webserver", "webcore", "server",
             "status", "health", "doctor", "fix", "smoke", "check", "verify",
-            "audio", "sound", "live", "liveos", "os", "floating", "float", "overlay"
+            "audio", "sound", "live", "liveos", "os", "floating", "float", "overlay",
+            "galaxy", "3d", "space", "nodes"
         ]
         
         try:
             choice_input = Prompt.ask(
-                "  [bold cyan]❯ Ready (Select 1-10 or Module Name)[/]", 
+                "  [bold cyan]❯ Ready (Select 1-11 or Module Name)[/]", 
                 choices=valid_choices, 
                 default="1",
                 show_choices=False
@@ -954,6 +994,7 @@ def main():
             "8": "audio", "audio": "audio", "sound": "audio",
             "9": "live", "live": "live", "liveos": "live", "os": "live",
             "10": "floating", "floating": "floating", "float": "floating", "overlay": "floating",
+            "11": "galaxy", "galaxy": "galaxy", "3d": "galaxy", "space": "galaxy", "nodes": "galaxy"
         }
         mode = mode_map.get(choice_input, choice_input)
 
@@ -970,6 +1011,7 @@ def main():
     elif mode in ("smoke", "check", "verify"): launch_smoke()
     elif mode in ("audio", "sound"): show_audio_status()
     elif mode in ("live", "liveos", "os"): launch_live_os()
+    elif mode in ("galaxy", "3d", "space", "nodes"): launch_galaxy()
     else:
         console.print(f"[red]✗ Unknown launch argument provided.[/]")
         sys.exit(1)

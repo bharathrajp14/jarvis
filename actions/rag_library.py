@@ -23,29 +23,33 @@ CHUNK_SIZE = 800       # characters per chunk
 CHUNK_OVERLAP = 100    # overlap between chunks
 MAX_CHUNKS_PER_DOC = 500
 
+import threading
+
 _chroma_client = None
 _collection = None
+_CHROMA_LOCK = threading.Lock()
 
 
 def _get_collection():
     """Get or create the ChromaDB collection for the local library."""
     global _chroma_client, _collection
-    if _collection is not None:
-        return _collection
+    with _CHROMA_LOCK:
+        if _collection is not None:
+            return _collection
 
-    try:
-        import chromadb
-        db_path = os.environ.get("JARVIS_RAG_DB", "memory_db/rag_library")
-        Path(db_path).mkdir(parents=True, exist_ok=True)
-        _chroma_client = chromadb.PersistentClient(path=db_path)
-        _collection = _chroma_client.get_or_create_collection(
-            name=COLLECTION_NAME,
-            metadata={"hnsw:space": "cosine"},
-        )
-        return _collection
-    except Exception as e:
-        print(f"[RAG] Failed to initialize ChromaDB: {e}")
-        return None
+        try:
+            import chromadb
+            db_path = os.environ.get("JARVIS_RAG_DB", "memory_db/rag_library")
+            Path(db_path).mkdir(parents=True, exist_ok=True)
+            _chroma_client = chromadb.PersistentClient(path=db_path)
+            _collection = _chroma_client.get_or_create_collection(
+                name=COLLECTION_NAME,
+                metadata={"hnsw:space": "cosine"},
+            )
+            return _collection
+        except Exception as e:
+            print(f"[RAG] Failed to initialize ChromaDB: {e}")
+            return None
 
 
 # ── Text Extraction ───────────────────────────────────────────────────────────
@@ -473,3 +477,174 @@ def rag_chat(question: str, top_k: int = 5, doc_filter: str = None) -> str:
     except Exception as e:
         # Return raw context if LLM fails
         return f"Retrieved context (LLM unavailable):\n\n{context}"
+
+
+# ── 3D Knowledge Galaxy & Markdown Scanner ───────────────────────────────────
+
+def ensure_sample_notes(notes_dir: Path):
+    """Generate 25 sample markdown notes if notes directory is empty or missing."""
+    notes_dir.mkdir(parents=True, exist_ok=True)
+    if list(notes_dir.glob("*.md")):
+        return
+
+    sample_topics = [
+        ("Quantum Computing Core", "overview", "Quantum computing leverages qubits to process multidimensional data. Linked to [[AI Synergy]] and [[Hardware Roadmap]]."),
+        ("AI Synergy", "ai", "Synergy between neural architectures and symbolic reasoning. Refers to [[Quantum Computing Core]]."),
+        ("Hardware Roadmap", "hardware", "Next-gen GPU and TPU clusters. Dependent on [[Quantum Computing Core]] cooling solutions."),
+        ("Neural TTS Engine", "voice", "Acoustic modeling using Tacotron2 and WaveGlow. Integrates with [[Voice Assistant Protocol]]."),
+        ("Voice Assistant Protocol", "voice", "Low-latency streaming over WebSockets. Drives [[Neural TTS Engine]] and [[JARVIS Cyberpunk HUD]]."),
+        ("JARVIS Cyberpunk HUD", "ui", "PySide6 visual interface with Iron Man reactor pulse. Connects to [[Voice Assistant Protocol]]."),
+        ("ChromaDB Vector Store", "memory", "High-performance embedding storage for document RAG. Used by [[Memory Manager 2.0]]."),
+        ("Memory Manager 2.0", "memory", "Hierarchical episodic and semantic memory. Integrates [[ChromaDB Vector Store]] and [[Long Term Storage]]."),
+        ("Long Term Storage", "memory", "Persistent JSON store for user preferences and history. Managed by [[Memory Manager 2.0]]."),
+        ("Gemini Pro Integration", "models", "Primary reasoning backend for complex agentic workflows. Synergizes with [[Router Strategy]]."),
+        ("Router Strategy", "router", "Adaptive model switching between local and cloud LLMs. Routes tasks to [[Gemini Pro Integration]]."),
+        ("Task Queue Execution", "agent", "Asynchronous priority queue worker system. Dispatches sub-tasks to [[Agent Executor]]."),
+        ("Agent Executor", "agent", "Step planner and tool registry invocation engine. Triggered by [[Task Queue Execution]]."),
+        ("Security Sentinel", "security", "JWT authentication and permission gatekeeper. Secures endpoints for [[FastAPI Gateway]]."),
+        ("FastAPI Gateway", "server", "Async REST and WebSocket server for dashboard and HUD. Protected by [[Security Sentinel]]."),
+        ("Proactive Monitor", "proactive", "Background watcher scanning OS events and system telemetry. Alerts [[JARVIS Cyberpunk HUD]]."),
+        ("QR Mobile Dashboard", "ui", "PWA dashboard accessible via mobile QR code scan. Connects to [[FastAPI Gateway]]."),
+        ("Universal File Processor", "tools", "Extracts text from PDF, DOCX, CSV, and OCR images. Feeds [[ChromaDB Vector Store]]."),
+        ("Live OS Control", "actions", "Controls native Windows applications and window management. Utilized by [[Agent Executor]]."),
+        ("Web Research RAG", "actions", "Scrapes web pages and synthesizes live search cards. Feeds data into [[ChromaDB Vector Store]]."),
+        ("Deep Audit Test Suite", "testing", "Self-healing test runner ensuring 100% code coverage. Tests [[FastAPI Gateway]]."),
+        ("British Butler Persona", "personality", "Witty, dry, impeccably polite persona addressing user as sir. Customizes [[Gemini Pro Integration]]."),
+        ("Total Recall Protocol", "voice", "Voice capture starting with 'remember that'. Appends notes to [[Captures Vault]]."),
+        ("Captures Vault", "notes", "Dynamic storage folder for voice and chat captures. Managed by [[Total Recall Protocol]]."),
+        ("Fly-To-Source Dive", "ui", "3D camera dive animation pinpointing reference nodes. Rendered in [[JARVIS Cyberpunk HUD]]."),
+    ]
+
+    for title, group, body in sample_topics:
+        filename = title.lower().replace(" ", "_") + ".md"
+        content = f"# {title}\n\n**Category**: `{group}`\n\n{body}\n\n## Details\n\nThis note is part of the JARVIS 3D Knowledge Galaxy."
+        (notes_dir / filename).write_text(content, encoding="utf-8")
+
+
+def scan_markdown_notes(base_dir: str = ".") -> dict:
+    """
+    Scan .md files in ./notes and ./captures, generating nodes & links for 3D force graph.
+    """
+    root = Path(base_dir).resolve()
+    notes_dir = root / "notes"
+    captures_dir = root / "captures"
+
+    ensure_sample_notes(notes_dir)
+    captures_dir.mkdir(parents=True, exist_ok=True)
+
+    md_files = list(notes_dir.glob("*.md")) + list(captures_dir.glob("*.md"))
+
+    nodes = []
+    title_to_index = {}
+
+    for idx, filepath in enumerate(md_files):
+        title = filepath.stem.replace("_", " ").title()
+        group = filepath.parent.name
+        content = filepath.read_text(encoding="utf-8", errors="replace")
+
+        # Excerpt (~700 chars)
+        lines = [line.strip() for line in content.splitlines() if line.strip() and not line.startswith("#")]
+        excerpt = " ".join(lines)[:700] if lines else content[:700]
+
+        nodes.append({
+            "id": idx,
+            "label": title,
+            "group": group,
+            "excerpt": excerpt,
+            "path": str(filepath.relative_to(root)),
+        })
+        title_to_index[title.lower()] = idx
+        title_to_index[filepath.stem.lower()] = idx
+
+    links = []
+    wikilink_re = re.compile(r'\[\[(.*?)\]\]')
+
+    for idx, filepath in enumerate(md_files):
+        content = filepath.read_text(encoding="utf-8", errors="replace")
+        matches = wikilink_re.findall(content)
+
+        # Connect via wikilinks
+        for match in matches:
+            target_clean = match.strip().lower()
+            if target_clean in title_to_index and title_to_index[target_clean] != idx:
+                links.append({
+                    "source": idx,
+                    "target": title_to_index[target_clean]
+                })
+
+        # Connect via title mentions (with word boundary checking)
+        for other_title, other_idx in title_to_index.items():
+            if other_idx != idx and len(other_title) > 4:
+                pattern = r'\b' + re.escape(other_title) + r'\b'
+                if re.search(pattern, content, re.IGNORECASE):
+                    links.append({
+                        "source": idx,
+                        "target": other_idx
+                    })
+
+    # Deduplicate links
+    unique_links = []
+    seen = set()
+    for link in links:
+        pair = tuple(sorted([link["source"], link["target"]]))
+        if pair not in seen:
+            seen.add(pair)
+            unique_links.append(link)
+
+    return {"nodes": nodes, "links": unique_links}
+
+
+def galaxy_chat(question: str, base_dir: str = ".") -> dict:
+    """
+    Score markdown notes against a question, return answer + array of note indices used.
+    """
+    graph_data = scan_markdown_notes(base_dir)
+    nodes = graph_data["nodes"]
+
+    if not nodes:
+        return {"answer": "No notes indexed in the galaxy, sir.", "nodes": []}
+
+    words = re.findall(r'\w+', question.lower())
+    scored_nodes = []
+
+    for node in nodes:
+        score = 0
+        text = (node["label"] + " " + node["excerpt"]).lower()
+        for word in words:
+            if len(word) > 2 and word in text:
+                score += 1
+                if word in node["label"].lower():
+                    score += 3  # Extra weight for title matches
+
+        if score > 0:
+            scored_nodes.append((score, node))
+
+    scored_nodes.sort(key=lambda x: x[0], reverse=True)
+    top_sources = [node for _, node in scored_nodes[:6]]
+
+    if not top_sources:
+        # Fallback to top 2 nodes if no keyword match
+        top_sources = nodes[:2]
+
+    source_indices = [n["id"] for n in top_sources]
+    context = "\n\n".join([f"Note [{n['id']}] '{n['label']}': {n['excerpt']}" for n in top_sources])
+
+    system_prompt = (
+        "You are JARVIS, an impeccably polite British butler with razor wit. "
+        "Address the user as 'sir' (occasionally, not every sentence). "
+        "Answer the user's question using ONLY the provided notes context. "
+        "Be extremely concise: ONE witty line plus the core factual answer. "
+        "Do not recite the notes verbatim."
+    )
+
+    try:
+        from core.bootstrap import build_assistant_runtime
+        runtime = build_assistant_runtime()
+        router = runtime.router
+        messages = [{"role": "user", "content": f"Notes Context:\n{context}\n\nQuestion: {question}"}]
+        answer = router.run(router.default, messages, system_prompt)
+    except Exception:
+        answer = f"Good evening, sir. Based on {len(top_sources)} notes: " + top_sources[0]["excerpt"][:200] + "..."
+
+    return {"answer": answer, "nodes": source_indices}
+

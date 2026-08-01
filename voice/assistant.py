@@ -375,6 +375,26 @@ class BRVoiceAssistant:
             self.ui.write_log(f"You: {text_clean}")
 
         low = text_clean.lower().strip()
+
+        # Handle Total Recall voice capture: "remember that..." or "remember..."
+        if low.startswith("remember that ") or low.startswith("remember "):
+            self.ui.write_log(f"🧠 Total Recall Capture: \"{text_clean}\"")
+            try:
+                import requests
+                port = int(os.environ.get("PORT", "8000"))
+                def _post_remember():
+                    return requests.post(f"http://127.0.0.1:{port}/api/remember", json={"text": text_clean}, timeout=5)
+
+                res = await asyncio.to_thread(_post_remember)
+                if res.status_code == 200:
+                    data = res.json()
+                    confirm = data.get("confirmation", "Recorded to your brain, sir.")
+                    self.speak(confirm)
+                    self.ui.set_state("IDLE")
+                    return
+            except Exception as e:
+                self.ui.write_log(f"SYS: Capture sync error: {e}")
+
         # System shutdown ONLY triggers on exact standalone shutdown commands
         exact_shutdown_commands = {
             "exit", "quit", "goodbye", "shutdown", "bye",

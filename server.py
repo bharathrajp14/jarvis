@@ -202,6 +202,10 @@ class ChatRequest(BaseModel):
     message: str
 
 
+class RememberRequest(BaseModel):
+    text: str
+
+
 class RunRequest(BaseModel):
     goals: list[str]
 
@@ -352,11 +356,65 @@ async def chat(req: ChatRequest):
     if not ORCHESTRATOR:
         raise HTTPException(status_code=503, detail="JARVIS not initialized")
     try:
+        from actions.rag_library import galaxy_chat
+        res = galaxy_chat(req.message, str(BASE_DIR))
+        response = res.get("answer")
+        nodes = res.get("nodes", [])
+        return {"response": response, "nodes": nodes}
+    except Exception:
         response = await asyncio.to_thread(ORCHESTRATOR.chat, req.message)
-        return {"response": response}
+        return {"response": response, "nodes": []}
+
+
+@app.get("/api/galaxy/data")
+async def get_galaxy_data():
+    """Return 3D Knowledge Galaxy nodes and links from scanned notes."""
+    try:
+        from actions.rag_library import scan_markdown_notes
+        return scan_markdown_notes(str(BASE_DIR))
     except Exception as e:
-        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/remember")
+async def remember_note(req: RememberRequest):
+    """Save a voice or text note into ./captures/ and update 3D galaxy live."""
+    try:
+        text = req.text.strip()
+        if text.lower().startswith("remember that "):
+            text = text[14:].strip()
+        elif text.lower().startswith("remember "):
+            text = text[9:].strip()
+
+        words = text.split()
+        title_slug = "_".join(words[:4]).lower() if words else "note"
+        title_slug = re.sub(r'[^a-z0-9_]', '', title_slug) or "capture"
+
+        captures_dir = BASE_DIR / "captures"
+        captures_dir.mkdir(parents=True, exist_ok=True)
+        filename = f"{title_slug}_{int(time.time())}.md"
+        filepath = captures_dir / filename
+
+        title = " ".join(words[:4]).title() if words else "Voice Capture"
+        content = f"# {title}\n\n**Captured**: {time.strftime('%Y-%m-%d %H:%M:%S')}\n\n{text}\n"
+        filepath.write_text(content, encoding="utf-8")
+
+        from actions.rag_library import scan_markdown_notes
+        graph_data = scan_markdown_notes(str(BASE_DIR))
+        new_node_index = len(graph_data["nodes"]) - 1
+
+        confirmation = f"Recorded to your brain, sir: '{title}'."
+        return {
+            "status": "success",
+            "title": title,
+            "filename": filename,
+            "node_index": new_node_index,
+            "graph": graph_data,
+            "confirmation": confirmation
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 
 @app.get("/api/chat/stream")
@@ -735,6 +793,7 @@ def main():
                                            capture_output=True, timeout=5)
                             print(f"[Server] Killed stale process PID {pid} on port {port}")
             else:
+                cleaned = False
                 try:
                     import psutil
                     for proc in psutil.process_iter(['pid', 'name']):
@@ -744,15 +803,25 @@ def main():
                             for conn in proc.net_connections(kind='inet'):
                                 if conn.laddr and conn.laddr.port == port:
                                     proc.kill()
+                                    cleaned = True
                                     print(f"[Server] Killed stale process {proc.name()} (PID {proc.pid}) on port {port}")
                         except (psutil.NoSuchProcess, psutil.AccessDenied):
                             pass
                 except Exception:
-                    # Fallback to fuser/ss/lsof on Linux
+                    pass
+
+                if not cleaned:
+                    # Fallback to fuser/lsof on Linux/macOS
                     try:
-                        res = subprocess.run(["fuser", "-k", f"{port}/tcp"], capture_output=True, timeout=3)
+                        subprocess.run(["fuser", "-k", f"{port}/tcp"], capture_output=True, timeout=3)
                     except Exception:
-                        pass
+                        try:
+                            res = subprocess.run(["lsof", "-t", f"-i:{port}"], capture_output=True, text=True, timeout=3)
+                            for pid_str in res.stdout.splitlines():
+                                if pid_str.isdigit() and int(pid_str) != os.getpid():
+                                    subprocess.run(["kill", "-9", pid_str], capture_output=True, timeout=3)
+                        except Exception:
+                            pass
         except Exception:
             pass
 
