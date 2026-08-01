@@ -430,10 +430,101 @@ document.addEventListener('DOMContentLoaded', () => {
         showToast('Google Auth', 'Google login request transmitted to JARVIS.', 'info');
     };
 
+    let recognition = null;
+    let isVoiceActive = false;
+
+    window.speakJARVISResponse = function(text) {
+        if (!text) return;
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+            const cleanText = text.replace(/<[^>]*>/g, '').replace(/[*_`#]/g, '');
+            const utterance = new SpeechSynthesisUtterance(cleanText);
+            utterance.rate = 1.0;
+            utterance.pitch = 1.0;
+            const voices = window.speechSynthesis.getVoices();
+            const preferredVoice = voices.find(v => v.lang.startsWith('en') && (v.name.includes('Google') || v.name.includes('Natural') || v.name.includes('Male')));
+            if (preferredVoice) utterance.voice = preferredVoice;
+            window.speechSynthesis.speak(utterance);
+        }
+    };
+
     window.triggerVoiceDictation = function() {
         switchView('voiceView');
-        showToast('Voice Dictation Active', 'Speak into your microphone or say "JARVIS"...', 'info');
-        initVoiceAudioVisualizer();
+        const statusBadge = document.getElementById('voiceStatusBadge');
+        const transcriptContainer = document.getElementById('liveVoiceTranscript');
+
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+        if (!SpeechRecognition) {
+            showToast('Speech STT Unavailable', 'Browser Web Speech API not supported. Falling back to backend audio recording...', 'warning');
+            initVoiceAudioVisualizer();
+            return;
+        }
+
+        if (isVoiceActive && recognition) {
+            recognition.stop();
+            isVoiceActive = false;
+            if (statusBadge) statusBadge.textContent = 'STATUS: IDLE';
+            showToast('Voice Muted', 'Microphone listening stopped.', 'info');
+            return;
+        }
+
+        recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = 'en-US';
+
+        recognition.onstart = () => {
+            isVoiceActive = true;
+            if (statusBadge) statusBadge.textContent = 'STATUS: LISTENING 🎙️';
+            showToast('Voice Active', 'Listening for speech or "JARVIS"...', 'success');
+            initVoiceAudioVisualizer();
+        };
+
+        recognition.onresult = (event) => {
+            let interimTranscript = '';
+            let finalTranscript = '';
+
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                if (event.results[i].isFinal) {
+                    finalTranscript += event.results[i][0].transcript;
+                } else {
+                    interimTranscript += event.results[i][0].transcript;
+                }
+            }
+
+            const currentText = finalTranscript || interimTranscript;
+            if (transcriptContainer) {
+                transcriptContainer.textContent = `"${currentText}"`;
+            }
+
+            if (finalTranscript.trim()) {
+                showToast('Speech Recognized', `Executing: "${finalTranscript.trim()}"`, 'info');
+                if (chatInput) {
+                    chatInput.value = finalTranscript.trim();
+                    transmitChat();
+                }
+            }
+        };
+
+        recognition.onerror = (evt) => {
+            console.warn('Speech Recognition Error:', evt.error);
+            if (statusBadge) statusBadge.textContent = `STATUS: ERROR (${evt.error})`;
+        };
+
+        recognition.onend = () => {
+            if (isVoiceActive) {
+                try { recognition.start(); } catch (e) {}
+            } else {
+                if (statusBadge) statusBadge.textContent = 'STATUS: IDLE';
+            }
+        };
+
+        try {
+            recognition.start();
+        } catch (e) {
+            console.error('Speech Start Error:', e);
+        }
     };
 
     function initVoiceAudioVisualizer() {
