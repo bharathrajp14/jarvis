@@ -340,11 +340,185 @@ document.addEventListener('DOMContentLoaded', () => {
         contactSearchInput.addEventListener('input', (e) => fetchContacts(e.target.value.trim()));
     }
 
-    // ── MODAL HELPERS ──
+    // ── MODAL & INTERACTIVE HELPERS ──
     window.openContactImportModal = () => document.getElementById('contactImportModal')?.classList.add('active');
     window.closeContactImportModal = () => document.getElementById('contactImportModal')?.classList.remove('active');
     window.openGoogleAuthModal = () => document.getElementById('googleAuthModal')?.classList.add('active');
     window.closeGoogleAuthModal = () => document.getElementById('googleAuthModal')?.classList.remove('active');
+
+    window.openAddContactModal = function() {
+        const modal = document.getElementById('addContactModal');
+        if (modal) modal.classList.add('active');
+        else {
+            const name = prompt("Enter contact full name:");
+            if (!name) return;
+            const phone = prompt("Enter phone number (e.g. +1234567890):") || "";
+            const email = prompt("Enter email address:") || "";
+            const alias = prompt("Enter nickname / alias (e.g. 'Mom'):") || "";
+            submitNewContact(name, phone, email, alias);
+        }
+    };
+
+    window.closeAddContactModal = function() {
+        const modal = document.getElementById('addContactModal');
+        if (modal) modal.classList.remove('active');
+    };
+
+    window.submitNewContactFromForm = function() {
+        const name = (document.getElementById('addContactName') || {}).value || '';
+        const phone = (document.getElementById('addContactPhone') || {}).value || '';
+        const email = (document.getElementById('addContactEmail') || {}).value || '';
+        const alias = (document.getElementById('addContactAlias') || {}).value || '';
+        if (!name.trim()) {
+            showToast('Name Required', 'Please enter a contact name.', 'error');
+            return;
+        }
+        submitNewContact(name.trim(), phone.trim(), email.trim(), alias.trim());
+        closeAddContactModal();
+    };
+
+    function submitNewContact(name, phone, email, alias) {
+        fetch(`${API_BASE}/api/chat`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt: `manage_contacts action='add' name='${name}' phone_number='${phone}' email='${email}' aliases=['${alias}']` })
+        })
+        .then(res => res.json())
+        .then(() => {
+            showToast('Contact Saved', `Saved contact '${name}'`, 'success');
+            fetchContacts();
+            fetchConnectors();
+        })
+        .catch(() => showToast('Error', 'Failed saving contact', 'error'));
+    }
+
+    window.toggleGoogleAuthMode = function() {
+        const sel = document.getElementById('googleAuthMode');
+        const appGroup = document.getElementById('googleAppPasswordGroup');
+        const btn = document.getElementById('submitGoogleAuthBtn');
+        if (!sel) return;
+        if (sel.value === 'credentials') {
+            if (appGroup) appGroup.style.display = 'block';
+            if (btn) btn.textContent = 'SAVE GOOGLE CREDENTIALS';
+        } else {
+            if (appGroup) appGroup.style.display = 'none';
+            if (btn) btn.textContent = 'INITIATE GOOGLE LOGIN';
+        }
+    };
+
+    window.submitGoogleAuth = function() {
+        const sel = document.getElementById('googleAuthMode');
+        const mode = sel ? sel.value : 'browser';
+        if (mode === 'credentials') {
+            const email = (document.getElementById('googleEmail') || {}).value || '';
+            const pwd = (document.getElementById('googleAppPassword') || {}).value || '';
+            if (!email || !pwd) {
+                showToast('Fields Required', 'Please provide both Gmail email and 16-character App Password.', 'error');
+                return;
+            }
+            if (chatInput) {
+                chatInput.value = `gmail_login mode='credentials' email='${email}' app_password='${pwd}'`;
+                transmitChat();
+            }
+        } else {
+            if (chatInput) {
+                chatInput.value = `gmail_login mode='browser'`;
+                transmitChat();
+            }
+        }
+        closeGoogleAuthModal();
+        showToast('Google Auth', 'Google login request transmitted to JARVIS.', 'info');
+    };
+
+    window.triggerVoiceDictation = function() {
+        switchView('voiceView');
+        showToast('Voice Dictation Active', 'Speak into your microphone or say "JARVIS"...', 'info');
+        initVoiceAudioVisualizer();
+    };
+
+    function initVoiceAudioVisualizer() {
+        const cvs = document.getElementById('voiceCanvas');
+        if (!cvs) return;
+        const ctx = cvs.getContext('2d');
+        let width = cvs.width = cvs.parentElement ? cvs.parentElement.clientWidth - 40 : 400;
+        let height = cvs.height = 160;
+        let phase = 0;
+
+        function drawWave() {
+            ctx.clearRect(0, 0, width, height);
+            phase += 0.05;
+            ctx.beginPath();
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = '#00f2fe';
+            for (let x = 0; x < width; x++) {
+                const y = height / 2 + Math.sin(x * 0.02 + phase) * 30 * Math.sin(x * 0.005);
+                if (x === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+            requestAnimationFrame(drawWave);
+        }
+        drawWave();
+    }
+
+    let allSkills = [];
+
+    window.fetchSkills = function(query = '') {
+        fetch(`${API_BASE}/api/skills`)
+            .then(res => res.json())
+            .then(skills => {
+                allSkills = Array.isArray(skills) ? skills : [];
+                renderSkills(allSkills, query);
+            })
+            .catch(() => {});
+    };
+
+    function renderSkills(skills, query = '') {
+        const grid = document.getElementById('skillsGrid');
+        if (!grid) return;
+
+        let filtered = skills;
+        if (query) {
+            const q = query.toLowerCase();
+            filtered = skills.filter(s =>
+                (s.name && s.name.toLowerCase().includes(q)) ||
+                (s.description && s.description.toLowerCase().includes(q))
+            );
+        }
+
+        if (filtered.length === 0) {
+            grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 20px;">No matching skills found.</div>`;
+            return;
+        }
+
+        grid.innerHTML = filtered.map(s => `
+            <div class="skill-card">
+                <div style="display: flex; align-items: center; justify-content: space-between;">
+                    <h4 style="margin: 0; color: var(--accent-cyan); font-family: var(--font-code); font-size: 14px;">⚡ /${s.name}</h4>
+                    <span class="status-badge connected">Built-in</span>
+                </div>
+                <p style="font-size: 11px; color: var(--text-secondary); flex: 1;">${s.description}</p>
+                <div>
+                    <button class="btn btn-secondary" style="width: 100%;" onclick="runSkill('${s.name}')">⚡ Run Skill</button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    window.runSkill = function(skillName) {
+        switchView('chatView');
+        if (chatInput) {
+            chatInput.value = `/${skillName}`;
+            transmitChat();
+        }
+    };
+
+    const skillSearchInput = document.getElementById('skillSearchInput');
+    if (skillSearchInput) {
+        skillSearchInput.addEventListener('input', (e) => {
+            renderSkills(allSkills, e.target.value.trim());
+        });
+    }
 
     window.triggerFileImport = function(type = 'universal') {
         const inputId = type === 'contact' ? 'contactFileInput' : (type === 'knowledge' ? 'fileImportInput' : 'universalFileInput');
