@@ -1,6 +1,24 @@
 ---
-name: "compliance-readiness"
-description: "/cs:compliance-readiness <program> — Multi-framework compliance officer 6-question forcing interrogation of any compliance program. Use before starting a new framework, planning the annual audit calendar, or preparing for certification stage 1."
+name: compliance-readiness
+description: /cs:compliance-readiness <program> — Multi-framework compliance officer
+  6-question forcing interrogation of any compliance program. Use before starting
+  a new framework, planning the annual audit calendar, or preparing for certification
+  stage 1.
+category: compliance-os
+domain: Compliance Os
+triggers:
+- /compliance-readiness
+- run compliance readiness
+- compliance readiness skill
+tools:
+- doc_tools
+- excel_tools
+- rag_library
+- file_processor
+argument-hint: '[compliance readiness details]'
+when_to_use: Use when user requests compliance readiness guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # /cs:compliance-readiness — Compliance Officer Forcing Questions

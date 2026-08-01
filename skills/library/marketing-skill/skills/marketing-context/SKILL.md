@@ -1,12 +1,25 @@
 ---
-name: "marketing-context"
-description: "Create and maintain the marketing context document that all marketing skills read before starting. Use when the user mentions 'marketing context,' 'brand voice,' 'set up context,' 'target audience,' 'ICP,' 'style guide,' 'who is my customer,' 'positioning,' or wants to avoid repeating foundational information across marketing tasks. Run this at the start of any new project before using other marketing skills."
-license: MIT
-metadata:
-  version: 1.0.0
-  author: Alireza Rezvani
-  category: marketing
-  updated: 2026-03-06
+name: marketing-context
+description: Create and maintain the marketing context document that all marketing
+  skills read before starting. Use when the user mentions 'marketing context,' 'brand
+  voice,' 'set up context,' 'target audience,' 'ICP,' 'style guide,' 'who is my customer,'
+  'positioning,' or wants to avoid repeating foundational information across marketing
+  tasks. Run this at the start of any new project before using other marketing skills.
+category: marketing-skill
+domain: Marketing Skill
+triggers:
+- /marketing-context
+- run marketing context
+- marketing context skill
+tools:
+- web_search
+- doc_tools
+- file_processor
+- browser_control
+argument-hint: '[marketing context details]'
+when_to_use: Use when user requests marketing context guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Marketing Context

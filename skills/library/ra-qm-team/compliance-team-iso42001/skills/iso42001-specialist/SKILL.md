@@ -1,15 +1,28 @@
 ---
-name: "iso42001-specialist"
-description: "ISO/IEC 42001:2023 AI Management System (AIMS) specialist for compliance teams running internal audits. Three decisions: (1) Where are the gaps against Clauses 4-10 and what do we close first? (2) What goes in the AI risk register and which Annex A controls treat each risk? (3) What's the 12-month internal audit plan that satisfies Clause 9.2? Use when preparing for certification, scoping internal audit cycles, or onboarding AI systems into an existing ISMS (27001) / QMS (13485) program. NOT an executive AI strategy skill (see chief-ai-officer-advisor). NOT EU AI Act compliance (see compliance-team-eu-ai-act)."
-license: MIT
-metadata:
-  version: 1.0.0
-  author: Alireza Rezvani
-  category: ra-qm-team
-  domain: ai-management-system-compliance
-  updated: 2026-05-13
-  python-tools: aims_gap_analyzer.py, ai_risk_register_builder.py, aims_audit_scheduler.py
-  frameworks: iso-42001, iso-23894, iso-38507, nist-ai-rmf, eu-ai-act-mapping
+name: iso42001-specialist
+description: 'ISO/IEC 42001:2023 AI Management System (AIMS) specialist for compliance
+  teams running internal audits. Three decisions: (1) Where are the gaps against Clauses
+  4-10 and what do we close first? (2) What goes in the AI risk register and which
+  Annex A controls treat each risk? (3) What''s the 12-month internal audit plan that
+  satisfies Clause 9.2? Use when preparing for certification, scoping internal audit
+  cycles, or onboarding AI systems into an existing ISMS (27001) / QMS (13485) program.
+  NOT an executive AI strategy skill (see chief-ai-officer-advisor). NOT EU AI Act
+  compliance (see compliance-team-eu-ai-act).'
+category: ra-qm-team
+domain: Ra Qm Team
+triggers:
+- /iso42001-specialist
+- run iso42001 specialist
+- iso42001 specialist skill
+tools:
+- doc_tools
+- excel_tools
+- rag_library
+- file_processor
+argument-hint: '[iso42001 specialist details]'
+when_to_use: Use when user requests iso42001 specialist guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # ISO/IEC 42001 AI Management System Specialist

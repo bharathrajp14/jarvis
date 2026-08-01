@@ -1,12 +1,25 @@
 ---
-name: "marketing-psychology"
-description: "When the user wants to apply psychological principles, mental models, or behavioral science to marketing. Also use when the user mentions 'psychology,' 'mental models,' 'cognitive bias,' 'persuasion,' 'behavioral science,' 'why people buy,' 'decision-making,' or 'consumer behavior.' This skill provides 70+ mental models organized for marketing application."
-license: MIT
-metadata:
-  version: 1.1.0
-  author: Alireza Rezvani
-  category: marketing
-  updated: 2026-03-06
+name: marketing-psychology
+description: When the user wants to apply psychological principles, mental models,
+  or behavioral science to marketing. Also use when the user mentions 'psychology,'
+  'mental models,' 'cognitive bias,' 'persuasion,' 'behavioral science,' 'why people
+  buy,' 'decision-making,' or 'consumer behavior.' This skill provides 70+ mental
+  models organized for marketing application.
+category: marketing-skill
+domain: Marketing Skill
+triggers:
+- /marketing-psychology
+- run marketing psychology
+- marketing psychology skill
+tools:
+- web_search
+- doc_tools
+- file_processor
+- browser_control
+argument-hint: '[marketing psychology details]'
+when_to_use: Use when user requests marketing psychology guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Marketing Psychology

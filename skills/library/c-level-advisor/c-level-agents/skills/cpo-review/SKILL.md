@@ -1,6 +1,23 @@
 ---
-name: "cpo-review"
-description: "/cs:cpo-review <plan> — JTBD-driven interrogation of product roadmap, PMF signal, and portfolio focus. Use when committing a quarter's roadmap, deciding whether to kill a feature, or claiming PMF without a retention curve."
+name: cpo-review
+description: /cs:cpo-review <plan> — JTBD-driven interrogation of product roadmap,
+  PMF signal, and portfolio focus. Use when committing a quarter's roadmap, deciding
+  whether to kill a feature, or claiming PMF without a retention curve.
+category: c-level-advisor
+domain: C Level Advisor
+triggers:
+- /cpo-review
+- run cpo review
+- cpo review skill
+tools:
+- doc_tools
+- excel_tools
+- web_search
+- rag_library
+argument-hint: '[cpo review details]'
+when_to_use: Use when user requests cpo review guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # /cs:cpo-review — CPO Forcing Questions

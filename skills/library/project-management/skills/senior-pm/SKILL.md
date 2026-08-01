@@ -1,6 +1,29 @@
 ---
-name: "senior-pm"
-description: Senior Project Manager for enterprise software, SaaS, and digital transformation projects. Specializes in portfolio management, quantitative risk analysis, resource optimization, stakeholder alignment, and executive reporting. Uses advanced methodologies including EMV analysis, Monte Carlo simulation, WSJF prioritization, and multi-dimensional health scoring. Use when a user needs help with project plans, project status reports, risk assessments, resource allocation, project roadmaps, milestone tracking, team capacity planning, portfolio health reviews, program management, or executive-level project reporting — especially for enterprise-scale initiatives with multiple workstreams, complex dependencies, or multi-million dollar budgets.
+name: senior-pm
+description: Senior Project Manager for enterprise software, SaaS, and digital transformation
+  projects. Specializes in portfolio management, quantitative risk analysis, resource
+  optimization, stakeholder alignment, and executive reporting. Uses advanced methodologies
+  including EMV analysis, Monte Carlo simulation, WSJF prioritization, and multi-dimensional
+  health scoring. Use when a user needs help with project plans, project status reports,
+  risk assessments, resource allocation, project roadmaps, milestone tracking, team
+  capacity planning, portfolio health reviews, program management, or executive-level
+  project reporting — especially for enterprise-scale initiatives with multiple workstreams,
+  complex dependencies, or multi-million dollar budgets.
+category: project-management
+domain: Project Management
+triggers:
+- /senior-pm
+- run senior pm
+- senior pm skill
+tools:
+- doc_tools
+- excel_tools
+- calendar_engine
+- web_search
+argument-hint: '[senior pm details]'
+when_to_use: Use when user requests senior pm guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Senior Project Management Expert

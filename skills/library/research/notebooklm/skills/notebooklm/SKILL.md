@@ -1,12 +1,29 @@
 ---
 name: notebooklm
-description: "Browser automation skill for controlling Google's NotebookLM. Use when the user wants anything done in NotebookLM (e.g., 'open NotebookLM', 'check my [name] notebook', 'ask my notebook about X', 'add [source] to NotebookLM', 'generate a Video Overview from my notebook', 'use NotebookLM Studio'). Handles reading and querying notebooks, adding sources (URLs, text, files, YouTube links, synthesized content), generating Studio outputs (Audio/Video Overviews, Mind Maps, Reports incl. Briefing Doc/Study Guide/FAQ, Flashcards, Quiz, slide decks, infographics — discover the exact set from the live Studio panel; the UI evolves fast), and creating new notebooks. Requires browser automation environment — fails gracefully when unavailable."
-license: MIT
-metadata:
-  source_spec: "megaprompts/03-notebooklm-megaprompt.md"
-  build_pattern: "Path B (direct conversion)"
-  shape: "browser-automation (distinct from research-pack convention)"
-  version: 1.0.0
+description: Browser automation skill for controlling Google's NotebookLM. Use when
+  the user wants anything done in NotebookLM (e.g., 'open NotebookLM', 'check my [name]
+  notebook', 'ask my notebook about X', 'add [source] to NotebookLM', 'generate a
+  Video Overview from my notebook', 'use NotebookLM Studio'). Handles reading and
+  querying notebooks, adding sources (URLs, text, files, YouTube links, synthesized
+  content), generating Studio outputs (Audio/Video Overviews, Mind Maps, Reports incl.
+  Briefing Doc/Study Guide/FAQ, Flashcards, Quiz, slide decks, infographics — discover
+  the exact set from the live Studio panel; the UI evolves fast), and creating new
+  notebooks. Requires browser automation environment — fails gracefully when unavailable.
+category: research
+domain: Research
+triggers:
+- /notebooklm
+- run notebooklm
+- notebooklm skill
+tools:
+- web_search
+- browser_control
+- rag_library
+- doc_tools
+argument-hint: '[notebooklm details]'
+when_to_use: Use when user requests notebooklm guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # NotebookLM — Browser Automation

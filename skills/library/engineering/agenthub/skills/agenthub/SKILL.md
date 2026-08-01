@@ -1,12 +1,26 @@
 ---
-name: "agenthub"
-description: "Multi-agent collaboration plugin that spawns N parallel subagents competing on the same task via git worktree isolation. Agents work independently, results are evaluated by metric or LLM judge, and the best branch is merged. Use when: user wants multiple approaches tried in parallel — code optimization, content variation, research exploration, or any task that benefits from parallel competition. Requires: a git repo."
-license: MIT
-metadata:
-  version: 2.1.2
-  author: Alireza Rezvani
-  category: engineering
-  updated: 2026-03-17
+name: agenthub
+description: 'Multi-agent collaboration plugin that spawns N parallel subagents competing
+  on the same task via git worktree isolation. Agents work independently, results
+  are evaluated by metric or LLM judge, and the best branch is merged. Use when: user
+  wants multiple approaches tried in parallel — code optimization, content variation,
+  research exploration, or any task that benefits from parallel competition. Requires:
+  a git repo.'
+category: engineering
+domain: Engineering
+triggers:
+- /agenthub
+- run agenthub
+- agenthub skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[agenthub details]'
+when_to_use: Use when user requests agenthub guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # AgentHub — Multi-Agent Collaboration

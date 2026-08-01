@@ -1,14 +1,25 @@
 ---
-name: "competitive-intel"
-description: "Systematic competitor tracking that feeds CMO positioning, CRO battlecards, and CPO roadmap decisions. Use when analyzing competitors, building sales battlecards, tracking market moves, positioning against alternatives, or when user mentions competitive intelligence, competitive analysis, competitor research, battlecards, win/loss, or market positioning."
-license: MIT
-metadata:
-  version: 1.0.0
-  author: Alireza Rezvani
-  category: c-level
-  domain: competitive-strategy
-  updated: 2026-03-05
-  frameworks: ci-playbook, battlecard-template
+name: competitive-intel
+description: Systematic competitor tracking that feeds CMO positioning, CRO battlecards,
+  and CPO roadmap decisions. Use when analyzing competitors, building sales battlecards,
+  tracking market moves, positioning against alternatives, or when user mentions competitive
+  intelligence, competitive analysis, competitor research, battlecards, win/loss,
+  or market positioning.
+category: c-level-advisor
+domain: C Level Advisor
+triggers:
+- /competitive-intel
+- run competitive intel
+- competitive intel skill
+tools:
+- doc_tools
+- excel_tools
+- web_search
+- rag_library
+argument-hint: '[competitive intel details]'
+when_to_use: Use when user requests competitive intel guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Competitive Intelligence

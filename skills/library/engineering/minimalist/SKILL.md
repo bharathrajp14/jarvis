@@ -1,6 +1,24 @@
 ---
-name: "minimalist"
-description: "Use when the user asks to write code efficiently, avoid over-engineering, reduce dependencies, or prevent unnecessary abstractions. Enforces a strict efficiency ladder: YAGNI, reuse, stdlib, native platform, existing deps — before writing any new code."
+name: minimalist
+description: 'Use when the user asks to write code efficiently, avoid over-engineering,
+  reduce dependencies, or prevent unnecessary abstractions. Enforces a strict efficiency
+  ladder: YAGNI, reuse, stdlib, native platform, existing deps — before writing any
+  new code.'
+category: engineering
+domain: Engineering
+triggers:
+- /minimalist
+- run minimalist
+- minimalist skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[minimalist details]'
+when_to_use: Use when user requests minimalist guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Minimalist

@@ -80,6 +80,22 @@ def _build_sandbox() -> dict:
     return sandbox
 
 
+import ast
+
+
+def _is_ast_safe(code: str) -> tuple[bool, str]:
+    try:
+        tree = ast.parse(code)
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Attribute) and node.attr.startswith("__"):
+                return False, f"Forbidden attribute access: {node.attr}"
+            if isinstance(node, ast.Name) and node.id in ("eval", "exec", "__import__", "breakpoint"):
+                return False, f"Forbidden builtin: {node.id}"
+        return True, ""
+    except SyntaxError as se:
+        return False, f"Syntax error: {se}"
+
+
 def _execute_generated_code(code: str, player=None) -> str:
     if not code or code.strip() == "UNSAFE":
         return "This action cannot be performed safely."
@@ -88,6 +104,11 @@ def _execute_generated_code(code: str, player=None) -> str:
     if code.startswith("```"):
         lines = code.split("\n")
         code  = "\n".join(lines[1:-1]).strip()
+
+    is_safe, reason = _is_ast_safe(code)
+    if not is_safe:
+        print(f"[Desktop] Security blocked execution: {reason}")
+        return f"Execution blocked: {reason}"
 
     sandbox      = _build_sandbox()
     output_lines = []

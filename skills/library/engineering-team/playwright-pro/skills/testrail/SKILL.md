@@ -1,9 +1,23 @@
 ---
-name: "testrail"
-description: >-
-  Sync tests with TestRail. Use when user mentions "testrail", "test management",
-  "test cases", "test run", "sync test cases", "push results to testrail",
-  or "import from testrail".
+name: testrail
+description: Sync tests with TestRail. Use when user mentions "testrail", "test management",
+  "test cases", "test run", "sync test cases", "push results to testrail", or "import
+  from testrail".
+category: engineering-team
+domain: Engineering Team
+triggers:
+- /testrail
+- run testrail
+- testrail skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[testrail details]'
+when_to_use: Use when user requests testrail guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # TestRail Integration

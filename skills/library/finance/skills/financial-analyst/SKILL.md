@@ -1,6 +1,26 @@
 ---
-name: "financial-analyst"
-description: Performs financial ratio analysis, DCF valuation, budget variance analysis, and rolling forecast construction for strategic decision-making. Use when analyzing financial statements, building valuation models, assessing budget variances, or constructing financial projections and forecasts. Also applicable when users mention financial modeling, cash flow analysis, company valuation, financial projections, or spreadsheet analysis.
+name: financial-analyst
+description: Performs financial ratio analysis, DCF valuation, budget variance analysis,
+  and rolling forecast construction for strategic decision-making. Use when analyzing
+  financial statements, building valuation models, assessing budget variances, or
+  constructing financial projections and forecasts. Also applicable when users mention
+  financial modeling, cash flow analysis, company valuation, financial projections,
+  or spreadsheet analysis.
+category: finance
+domain: Finance
+triggers:
+- /financial-analyst
+- run financial analyst
+- financial analyst skill
+tools:
+- excel_tools
+- doc_tools
+- web_search
+- file_processor
+argument-hint: '[financial analyst details]'
+when_to_use: Use when user requests financial analyst guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Financial Analyst Skill

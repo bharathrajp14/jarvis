@@ -1,6 +1,25 @@
 ---
-name: "challenge"
-description: "Pre-mortem plan analysis. Imagine the plan failed 12 months from now and work backwards to find the weaknesses. Surfaces assumptions, dependencies, and execution risks before committing resources. Use when before significant resource commitment, before presenting to a board or investors, when feedback has been one-sidedly positive, or when there is pressure to move fast and figure it out later."
+name: challenge
+description: Pre-mortem plan analysis. Imagine the plan failed 12 months from now
+  and work backwards to find the weaknesses. Surfaces assumptions, dependencies, and
+  execution risks before committing resources. Use when before significant resource
+  commitment, before presenting to a board or investors, when feedback has been one-sidedly
+  positive, or when there is pressure to move fast and figure it out later.
+category: c-level-advisor
+domain: C Level Advisor
+triggers:
+- /challenge
+- run challenge
+- challenge skill
+tools:
+- doc_tools
+- excel_tools
+- web_search
+- rag_library
+argument-hint: '[challenge details]'
+when_to_use: Use when user requests challenge guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # /em:challenge — Pre-Mortem Plan Analysis

@@ -1,12 +1,27 @@
 ---
-name: "competitor-alternatives"
-description: "When the user wants to create competitor comparison or alternative pages for SEO and sales enablement. Also use when the user mentions 'alternative page,' 'vs page,' 'competitor comparison,' 'comparison page,' '[Product] vs [Product],' '[Product] alternative,' 'competitive landing pages,' 'switch from competitor,' or 'comparison content.' Covers four formats: singular alternative, plural alternatives, you vs competitor, and competitor vs competitor. Emphasizes deep research, modular content architecture, and varied section types beyond feature tables."
-license: MIT
-metadata:
-  version: 1.0.0
-  author: Alireza Rezvani
-  category: marketing
-  updated: 2026-03-06
+name: competitor-alternatives
+description: 'When the user wants to create competitor comparison or alternative pages
+  for SEO and sales enablement. Also use when the user mentions ''alternative page,''
+  ''vs page,'' ''competitor comparison,'' ''comparison page,'' ''[Product] vs [Product],''
+  ''[Product] alternative,'' ''competitive landing pages,'' ''switch from competitor,''
+  or ''comparison content.'' Covers four formats: singular alternative, plural alternatives,
+  you vs competitor, and competitor vs competitor. Emphasizes deep research, modular
+  content architecture, and varied section types beyond feature tables.'
+category: marketing-skill
+domain: Marketing Skill
+triggers:
+- /competitor-alternatives
+- run competitor alternatives
+- competitor alternatives skill
+tools:
+- web_search
+- doc_tools
+- file_processor
+- browser_control
+argument-hint: '[competitor alternatives details]'
+when_to_use: Use when user requests competitor alternatives guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Competitor & Alternative Pages

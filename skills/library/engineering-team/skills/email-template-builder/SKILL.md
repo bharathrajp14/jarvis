@@ -1,6 +1,25 @@
 ---
-name: "email-template-builder"
-description: "Build complete transactional email systems: React Email templates, provider integration (Resend, Postmark, SendGrid, AWS SES), preview server, i18n support, dark mode, spam optimization, analytics tracking. Use when adding transactional email to a new product, migrating between email providers, refactoring legacy email templates for accessibility, or adding internationalization to existing templates."
+name: email-template-builder
+description: 'Build complete transactional email systems: React Email templates, provider
+  integration (Resend, Postmark, SendGrid, AWS SES), preview server, i18n support,
+  dark mode, spam optimization, analytics tracking. Use when adding transactional
+  email to a new product, migrating between email providers, refactoring legacy email
+  templates for accessibility, or adding internationalization to existing templates.'
+category: engineering-team
+domain: Engineering Team
+triggers:
+- /email-template-builder
+- run email template builder
+- email template builder skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[email template builder details]'
+when_to_use: Use when user requests email template builder guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Email Template Builder

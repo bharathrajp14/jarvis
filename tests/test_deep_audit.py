@@ -430,7 +430,7 @@ _run_audit("Skill executor inline mode", t_skill_executor_inline)
 
 def t_full_syntax_check():
     import py_compile
-    for fpath in ["start.py", "server.py", "ui.py", "permissions.py"]:
+    for fpath in ["start.py", "server.py", "ui_mark.py", "permissions.py"]:
         py_compile.compile(fpath, doraise=True)
 _run_audit("Key files syntax-valid", t_full_syntax_check)
 
@@ -448,17 +448,33 @@ def t_backend_complete_signature():
 audit_case("All backends have complete(messages, system)", t_backend_complete_signature)
 
 def t_redteam_scope_enforcer():
+    import tempfile
+    import json
+    import os
     from redteam.scope import ScopeEnforcer
-    se = ScopeEnforcer("current_scope.json")
-    # IPs from current_scope.json: 192.168.100.0/24 and 10.10.20.0/28
-    assert se.is_authorized("192.168.100.50") == True, "192.168.100.50 should be in scope"
-    assert se.is_authorized("10.10.20.5") == True, "10.10.20.5 should be in scope"
-    # Domains from scope: test.acmecorp.internal, staging.acmecorp.com
-    assert se.is_authorized("test.acmecorp.internal") == True
-    assert se.is_authorized("staging.acmecorp.com") == True
-    # Out of scope
-    assert se.is_authorized("evil.com") == False
-    assert se.is_authorized("8.8.8.8") == False
+
+    scope_data = {
+        "allowed_ips": ["192.168.100.0/24", "10.10.20.0/28"],
+        "allowed_domains": ["test.acmecorp.internal", "staging.acmecorp.com"]
+    }
+    with tempfile.NamedTemporaryFile("w", delete=False, suffix=".json") as tmp:
+        json.dump(scope_data, tmp)
+        tmp_path = tmp.name
+
+    try:
+        se = ScopeEnforcer(tmp_path)
+        # IPs from scope: 192.168.100.0/24 and 10.10.20.0/28
+        assert se.is_authorized("192.168.100.50") == True, "192.168.100.50 should be in scope"
+        assert se.is_authorized("10.10.20.5") == True, "10.10.20.5 should be in scope"
+        # Domains from scope: test.acmecorp.internal, staging.acmecorp.com
+        assert se.is_authorized("test.acmecorp.internal") == True
+        assert se.is_authorized("staging.acmecorp.com") == True
+        # Out of scope
+        assert se.is_authorized("evil.com") == False
+        assert se.is_authorized("8.8.8.8") == False
+    finally:
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
 audit_case("ScopeEnforcer auth checks", t_redteam_scope_enforcer)
 
 

@@ -1,6 +1,23 @@
 ---
-name: "cto-review"
-description: "/cs:cto-review <plan> — Architecture and scaling interrogation. Tech debt, scaling cliffs, team scaling, build-vs-buy. Use when committing to an architecture, planning for 10x load, or weighing a rebuild against a vendor."
+name: cto-review
+description: /cs:cto-review <plan> — Architecture and scaling interrogation. Tech
+  debt, scaling cliffs, team scaling, build-vs-buy. Use when committing to an architecture,
+  planning for 10x load, or weighing a rebuild against a vendor.
+category: c-level-advisor
+domain: C Level Advisor
+triggers:
+- /cto-review
+- run cto review
+- cto review skill
+tools:
+- doc_tools
+- excel_tools
+- web_search
+- rag_library
+argument-hint: '[cto review details]'
+when_to_use: Use when user requests cto review guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # /cs:cto-review — CTO Forcing Questions

@@ -1,12 +1,23 @@
 ---
 name: saas-metrics-coach
-description: SaaS financial health advisor. Use when a user shares revenue or customer numbers, or mentions ARR, MRR, churn, LTV, CAC, NRR, or asks how their SaaS business is doing.
-license: MIT
-metadata:
-  version: 1.0.0
-  author: Abbas Mir
-  category: finance
-  updated: 2026-03-08
+description: SaaS financial health advisor. Use when a user shares revenue or customer
+  numbers, or mentions ARR, MRR, churn, LTV, CAC, NRR, or asks how their SaaS business
+  is doing.
+category: finance
+domain: Finance
+triggers:
+- /saas-metrics-coach
+- run saas metrics coach
+- saas metrics coach skill
+tools:
+- excel_tools
+- doc_tools
+- web_search
+- file_processor
+argument-hint: '[saas metrics coach details]'
+when_to_use: Use when user requests saas metrics coach guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # SaaS Metrics Coach

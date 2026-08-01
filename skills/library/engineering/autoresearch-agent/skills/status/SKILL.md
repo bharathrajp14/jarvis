@@ -1,7 +1,22 @@
 ---
-name: "status"
-description: "Show experiment dashboard with results, active loops, and progress. Use when the user runs /ar:status or asks how an autoresearch experiment is going."
-command: /ar:status
+name: status
+description: Show experiment dashboard with results, active loops, and progress. Use
+  when the user runs /ar:status or asks how an autoresearch experiment is going.
+category: engineering
+domain: Engineering
+triggers:
+- /status
+- run status
+- status skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[status details]'
+when_to_use: Use when user requests status guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # /ar:status — Experiment Dashboard

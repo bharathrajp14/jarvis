@@ -1,6 +1,24 @@
 ---
-name: "codebase-onboarding"
-description: "Analyze a codebase and generate onboarding documentation for engineers, tech leads, and contractors. Fast fact-gathering and repeatable onboarding outputs. Use when onboarding a new engineer, writing architecture-overview docs for a new project, or producing tech-lead briefings for unfamiliar repos."
+name: codebase-onboarding
+description: Analyze a codebase and generate onboarding documentation for engineers,
+  tech leads, and contractors. Fast fact-gathering and repeatable onboarding outputs.
+  Use when onboarding a new engineer, writing architecture-overview docs for a new
+  project, or producing tech-lead briefings for unfamiliar repos.
+category: engineering
+domain: Engineering
+triggers:
+- /codebase-onboarding
+- run codebase onboarding
+- codebase onboarding skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[codebase onboarding details]'
+when_to_use: Use when user requests codebase onboarding guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Codebase Onboarding

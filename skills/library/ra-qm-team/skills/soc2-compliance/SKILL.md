@@ -1,6 +1,23 @@
 ---
-name: "soc2-compliance"
-description: "Use when the user asks to prepare for SOC 2 audits, map Trust Service Criteria, build control matrices, collect audit evidence, perform gap analysis, or assess SOC 2 Type I vs Type II readiness."
+name: soc2-compliance
+description: Use when the user asks to prepare for SOC 2 audits, map Trust Service
+  Criteria, build control matrices, collect audit evidence, perform gap analysis,
+  or assess SOC 2 Type I vs Type II readiness.
+category: ra-qm-team
+domain: Ra Qm Team
+triggers:
+- /soc2-compliance
+- run soc2 compliance
+- soc2 compliance skill
+tools:
+- doc_tools
+- excel_tools
+- rag_library
+- file_processor
+argument-hint: '[soc2 compliance details]'
+when_to_use: Use when user requests soc2 compliance guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # SOC 2 Compliance

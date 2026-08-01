@@ -1,12 +1,25 @@
 ---
-name: "onboarding-cro"
-description: When the user wants to optimize post-signup onboarding, user activation, first-run experience, or time-to-value. Also use when the user mentions "onboarding flow," "activation rate," "user activation," "first-run experience," "empty states," "onboarding checklist," "aha moment," or "new user experience." For signup/registration optimization, see signup-flow-cro. For ongoing email sequences, see email-sequence.
-license: MIT
-metadata:
-  version: 1.0.0
-  author: Alireza Rezvani
-  category: marketing
-  updated: 2026-03-06
+name: onboarding-cro
+description: When the user wants to optimize post-signup onboarding, user activation,
+  first-run experience, or time-to-value. Also use when the user mentions "onboarding
+  flow," "activation rate," "user activation," "first-run experience," "empty states,"
+  "onboarding checklist," "aha moment," or "new user experience." For signup/registration
+  optimization, see signup-flow-cro. For ongoing email sequences, see email-sequence.
+category: marketing-skill
+domain: Marketing Skill
+triggers:
+- /onboarding-cro
+- run onboarding cro
+- onboarding cro skill
+tools:
+- web_search
+- doc_tools
+- file_processor
+- browser_control
+argument-hint: '[onboarding cro details]'
+when_to_use: Use when user requests onboarding cro guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Onboarding CRO

@@ -1,6 +1,24 @@
 ---
-name: "cfo-review"
-description: "/cs:cfo-review <plan> — Numerate-skeptic interrogation of any plan that touches money. Unit economics, runway, dilution, capital allocation. Use when a plan commits meaningful spend — e.g. a hiring wave, a fundraise decision, or a new channel budget."
+name: cfo-review
+description: /cs:cfo-review <plan> — Numerate-skeptic interrogation of any plan that
+  touches money. Unit economics, runway, dilution, capital allocation. Use when a
+  plan commits meaningful spend — e.g. a hiring wave, a fundraise decision, or a new
+  channel budget.
+category: c-level-advisor
+domain: C Level Advisor
+triggers:
+- /cfo-review
+- run cfo review
+- cfo review skill
+tools:
+- doc_tools
+- excel_tools
+- web_search
+- rag_library
+argument-hint: '[cfo review details]'
+when_to_use: Use when user requests cfo review guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # /cs:cfo-review — CFO Forcing Questions

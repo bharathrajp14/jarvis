@@ -1,6 +1,24 @@
 ---
-name: "atlassian-templates"
-description: Atlassian Template and Files Creator/Modifier expert for creating, modifying, and managing Jira and Confluence templates, blueprints, custom layouts, reusable components, and standardized content structures. Use when building org-wide templates, custom blueprints, page layouts, and automated content generation.
+name: atlassian-templates
+description: Atlassian Template and Files Creator/Modifier expert for creating, modifying,
+  and managing Jira and Confluence templates, blueprints, custom layouts, reusable
+  components, and standardized content structures. Use when building org-wide templates,
+  custom blueprints, page layouts, and automated content generation.
+category: project-management
+domain: Project Management
+triggers:
+- /atlassian-templates
+- run atlassian templates
+- atlassian templates skill
+tools:
+- doc_tools
+- excel_tools
+- calendar_engine
+- web_search
+argument-hint: '[atlassian templates details]'
+when_to_use: Use when user requests atlassian templates guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Atlassian Template & Files Creator Expert

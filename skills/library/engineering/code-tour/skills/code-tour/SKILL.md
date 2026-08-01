@@ -1,6 +1,25 @@
 ---
-name: "code-tour"
-description: "Use when the user asks to create a CodeTour .tour file — persona-targeted, step-by-step walkthroughs that link to real files and line numbers. Trigger for: create a tour, onboarding tour, architecture tour, PR review tour, explain how X works, vibe check, RCA tour, contributor guide, or any structured code walkthrough request."
+name: code-tour
+description: 'Use when the user asks to create a CodeTour .tour file — persona-targeted,
+  step-by-step walkthroughs that link to real files and line numbers. Trigger for:
+  create a tour, onboarding tour, architecture tour, PR review tour, explain how X
+  works, vibe check, RCA tour, contributor guide, or any structured code walkthrough
+  request.'
+category: engineering
+domain: Engineering
+triggers:
+- /code-tour
+- run code tour
+- code tour skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[code tour details]'
+when_to_use: Use when user requests code tour guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Code Tour

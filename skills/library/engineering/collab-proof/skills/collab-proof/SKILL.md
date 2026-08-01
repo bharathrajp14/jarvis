@@ -1,7 +1,23 @@
 ---
-name: "collab-proof"
-description: "Use when you want to understand what Claude contributed vs what you drove in a session. Triggers on: /collab-proof, session retrospective, ai contribution analysis, collaboration evidence, what did claude do."
-license: MIT
+name: collab-proof
+description: 'Use when you want to understand what Claude contributed vs what you
+  drove in a session. Triggers on: /collab-proof, session retrospective, ai contribution
+  analysis, collaboration evidence, what did claude do.'
+category: engineering
+domain: Engineering
+triggers:
+- /collab-proof
+- run collab proof
+- collab proof skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[collab proof details]'
+when_to_use: Use when user requests collab proof guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # collab-proof

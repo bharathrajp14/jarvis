@@ -547,7 +547,7 @@ def document_creator(args: dict) -> str:
         
     if auto_open and sys.platform == "win32":
         try:
-            subprocess.Popen(f'start "" "{saved_path}"', shell=True)
+            subprocess.Popen(["cmd", "/c", "start", "", str(saved_path)], shell=False)
         except Exception:
             pass
             
@@ -693,7 +693,7 @@ def generate_walkthrough(args: dict) -> str:
 
     if auto_open and sys.platform == "win32":
         try:
-            subprocess.Popen(f'start "" "{out_path}"', shell=True)
+            subprocess.Popen(["cmd", "/c", "start", "", str(out_path)], shell=False)
         except Exception:
             pass
 

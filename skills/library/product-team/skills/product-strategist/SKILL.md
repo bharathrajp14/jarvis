@@ -1,6 +1,26 @@
 ---
-name: "product-strategist"
-description: Strategic product leadership toolkit for Head of Product covering OKR cascade generation, quarterly planning, competitive landscape analysis, product vision documents, and team scaling proposals. Use when creating quarterly OKR documents, defining product goals or KPIs, building product roadmaps, running competitive analysis, drafting team structure or hiring plans, aligning product strategy across engineering and design, or generating cascaded goal hierarchies from company to team level.
+name: product-strategist
+description: Strategic product leadership toolkit for Head of Product covering OKR
+  cascade generation, quarterly planning, competitive landscape analysis, product
+  vision documents, and team scaling proposals. Use when creating quarterly OKR documents,
+  defining product goals or KPIs, building product roadmaps, running competitive analysis,
+  drafting team structure or hiring plans, aligning product strategy across engineering
+  and design, or generating cascaded goal hierarchies from company to team level.
+category: product-team
+domain: Product Team
+triggers:
+- /product-strategist
+- run product strategist
+- product strategist skill
+tools:
+- doc_tools
+- excel_tools
+- file_processor
+- web_search
+argument-hint: '[product strategist details]'
+when_to_use: Use when user requests product strategist guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Product Strategist

@@ -1,6 +1,22 @@
 ---
 name: product-discovery
-description: Use when validating product opportunities, mapping assumptions, planning discovery sprints, or testing problem-solution fit before committing delivery resources.
+description: Use when validating product opportunities, mapping assumptions, planning
+  discovery sprints, or testing problem-solution fit before committing delivery resources.
+category: product-team
+domain: Product Team
+triggers:
+- /product-discovery
+- run product discovery
+- product discovery skill
+tools:
+- doc_tools
+- excel_tools
+- file_processor
+- web_search
+argument-hint: '[product discovery details]'
+when_to_use: Use when user requests product discovery guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Product Discovery

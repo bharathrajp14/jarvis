@@ -1,15 +1,25 @@
 ---
-name: "executive-mentor"
-description: "Adversarial thinking partner for founders and executives. Stress-tests plans, prepares for brutal board meetings, dissects decisions with no good options, and forces honest post-mortems. Use when you need someone to find the holes before the board does, make a decision you've been avoiding, or understand what actually went wrong."
-license: MIT
-metadata:
-  version: 1.0.0
-  author: Alireza Rezvani
-  category: c-level
-  domain: executive-leadership
-  updated: 2026-03-05
-  python-tools: decision_matrix_scorer.py, stakeholder_mapper.py
-  frameworks: pre-mortem, board-prep, hard-call, stress-test, postmortem
+name: executive-mentor
+description: Adversarial thinking partner for founders and executives. Stress-tests
+  plans, prepares for brutal board meetings, dissects decisions with no good options,
+  and forces honest post-mortems. Use when you need someone to find the holes before
+  the board does, make a decision you've been avoiding, or understand what actually
+  went wrong.
+category: c-level-advisor
+domain: C Level Advisor
+triggers:
+- /executive-mentor
+- run executive mentor
+- executive mentor skill
+tools:
+- doc_tools
+- excel_tools
+- web_search
+- rag_library
+argument-hint: '[executive mentor details]'
+when_to_use: Use when user requests executive mentor guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Executive Mentor

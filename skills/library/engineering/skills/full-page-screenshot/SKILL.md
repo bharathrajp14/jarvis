@@ -1,6 +1,23 @@
 ---
-name: "full-page-screenshot"
-description: "Use when the user asks to capture a full-page screenshot, long screenshot, or complete page capture of a web page. Handles SPA scroll containers, lazy-loaded images, and very tall pages via Chrome DevTools Protocol with zero external dependencies."
+name: full-page-screenshot
+description: Use when the user asks to capture a full-page screenshot, long screenshot,
+  or complete page capture of a web page. Handles SPA scroll containers, lazy-loaded
+  images, and very tall pages via Chrome DevTools Protocol with zero external dependencies.
+category: engineering
+domain: Engineering
+triggers:
+- /full-page-screenshot
+- run full page screenshot
+- full page screenshot skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[full page screenshot details]'
+when_to_use: Use when user requests full page screenshot guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Full Page Screenshot

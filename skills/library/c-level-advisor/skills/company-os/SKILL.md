@@ -1,14 +1,27 @@
 ---
-name: "company-os"
-description: "The meta-framework for how a company runs — the connective tissue between all C-suite roles. Covers operating system selection (EOS, Scaling Up, OKR-native, hybrid), accountability charts, scorecards, meeting pulse, issue resolution, and 90-day rocks. Use when setting up company operations, selecting a management framework, designing meeting rhythms, building accountability systems, implementing OKRs, or when user mentions EOS, Scaling Up, operating system, L10 meetings, rocks, scorecard, accountability chart, or quarterly planning."
-license: MIT
-metadata:
-  version: 1.0.0
-  author: Alireza Rezvani
-  category: c-level
-  domain: company-operations
-  updated: 2026-03-05
-  frameworks: os-comparison, implementation-guide
+name: company-os
+description: The meta-framework for how a company runs — the connective tissue between
+  all C-suite roles. Covers operating system selection (EOS, Scaling Up, OKR-native,
+  hybrid), accountability charts, scorecards, meeting pulse, issue resolution, and
+  90-day rocks. Use when setting up company operations, selecting a management framework,
+  designing meeting rhythms, building accountability systems, implementing OKRs, or
+  when user mentions EOS, Scaling Up, operating system, L10 meetings, rocks, scorecard,
+  accountability chart, or quarterly planning.
+category: c-level-advisor
+domain: C Level Advisor
+triggers:
+- /company-os
+- run company os
+- company os skill
+tools:
+- doc_tools
+- excel_tools
+- web_search
+- rag_library
+argument-hint: '[company os details]'
+when_to_use: Use when user requests company os guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Company Operating System

@@ -1,6 +1,23 @@
 ---
-name: "extract"
-description: "Turn a proven pattern or debugging solution into a standalone reusable skill with SKILL.md, reference docs, and examples. Use when the user runs /si:extract or asks to package a recurring solution from memory into a skill."
+name: extract
+description: Turn a proven pattern or debugging solution into a standalone reusable
+  skill with SKILL.md, reference docs, and examples. Use when the user runs /si:extract
+  or asks to package a recurring solution from memory into a skill.
+category: engineering-team
+domain: Engineering Team
+triggers:
+- /extract
+- run extract
+- extract skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[extract details]'
+when_to_use: Use when user requests extract guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # /si:extract — Create Skills from Patterns

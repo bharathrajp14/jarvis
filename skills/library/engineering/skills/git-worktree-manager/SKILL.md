@@ -1,6 +1,26 @@
 ---
-name: "git-worktree-manager"
-description: "Run parallel feature work safely with Git worktrees. Standardizes branch isolation, port allocation, environment sync, and cleanup so each worktree behaves like an independent local app. Optimized for multi-agent workflows where each agent or terminal session owns one worktree. Use when running multiple feature branches simultaneously, isolating experimental work, or coordinating multi-agent development across the same repo."
+name: git-worktree-manager
+description: Run parallel feature work safely with Git worktrees. Standardizes branch
+  isolation, port allocation, environment sync, and cleanup so each worktree behaves
+  like an independent local app. Optimized for multi-agent workflows where each agent
+  or terminal session owns one worktree. Use when running multiple feature branches
+  simultaneously, isolating experimental work, or coordinating multi-agent development
+  across the same repo.
+category: engineering
+domain: Engineering
+triggers:
+- /git-worktree-manager
+- run git worktree manager
+- git worktree manager skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[git worktree manager details]'
+when_to_use: Use when user requests git worktree manager guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Git Worktree Manager

@@ -1,6 +1,23 @@
 ---
-name: "cro-review"
-description: "/cs:cro-review <plan> — Pipeline-paranoid interrogation of revenue, win rate, NRR, and ramp time. Use when the forecast misses pipeline coverage, win rates drop, or before scaling the sales team."
+name: cro-review
+description: /cs:cro-review <plan> — Pipeline-paranoid interrogation of revenue, win
+  rate, NRR, and ramp time. Use when the forecast misses pipeline coverage, win rates
+  drop, or before scaling the sales team.
+category: c-level-advisor
+domain: C Level Advisor
+triggers:
+- /cro-review
+- run cro review
+- cro review skill
+tools:
+- doc_tools
+- excel_tools
+- web_search
+- rag_library
+argument-hint: '[cro review details]'
+when_to_use: Use when user requests cro review guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # /cs:cro-review — CRO Forcing Questions

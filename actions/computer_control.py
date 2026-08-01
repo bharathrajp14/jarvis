@@ -485,10 +485,10 @@ def computer_control(
                 amount=int(params.get("amount", 3)),
             )
 
-        if action == "copy":
+        if action in ("copy", "clipboard_get", "clipboard_read"):
             return _clipboard_get()
 
-        if action == "paste":
+        if action in ("paste", "clipboard_set"):
             return _clipboard_paste(params.get("text", ""))
 
         if action == "screenshot":

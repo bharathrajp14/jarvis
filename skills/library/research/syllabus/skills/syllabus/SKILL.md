@@ -1,12 +1,32 @@
 ---
 name: syllabus
-description: "Generates a curated supplementary reading list from any course syllabus using Consensus academic search. Grill-me intake (syllabus input format + course audience + year range) plus a grouping forcing-options checkpoint before any search runs — so the reading list matches the course's level and recency need. Parses the syllabus to extract topics and learning outcomes, searches Consensus for recent peer-reviewed papers per topic, and produces a professionally formatted .docx with clickable Consensus links, plain-language summaries calibrated to audience level, and Bloom-higher-order discussion questions tied to course learning goals. Use when the user uploads a syllabus, course outline, or curriculum document and wants supplementary readings (e.g., 'create a reading list from this syllabus', 'find recent papers for my course') — even casual mentions with a syllabus attached should trigger this skill."
-license: MIT
-metadata:
-  source_spec: "megaprompts/10-syllabus-megaprompt.md"
-  build_pattern: "Path B (direct conversion)"
-  research_pack_convention: "Agent Integrity Rules verbatim per PR #657 audit; bundled-JS-DOCX-generator variant"
-  version: 1.0.0
+description: Generates a curated supplementary reading list from any course syllabus
+  using Consensus academic search. Grill-me intake (syllabus input format + course
+  audience + year range) plus a grouping forcing-options checkpoint before any search
+  runs — so the reading list matches the course's level and recency need. Parses the
+  syllabus to extract topics and learning outcomes, searches Consensus for recent
+  peer-reviewed papers per topic, and produces a professionally formatted .docx with
+  clickable Consensus links, plain-language summaries calibrated to audience level,
+  and Bloom-higher-order discussion questions tied to course learning goals. Use when
+  the user uploads a syllabus, course outline, or curriculum document and wants supplementary
+  readings (e.g., 'create a reading list from this syllabus', 'find recent papers
+  for my course') — even casual mentions with a syllabus attached should trigger this
+  skill.
+category: research
+domain: Research
+triggers:
+- /syllabus
+- run syllabus
+- syllabus skill
+tools:
+- web_search
+- browser_control
+- rag_library
+- doc_tools
+argument-hint: '[syllabus details]'
+when_to_use: Use when user requests syllabus guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Syllabus — Course Supplementary Reading List

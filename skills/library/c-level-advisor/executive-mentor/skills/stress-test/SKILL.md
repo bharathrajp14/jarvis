@@ -1,6 +1,23 @@
 ---
-name: "stress-test"
-description: "/em:stress-test — Business assumption stress testing. Use before betting on a plan whose core assumptions are unvalidated — e.g. stress-testing 'enterprise buyers will tolerate a 6-month pilot' or a hockey-stick revenue model."
+name: stress-test
+description: /em:stress-test — Business assumption stress testing. Use before betting
+  on a plan whose core assumptions are unvalidated — e.g. stress-testing 'enterprise
+  buyers will tolerate a 6-month pilot' or a hockey-stick revenue model.
+category: c-level-advisor
+domain: C Level Advisor
+triggers:
+- /stress-test
+- run stress test
+- stress test skill
+tools:
+- doc_tools
+- excel_tools
+- web_search
+- rag_library
+argument-hint: '[stress test details]'
+when_to_use: Use when user requests stress test guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # /em:stress-test — Business Assumption Stress Testing

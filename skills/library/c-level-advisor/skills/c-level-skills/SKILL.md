@@ -1,16 +1,25 @@
 ---
-name: "c-level-skills"
-description: "Index and router for the C-level advisory bundle: 33 skills covering 14 C-suite roles, orchestration, cross-cutting capabilities, and culture. Use when exploring what the c-level-advisor bundle contains, deciding which advisor skill fits a question, or finding the entry points (cs-onboard interview, chief-of-staff routing, board-meeting protocol)."
-license: MIT
-metadata:
-  version: 2.1.0
-  author: Alireza Rezvani
-  category: c-level
-  domain: executive-advisory
-  updated: 2026-06-11
-  skills_count: 33
-  scripts_count: 37
-  references_count: 68
+name: c-level-skills
+description: 'Index and router for the C-level advisory bundle: 33 skills covering
+  14 C-suite roles, orchestration, cross-cutting capabilities, and culture. Use when
+  exploring what the c-level-advisor bundle contains, deciding which advisor skill
+  fits a question, or finding the entry points (cs-onboard interview, chief-of-staff
+  routing, board-meeting protocol).'
+category: c-level-advisor
+domain: C Level Advisor
+triggers:
+- /c-level-skills
+- run c level skills
+- c level skills skill
+tools:
+- doc_tools
+- excel_tools
+- web_search
+- rag_library
+argument-hint: '[c level skills details]'
+when_to_use: Use when user requests c level skills guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # C-Level Advisory Bundle — Index

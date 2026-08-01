@@ -1,6 +1,23 @@
 ---
-name: "memory-review"
-description: "Analyze auto-memory for promotion candidates, stale entries, consolidation opportunities, and health metrics. Use when the user runs /si:memory-review or asks what has been learned and what should be promoted or pruned."
+name: memory-review
+description: Analyze auto-memory for promotion candidates, stale entries, consolidation
+  opportunities, and health metrics. Use when the user runs /si:memory-review or asks
+  what has been learned and what should be promoted or pruned.
+category: engineering-team
+domain: Engineering Team
+triggers:
+- /memory-review
+- run memory review
+- memory review skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[memory review details]'
+when_to_use: Use when user requests memory review guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # /si:memory-review — Analyze Auto-Memory

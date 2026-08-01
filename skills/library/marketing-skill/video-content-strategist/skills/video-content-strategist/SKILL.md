@@ -1,6 +1,26 @@
 ---
 name: video-content-strategist
-description: "Use when planning video content strategy, writing video scripts, optimizing YouTube channels, building short-form video pipelines (Reels, TikTok, Shorts), or repurposing long-form content into video. Triggers: 'start a YouTube channel', 'video content strategy', 'write a video script', 'repurpose into video', 'YouTube SEO', 'short-form video'. NOT for written blog content (use content-production). NOT for social captions without video (use social-media-manager)."
+description: 'Use when planning video content strategy, writing video scripts, optimizing
+  YouTube channels, building short-form video pipelines (Reels, TikTok, Shorts), or
+  repurposing long-form content into video. Triggers: ''start a YouTube channel'',
+  ''video content strategy'', ''write a video script'', ''repurpose into video'',
+  ''YouTube SEO'', ''short-form video''. NOT for written blog content (use content-production).
+  NOT for social captions without video (use social-media-manager).'
+category: marketing-skill
+domain: Marketing Skill
+triggers:
+- /video-content-strategist
+- run video content strategist
+- video content strategist skill
+tools:
+- web_search
+- doc_tools
+- file_processor
+- browser_control
+argument-hint: '[video content strategist details]'
+when_to_use: Use when user requests video content strategist guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Video Content Strategist

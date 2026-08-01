@@ -1,7 +1,22 @@
 ---
-name: "status"
-description: "Show DAG state, agent progress, and branch status for an AgentHub session. Use when the user runs /hub:status or asks how the AgentHub agents are doing."
-command: /hub:status
+name: status
+description: Show DAG state, agent progress, and branch status for an AgentHub session.
+  Use when the user runs /hub:status or asks how the AgentHub agents are doing.
+category: engineering
+domain: Engineering
+triggers:
+- /status
+- run status
+- status skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[status details]'
+when_to_use: Use when user requests status guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # /hub:status — Session Status

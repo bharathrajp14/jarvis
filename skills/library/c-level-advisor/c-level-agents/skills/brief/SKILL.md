@@ -1,6 +1,24 @@
 ---
-name: "brief"
-description: "/cs:brief <topic> — Generate a one-page strategy brief from an office-hours intake. First step in the strategic sprint pipeline. Use when a strategic question needs to be framed before boardroom deliberation — e.g. locking options, assumptions, and success criteria for a pricing change or a market-entry decision."
+name: brief
+description: /cs:brief <topic> — Generate a one-page strategy brief from an office-hours
+  intake. First step in the strategic sprint pipeline. Use when a strategic question
+  needs to be framed before boardroom deliberation — e.g. locking options, assumptions,
+  and success criteria for a pricing change or a market-entry decision.
+category: c-level-advisor
+domain: C Level Advisor
+triggers:
+- /brief
+- run brief
+- brief skill
+tools:
+- doc_tools
+- excel_tools
+- web_search
+- rag_library
+argument-hint: '[brief details]'
+when_to_use: Use when user requests brief guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # /cs:brief — One-Page Strategy Brief

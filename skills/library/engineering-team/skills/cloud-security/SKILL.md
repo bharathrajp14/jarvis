@@ -1,6 +1,24 @@
 ---
-name: "cloud-security"
-description: "Use when assessing cloud infrastructure for security misconfigurations, IAM privilege escalation paths, S3 public exposure, open security group rules, or IaC security gaps. Covers AWS, Azure, and GCP posture assessment with MITRE ATT&CK mapping."
+name: cloud-security
+description: Use when assessing cloud infrastructure for security misconfigurations,
+  IAM privilege escalation paths, S3 public exposure, open security group rules, or
+  IaC security gaps. Covers AWS, Azure, and GCP posture assessment with MITRE ATT&CK
+  mapping.
+category: engineering-team
+domain: Engineering Team
+triggers:
+- /cloud-security
+- run cloud security
+- cloud security skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[cloud security details]'
+when_to_use: Use when user requests cloud security guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Cloud Security

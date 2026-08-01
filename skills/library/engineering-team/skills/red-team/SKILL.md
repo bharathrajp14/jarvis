@@ -1,6 +1,24 @@
 ---
-name: "red-team"
-description: "Use when planning or executing authorized red team engagements, attack path analysis, or offensive security simulations. Covers MITRE ATT&CK kill-chain planning, technique scoring, choke point identification, OPSEC risk assessment, and crown jewel targeting."
+name: red-team
+description: Use when planning or executing authorized red team engagements, attack
+  path analysis, or offensive security simulations. Covers MITRE ATT&CK kill-chain
+  planning, technique scoring, choke point identification, OPSEC risk assessment,
+  and crown jewel targeting.
+category: engineering-team
+domain: Engineering Team
+triggers:
+- /red-team
+- run red team
+- red team skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[red team details]'
+when_to_use: Use when user requests red team guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Red Team

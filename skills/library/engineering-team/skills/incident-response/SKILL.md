@@ -1,6 +1,24 @@
 ---
-name: "incident-response"
-description: "Use when a security incident has been detected or declared and needs classification, triage, escalation path determination, and forensic evidence collection. Covers SEV1-SEV4 classification, false positive filtering, incident taxonomy, and NIST SP 800-61 lifecycle."
+name: incident-response
+description: Use when a security incident has been detected or declared and needs
+  classification, triage, escalation path determination, and forensic evidence collection.
+  Covers SEV1-SEV4 classification, false positive filtering, incident taxonomy, and
+  NIST SP 800-61 lifecycle.
+category: engineering-team
+domain: Engineering Team
+triggers:
+- /incident-response
+- run incident response
+- incident response skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[incident response details]'
+when_to_use: Use when user requests incident response guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Incident Response

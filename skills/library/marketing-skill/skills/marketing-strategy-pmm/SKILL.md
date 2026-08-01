@@ -1,18 +1,35 @@
 ---
-name: "marketing-strategy-pmm"
-description: Product marketing skill for positioning, GTM strategy, competitive intelligence, and product launches. Use when the user asks about product positioning, go-to-market planning, competitive analysis, target audience definition, ICP definition, market research, launch plans, or sales enablement. Covers April Dunford positioning, ICP definition, competitive battlecards, launch playbooks, and international market entry. Produces deliverables including positioning statements, battlecard documents, launch plans, and go-to-market strategies.
+name: marketing-strategy-pmm
+description: Product marketing skill for positioning, GTM strategy, competitive intelligence,
+  and product launches. Use when the user asks about product positioning, go-to-market
+  planning, competitive analysis, target audience definition, ICP definition, market
+  research, launch plans, or sales enablement. Covers April Dunford positioning, ICP
+  definition, competitive battlecards, launch playbooks, and international market
+  entry. Produces deliverables including positioning statements, battlecard documents,
+  launch plans, and go-to-market strategies.
+category: marketing-skill
+domain: Marketing Skill
 triggers:
-  - product marketing
-  - PMM
-  - positioning
-  - GTM strategy
-  - go-to-market
-  - competitive analysis
-  - battlecard
-  - product launch
-  - market entry
-  - sales enablement
-  - win loss analysis
+- product marketing
+- PMM
+- positioning
+- GTM strategy
+- go-to-market
+- competitive analysis
+- battlecard
+- product launch
+- market entry
+- sales enablement
+- win loss analysis
+tools:
+- web_search
+- doc_tools
+- file_processor
+- browser_control
+argument-hint: '[marketing strategy pmm details]'
+when_to_use: Use when user requests marketing strategy pmm guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Marketing Strategy & PMM

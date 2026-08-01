@@ -31,7 +31,7 @@ if sys.platform == "win32":
 
 # Load .env
 try:
-    from dotenv import load_dotenv
+    from dotenv import load_dotenv  # type: ignore[import-not-found]
     _env_path = BASE_DIR / ".env"
     if _env_path.exists():
         load_dotenv(_env_path)
@@ -40,11 +40,11 @@ except ImportError:
 
 # Rich imports with fallbacks
 try:
-    from rich.console import Console
-    from rich.panel import Panel
-    from rich.table import Table
-    from rich.prompt import Prompt
-    from rich.markdown import Markdown
+    from rich.console import Console  # type: ignore[import-not-found]
+    from rich.panel import Panel  # type: ignore[import-not-found]
+    from rich.table import Table  # type: ignore[import-not-found]
+    from rich.prompt import Prompt  # type: ignore[import-not-found]
+    from rich.markdown import Markdown  # type: ignore[import-not-found]
     _HAS_RICH = True
     console = Console()
 except ImportError:

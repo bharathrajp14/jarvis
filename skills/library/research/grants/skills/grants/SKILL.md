@@ -1,12 +1,32 @@
 ---
 name: grants
-description: "NIH grant research skill for clinical researchers. Grill-me intake (research idea + career stage + preliminary data + environment + submission posture + known institute targets) locks down the funding strategy before any search runs. Runs a 5-facet Consensus positioning analysis (with draft Significance/Innovation language), maps the research to the right NIH institutes and study sections via RePORTER, finds NOSIs and funded overlap, and produces an editable Word document (.docx) with budget/scope-aware mechanism recommendations, submission timelines, and a mandatory program officer recommendation. Use when the user asks about research funding or makes any grant-related request (e.g., 'grants for [topic]', 'find grants for my research idea', 'what grants match my research', 'help me find NIH funding', 'grant opportunities for my research'). NIH-only scope — non-NIH funders (PCORI, DOD CDMRP, VA, foundations) are out of scope and flagged at intake."
-license: MIT
-metadata:
-  source_spec: "megaprompts/08-grants-megaprompt.md"
-  build_pattern: "Path B (direct conversion)"
-  research_pack_convention: "Agent Integrity Rules verbatim per PR #657 audit"
-  version: 1.0.0
+description: NIH grant research skill for clinical researchers. Grill-me intake (research
+  idea + career stage + preliminary data + environment + submission posture + known
+  institute targets) locks down the funding strategy before any search runs. Runs
+  a 5-facet Consensus positioning analysis (with draft Significance/Innovation language),
+  maps the research to the right NIH institutes and study sections via RePORTER, finds
+  NOSIs and funded overlap, and produces an editable Word document (.docx) with budget/scope-aware
+  mechanism recommendations, submission timelines, and a mandatory program officer
+  recommendation. Use when the user asks about research funding or makes any grant-related
+  request (e.g., 'grants for [topic]', 'find grants for my research idea', 'what grants
+  match my research', 'help me find NIH funding', 'grant opportunities for my research').
+  NIH-only scope — non-NIH funders (PCORI, DOD CDMRP, VA, foundations) are out of
+  scope and flagged at intake.
+category: research
+domain: Research
+triggers:
+- /grants
+- run grants
+- grants skill
+tools:
+- web_search
+- browser_control
+- rag_library
+- doc_tools
+argument-hint: '[grants details]'
+when_to_use: Use when user requests grants guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Grants — NIH Funding Intelligence

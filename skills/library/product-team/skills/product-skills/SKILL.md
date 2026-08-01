@@ -1,12 +1,32 @@
 ---
-name: "product-skills"
-description: "Use when coordinating product work across the 12 bundled product sub-skills (RICE, OKRs, UX research, design tokens, competitive teardown, analytics, experiments, discovery, roadmaps, spec-to-repo, landing pages, SaaS scaffolding) or the 4 standalone product-team plugins (user stories, Apple HIG, code-to-PRD, research summarizer). Triggers on 'help me prioritize', 'plan a product experiment', 'we ship features nobody uses', 'run the discovery loop', 'is our OST sound'. Forks context to route to one sub-skill via a deterministic signal router and returns a digest; can also drive a continuous-discovery loop (Torres cadence tracker + OST linter as machine gates) or a full goal→plan→execute→verify→close run through the repo-wide agent-harness. Distinct from project-management (how to deliver vs what to build), marketing/landing (from-scratch pages), and engineering/agent-harness (the generic loop engine this orchestrator plugs into)."
-context: fork
-version: 2.11.1
-author: Alireza Rezvani
-license: MIT
-tags: [product, product-management, orchestrator, discovery, ux, analytics, agent-harness]
-compatible_tools: [claude-code, codex-cli, cursor, antigravity, opencode, gemini-cli]
+name: product-skills
+description: Use when coordinating product work across the 12 bundled product sub-skills
+  (RICE, OKRs, UX research, design tokens, competitive teardown, analytics, experiments,
+  discovery, roadmaps, spec-to-repo, landing pages, SaaS scaffolding) or the 4 standalone
+  product-team plugins (user stories, Apple HIG, code-to-PRD, research summarizer).
+  Triggers on 'help me prioritize', 'plan a product experiment', 'we ship features
+  nobody uses', 'run the discovery loop', 'is our OST sound'. Forks context to route
+  to one sub-skill via a deterministic signal router and returns a digest; can also
+  drive a continuous-discovery loop (Torres cadence tracker + OST linter as machine
+  gates) or a full goal→plan→execute→verify→close run through the repo-wide agent-harness.
+  Distinct from project-management (how to deliver vs what to build), marketing/landing
+  (from-scratch pages), and engineering/agent-harness (the generic loop engine this
+  orchestrator plugs into).
+category: product-team
+domain: Product Team
+triggers:
+- /product-skills
+- run product skills
+- product skills skill
+tools:
+- doc_tools
+- excel_tools
+- file_processor
+- web_search
+argument-hint: '[product skills details]'
+when_to_use: Use when user requests product skills guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Product Team — Domain Orchestrator & Discovery Loop

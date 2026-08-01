@@ -1,12 +1,28 @@
 ---
-name: "cold-email"
-description: "When the user wants to write, improve, or build a sequence of B2B cold outreach emails to prospects who haven't asked to hear from them. Use when the user mentions 'cold email,' 'cold outreach,' 'prospecting emails,' 'SDR emails,' 'sales emails,' 'first touch email,' 'follow-up sequence,' or 'email prospecting.' Also use when they share an email draft that sounds too sales-y and needs to be humanized. Distinct from email-sequence (lifecycle/nurture to opted-in subscribers) — this is unsolicited outreach to new prospects. NOT for lifecycle emails, newsletters, or drip campaigns (use email-sequence)."
-license: MIT
-metadata:
-  version: 1.0.0
-  author: Alireza Rezvani
-  category: marketing
-  updated: 2026-03-06
+name: cold-email
+description: When the user wants to write, improve, or build a sequence of B2B cold
+  outreach emails to prospects who haven't asked to hear from them. Use when the user
+  mentions 'cold email,' 'cold outreach,' 'prospecting emails,' 'SDR emails,' 'sales
+  emails,' 'first touch email,' 'follow-up sequence,' or 'email prospecting.' Also
+  use when they share an email draft that sounds too sales-y and needs to be humanized.
+  Distinct from email-sequence (lifecycle/nurture to opted-in subscribers) — this
+  is unsolicited outreach to new prospects. NOT for lifecycle emails, newsletters,
+  or drip campaigns (use email-sequence).
+category: marketing-skill
+domain: Marketing Skill
+triggers:
+- /cold-email
+- run cold email
+- cold email skill
+tools:
+- web_search
+- doc_tools
+- file_processor
+- browser_control
+argument-hint: '[cold email details]'
+when_to_use: Use when user requests cold email guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Cold Email Outreach

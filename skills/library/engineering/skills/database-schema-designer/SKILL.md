@@ -1,6 +1,22 @@
 ---
-name: "database-schema-designer"
-description: "Use when the user asks to create ERD diagrams, normalize database schemas, design table relationships, or plan schema migrations."
+name: database-schema-designer
+description: Use when the user asks to create ERD diagrams, normalize database schemas,
+  design table relationships, or plan schema migrations.
+category: engineering
+domain: Engineering
+triggers:
+- /database-schema-designer
+- run database schema designer
+- database schema designer skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[database schema designer details]'
+when_to_use: Use when user requests database schema designer guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Database Schema Designer

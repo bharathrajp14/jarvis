@@ -1,15 +1,25 @@
 ---
-name: "cmo-advisor"
-description: "Marketing leadership for scaling companies. Brand positioning, growth model design, marketing budget allocation, and marketing org design. Use when designing brand strategy, selecting growth models (PLG vs sales-led vs community-led), allocating marketing budgets, building marketing teams, or when user mentions CMO, brand strategy, growth model, CAC, LTV, channel mix, or marketing ROI."
-license: MIT
-metadata:
-  version: 1.0.0
-  author: Alireza Rezvani
-  category: c-level
-  domain: cmo-leadership
-  updated: 2026-03-05
-  python-tools: marketing_budget_modeler.py, growth_model_simulator.py
-  frameworks: brand-positioning, growth-frameworks, marketing-org
+name: cmo-advisor
+description: Marketing leadership for scaling companies. Brand positioning, growth
+  model design, marketing budget allocation, and marketing org design. Use when designing
+  brand strategy, selecting growth models (PLG vs sales-led vs community-led), allocating
+  marketing budgets, building marketing teams, or when user mentions CMO, brand strategy,
+  growth model, CAC, LTV, channel mix, or marketing ROI.
+category: c-level-advisor
+domain: C Level Advisor
+triggers:
+- /cmo-advisor
+- run cmo advisor
+- cmo advisor skill
+tools:
+- doc_tools
+- excel_tools
+- web_search
+- rag_library
+argument-hint: '[cmo advisor details]'
+when_to_use: Use when user requests cmo advisor guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # CMO Advisor

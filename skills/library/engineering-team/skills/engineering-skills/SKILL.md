@@ -1,21 +1,25 @@
 ---
-name: "engineering-skills"
-description: "Index of the engineering-team skills bundle for Claude Code, Codex, Gemini CLI, Cursor, OpenClaw, and 6 more tools. Architecture, frontend, backend, QA, DevOps, security, AI/ML, data engineering, Playwright, Stripe, AWS, MS365 (stdlib-only Python tools). Use when browsing or choosing among engineering-team role skills — load only the one specialist SKILL.md you need, never bulk-load the bundle."
-version: 2.9.0
-author: Alireza Rezvani
-license: MIT
-tags:
-  - engineering
-  - frontend
-  - backend
-  - devops
-  - security
-  - ai-ml
-  - data-engineering
-agents:
-  - claude-code
-  - codex-cli
-  - openclaw
+name: engineering-skills
+description: Index of the engineering-team skills bundle for Claude Code, Codex, Gemini
+  CLI, Cursor, OpenClaw, and 6 more tools. Architecture, frontend, backend, QA, DevOps,
+  security, AI/ML, data engineering, Playwright, Stripe, AWS, MS365 (stdlib-only Python
+  tools). Use when browsing or choosing among engineering-team role skills — load
+  only the one specialist SKILL.md you need, never bulk-load the bundle.
+category: engineering-team
+domain: Engineering Team
+triggers:
+- /engineering-skills
+- run engineering skills
+- engineering skills skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[engineering skills details]'
+when_to_use: Use when user requests engineering skills guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Engineering Team Skills

@@ -1,19 +1,39 @@
 ---
-name: "regulatory-affairs-head"
-description: Senior Regulatory Affairs Manager for HealthTech and MedTech companies. Prepares FDA 510(k), De Novo, and PMA submission packages; analyzes regulatory pathways for new medical devices; drafts responses to FDA deficiency letters and Notified Body queries; develops CE marking technical documentation under EU MDR 2017/745; coordinates multi-market approval strategies across FDA, EU, Health Canada, PMDA, and NMPA; and maintains regulatory intelligence on evolving standards. Use when users need to plan or execute FDA submissions, navigate 510(k) or PMA approval processes, achieve CE marking, prepare pre-submission meeting materials, write regulatory strategy documents, respond to agency queries, or manage compliance documentation for medical device market access.
+name: regulatory-affairs-head
+description: Senior Regulatory Affairs Manager for HealthTech and MedTech companies.
+  Prepares FDA 510(k), De Novo, and PMA submission packages; analyzes regulatory pathways
+  for new medical devices; drafts responses to FDA deficiency letters and Notified
+  Body queries; develops CE marking technical documentation under EU MDR 2017/745;
+  coordinates multi-market approval strategies across FDA, EU, Health Canada, PMDA,
+  and NMPA; and maintains regulatory intelligence on evolving standards. Use when
+  users need to plan or execute FDA submissions, navigate 510(k) or PMA approval processes,
+  achieve CE marking, prepare pre-submission meeting materials, write regulatory strategy
+  documents, respond to agency queries, or manage compliance documentation for medical
+  device market access.
+category: ra-qm-team
+domain: Ra Qm Team
 triggers:
-  - regulatory strategy
-  - FDA submission
-  - EU MDR
-  - 510(k)
-  - PMA approval
-  - CE marking
-  - regulatory pathway
-  - market access
-  - clinical evidence
-  - regulatory intelligence
-  - submission planning
-  - notified body
+- regulatory strategy
+- FDA submission
+- EU MDR
+- 510(k)
+- PMA approval
+- CE marking
+- regulatory pathway
+- market access
+- clinical evidence
+- regulatory intelligence
+- submission planning
+- notified body
+tools:
+- doc_tools
+- excel_tools
+- rag_library
+- file_processor
+argument-hint: '[regulatory affairs head details]'
+when_to_use: Use when user requests regulatory affairs head guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Head of Regulatory Affairs

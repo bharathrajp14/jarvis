@@ -1,15 +1,24 @@
 ---
-name: "org-health-diagnostic"
-description: "Cross-functional organizational health check combining signals from all C-suite roles. Scores 8 dimensions on a traffic-light scale with drill-down recommendations. Use when assessing overall company health, preparing for board reviews, identifying at-risk functions, or when user mentions org health, health check, or health dashboard."
-license: MIT
-metadata:
-  version: 1.0.0
-  author: Alireza Rezvani
-  category: c-level
-  domain: organizational-health
-  updated: 2026-03-05
-  python-tools: health_scorer.py
-  frameworks: health-benchmarks
+name: org-health-diagnostic
+description: Cross-functional organizational health check combining signals from all
+  C-suite roles. Scores 8 dimensions on a traffic-light scale with drill-down recommendations.
+  Use when assessing overall company health, preparing for board reviews, identifying
+  at-risk functions, or when user mentions org health, health check, or health dashboard.
+category: c-level-advisor
+domain: C Level Advisor
+triggers:
+- /org-health-diagnostic
+- run org health diagnostic
+- org health diagnostic skill
+tools:
+- doc_tools
+- excel_tools
+- web_search
+- rag_library
+argument-hint: '[org health diagnostic details]'
+when_to_use: Use when user requests org health diagnostic guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Org Health Diagnostic

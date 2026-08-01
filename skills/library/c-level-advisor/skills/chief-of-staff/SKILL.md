@@ -1,14 +1,26 @@
 ---
-name: "chief-of-staff"
-description: "C-suite orchestration layer. Routes founder questions to the right advisor role(s), triggers multi-role board meetings for complex decisions, synthesizes outputs, and tracks decisions. Every C-suite interaction starts here. Loads company context automatically. Use when a founder question needs routing to the right advisor — e.g. 'should we raise now or cut burn?' — or when a multi-domain decision needs a board meeting convened."
-license: MIT
-metadata:
-  version: 1.0.0
-  author: Alireza Rezvani
-  category: c-level
-  domain: orchestration
-  updated: 2026-03-05
-  frameworks: routing-matrix, synthesis-framework, decision-log, board-protocol
+name: chief-of-staff
+description: C-suite orchestration layer. Routes founder questions to the right advisor
+  role(s), triggers multi-role board meetings for complex decisions, synthesizes outputs,
+  and tracks decisions. Every C-suite interaction starts here. Loads company context
+  automatically. Use when a founder question needs routing to the right advisor —
+  e.g. 'should we raise now or cut burn?' — or when a multi-domain decision needs
+  a board meeting convened.
+category: c-level-advisor
+domain: C Level Advisor
+triggers:
+- /chief-of-staff
+- run chief of staff
+- chief of staff skill
+tools:
+- doc_tools
+- excel_tools
+- web_search
+- rag_library
+argument-hint: '[chief of staff details]'
+when_to_use: Use when user requests chief of staff guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Chief of Staff

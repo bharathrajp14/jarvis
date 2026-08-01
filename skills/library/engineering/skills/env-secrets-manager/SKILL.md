@@ -1,6 +1,25 @@
 ---
-name: "env-secrets-manager"
-description: "Manage environment-variable hygiene and secrets safety across local development and production. Practical auditing, drift awareness, rotation readiness. Use when auditing .env files for committed secrets, planning a credential rotation, debugging missing-env-var production incidents, or hardening a new project against secrets leakage."
+name: env-secrets-manager
+description: Manage environment-variable hygiene and secrets safety across local development
+  and production. Practical auditing, drift awareness, rotation readiness. Use when
+  auditing .env files for committed secrets, planning a credential rotation, debugging
+  missing-env-var production incidents, or hardening a new project against secrets
+  leakage.
+category: engineering
+domain: Engineering
+triggers:
+- /env-secrets-manager
+- run env secrets manager
+- env secrets manager skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[env secrets manager details]'
+when_to_use: Use when user requests env secrets manager guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Env & Secrets Manager

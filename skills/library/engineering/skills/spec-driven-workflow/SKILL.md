@@ -1,6 +1,23 @@
 ---
-name: "spec-driven-workflow"
-description: "Use when the user asks to write specs before code, define acceptance criteria, plan features before implementation, generate tests from specifications, or follow spec-first development practices."
+name: spec-driven-workflow
+description: Use when the user asks to write specs before code, define acceptance
+  criteria, plan features before implementation, generate tests from specifications,
+  or follow spec-first development practices.
+category: engineering
+domain: Engineering
+triggers:
+- /spec-driven-workflow
+- run spec driven workflow
+- spec driven workflow skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[spec driven workflow details]'
+when_to_use: Use when user requests spec driven workflow guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Spec-Driven Workflow — POWERFUL

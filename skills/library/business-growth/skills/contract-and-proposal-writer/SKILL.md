@@ -1,6 +1,27 @@
 ---
-name: "contract-and-proposal-writer"
-description: "Generate professional, jurisdiction-aware business documents: freelance contracts, project proposals, SOWs, NDAs, and MSAs. Structured Markdown output with docx conversion instructions. Covers US (Delaware), EU (GDPR), UK, and DACH (German law) jurisdictions. Not a substitute for legal counsel — use as strong starting points. Use when drafting a freelance contract, preparing a client proposal, writing an SOW for a new engagement, or producing an NDA before sharing sensitive material."
+name: contract-and-proposal-writer
+description: 'Generate professional, jurisdiction-aware business documents: freelance
+  contracts, project proposals, SOWs, NDAs, and MSAs. Structured Markdown output with
+  docx conversion instructions. Covers US (Delaware), EU (GDPR), UK, and DACH (German
+  law) jurisdictions. Not a substitute for legal counsel — use as strong starting
+  points. Use when drafting a freelance contract, preparing a client proposal, writing
+  an SOW for a new engagement, or producing an NDA before sharing sensitive material.'
+category: business-growth
+domain: Business Growth
+triggers:
+- /contract-and-proposal-writer
+- run contract and proposal writer
+- contract and proposal writer skill
+tools:
+- doc_tools
+- excel_tools
+- web_search
+- browser_control
+argument-hint: '[contract and proposal writer details]'
+when_to_use: Use when user requests contract and proposal writer guidance or task
+  execution.
+user-invocable: true
+context: inline
 ---
 
 # Contract & Proposal Writer

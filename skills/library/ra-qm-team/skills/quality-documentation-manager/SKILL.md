@@ -1,19 +1,35 @@
 ---
-name: "quality-documentation-manager"
-description: Document control system management for medical device QMS. Covers document numbering, version control, change management, and 21 CFR Part 11 compliance. Use when working on document control procedures, change control workflows, document numbering, version management, electronic signature compliance, or regulatory documentation review.
+name: quality-documentation-manager
+description: Document control system management for medical device QMS. Covers document
+  numbering, version control, change management, and 21 CFR Part 11 compliance. Use
+  when working on document control procedures, change control workflows, document
+  numbering, version management, electronic signature compliance, or regulatory documentation
+  review.
+category: ra-qm-team
+domain: Ra Qm Team
 triggers:
-  - document control
-  - document numbering
-  - version control
-  - change control
-  - document approval
-  - electronic signature
-  - 21 CFR Part 11
-  - audit trail
-  - document lifecycle
-  - controlled document
-  - document master list
-  - record retention
+- document control
+- document numbering
+- version control
+- change control
+- document approval
+- electronic signature
+- 21 CFR Part 11
+- audit trail
+- document lifecycle
+- controlled document
+- document master list
+- record retention
+tools:
+- doc_tools
+- excel_tools
+- rag_library
+- file_processor
+argument-hint: '[quality documentation manager details]'
+when_to_use: Use when user requests quality documentation manager guidance or task
+  execution.
+user-invocable: true
+context: inline
 ---
 
 # Quality Documentation Manager

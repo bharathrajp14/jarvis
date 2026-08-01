@@ -1,12 +1,27 @@
 ---
-name: "churn-prevention"
-description: "Reduce voluntary and involuntary churn through cancel flow design, save offers, exit surveys, and dunning sequences. Use when designing or optimizing a cancel flow, building save offers, setting up dunning emails, or reducing failed-payment churn. Trigger keywords: cancel flow, churn reduction, save offers, dunning, exit survey, payment recovery, win-back, involuntary churn, failed payments, cancel page. NOT for customer health scoring or expansion revenue — use customer-success-manager for that."
-license: MIT
-metadata:
-  version: 1.0.0
-  author: Alireza Rezvani
-  category: marketing
-  updated: 2026-03-06
+name: churn-prevention
+description: 'Reduce voluntary and involuntary churn through cancel flow design, save
+  offers, exit surveys, and dunning sequences. Use when designing or optimizing a
+  cancel flow, building save offers, setting up dunning emails, or reducing failed-payment
+  churn. Trigger keywords: cancel flow, churn reduction, save offers, dunning, exit
+  survey, payment recovery, win-back, involuntary churn, failed payments, cancel page.
+  NOT for customer health scoring or expansion revenue — use customer-success-manager
+  for that.'
+category: marketing-skill
+domain: Marketing Skill
+triggers:
+- /churn-prevention
+- run churn prevention
+- churn prevention skill
+tools:
+- web_search
+- doc_tools
+- file_processor
+- browser_control
+argument-hint: '[churn prevention details]'
+when_to_use: Use when user requests churn prevention guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Churn Prevention

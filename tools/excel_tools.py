@@ -116,7 +116,7 @@ def create_excel_sheet(args: dict) -> str:
 
     if auto_open and sys.platform == "win32":
         try:
-            subprocess.Popen(f'start "" "{out_path}"', shell=True)
+            subprocess.Popen(["cmd", "/c", "start", "", str(out_path)], shell=False)
         except Exception:
             pass
 
@@ -307,7 +307,7 @@ def analyze_project_to_excel(args: dict) -> str:
     # Auto-open on Windows
     if sys.platform == "win32":
         try:
-            subprocess.Popen(f'start "" "{out_path}"', shell=True)
+            subprocess.Popen(["cmd", "/c", "start", "", str(out_path)], shell=False)
         except Exception:
             pass
 

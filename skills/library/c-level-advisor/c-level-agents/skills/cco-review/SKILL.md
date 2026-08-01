@@ -1,6 +1,24 @@
 ---
-name: "cco-review"
-description: "/cs:cco-review <plan> — Retention-obsessed Chief Customer Officer interrogation of any plan that touches customer retention, segmentation, CS team sizing, or CS team hiring. Use when gross retention is slipping, before approving CSM headcount, or when deciding which customer segments to keep or fire."
+name: cco-review
+description: /cs:cco-review <plan> — Retention-obsessed Chief Customer Officer interrogation
+  of any plan that touches customer retention, segmentation, CS team sizing, or CS
+  team hiring. Use when gross retention is slipping, before approving CSM headcount,
+  or when deciding which customer segments to keep or fire.
+category: c-level-advisor
+domain: C Level Advisor
+triggers:
+- /cco-review
+- run cco review
+- cco review skill
+tools:
+- doc_tools
+- excel_tools
+- web_search
+- rag_library
+argument-hint: '[cco review details]'
+when_to_use: Use when user requests cco review guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # /cs:cco-review — CCO Forcing Questions

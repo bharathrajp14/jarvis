@@ -1,6 +1,24 @@
 ---
-name: "azure-cloud-architect"
-description: "Design Azure architectures for startups and enterprises. Use when asked to design Azure infrastructure, create Bicep/ARM templates, optimize Azure costs, set up Azure DevOps pipelines, or migrate to Azure. Covers AKS, App Service, Azure Functions, Cosmos DB, and cost optimization."
+name: azure-cloud-architect
+description: Design Azure architectures for startups and enterprises. Use when asked
+  to design Azure infrastructure, create Bicep/ARM templates, optimize Azure costs,
+  set up Azure DevOps pipelines, or migrate to Azure. Covers AKS, App Service, Azure
+  Functions, Cosmos DB, and cost optimization.
+category: engineering-team
+domain: Engineering Team
+triggers:
+- /azure-cloud-architect
+- run azure cloud architect
+- azure cloud architect skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[azure cloud architect details]'
+when_to_use: Use when user requests azure cloud architect guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Azure Cloud Architect

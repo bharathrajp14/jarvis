@@ -1,15 +1,24 @@
 ---
-name: "scenario-war-room"
-description: "Cross-functional what-if modeling for cascading multi-variable scenarios. Unlike single-assumption stress testing, this models compound adversity across all business functions simultaneously. Use when facing complex risk scenarios, strategic decisions with major downside, or when the user asks 'what if X AND Y both happen?'"
-license: MIT
-metadata:
-  version: 1.0.0
-  author: Alireza Rezvani
-  category: c-level
-  domain: strategic-planning
-  updated: 2026-03-05
-  python-tools: scenario_modeler.py
-  frameworks: scenario-planning
+name: scenario-war-room
+description: Cross-functional what-if modeling for cascading multi-variable scenarios.
+  Unlike single-assumption stress testing, this models compound adversity across all
+  business functions simultaneously. Use when facing complex risk scenarios, strategic
+  decisions with major downside, or when the user asks 'what if X AND Y both happen?'
+category: c-level-advisor
+domain: C Level Advisor
+triggers:
+- /scenario-war-room
+- run scenario war room
+- scenario war room skill
+tools:
+- doc_tools
+- excel_tools
+- web_search
+- rag_library
+argument-hint: '[scenario war room details]'
+when_to_use: Use when user requests scenario war room guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Scenario War Room

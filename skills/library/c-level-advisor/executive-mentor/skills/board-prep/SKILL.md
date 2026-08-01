@@ -1,6 +1,25 @@
 ---
-name: "board-prep"
-description: "Board meeting preparation for the adversarial scenario, not the friendly one. Forces numbers-cold mastery, anticipates hard questions, builds a narrative that acknowledges weakness without losing the room. Use when preparing for a board meeting, an investor update, fundraising presentation, or any high-stakes adversarial review where every number must live in your head not just on a slide."
+name: board-prep
+description: Board meeting preparation for the adversarial scenario, not the friendly
+  one. Forces numbers-cold mastery, anticipates hard questions, builds a narrative
+  that acknowledges weakness without losing the room. Use when preparing for a board
+  meeting, an investor update, fundraising presentation, or any high-stakes adversarial
+  review where every number must live in your head not just on a slide.
+category: c-level-advisor
+domain: C Level Advisor
+triggers:
+- /board-prep
+- run board prep
+- board prep skill
+tools:
+- doc_tools
+- excel_tools
+- web_search
+- rag_library
+argument-hint: '[board prep details]'
+when_to_use: Use when user requests board prep guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # /em:board-prep — Board Meeting Preparation

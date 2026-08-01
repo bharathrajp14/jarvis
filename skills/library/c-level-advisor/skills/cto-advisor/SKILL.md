@@ -1,15 +1,26 @@
 ---
-name: "cto-advisor"
-description: "Technical leadership guidance for engineering teams, architecture decisions, and technology strategy. Use when assessing technical debt, scaling engineering teams, evaluating technologies, making architecture decisions, establishing engineering metrics, or when user mentions CTO, tech debt, technical debt, team scaling, architecture decisions, technology evaluation, engineering metrics, DORA metrics, or technology strategy."
-license: MIT
-metadata:
-  version: 2.0.0
-  author: Alireza Rezvani
-  category: c-level
-  domain: cto-leadership
-  updated: 2026-03-05
-  python-tools: tech_debt_analyzer.py, team_scaling_calculator.py
-  frameworks: architecture-decisions, engineering-metrics, technology-evaluation
+name: cto-advisor
+description: Technical leadership guidance for engineering teams, architecture decisions,
+  and technology strategy. Use when assessing technical debt, scaling engineering
+  teams, evaluating technologies, making architecture decisions, establishing engineering
+  metrics, or when user mentions CTO, tech debt, technical debt, team scaling, architecture
+  decisions, technology evaluation, engineering metrics, DORA metrics, or technology
+  strategy.
+category: c-level-advisor
+domain: C Level Advisor
+triggers:
+- /cto-advisor
+- run cto advisor
+- cto advisor skill
+tools:
+- doc_tools
+- excel_tools
+- web_search
+- rag_library
+argument-hint: '[cto advisor details]'
+when_to_use: Use when user requests cto advisor guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # CTO Advisor

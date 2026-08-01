@@ -1,6 +1,24 @@
 ---
-name: "decide"
-description: "/cs:decide <memo> — Log a decision to two-layer memory via decision-logger. Approved memo becomes durable; raw transcripts kept for reference. Use when the founder has approved a boardroom memo and the decision must become durable company memory — e.g. right after /cs:boardroom concludes."
+name: decide
+description: /cs:decide <memo> — Log a decision to two-layer memory via decision-logger.
+  Approved memo becomes durable; raw transcripts kept for reference. Use when the
+  founder has approved a boardroom memo and the decision must become durable company
+  memory — e.g. right after /cs:boardroom concludes.
+category: c-level-advisor
+domain: C Level Advisor
+triggers:
+- /decide
+- run decide
+- decide skill
+tools:
+- doc_tools
+- excel_tools
+- web_search
+- rag_library
+argument-hint: '[decide details]'
+when_to_use: Use when user requests decide guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # /cs:decide — Log the Decision

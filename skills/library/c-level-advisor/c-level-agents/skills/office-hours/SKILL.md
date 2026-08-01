@@ -1,6 +1,24 @@
 ---
-name: "office-hours"
-description: "/cs:office-hours <topic> — YC-style 6-question founder interrogation before any advice. Forces clarity on problem, customer, distribution, defensibility, capital, and founder fit. Use when a founder question is too vague to route — e.g. 'should we grow faster?' — or before drafting a strategy brief."
+name: office-hours
+description: /cs:office-hours <topic> — YC-style 6-question founder interrogation
+  before any advice. Forces clarity on problem, customer, distribution, defensibility,
+  capital, and founder fit. Use when a founder question is too vague to route — e.g.
+  'should we grow faster?' — or before drafting a strategy brief.
+category: c-level-advisor
+domain: C Level Advisor
+triggers:
+- /office-hours
+- run office hours
+- office hours skill
+tools:
+- doc_tools
+- excel_tools
+- web_search
+- rag_library
+argument-hint: '[office hours details]'
+when_to_use: Use when user requests office hours guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # /cs:office-hours — Six-Question Founder Interrogation

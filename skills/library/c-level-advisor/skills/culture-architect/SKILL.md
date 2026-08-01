@@ -1,14 +1,26 @@
 ---
-name: "culture-architect"
-description: "Build, measure, and evolve company culture as operational behavior — not wall posters. Covers mission/vision/values workshops, values-to-behaviors translation, culture code creation, culture health assessment, and cultural rituals by stage. Use when building company values, assessing culture health, designing cultural rituals, creating culture codes, handling culture clashes, or when user mentions culture, values, culture debt, founder culture, or culture code."
-license: MIT
-metadata:
-  version: 1.0.0
-  author: Alireza Rezvani
-  category: c-level
-  domain: culture-leadership
-  updated: 2026-03-05
-  frameworks: culture-playbook, culture-code-template
+name: culture-architect
+description: Build, measure, and evolve company culture as operational behavior —
+  not wall posters. Covers mission/vision/values workshops, values-to-behaviors translation,
+  culture code creation, culture health assessment, and cultural rituals by stage.
+  Use when building company values, assessing culture health, designing cultural rituals,
+  creating culture codes, handling culture clashes, or when user mentions culture,
+  values, culture debt, founder culture, or culture code.
+category: c-level-advisor
+domain: C Level Advisor
+triggers:
+- /culture-architect
+- run culture architect
+- culture architect skill
+tools:
+- doc_tools
+- excel_tools
+- web_search
+- rag_library
+argument-hint: '[culture architect details]'
+when_to_use: Use when user requests culture architect guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Culture Architect

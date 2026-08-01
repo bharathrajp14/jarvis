@@ -1,6 +1,23 @@
 ---
-name: "universal-scraping-architect"
-description: "Use for web scraping, crawling, document extraction, API parsing, or building validation-heavy data pipelines using Firecrawl or local Python scripts."
+name: universal-scraping-architect
+description: Use for web scraping, crawling, document extraction, API parsing, or
+  building validation-heavy data pipelines using Firecrawl or local Python scripts.
+category: engineering
+domain: Engineering
+triggers:
+- /universal-scraping-architect
+- run universal scraping architect
+- universal scraping architect skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[universal scraping architect details]'
+when_to_use: Use when user requests universal scraping architect guidance or task
+  execution.
+user-invocable: true
+context: inline
 ---
 
 # Universal Scraping Architect

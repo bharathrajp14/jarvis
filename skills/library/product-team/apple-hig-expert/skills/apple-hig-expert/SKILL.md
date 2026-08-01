@@ -1,12 +1,26 @@
 ---
 name: apple-hig-expert
-description: "Audits and designs iOS/macOS/watchOS/visionOS interfaces against the Apple Human Interface Guidelines, including the Liquid Glass design language (announced WWDC25, shipped with iOS 26/macOS Tahoe, Sept 2025). Use when reviewing an Apple-platform mockup or app for HIG compliance, checking contrast or tap-target sizes, or designing native-feeling Apple UI (e.g., 'audit my iOS app against the HIG', 'is this text readable on Liquid Glass?')."
-license: MIT
-metadata:
-  version: 1.1.0
-  author: Alireza Rezvani
-  category: design
-  updated: 2026-06-11
+description: Audits and designs iOS/macOS/watchOS/visionOS interfaces against the
+  Apple Human Interface Guidelines, including the Liquid Glass design language (announced
+  WWDC25, shipped with iOS 26/macOS Tahoe, Sept 2025). Use when reviewing an Apple-platform
+  mockup or app for HIG compliance, checking contrast or tap-target sizes, or designing
+  native-feeling Apple UI (e.g., 'audit my iOS app against the HIG', 'is this text
+  readable on Liquid Glass?').
+category: product-team
+domain: Product Team
+triggers:
+- /apple-hig-expert
+- run apple hig expert
+- apple hig expert skill
+tools:
+- doc_tools
+- excel_tools
+- file_processor
+- web_search
+argument-hint: '[apple hig expert details]'
+when_to_use: Use when user requests apple hig expert guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Apple HIG Expert

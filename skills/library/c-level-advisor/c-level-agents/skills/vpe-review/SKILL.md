@@ -1,6 +1,24 @@
 ---
-name: "vpe-review"
-description: "/cs:vpe-review <plan> — Throughput-first VP of Engineering interrogation of any plan that touches delivery, eng hiring, team structure, or production discipline. Use when cycle time balloons, DORA metrics slide, or before committing to an eng hiring wave or a reorg."
+name: vpe-review
+description: /cs:vpe-review <plan> — Throughput-first VP of Engineering interrogation
+  of any plan that touches delivery, eng hiring, team structure, or production discipline.
+  Use when cycle time balloons, DORA metrics slide, or before committing to an eng
+  hiring wave or a reorg.
+category: c-level-advisor
+domain: C Level Advisor
+triggers:
+- /vpe-review
+- run vpe review
+- vpe review skill
+tools:
+- doc_tools
+- excel_tools
+- web_search
+- rag_library
+argument-hint: '[vpe review details]'
+when_to_use: Use when user requests vpe review guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # /cs:vpe-review — VPE Forcing Questions

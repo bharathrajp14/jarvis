@@ -1,12 +1,31 @@
 ---
-name: "webinar-marketing"
-description: "When the user wants to plan, promote, run, or improve a webinar or virtual event to generate and convert demand. Use when the user mentions 'webinar,' 'virtual event,' 'online event,' 'live demo,' 'virtual summit,' 'workshop,' 'masterclass,' 'fireside chat,' 'roundtable,' 'registration funnel,' 'show-up rate,' 'attendance rate,' 'webinar promotion,' 'webinar follow-up,' or 'on-demand webinar.' Also use when they have a webinar that isn't converting — low registrations, low show-up, or attendees who don't buy — and want to diagnose and fix it. Covers the full funnel: registration, promotion, show-up, live engagement, live-to-close, and post-event nurture. Distinct from launch-strategy (full product launches) and email-sequence (lifecycle nurture) — this is the end-to-end webinar/event motion. NOT for in-person field events logistics, and NOT for generic lifecycle email (use email-sequence)."
-license: MIT
-metadata:
-  version: 1.0.0
-  author: Alireza Rezvani
-  category: marketing
-  updated: 2026-06-01
+name: webinar-marketing
+description: 'When the user wants to plan, promote, run, or improve a webinar or virtual
+  event to generate and convert demand. Use when the user mentions ''webinar,'' ''virtual
+  event,'' ''online event,'' ''live demo,'' ''virtual summit,'' ''workshop,'' ''masterclass,''
+  ''fireside chat,'' ''roundtable,'' ''registration funnel,'' ''show-up rate,'' ''attendance
+  rate,'' ''webinar promotion,'' ''webinar follow-up,'' or ''on-demand webinar.''
+  Also use when they have a webinar that isn''t converting — low registrations, low
+  show-up, or attendees who don''t buy — and want to diagnose and fix it. Covers the
+  full funnel: registration, promotion, show-up, live engagement, live-to-close, and
+  post-event nurture. Distinct from launch-strategy (full product launches) and email-sequence
+  (lifecycle nurture) — this is the end-to-end webinar/event motion. NOT for in-person
+  field events logistics, and NOT for generic lifecycle email (use email-sequence).'
+category: marketing-skill
+domain: Marketing Skill
+triggers:
+- /webinar-marketing
+- run webinar marketing
+- webinar marketing skill
+tools:
+- web_search
+- doc_tools
+- file_processor
+- browser_control
+argument-hint: '[webinar marketing details]'
+when_to_use: Use when user requests webinar marketing guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Webinar & Virtual Event Marketing

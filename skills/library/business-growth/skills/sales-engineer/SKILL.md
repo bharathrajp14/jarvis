@@ -1,6 +1,28 @@
 ---
-name: "sales-engineer"
-description: Analyzes RFP/RFI responses for coverage gaps, builds competitive feature comparison matrices, and plans proof-of-concept (POC) engagements for pre-sales engineering. Use when responding to RFPs, bids, or proposal requests; comparing product features against competitors; planning or scoring a customer POC or sales demo; preparing a technical proposal; or performing win/loss competitor analysis. Handles tasks described as 'RFP response', 'bid response', 'proposal response', 'competitor comparison', 'feature matrix', 'POC planning', 'sales demo prep', or 'pre-sales engineering'.
+name: sales-engineer
+description: Analyzes RFP/RFI responses for coverage gaps, builds competitive feature
+  comparison matrices, and plans proof-of-concept (POC) engagements for pre-sales
+  engineering. Use when responding to RFPs, bids, or proposal requests; comparing
+  product features against competitors; planning or scoring a customer POC or sales
+  demo; preparing a technical proposal; or performing win/loss competitor analysis.
+  Handles tasks described as 'RFP response', 'bid response', 'proposal response',
+  'competitor comparison', 'feature matrix', 'POC planning', 'sales demo prep', or
+  'pre-sales engineering'.
+category: business-growth
+domain: Business Growth
+triggers:
+- /sales-engineer
+- run sales engineer
+- sales engineer skill
+tools:
+- doc_tools
+- excel_tools
+- web_search
+- browser_control
+argument-hint: '[sales engineer details]'
+when_to_use: Use when user requests sales engineer guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Sales Engineer Skill

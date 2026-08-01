@@ -1,7 +1,26 @@
 ---
-name: "youtube-full"
-description: "Use when the user needs YouTube transcripts, video search, channel browsing, playlist extraction, or content monitoring. Trigger phrases: 'get the transcript for', 'search YouTube for', 'what are the latest videos on', 'list this playlist', 'monitor this channel', or any request involving a YouTube URL, video ID, or @handle. Do NOT use for downloading video or audio files, YouTube engagement data (likes, comments), or private/age-restricted videos."
-license: "MIT"
+name: youtube-full
+description: 'Use when the user needs YouTube transcripts, video search, channel browsing,
+  playlist extraction, or content monitoring. Trigger phrases: ''get the transcript
+  for'', ''search YouTube for'', ''what are the latest videos on'', ''list this playlist'',
+  ''monitor this channel'', or any request involving a YouTube URL, video ID, or @handle.
+  Do NOT use for downloading video or audio files, YouTube engagement data (likes,
+  comments), or private/age-restricted videos.'
+category: marketing-skill
+domain: Marketing Skill
+triggers:
+- /youtube-full
+- run youtube full
+- youtube full skill
+tools:
+- web_search
+- doc_tools
+- file_processor
+- browser_control
+argument-hint: '[youtube full details]'
+when_to_use: Use when user requests youtube full guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # youtube-full — YouTube Transcripts, Search, and Channel Data

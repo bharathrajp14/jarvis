@@ -1,6 +1,25 @@
 ---
-name: "senior-devops"
-description: Comprehensive DevOps skill for CI/CD, infrastructure automation, containerization, and cloud platforms (AWS, GCP, Azure). Includes pipeline setup, infrastructure as code, deployment automation, and monitoring. Use when setting up pipelines, deploying applications, managing infrastructure, implementing monitoring, or optimizing deployment processes.
+name: senior-devops
+description: Comprehensive DevOps skill for CI/CD, infrastructure automation, containerization,
+  and cloud platforms (AWS, GCP, Azure). Includes pipeline setup, infrastructure as
+  code, deployment automation, and monitoring. Use when setting up pipelines, deploying
+  applications, managing infrastructure, implementing monitoring, or optimizing deployment
+  processes.
+category: engineering-team
+domain: Engineering Team
+triggers:
+- /senior-devops
+- run senior devops
+- senior devops skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[senior devops details]'
+when_to_use: Use when user requests senior devops guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Senior Devops

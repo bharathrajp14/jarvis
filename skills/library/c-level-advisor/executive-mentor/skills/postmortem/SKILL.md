@@ -1,6 +1,23 @@
 ---
-name: "postmortem"
-description: "/em:postmortem — Honest analysis of what went wrong. Use after a failed launch, missed quarter, or bad hire to run a blameless 5-Whys retrospective with a change register — e.g. dissecting why the Q3 release slipped six weeks."
+name: postmortem
+description: /em:postmortem — Honest analysis of what went wrong. Use after a failed
+  launch, missed quarter, or bad hire to run a blameless 5-Whys retrospective with
+  a change register — e.g. dissecting why the Q3 release slipped six weeks.
+category: c-level-advisor
+domain: C Level Advisor
+triggers:
+- /postmortem
+- run postmortem
+- postmortem skill
+tools:
+- doc_tools
+- excel_tools
+- web_search
+- rag_library
+argument-hint: '[postmortem details]'
+when_to_use: Use when user requests postmortem guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # /em:postmortem — Honest Analysis of What Went Wrong

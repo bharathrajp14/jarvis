@@ -1,12 +1,25 @@
 ---
-name: "email-sequence"
-description: When the user wants to create or optimize an email sequence, drip campaign, automated email flow, or lifecycle email program. Also use when the user mentions "email sequence," "drip campaign," "nurture sequence," "onboarding emails," "welcome sequence," "re-engagement emails," "email automation," or "lifecycle emails." For in-app onboarding, see onboarding-cro.
-license: MIT
-metadata:
-  version: 1.0.0
-  author: Alireza Rezvani
-  category: marketing
-  updated: 2026-03-06
+name: email-sequence
+description: When the user wants to create or optimize an email sequence, drip campaign,
+  automated email flow, or lifecycle email program. Also use when the user mentions
+  "email sequence," "drip campaign," "nurture sequence," "onboarding emails," "welcome
+  sequence," "re-engagement emails," "email automation," or "lifecycle emails." For
+  in-app onboarding, see onboarding-cro.
+category: marketing-skill
+domain: Marketing Skill
+triggers:
+- /email-sequence
+- run email sequence
+- email sequence skill
+tools:
+- web_search
+- doc_tools
+- file_processor
+- browser_control
+argument-hint: '[email sequence details]'
+when_to_use: Use when user requests email sequence guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Email Sequence Design

@@ -1,6 +1,24 @@
 ---
-name: "focused-fix"
-description: "Use when the user asks to fix, debug, or make a specific feature/module/area work end-to-end. Triggers: 'make X work', 'fix the Y feature', 'the Z module is broken', 'focus on [area]'. Not for quick single-bug fixes — this is for systematic deep-dive repair across all files and dependencies."
+name: focused-fix
+description: 'Use when the user asks to fix, debug, or make a specific feature/module/area
+  work end-to-end. Triggers: ''make X work'', ''fix the Y feature'', ''the Z module
+  is broken'', ''focus on [area]''. Not for quick single-bug fixes — this is for systematic
+  deep-dive repair across all files and dependencies.'
+category: engineering
+domain: Engineering
+triggers:
+- /focused-fix
+- run focused fix
+- focused fix skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[focused fix details]'
+when_to_use: Use when user requests focused fix guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Focused Fix — Deep-Dive Feature Repair

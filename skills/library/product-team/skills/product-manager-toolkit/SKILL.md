@@ -1,6 +1,24 @@
 ---
-name: "product-manager-toolkit"
-description: Comprehensive toolkit for product managers including RICE prioritization, customer interview analysis, PRD templates, discovery frameworks, and go-to-market strategies. Use when prioritizing features, synthesizing user research, writing requirement documentation, or developing product strategy.
+name: product-manager-toolkit
+description: Comprehensive toolkit for product managers including RICE prioritization,
+  customer interview analysis, PRD templates, discovery frameworks, and go-to-market
+  strategies. Use when prioritizing features, synthesizing user research, writing
+  requirement documentation, or developing product strategy.
+category: product-team
+domain: Product Team
+triggers:
+- /product-manager-toolkit
+- run product manager toolkit
+- product manager toolkit skill
+tools:
+- doc_tools
+- excel_tools
+- file_processor
+- web_search
+argument-hint: '[product manager toolkit details]'
+when_to_use: Use when user requests product manager toolkit guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Product Manager Toolkit

@@ -51,7 +51,7 @@ async def search_wikipedia(query: str, max_results: int = 3) -> list[dict]:
     try:
         url = f"https://en.wikipedia.org/w/api.php?action=opensearch&search={urllib.parse.quote(query)}&limit={max_results}&namespace=0&format=json"
         req = urllib.request.Request(url, headers={"User-Agent": "BR-JARVIS/37.5 (AI Assistant)"})
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
 
         def _fetch():
             with urllib.request.urlopen(req, timeout=5) as resp:
@@ -76,7 +76,7 @@ async def search_duckduckgo(query: str, max_results: int = 8) -> list[dict]:
     """Perform search via DuckDuckGo."""
     if not _DDG_AVAILABLE:
         return []
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
 
     def _do_ddg():
         try:
@@ -170,7 +170,7 @@ async def fetch_raw(url: str) -> str:
 
     try:
         req = urllib.request.Request(url, headers=headers)
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
 
         def _fetch_url():
             with urllib.request.urlopen(req, timeout=10) as resp:

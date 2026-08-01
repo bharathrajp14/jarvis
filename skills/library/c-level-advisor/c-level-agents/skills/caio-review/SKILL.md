@@ -1,6 +1,24 @@
 ---
-name: "caio-review"
-description: "/cs:caio-review <plan> — Eval-demanding Chief AI Officer interrogation of any plan that involves AI: model selection, risk classification, cost economics, or AI hiring. Use when shipping an AI feature without an eval set, choosing between API, fine-tune, and self-hosted, or classifying a use case under the EU AI Act."
+name: caio-review
+description: '/cs:caio-review <plan> — Eval-demanding Chief AI Officer interrogation
+  of any plan that involves AI: model selection, risk classification, cost economics,
+  or AI hiring. Use when shipping an AI feature without an eval set, choosing between
+  API, fine-tune, and self-hosted, or classifying a use case under the EU AI Act.'
+category: c-level-advisor
+domain: C Level Advisor
+triggers:
+- /caio-review
+- run caio review
+- caio review skill
+tools:
+- doc_tools
+- excel_tools
+- web_search
+- rag_library
+argument-hint: '[caio review details]'
+when_to_use: Use when user requests caio review guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # /cs:caio-review — CAIO Forcing Questions

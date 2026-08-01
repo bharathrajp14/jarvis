@@ -1,6 +1,25 @@
 ---
-name: "onboard"
-description: "/cs:onboard — Founder interview that populates ~/.claude/company-context.md using the canonical 7-dimension cs-onboard schema. The first command to run when starting with c-level-agents. Use when setting up the virtual C-suite for a new company, or when advisors lack company context — e.g. before a first /cs:boardroom or after a fundraise changes the numbers."
+name: onboard
+description: /cs:onboard — Founder interview that populates ~/.claude/company-context.md
+  using the canonical 7-dimension cs-onboard schema. The first command to run when
+  starting with c-level-agents. Use when setting up the virtual C-suite for a new
+  company, or when advisors lack company context — e.g. before a first /cs:boardroom
+  or after a fundraise changes the numbers.
+category: c-level-advisor
+domain: C Level Advisor
+triggers:
+- /onboard
+- run onboard
+- onboard skill
+tools:
+- doc_tools
+- excel_tools
+- web_search
+- rag_library
+argument-hint: '[onboard details]'
+when_to_use: Use when user requests onboard guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # /cs:onboard — Founder Interview

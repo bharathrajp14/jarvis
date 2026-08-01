@@ -1,12 +1,25 @@
 ---
-name: "seo-audit"
-description: When the user wants to audit, review, or diagnose SEO issues on their site. Also use when the user mentions "SEO audit," "technical SEO," "why am I not ranking," "SEO issues," "on-page SEO," "meta tags review," or "SEO health check." For building pages at scale to target keywords, see programmatic-seo. For adding structured data, see schema-markup.
-license: MIT
-metadata:
-  version: 1.0.0
-  author: Alireza Rezvani
-  category: marketing
-  updated: 2026-03-06
+name: seo-audit
+description: When the user wants to audit, review, or diagnose SEO issues on their
+  site. Also use when the user mentions "SEO audit," "technical SEO," "why am I not
+  ranking," "SEO issues," "on-page SEO," "meta tags review," or "SEO health check."
+  For building pages at scale to target keywords, see programmatic-seo. For adding
+  structured data, see schema-markup.
+category: marketing-skill
+domain: Marketing Skill
+triggers:
+- /seo-audit
+- run seo audit
+- seo audit skill
+tools:
+- web_search
+- doc_tools
+- file_processor
+- browser_control
+argument-hint: '[seo audit details]'
+when_to_use: Use when user requests seo audit guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # SEO Audit

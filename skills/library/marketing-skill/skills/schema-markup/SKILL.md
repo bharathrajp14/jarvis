@@ -1,12 +1,27 @@
 ---
-name: "schema-markup"
-description: "When the user wants to implement, audit, or validate structured data (schema markup) on their website. Use when the user mentions 'structured data,' 'schema.org,' 'JSON-LD,' 'rich results,' 'rich snippets,' 'schema markup,' 'FAQ schema,' 'Product schema,' 'HowTo schema,' or 'structured data errors in Search Console.' Also use when someone asks why their content isn't showing rich results or wants to improve AI search visibility. NOT for general SEO audits (use seo-audit) or technical SEO crawl issues (use site-architecture)."
-license: MIT
-metadata:
-  version: 1.0.0
-  author: Alireza Rezvani
-  category: marketing
-  updated: 2026-03-06
+name: schema-markup
+description: When the user wants to implement, audit, or validate structured data
+  (schema markup) on their website. Use when the user mentions 'structured data,'
+  'schema.org,' 'JSON-LD,' 'rich results,' 'rich snippets,' 'schema markup,' 'FAQ
+  schema,' 'Product schema,' 'HowTo schema,' or 'structured data errors in Search
+  Console.' Also use when someone asks why their content isn't showing rich results
+  or wants to improve AI search visibility. NOT for general SEO audits (use seo-audit)
+  or technical SEO crawl issues (use site-architecture).
+category: marketing-skill
+domain: Marketing Skill
+triggers:
+- /schema-markup
+- run schema markup
+- schema markup skill
+tools:
+- web_search
+- doc_tools
+- file_processor
+- browser_control
+argument-hint: '[schema markup details]'
+when_to_use: Use when user requests schema markup guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Schema Markup Implementation

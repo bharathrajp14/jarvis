@@ -1,12 +1,26 @@
 ---
-name: "content-humanizer"
-description: "Makes AI-generated content sound genuinely human — not just cleaned up, but alive. Use when content feels robotic, uses too many AI clichés, lacks personality, or reads like it was written by committee. Triggers: 'this sounds like AI', 'make it more human', 'add personality', 'it feels generic', 'sounds robotic', 'fix AI writing', 'inject our voice'. NOT for initial content creation (use content-production). NOT for SEO optimization (use content-production Mode 3)."
-license: MIT
-metadata:
-  version: 1.0.0
-  author: Alireza Rezvani
-  category: marketing
-  updated: 2026-03-06
+name: content-humanizer
+description: 'Makes AI-generated content sound genuinely human — not just cleaned
+  up, but alive. Use when content feels robotic, uses too many AI clichés, lacks personality,
+  or reads like it was written by committee. Triggers: ''this sounds like AI'', ''make
+  it more human'', ''add personality'', ''it feels generic'', ''sounds robotic'',
+  ''fix AI writing'', ''inject our voice''. NOT for initial content creation (use
+  content-production). NOT for SEO optimization (use content-production Mode 3).'
+category: marketing-skill
+domain: Marketing Skill
+triggers:
+- /content-humanizer
+- run content humanizer
+- content humanizer skill
+tools:
+- web_search
+- doc_tools
+- file_processor
+- browser_control
+argument-hint: '[content humanizer details]'
+when_to_use: Use when user requests content humanizer guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Content Humanizer

@@ -1,6 +1,22 @@
 ---
-name: "api-test-suite-builder"
-description: "Use when the user asks to generate API tests, create integration test suites, test REST endpoints, or build contract tests."
+name: api-test-suite-builder
+description: Use when the user asks to generate API tests, create integration test
+  suites, test REST endpoints, or build contract tests.
+category: engineering
+domain: Engineering
+triggers:
+- /api-test-suite-builder
+- run api test suite builder
+- api test suite builder skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[api test suite builder details]'
+when_to_use: Use when user requests api test suite builder guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # API Test Suite Builder

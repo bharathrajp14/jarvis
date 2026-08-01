@@ -1,6 +1,27 @@
 ---
-name: "agent-decision-receipts"
-description: "Mint a tamper-evident, post-quantum-signed receipt for a consequential agent action (deploy, delete, pay, grant-access, model decision) so it can be verified later from the certificate alone. Use when an autonomous agent takes a side-effecting action that may need to be proven later, or when satisfying EU AI Act Article 12 record-keeping. Three decisions: whether an action needs a receipt, minting it, verifying it. Signing is delegated to the open-source OpenAgentOntology package. Not after-the-fact log analysis; not a hosted notary; not a legal opinion."
+name: agent-decision-receipts
+description: 'Mint a tamper-evident, post-quantum-signed receipt for a consequential
+  agent action (deploy, delete, pay, grant-access, model decision) so it can be verified
+  later from the certificate alone. Use when an autonomous agent takes a side-effecting
+  action that may need to be proven later, or when satisfying EU AI Act Article 12
+  record-keeping. Three decisions: whether an action needs a receipt, minting it,
+  verifying it. Signing is delegated to the open-source OpenAgentOntology package.
+  Not after-the-fact log analysis; not a hosted notary; not a legal opinion.'
+category: ra-qm-team
+domain: Ra Qm Team
+triggers:
+- /agent-decision-receipts
+- run agent decision receipts
+- agent decision receipts skill
+tools:
+- doc_tools
+- excel_tools
+- rag_library
+- file_processor
+argument-hint: '[agent decision receipts details]'
+when_to_use: Use when user requests agent decision receipts guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Agent Decision Receipts

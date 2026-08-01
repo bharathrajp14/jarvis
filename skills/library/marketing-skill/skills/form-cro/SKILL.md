@@ -1,12 +1,26 @@
 ---
-name: "form-cro"
-description: When the user wants to optimize any form that is NOT signup/registration — including lead capture forms, contact forms, demo request forms, application forms, survey forms, or checkout forms. Also use when the user mentions "form optimization," "lead form conversions," "form friction," "form fields," "form completion rate," or "contact form." For signup/registration forms, see signup-flow-cro. For popups containing forms, see popup-cro.
-license: MIT
-metadata:
-  version: 1.0.0
-  author: Alireza Rezvani
-  category: marketing
-  updated: 2026-03-06
+name: form-cro
+description: When the user wants to optimize any form that is NOT signup/registration
+  — including lead capture forms, contact forms, demo request forms, application forms,
+  survey forms, or checkout forms. Also use when the user mentions "form optimization,"
+  "lead form conversions," "form friction," "form fields," "form completion rate,"
+  or "contact form." For signup/registration forms, see signup-flow-cro. For popups
+  containing forms, see popup-cro.
+category: marketing-skill
+domain: Marketing Skill
+triggers:
+- /form-cro
+- run form cro
+- form cro skill
+tools:
+- web_search
+- doc_tools
+- file_processor
+- browser_control
+argument-hint: '[form cro details]'
+when_to_use: Use when user requests form cro guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Form CRO

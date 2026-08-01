@@ -1,12 +1,24 @@
 ---
-name: "ab-test-setup"
-description: When the user wants to plan, design, or implement an A/B test or experiment. Also use when the user mentions "A/B test," "split test," "experiment," "test this change," "variant copy," "multivariate test," "hypothesis," "conversion experiment," "statistical significance," or "test this." For tracking implementation, see analytics-tracking.
-license: MIT
-metadata:
-  version: 1.0.0
-  author: Alireza Rezvani
-  category: marketing
-  updated: 2026-03-06
+name: ab-test-setup
+description: When the user wants to plan, design, or implement an A/B test or experiment.
+  Also use when the user mentions "A/B test," "split test," "experiment," "test this
+  change," "variant copy," "multivariate test," "hypothesis," "conversion experiment,"
+  "statistical significance," or "test this." For tracking implementation, see analytics-tracking.
+category: marketing-skill
+domain: Marketing Skill
+triggers:
+- /ab-test-setup
+- run ab test setup
+- ab test setup skill
+tools:
+- web_search
+- doc_tools
+- file_processor
+- browser_control
+argument-hint: '[ab test setup details]'
+when_to_use: Use when user requests ab test setup guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # A/B Test Setup

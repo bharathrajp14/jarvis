@@ -1,6 +1,23 @@
 ---
 name: md-slides
-description: Converts a markdown deck (slides separated by `---` HR boundaries or by `# ` H1 headings, with optional `<!-- notes: ... -->` presenter notes blocks) into a single-file HTML presentation with arrow-key / space / PgDn / PgUp / Home / End / P / Esc keyboard navigation, presenter mode (split view with current slide + speaker notes + clock + next-slide preview), URL-hash deep linking, and `@media print` page-per-slide for PDF export. Triggers when the markdown-html-orchestrator classifies an input as SLIDES, or when invoked directly via /cs:md-slides. Reuses md-document's markdown parser for slide-body rendering and reads design-system tokens via config_loader.py. Refuses if input has no clear slide boundaries, produces a 1-slide deck, or `--strict-notes` is on with < 50% notes coverage. Use after orchestrator routing.
+description: Converts a markdown deck (slides separated by `
+category: markdown-html
+domain: Markdown Html
+triggers:
+- /md-slides
+- run md slides
+- md slides skill
+tools:
+- doc_tools
+- file_processor
+- code_helper
+argument-hint: '[md slides details]'
+when_to_use: Use when user requests md slides guidance or task execution.
+user-invocable: true
+context: inline
+---
+
+` HR boundaries or by `# ` H1 headings, with optional `<!-- notes: ... -->` presenter notes blocks) into a single-file HTML presentation with arrow-key / space / PgDn / PgUp / Home / End / P / Esc keyboard navigation, presenter mode (split view with current slide + speaker notes + clock + next-slide preview), URL-hash deep linking, and `@media print` page-per-slide for PDF export. Triggers when the markdown-html-orchestrator classifies an input as SLIDES, or when invoked directly via /cs:md-slides. Reuses md-document's markdown parser for slide-body rendering and reads design-system tokens via config_loader.py. Refuses if input has no clear slide boundaries, produces a 1-slide deck, or `--strict-notes` is on with < 50% notes coverage. Use after orchestrator routing.
 version: 2.10.3
 author: Alireza Rezvani
 license: MIT

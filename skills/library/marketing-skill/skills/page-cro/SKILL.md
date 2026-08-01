@@ -1,12 +1,27 @@
 ---
-name: "page-cro"
-description: When the user wants to optimize, improve, or increase conversions on any marketing page — including homepage, landing pages, pricing pages, feature pages, or blog posts. Also use when the user says "CRO," "conversion rate optimization," "this page isn't converting," "improve conversions," or "why isn't this page working." For signup/registration flows, see signup-flow-cro. For post-signup activation, see onboarding-cro. For forms outside of signup, see form-cro. For popups/modals, see popup-cro.
-license: MIT
-metadata:
-  version: 1.0.0
-  author: Alireza Rezvani
-  category: marketing
-  updated: 2026-03-06
+name: page-cro
+description: When the user wants to optimize, improve, or increase conversions on
+  any marketing page — including homepage, landing pages, pricing pages, feature pages,
+  or blog posts. Also use when the user says "CRO," "conversion rate optimization,"
+  "this page isn't converting," "improve conversions," or "why isn't this page working."
+  For signup/registration flows, see signup-flow-cro. For post-signup activation,
+  see onboarding-cro. For forms outside of signup, see form-cro. For popups/modals,
+  see popup-cro.
+category: marketing-skill
+domain: Marketing Skill
+triggers:
+- /page-cro
+- run page cro
+- page cro skill
+tools:
+- web_search
+- doc_tools
+- file_processor
+- browser_control
+argument-hint: '[page cro details]'
+when_to_use: Use when user requests page cro guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Page Conversion Rate Optimization (CRO)

@@ -1,6 +1,23 @@
 ---
-name: "snowflake-development"
-description: "Use when writing Snowflake SQL, building data pipelines with Dynamic Tables or Streams/Tasks, using Cortex AI functions, creating Cortex Agents, writing Snowpark Python, configuring dbt for Snowflake, or troubleshooting Snowflake errors."
+name: snowflake-development
+description: Use when writing Snowflake SQL, building data pipelines with Dynamic
+  Tables or Streams/Tasks, using Cortex AI functions, creating Cortex Agents, writing
+  Snowpark Python, configuring dbt for Snowflake, or troubleshooting Snowflake errors.
+category: engineering-team
+domain: Engineering Team
+triggers:
+- /snowflake-development
+- run snowflake development
+- snowflake development skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[snowflake development details]'
+when_to_use: Use when user requests snowflake development guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Snowflake Development

@@ -1,6 +1,26 @@
 ---
-name: "ms365-tenant-manager"
-description: Microsoft 365 tenant administration for Global Administrators. Automate M365 tenant setup, Office 365 admin tasks, Azure AD user management, Exchange Online configuration, Teams administration, and security policies. Generate PowerShell scripts for bulk operations, Conditional Access policies, license management, and compliance reporting. Use for M365 tenant manager, Office 365 admin, Azure AD users, Global Administrator, tenant configuration, or Microsoft 365 automation.
+name: ms365-tenant-manager
+description: Microsoft 365 tenant administration for Global Administrators. Automate
+  M365 tenant setup, Office 365 admin tasks, Azure AD user management, Exchange Online
+  configuration, Teams administration, and security policies. Generate PowerShell
+  scripts for bulk operations, Conditional Access policies, license management, and
+  compliance reporting. Use for M365 tenant manager, Office 365 admin, Azure AD users,
+  Global Administrator, tenant configuration, or Microsoft 365 automation.
+category: engineering-team
+domain: Engineering Team
+triggers:
+- /ms365-tenant-manager
+- run ms365 tenant manager
+- ms365 tenant manager skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[ms365 tenant manager details]'
+when_to_use: Use when user requests ms365 tenant manager guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Microsoft 365 Tenant Manager

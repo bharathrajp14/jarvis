@@ -1,6 +1,24 @@
 ---
-name: "freeze"
-description: "/cs:freeze <decision> <days> — Lock a strategic decision for a cooldown period to prevent impulse reversal. Mirrors gstack's safety primitives for the business layer. Use when an irreversible decision was made under pressure — e.g. a layoff plan or multi-year contract — and deserves a cooling-off lock before execution."
+name: freeze
+description: /cs:freeze <decision> <days> — Lock a strategic decision for a cooldown
+  period to prevent impulse reversal. Mirrors gstack's safety primitives for the business
+  layer. Use when an irreversible decision was made under pressure — e.g. a layoff
+  plan or multi-year contract — and deserves a cooling-off lock before execution.
+category: c-level-advisor
+domain: C Level Advisor
+triggers:
+- /freeze
+- run freeze
+- freeze skill
+tools:
+- doc_tools
+- excel_tools
+- web_search
+- rag_library
+argument-hint: '[freeze details]'
+when_to_use: Use when user requests freeze guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # /cs:freeze — Cooldown Lock on a Decision

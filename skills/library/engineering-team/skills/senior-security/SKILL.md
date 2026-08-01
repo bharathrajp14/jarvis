@@ -1,6 +1,25 @@
 ---
-name: "senior-security"
-description: Use when the user asks for STRIDE threat modeling, DREAD risk scoring, data-flow-diagram threat analysis, or a quick secret scan — or when a security request needs routing to the right specialist skill (pen-testing, incident response, cloud posture, red team, AI security, threat hunting, secure code review). This skill owns threat modeling; everything else routes to a sibling.
+name: senior-security
+description: Use when the user asks for STRIDE threat modeling, DREAD risk scoring,
+  data-flow-diagram threat analysis, or a quick secret scan — or when a security request
+  needs routing to the right specialist skill (pen-testing, incident response, cloud
+  posture, red team, AI security, threat hunting, secure code review). This skill
+  owns threat modeling; everything else routes to a sibling.
+category: engineering-team
+domain: Engineering Team
+triggers:
+- /senior-security
+- run senior security
+- senior security skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[senior security details]'
+when_to_use: Use when user requests senior security guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Senior Security Engineer — Threat Modeling + Security Router

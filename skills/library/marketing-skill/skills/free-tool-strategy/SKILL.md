@@ -1,12 +1,26 @@
 ---
-name: "free-tool-strategy"
-description: "When the user wants to build a free tool for marketing — lead generation, SEO value, or brand awareness. Use when they mention 'engineering as marketing,' 'free tool,' 'calculator,' 'generator,' 'checker,' 'grader,' 'marketing tool,' 'lead gen tool,' 'build something for traffic,' 'interactive tool,' or 'free resource.' Covers idea evaluation, tool design, and launch strategy. For pure SEO content strategy (no tool), use seo-audit or content-strategy instead."
-license: MIT
-metadata:
-  version: 1.0.0
-  author: Alireza Rezvani
-  category: marketing
-  updated: 2026-03-06
+name: free-tool-strategy
+description: When the user wants to build a free tool for marketing — lead generation,
+  SEO value, or brand awareness. Use when they mention 'engineering as marketing,'
+  'free tool,' 'calculator,' 'generator,' 'checker,' 'grader,' 'marketing tool,' 'lead
+  gen tool,' 'build something for traffic,' 'interactive tool,' or 'free resource.'
+  Covers idea evaluation, tool design, and launch strategy. For pure SEO content strategy
+  (no tool), use seo-audit or content-strategy instead.
+category: marketing-skill
+domain: Marketing Skill
+triggers:
+- /free-tool-strategy
+- run free tool strategy
+- free tool strategy skill
+tools:
+- web_search
+- doc_tools
+- file_processor
+- browser_control
+argument-hint: '[free tool strategy details]'
+when_to_use: Use when user requests free tool strategy guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Free Tool Strategy

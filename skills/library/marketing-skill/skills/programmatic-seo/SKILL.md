@@ -1,12 +1,25 @@
 ---
-name: "programmatic-seo"
-description: When the user wants to create SEO-driven pages at scale using templates and data. Also use when the user mentions "programmatic SEO," "template pages," "pages at scale," "directory pages," "location pages," "[keyword] + [city] pages," "comparison pages," "integration pages," or "building many pages for SEO." For auditing existing SEO issues, see seo-audit.
-license: MIT
-metadata:
-  version: 1.0.0
-  author: Alireza Rezvani
-  category: marketing
-  updated: 2026-03-06
+name: programmatic-seo
+description: When the user wants to create SEO-driven pages at scale using templates
+  and data. Also use when the user mentions "programmatic SEO," "template pages,"
+  "pages at scale," "directory pages," "location pages," "[keyword] + [city] pages,"
+  "comparison pages," "integration pages," or "building many pages for SEO." For auditing
+  existing SEO issues, see seo-audit.
+category: marketing-skill
+domain: Marketing Skill
+triggers:
+- /programmatic-seo
+- run programmatic seo
+- programmatic seo skill
+tools:
+- web_search
+- doc_tools
+- file_processor
+- browser_control
+argument-hint: '[programmatic seo details]'
+when_to_use: Use when user requests programmatic seo guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Programmatic SEO

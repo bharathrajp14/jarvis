@@ -1,6 +1,24 @@
 ---
-name: "runbook-generator"
-description: "Generate operational runbooks from a service name — deployment, incident response, maintenance, and rollback workflows. Templated structure customizable per environment. Use when documenting on-call procedures for a new service, standardizing incident response across teams, or producing runbooks before launching to production."
+name: runbook-generator
+description: Generate operational runbooks from a service name — deployment, incident
+  response, maintenance, and rollback workflows. Templated structure customizable
+  per environment. Use when documenting on-call procedures for a new service, standardizing
+  incident response across teams, or producing runbooks before launching to production.
+category: engineering
+domain: Engineering
+triggers:
+- /runbook-generator
+- run runbook generator
+- runbook generator skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[runbook generator details]'
+when_to_use: Use when user requests runbook generator guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Runbook Generator

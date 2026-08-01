@@ -1,19 +1,25 @@
 ---
-name: "finance-skills"
-description: "Router/index for the 2 finance skills bundled in this plugin: financial-analyst (ratio analysis, DCF valuation, budget variance, rolling forecasts) and saas-metrics-coach (ARR/MRR, churn, CAC/LTV, NRR, quick ratio). Use when a finance request doesn't obviously match one skill and you need to pick the right one (e.g., 'analyze these financials', 'how healthy are my SaaS metrics')."
-version: 2.9.0
-author: Alireza Rezvani
-license: MIT
-tags:
-  - finance
-  - financial-analysis
-  - dcf
-  - valuation
-  - budgeting
-agents:
-  - claude-code
-  - codex-cli
-  - openclaw
+name: finance-skills
+description: 'Router/index for the 2 finance skills bundled in this plugin: financial-analyst
+  (ratio analysis, DCF valuation, budget variance, rolling forecasts) and saas-metrics-coach
+  (ARR/MRR, churn, CAC/LTV, NRR, quick ratio). Use when a finance request doesn''t
+  obviously match one skill and you need to pick the right one (e.g., ''analyze these
+  financials'', ''how healthy are my SaaS metrics'').'
+category: finance
+domain: Finance
+triggers:
+- /finance-skills
+- run finance skills
+- finance skills skill
+tools:
+- excel_tools
+- doc_tools
+- web_search
+- file_processor
+argument-hint: '[finance skills details]'
+when_to_use: Use when user requests finance skills guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Finance Skills — Router

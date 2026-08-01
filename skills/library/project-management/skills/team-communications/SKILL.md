@@ -1,6 +1,29 @@
 ---
 name: team-communications
-description: Write internal company communications — 3P updates (Progress/Plans/Problems), company-wide newsletters, FAQ roundups, incident reports, leadership updates, status reports, project updates, and general internal comms. Use this skill any time the user asks to draft, edit, or format something meant for internal audiences. Trigger on keywords like "3P", "weekly update", "newsletter", "FAQ", "internal comms", "status report", "company update", "team update", "incident report", or any request to summarize work for leadership, teammates, or the broader company. Even casual requests like "write my update" or "summarize what my team did this week" should trigger this skill.
+description: Write internal company communications — 3P updates (Progress/Plans/Problems),
+  company-wide newsletters, FAQ roundups, incident reports, leadership updates, status
+  reports, project updates, and general internal comms. Use this skill any time the
+  user asks to draft, edit, or format something meant for internal audiences. Trigger
+  on keywords like "3P", "weekly update", "newsletter", "FAQ", "internal comms", "status
+  report", "company update", "team update", "incident report", or any request to summarize
+  work for leadership, teammates, or the broader company. Even casual requests like
+  "write my update" or "summarize what my team did this week" should trigger this
+  skill.
+category: project-management
+domain: Project Management
+triggers:
+- /team-communications
+- run team communications
+- team communications skill
+tools:
+- doc_tools
+- excel_tools
+- calendar_engine
+- web_search
+argument-hint: '[team communications details]'
+when_to_use: Use when user requests team communications guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Internal Comms

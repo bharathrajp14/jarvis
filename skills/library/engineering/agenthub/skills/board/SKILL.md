@@ -1,7 +1,23 @@
 ---
-name: "board"
-description: "Read, write, and browse the AgentHub message board for agent coordination. Use when the user runs /hub:board or asks to post, read, or inspect coordination messages between competing AgentHub agents."
-command: /hub:board
+name: board
+description: Read, write, and browse the AgentHub message board for agent coordination.
+  Use when the user runs /hub:board or asks to post, read, or inspect coordination
+  messages between competing AgentHub agents.
+category: engineering
+domain: Engineering
+triggers:
+- /board
+- run board
+- board skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[board details]'
+when_to_use: Use when user requests board guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # /hub:board — Message Board

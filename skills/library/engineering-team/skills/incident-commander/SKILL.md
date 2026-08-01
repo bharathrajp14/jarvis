@@ -1,6 +1,25 @@
 ---
-name: "incident-commander"
-description: "Comprehensive incident response framework from detection through resolution and post-incident review. Battle-tested SRE/DevOps practices: severity classification, timeline reconstruction, structured post-incident analysis. Use when declaring an incident, coordinating multi-team response during an outage, leading a post-mortem, or setting up on-call practices for a new service."
+name: incident-commander
+description: 'Comprehensive incident response framework from detection through resolution
+  and post-incident review. Battle-tested SRE/DevOps practices: severity classification,
+  timeline reconstruction, structured post-incident analysis. Use when declaring an
+  incident, coordinating multi-team response during an outage, leading a post-mortem,
+  or setting up on-call practices for a new service.'
+category: engineering-team
+domain: Engineering Team
+triggers:
+- /incident-commander
+- run incident commander
+- incident commander skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[incident commander details]'
+when_to_use: Use when user requests incident commander guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Incident Commander Skill
@@ -468,4 +487,3 @@ python scripts/pir_generator.py --incident assets/sample_incident_pir_data.json 
 - CI/CD pipeline integration
 - Deployment tracking systems
 - Feature flag platforms for quick rollbacks
-

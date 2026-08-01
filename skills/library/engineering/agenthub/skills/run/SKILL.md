@@ -1,7 +1,23 @@
 ---
-name: "run"
-description: "One-shot lifecycle command that chains init → baseline → spawn → eval → merge in a single invocation. Use when the user runs /hub:run or asks to execute a full AgentHub competition end-to-end."
-command: /hub:run
+name: run
+description: One-shot lifecycle command that chains init → baseline → spawn → eval
+  → merge in a single invocation. Use when the user runs /hub:run or asks to execute
+  a full AgentHub competition end-to-end.
+category: engineering
+domain: Engineering
+triggers:
+- /run
+- run run
+- run skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[run details]'
+when_to_use: Use when user requests run guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # /hub:run — One-Shot Lifecycle

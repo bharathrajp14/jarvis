@@ -1,6 +1,23 @@
 ---
-name: "secrets-vault-manager"
-description: "Use when the user asks to set up secret management infrastructure, integrate HashiCorp Vault, configure cloud secret stores (AWS Secrets Manager, Azure Key Vault, GCP Secret Manager), implement secret rotation, or audit secret access patterns."
+name: secrets-vault-manager
+description: Use when the user asks to set up secret management infrastructure, integrate
+  HashiCorp Vault, configure cloud secret stores (AWS Secrets Manager, Azure Key Vault,
+  GCP Secret Manager), implement secret rotation, or audit secret access patterns.
+category: engineering
+domain: Engineering
+triggers:
+- /secrets-vault-manager
+- run secrets vault manager
+- secrets vault manager skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[secrets vault manager details]'
+when_to_use: Use when user requests secrets vault manager guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Secrets Vault Manager

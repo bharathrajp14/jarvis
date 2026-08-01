@@ -1,6 +1,25 @@
 ---
-name: "code-reviewer"
-description: Code review automation for TypeScript, JavaScript, Python, Go, Swift, Kotlin, C#, .NET, Java, C, C++, Rust, Ruby, PHP, and Dart/Flutter. Analyzes PRs for complexity and risk, checks code quality for SOLID violations and code smells, generates review reports. Use when reviewing pull requests, analyzing code quality, identifying issues, generating review checklists.
+name: code-reviewer
+description: Code review automation for TypeScript, JavaScript, Python, Go, Swift,
+  Kotlin, C#, .NET, Java, C, C++, Rust, Ruby, PHP, and Dart/Flutter. Analyzes PRs
+  for complexity and risk, checks code quality for SOLID violations and code smells,
+  generates review reports. Use when reviewing pull requests, analyzing code quality,
+  identifying issues, generating review checklists.
+category: engineering-team
+domain: Engineering Team
+triggers:
+- /code-reviewer
+- run code reviewer
+- code reviewer skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[code reviewer details]'
+when_to_use: Use when user requests code reviewer guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Code Reviewer

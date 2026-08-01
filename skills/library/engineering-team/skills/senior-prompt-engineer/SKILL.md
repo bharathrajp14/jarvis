@@ -1,6 +1,26 @@
 ---
-name: "senior-prompt-engineer"
-description: Use when the user asks to optimize prompts, design prompt templates, evaluate LLM outputs with an eval set, measure RAG retrieval quality, validate agent/tool configurations, analyze token usage, or design structured-output contracts. Covers eval-driven prompt iteration, RAG metrics (relevance, faithfulness, coverage), agent workflow validation, and token/cost budgeting — all model-agnostic, with three stdlib Python tools.
+name: senior-prompt-engineer
+description: Use when the user asks to optimize prompts, design prompt templates,
+  evaluate LLM outputs with an eval set, measure RAG retrieval quality, validate agent/tool
+  configurations, analyze token usage, or design structured-output contracts. Covers
+  eval-driven prompt iteration, RAG metrics (relevance, faithfulness, coverage), agent
+  workflow validation, and token/cost budgeting — all model-agnostic, with three stdlib
+  Python tools.
+category: engineering-team
+domain: Engineering Team
+triggers:
+- /senior-prompt-engineer
+- run senior prompt engineer
+- senior prompt engineer skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[senior prompt engineer details]'
+when_to_use: Use when user requests senior prompt engineer guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Senior Prompt Engineer

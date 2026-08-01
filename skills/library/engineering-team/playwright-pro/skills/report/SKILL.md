@@ -1,8 +1,22 @@
 ---
-name: "report"
-description: >-
-  Generate test report. Use when user says "test report", "results summary",
+name: report
+description: Generate test report. Use when user says "test report", "results summary",
   "test status", "show results", "test dashboard", or "how did tests go".
+category: engineering-team
+domain: Engineering Team
+triggers:
+- /report
+- run report
+- report skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[report details]'
+when_to_use: Use when user requests report guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Smart Test Reporting

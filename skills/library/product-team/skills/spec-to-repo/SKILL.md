@@ -1,6 +1,25 @@
 ---
 name: spec-to-repo
-description: "Use when the user says 'build me an app', 'create a project from this spec', 'scaffold a new repo', 'generate a starter', 'turn this idea into code', 'bootstrap a project', 'I have requirements and need a codebase', or provides a natural-language project specification and expects a complete, runnable repository. Stack-agnostic: Next.js, FastAPI, Rails, Go, Rust, Flutter, and more."
+description: 'Use when the user says ''build me an app'', ''create a project from
+  this spec'', ''scaffold a new repo'', ''generate a starter'', ''turn this idea into
+  code'', ''bootstrap a project'', ''I have requirements and need a codebase'', or
+  provides a natural-language project specification and expects a complete, runnable
+  repository. Stack-agnostic: Next.js, FastAPI, Rails, Go, Rust, Flutter, and more.'
+category: product-team
+domain: Product Team
+triggers:
+- /spec-to-repo
+- run spec to repo
+- spec to repo skill
+tools:
+- doc_tools
+- excel_tools
+- file_processor
+- web_search
+argument-hint: '[spec to repo details]'
+when_to_use: Use when user requests spec to repo guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Spec to Repo

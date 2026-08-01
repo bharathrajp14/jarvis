@@ -1,6 +1,23 @@
 ---
-name: "iso13485-audit-prep"
-description: "/cs:iso13485-audit-prep <scope> — ISO 13485 QMS audit 6-question forcing interrogation. Design controls + CAPA + post-market focused. Use before Clause 8.2.4 internal audit, MDR / FDA QSR alignment review, or product-launch DHF closure audit."
+name: iso13485-audit-prep
+description: /cs:iso13485-audit-prep <scope> — ISO 13485 QMS audit 6-question forcing
+  interrogation. Design controls + CAPA + post-market focused. Use before Clause 8.2.4
+  internal audit, MDR / FDA QSR alignment review, or product-launch DHF closure audit.
+category: compliance-os
+domain: Compliance Os
+triggers:
+- /iso13485-audit-prep
+- run iso13485 audit prep
+- iso13485 audit prep skill
+tools:
+- doc_tools
+- excel_tools
+- rag_library
+- file_processor
+argument-hint: '[iso13485 audit prep details]'
+when_to_use: Use when user requests iso13485 audit prep guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # /cs:iso13485-audit-prep — ISO 13485 QMS Forcing Questions

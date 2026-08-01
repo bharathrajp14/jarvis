@@ -1,6 +1,26 @@
 ---
-name: "named-persona-adversarial-review"
-description: "Code review through the lens of real engineers' documented philosophies (Torvalds, Thompson, Carmack, Kent Beck, Jobs, Cagan). Complements abstract-role adversarial review with named, sourced perspectives. Use when automated review findings feel generic, when a PR has architectural or UX impact, or when the author wants pre-submit hardening beyond standard checks."
+name: named-persona-adversarial-review
+description: Code review through the lens of real engineers' documented philosophies
+  (Torvalds, Thompson, Carmack, Kent Beck, Jobs, Cagan). Complements abstract-role
+  adversarial review with named, sourced perspectives. Use when automated review findings
+  feel generic, when a PR has architectural or UX impact, or when the author wants
+  pre-submit hardening beyond standard checks.
+category: engineering-team
+domain: Engineering Team
+triggers:
+- /named-persona-adversarial-review
+- run named persona adversarial review
+- named persona adversarial review skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[named persona adversarial review details]'
+when_to_use: Use when user requests named persona adversarial review guidance or task
+  execution.
+user-invocable: true
+context: inline
 ---
 
 # Named-Persona Adversarial Review

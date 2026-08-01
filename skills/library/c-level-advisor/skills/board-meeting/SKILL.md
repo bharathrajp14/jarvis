@@ -1,14 +1,25 @@
 ---
-name: "board-meeting"
-description: "Multi-agent board meeting protocol for strategic decisions. Runs a structured 6-phase deliberation: context loading, independent C-suite contributions (isolated, no cross-pollination), critic analysis, synthesis, founder review, and decision extraction. Use when the user invokes /cs:boardroom, calls a board meeting, or wants structured multi-perspective executive deliberation on a strategic question."
-license: MIT
-metadata:
-  version: 1.0.0
-  author: Alireza Rezvani
-  category: c-level
-  domain: board-protocol
-  updated: 2026-03-05
-  frameworks: 6-phase-board, two-layer-memory, independent-contributions
+name: board-meeting
+description: 'Multi-agent board meeting protocol for strategic decisions. Runs a structured
+  6-phase deliberation: context loading, independent C-suite contributions (isolated,
+  no cross-pollination), critic analysis, synthesis, founder review, and decision
+  extraction. Use when the user invokes /cs:boardroom, calls a board meeting, or wants
+  structured multi-perspective executive deliberation on a strategic question.'
+category: c-level-advisor
+domain: C Level Advisor
+triggers:
+- /board-meeting
+- run board meeting
+- board meeting skill
+tools:
+- doc_tools
+- excel_tools
+- web_search
+- rag_library
+argument-hint: '[board meeting details]'
+when_to_use: Use when user requests board meeting guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Board Meeting Protocol

@@ -1,15 +1,25 @@
 ---
-name: "c-level-agents"
-description: "Founder-mode executive team. 13 cs-* C-suite agents (CFO, CMO, CRO, CPO, COO, CHRO, CISO, GC, CDO, CAIO, CCO, VPE, Chief of Staff) and 21 /cs:* slash commands for forcing-question office hours, multi-role boardroom deliberation, strategic sprint pipeline, and meta routing. Use when the founder needs a virtual executive team, when invoking /cs:* commands, or when orchestrating multi-role decisions."
-license: MIT
-metadata:
-  version: 1.0.0
-  author: Alireza Rezvani
-  category: c-level
-  domain: executive-orchestration
-  updated: 2026-05-12
-  agents: cs-cfo-advisor, cs-cmo-advisor, cs-cro-advisor, cs-cpo-advisor, cs-coo-advisor, cs-chro-advisor, cs-ciso-advisor, cs-general-counsel-advisor, cs-cdo-advisor, cs-caio-advisor, cs-cco-advisor, cs-vpe-advisor, cs-chief-of-staff
-  commands: cs-office-hours, cs-cfo-review, cs-cmo-review, cs-cpo-review, cs-cro-review, cs-cto-review, cs-ciso-review, cs-gc-review, cs-cdo-review, cs-caio-review, cs-cco-review, cs-vpe-review, cs-brief, cs-boardroom, cs-decide, cs-execute, cs-post-mortem, cs-founder-mode, cs-onboard, cs-cross-eval, cs-freeze
+name: c-level-agents
+description: Founder-mode executive team. 13 cs-* C-suite agents (CFO, CMO, CRO, CPO,
+  COO, CHRO, CISO, GC, CDO, CAIO, CCO, VPE, Chief of Staff) and 21 /cs:* slash commands
+  for forcing-question office hours, multi-role boardroom deliberation, strategic
+  sprint pipeline, and meta routing. Use when the founder needs a virtual executive
+  team, when invoking /cs:* commands, or when orchestrating multi-role decisions.
+category: c-level-advisor
+domain: C Level Advisor
+triggers:
+- /c-level-agents
+- run c level agents
+- c level agents skill
+tools:
+- doc_tools
+- excel_tools
+- web_search
+- rag_library
+argument-hint: '[c level agents details]'
+when_to_use: Use when user requests c level agents guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # c-level-agents — Founder-Mode Executive Team

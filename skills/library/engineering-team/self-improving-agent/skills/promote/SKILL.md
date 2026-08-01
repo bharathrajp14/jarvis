@@ -1,6 +1,23 @@
 ---
-name: "promote"
-description: "Graduate a proven pattern from auto-memory (MEMORY.md) to CLAUDE.md or .claude/rules/ for permanent enforcement. Use when the user runs /si:promote or asks to make a learned behavior permanent."
+name: promote
+description: Graduate a proven pattern from auto-memory (MEMORY.md) to CLAUDE.md or
+  .claude/rules/ for permanent enforcement. Use when the user runs /si:promote or
+  asks to make a learned behavior permanent.
+category: engineering-team
+domain: Engineering Team
+triggers:
+- /promote
+- run promote
+- promote skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[promote details]'
+when_to_use: Use when user requests promote guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # /si:promote — Graduate Learnings to Rules

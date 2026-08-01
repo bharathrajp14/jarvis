@@ -1,14 +1,25 @@
 ---
-name: "decision-logger"
-description: "Two-layer memory architecture for board meeting decisions. Manages raw transcripts (Layer 1) and approved decisions (Layer 2). Use when logging decisions after a board meeting, reviewing past decisions with /cs:decisions, or checking overdue action items with /cs:review. Invoked automatically by the board-meeting skill after Phase 5 founder approval."
-license: MIT
-metadata:
-  version: 1.0.0
-  author: Alireza Rezvani
-  category: c-level
-  domain: decision-memory
-  updated: 2026-03-05
-  python-tools: scripts/decision_tracker.py
+name: decision-logger
+description: Two-layer memory architecture for board meeting decisions. Manages raw
+  transcripts (Layer 1) and approved decisions (Layer 2). Use when logging decisions
+  after a board meeting, reviewing past decisions with /cs:decisions, or checking
+  overdue action items with /cs:review. Invoked automatically by the board-meeting
+  skill after Phase 5 founder approval.
+category: c-level-advisor
+domain: C Level Advisor
+triggers:
+- /decision-logger
+- run decision logger
+- decision logger skill
+tools:
+- doc_tools
+- excel_tools
+- web_search
+- rag_library
+argument-hint: '[decision logger details]'
+when_to_use: Use when user requests decision logger guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Decision Logger

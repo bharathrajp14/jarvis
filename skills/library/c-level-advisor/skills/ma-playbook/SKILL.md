@@ -1,13 +1,23 @@
 ---
-name: "ma-playbook"
-description: "M&A strategy for acquiring companies or being acquired. Due diligence, valuation, integration, and deal structure. Use when evaluating acquisitions, preparing for acquisition, M&A due diligence, integration planning, or deal negotiation."
-license: MIT
-metadata:
-  version: 1.0.0
-  author: Alireza Rezvani
-  category: c-level
-  domain: ma-strategy
-  updated: 2026-03-05
+name: ma-playbook
+description: M&A strategy for acquiring companies or being acquired. Due diligence,
+  valuation, integration, and deal structure. Use when evaluating acquisitions, preparing
+  for acquisition, M&A due diligence, integration planning, or deal negotiation.
+category: c-level-advisor
+domain: C Level Advisor
+triggers:
+- /ma-playbook
+- run ma playbook
+- ma playbook skill
+tools:
+- doc_tools
+- excel_tools
+- web_search
+- rag_library
+argument-hint: '[ma playbook details]'
+when_to_use: Use when user requests ma playbook guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # M&A Playbook

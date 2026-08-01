@@ -1,15 +1,26 @@
 ---
-name: "strategic-alignment"
-description: "Cascades strategy from boardroom to individual contributor. Detects and fixes misalignment between company goals and team execution. Covers strategy articulation, cascade mapping, orphan goal detection, silo identification, communication gap analysis, and realignment protocols. Use when teams are pulling in different directions, OKRs don't connect, departments optimize locally at company expense, or when user mentions alignment, strategy cascade, silo, conflicting OKRs, or strategy communication."
-license: MIT
-metadata:
-  version: 1.0.0
-  author: Alireza Rezvani
-  category: c-level
-  domain: strategic-alignment
-  updated: 2026-03-05
-  python-tools: alignment_checker.py
-  frameworks: alignment-playbook
+name: strategic-alignment
+description: Cascades strategy from boardroom to individual contributor. Detects and
+  fixes misalignment between company goals and team execution. Covers strategy articulation,
+  cascade mapping, orphan goal detection, silo identification, communication gap analysis,
+  and realignment protocols. Use when teams are pulling in different directions, OKRs
+  don't connect, departments optimize locally at company expense, or when user mentions
+  alignment, strategy cascade, silo, conflicting OKRs, or strategy communication.
+category: c-level-advisor
+domain: C Level Advisor
+triggers:
+- /strategic-alignment
+- run strategic alignment
+- strategic alignment skill
+tools:
+- doc_tools
+- excel_tools
+- web_search
+- rag_library
+argument-hint: '[strategic alignment details]'
+when_to_use: Use when user requests strategic alignment guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Strategic Alignment Engine

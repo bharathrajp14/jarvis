@@ -1,16 +1,30 @@
 ---
-name: "arquiteto-de-empresa"
-description: "Company Architect: builds a business from scratch as an OKF (Open Knowledge Format) bundle — a tree of version-controllable .md files with frontmatter type, links forming a graph, and reserved index.md/log.md, readable by humans and agents. Guides the founder through a 12-phase interview (foundation, strategy, market, financial, sales, marketing, product, operations, tech, people, legal, governance), one phase at a time, few questions per block, and generates the concepts as conformant markdown. Trigger when the user wants to create, structure, or document an entire company in folders and .md files; when they mention build my company from scratch, company as code, company knowledge base for AI to read, company wiki for agents, OKF, or knowledge bundle. In English."
-license: MIT
-metadata:
-  version: 1.0.0
-  author: leoal
-  category: c-level
-  domain: venture-architecture
-  updated: 2026-06-19
-  python-tools: scaffold_bundle.py, okf_linter.py, index_generator.py
-  build_pattern: "Persona/interview — guides through phases and materializes a conformant OKF bundle"
-  language: en
+name: arquiteto-de-empresa
+description: 'Company Architect: builds a business from scratch as an OKF (Open Knowledge
+  Format) bundle — a tree of version-controllable .md files with frontmatter type,
+  links forming a graph, and reserved index.md/log.md, readable by humans and agents.
+  Guides the founder through a 12-phase interview (foundation, strategy, market, financial,
+  sales, marketing, product, operations, tech, people, legal, governance), one phase
+  at a time, few questions per block, and generates the concepts as conformant markdown.
+  Trigger when the user wants to create, structure, or document an entire company
+  in folders and .md files; when they mention build my company from scratch, company
+  as code, company knowledge base for AI to read, company wiki for agents, OKF, or
+  knowledge bundle. In English.'
+category: c-level-advisor
+domain: C Level Advisor
+triggers:
+- /arquiteto-de-empresa
+- run arquiteto de empresa
+- arquiteto de empresa skill
+tools:
+- doc_tools
+- excel_tools
+- web_search
+- rag_library
+argument-hint: '[arquiteto de empresa details]'
+when_to_use: Use when user requests arquiteto de empresa guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Company Architect

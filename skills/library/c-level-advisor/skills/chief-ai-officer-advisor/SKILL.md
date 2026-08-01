@@ -1,15 +1,28 @@
 ---
-name: "chief-ai-officer-advisor"
-description: "Chief AI Officer advisory for startups: model build-vs-buy decisions (API vs fine-tune vs in-house), AI risk classification under EU AI Act + US state patchwork, AI cost economics (API-to-self-hosted breakeven), and AI team org evolution. Use when deciding whether to call an API or fine-tune, classifying AI use cases for regulatory risk, calculating when self-hosting pays off, sequencing AI hires, or when user mentions CAIO, AI strategy, model selection, foundation model, fine-tuning, EU AI Act, NIST AI RMF, AI governance, model risk, or AI economics. Strategic only — does not duplicate engineering AI/ML skills."
-license: MIT
-metadata:
-  version: 1.0.0
-  author: Alireza Rezvani
-  category: c-level
-  domain: chief-ai-officer-leadership
-  updated: 2026-05-12
-  python-tools: model_buildvsbuy_calculator.py, ai_risk_classifier.py, ai_cost_economics.py
-  frameworks: model-buildvsbuy, ai-risk-governance, ai-economics, ai-team-org
+name: chief-ai-officer-advisor
+description: 'Chief AI Officer advisory for startups: model build-vs-buy decisions
+  (API vs fine-tune vs in-house), AI risk classification under EU AI Act + US state
+  patchwork, AI cost economics (API-to-self-hosted breakeven), and AI team org evolution.
+  Use when deciding whether to call an API or fine-tune, classifying AI use cases
+  for regulatory risk, calculating when self-hosting pays off, sequencing AI hires,
+  or when user mentions CAIO, AI strategy, model selection, foundation model, fine-tuning,
+  EU AI Act, NIST AI RMF, AI governance, model risk, or AI economics. Strategic only
+  — does not duplicate engineering AI/ML skills.'
+category: c-level-advisor
+domain: C Level Advisor
+triggers:
+- /chief-ai-officer-advisor
+- run chief ai officer advisor
+- chief ai officer advisor skill
+tools:
+- doc_tools
+- excel_tools
+- web_search
+- rag_library
+argument-hint: '[chief ai officer advisor details]'
+when_to_use: Use when user requests chief ai officer advisor guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Chief AI Officer Advisor

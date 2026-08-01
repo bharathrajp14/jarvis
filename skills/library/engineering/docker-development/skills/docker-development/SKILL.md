@@ -1,12 +1,26 @@
 ---
-name: "docker-development"
-description: "Docker and container development agent skill and plugin for Dockerfile optimization, docker-compose orchestration, multi-stage builds, and container security hardening. Use when: user wants to optimize a Dockerfile, create or improve docker-compose configurations, implement multi-stage builds, audit container security, reduce image size, or follow container best practices. Covers build performance, layer caching, secret management, and production-ready container patterns."
-license: MIT
-metadata:
-  version: 1.0.0
-  author: Alireza Rezvani
-  category: engineering
-  updated: 2026-03-16
+name: docker-development
+description: 'Docker and container development agent skill and plugin for Dockerfile
+  optimization, docker-compose orchestration, multi-stage builds, and container security
+  hardening. Use when: user wants to optimize a Dockerfile, create or improve docker-compose
+  configurations, implement multi-stage builds, audit container security, reduce image
+  size, or follow container best practices. Covers build performance, layer caching,
+  secret management, and production-ready container patterns.'
+category: engineering
+domain: Engineering
+triggers:
+- /docker-development
+- run docker development
+- docker development skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[docker development details]'
+when_to_use: Use when user requests docker development guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Docker Development

@@ -1,6 +1,23 @@
 ---
-name: "threat-detection"
-description: "Use when hunting for threats in an environment, analyzing IOCs, or detecting behavioral anomalies in telemetry. Covers hypothesis-driven threat hunting, IOC sweep generation, z-score anomaly detection, and MITRE ATT&CK-mapped signal prioritization."
+name: threat-detection
+description: Use when hunting for threats in an environment, analyzing IOCs, or detecting
+  behavioral anomalies in telemetry. Covers hypothesis-driven threat hunting, IOC
+  sweep generation, z-score anomaly detection, and MITRE ATT&CK-mapped signal prioritization.
+category: engineering-team
+domain: Engineering Team
+triggers:
+- /threat-detection
+- run threat detection
+- threat detection skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[threat detection details]'
+when_to_use: Use when user requests threat detection guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Threat Detection

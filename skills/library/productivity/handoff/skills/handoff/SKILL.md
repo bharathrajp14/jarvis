@@ -1,12 +1,30 @@
 ---
 name: handoff
-description: "Compact the current conversation into a handoff document for another agent to pick up. Save to a user-configured location (OS temp, home folder, or per-project .handoff/), redact secrets before write, suggest skills for the next session, and auto-load the latest handoff on the next SessionStart. First-run setup asks where to save so the project folder never gets cluttered. Use when the user says 'hand this off', 'handoff doc', 'summarize this for a new session', 'compact this conversation', 'I'm ending this session', 'pick this up later', or any variation signaling intent to pass work to a fresh agent. Also trigger on implicit signals: the user announcing they're switching machines, ending the day mid-task, or context is growing long without a natural stopping point."
-license: MIT
-argument-hint: "What will the next session be used for?"
-metadata:
-  version: 1.0.0
-  voice: "Matt Pocock — no-duplication, reference-existing-artifacts, tailored to next-session focus"
-  inspired_by: "https://github.com/mattpocock/skills/tree/main/skills/productivity/handoff"
+description: 'Compact the current conversation into a handoff document for another
+  agent to pick up. Save to a user-configured location (OS temp, home folder, or per-project
+  .handoff/), redact secrets before write, suggest skills for the next session, and
+  auto-load the latest handoff on the next SessionStart. First-run setup asks where
+  to save so the project folder never gets cluttered. Use when the user says ''hand
+  this off'', ''handoff doc'', ''summarize this for a new session'', ''compact this
+  conversation'', ''I''m ending this session'', ''pick this up later'', or any variation
+  signaling intent to pass work to a fresh agent. Also trigger on implicit signals:
+  the user announcing they''re switching machines, ending the day mid-task, or context
+  is growing long without a natural stopping point.'
+category: productivity
+domain: Productivity
+triggers:
+- /handoff
+- run handoff
+- handoff skill
+tools:
+- calendar_engine
+- reminder
+- doc_tools
+- smart_email_sender
+argument-hint: What will the next session be used for?
+when_to_use: Use when user requests handoff guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Handoff

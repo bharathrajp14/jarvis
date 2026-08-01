@@ -1,12 +1,26 @@
 ---
-name: "content-production"
-description: "Full content production pipeline — takes a topic from blank page to published-ready piece. Use when you need to execute content: write a blog post, article, or guide end-to-end. Triggers: 'write a post about', 'draft an article', 'create content for', 'help me write', 'I need a blog post'. NOT for content strategy or calendar planning (use content-strategy). NOT for repurposing existing content (use content-repurposing). NOT for social captions only."
-license: MIT
-metadata:
-  version: 1.0.0
-  author: Alireza Rezvani
-  category: marketing
-  updated: 2026-03-06
+name: content-production
+description: 'Full content production pipeline — takes a topic from blank page to
+  published-ready piece. Use when you need to execute content: write a blog post,
+  article, or guide end-to-end. Triggers: ''write a post about'', ''draft an article'',
+  ''create content for'', ''help me write'', ''I need a blog post''. NOT for content
+  strategy or calendar planning (use content-strategy). NOT for repurposing existing
+  content (use content-repurposing). NOT for social captions only.'
+category: marketing-skill
+domain: Marketing Skill
+triggers:
+- /content-production
+- run content production
+- content production skill
+tools:
+- web_search
+- doc_tools
+- file_processor
+- browser_control
+argument-hint: '[content production details]'
+when_to_use: Use when user requests content production guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Content Production

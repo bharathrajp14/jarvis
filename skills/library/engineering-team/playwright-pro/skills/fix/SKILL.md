@@ -1,9 +1,23 @@
 ---
-name: "fix"
-description: >-
-  Fix failing or flaky Playwright tests. Use when user says "fix test",
-  "flaky test", "test failing", "debug test", "test broken", "test passes
-  sometimes", or "intermittent failure".
+name: fix
+description: Fix failing or flaky Playwright tests. Use when user says "fix test",
+  "flaky test", "test failing", "debug test", "test broken", "test passes sometimes",
+  or "intermittent failure".
+category: engineering-team
+domain: Engineering Team
+triggers:
+- /fix
+- run fix
+- fix skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[fix details]'
+when_to_use: Use when user requests fix guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Fix Failing or Flaky Tests

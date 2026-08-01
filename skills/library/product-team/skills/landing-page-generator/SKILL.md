@@ -1,6 +1,29 @@
 ---
-name: "landing-page-generator"
-description: "Generates high-converting landing pages as complete Next.js/React (TSX) components with Tailwind CSS. Creates hero sections, feature grids, pricing tables, FAQ accordions, testimonial blocks, and CTA sections using proven copy frameworks (PAS, AIDA, BAB). Outputs SEO meta tags, structured data, and performance-optimised code targeting Core Web Vitals (LCP < 1s, CLS < 0.1). Use when the user asks to create a landing page, marketing page, homepage, single-page site, lead capture page, campaign page, promo page, or conversion-optimised web page — or when they want to A/B test landing page variants or replace a static page with one designed to convert."
+name: landing-page-generator
+description: Generates high-converting landing pages as complete Next.js/React (TSX)
+  components with Tailwind CSS. Creates hero sections, feature grids, pricing tables,
+  FAQ accordions, testimonial blocks, and CTA sections using proven copy frameworks
+  (PAS, AIDA, BAB). Outputs SEO meta tags, structured data, and performance-optimised
+  code targeting Core Web Vitals (LCP < 1s, CLS < 0.1). Use when the user asks to
+  create a landing page, marketing page, homepage, single-page site, lead capture
+  page, campaign page, promo page, or conversion-optimised web page — or when they
+  want to A/B test landing page variants or replace a static page with one designed
+  to convert.
+category: product-team
+domain: Product Team
+triggers:
+- /landing-page-generator
+- run landing page generator
+- landing page generator skill
+tools:
+- doc_tools
+- excel_tools
+- file_processor
+- web_search
+argument-hint: '[landing page generator details]'
+when_to_use: Use when user requests landing page generator guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Landing Page Generator

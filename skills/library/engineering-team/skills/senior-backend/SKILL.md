@@ -1,6 +1,26 @@
 ---
-name: "senior-backend"
-description: Designs and implements backend systems including REST APIs, microservices, database architectures, authentication flows, and security hardening. Use when the user asks to "design REST APIs", "optimize database queries", "implement authentication", "build microservices", "review backend code", "set up GraphQL", "handle database migrations", or "load test APIs". Covers Node.js/Express/Fastify development, PostgreSQL optimization, API security, and backend architecture patterns.
+name: senior-backend
+description: Designs and implements backend systems including REST APIs, microservices,
+  database architectures, authentication flows, and security hardening. Use when the
+  user asks to "design REST APIs", "optimize database queries", "implement authentication",
+  "build microservices", "review backend code", "set up GraphQL", "handle database
+  migrations", or "load test APIs". Covers Node.js/Express/Fastify development, PostgreSQL
+  optimization, API security, and backend architecture patterns.
+category: engineering-team
+domain: Engineering Team
+triggers:
+- /senior-backend
+- run senior backend
+- senior backend skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[senior backend details]'
+when_to_use: Use when user requests senior backend guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Senior Backend Engineer

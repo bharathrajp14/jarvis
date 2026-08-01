@@ -1,19 +1,26 @@
 ---
-name: "business-growth-skills"
-description: "Router/index for the 4 business & growth skills bundled in this plugin: customer-success-manager (health scoring, churn risk, expansion), sales-engineer (RFP analysis, competitive matrices, PoC planning), revenue-operations (pipeline, forecast accuracy, GTM efficiency), and contract-and-proposal-writer. Use when a growth/revenue request doesn't obviously match one skill and you need to pick the right one (e.g., 'which accounts are at risk', 'should we bid on this RFP')."
-version: 2.9.0
-author: Alireza Rezvani
-license: MIT
-tags:
-  - business
-  - customer-success
-  - sales
-  - revenue-operations
-  - growth
-agents:
-  - claude-code
-  - codex-cli
-  - openclaw
+name: business-growth-skills
+description: 'Router/index for the 4 business & growth skills bundled in this plugin:
+  customer-success-manager (health scoring, churn risk, expansion), sales-engineer
+  (RFP analysis, competitive matrices, PoC planning), revenue-operations (pipeline,
+  forecast accuracy, GTM efficiency), and contract-and-proposal-writer. Use when a
+  growth/revenue request doesn''t obviously match one skill and you need to pick the
+  right one (e.g., ''which accounts are at risk'', ''should we bid on this RFP'').'
+category: business-growth
+domain: Business Growth
+triggers:
+- /business-growth-skills
+- run business growth skills
+- business growth skills skill
+tools:
+- doc_tools
+- excel_tools
+- web_search
+- browser_control
+argument-hint: '[business growth skills details]'
+when_to_use: Use when user requests business growth skills guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Business & Growth Skills — Router

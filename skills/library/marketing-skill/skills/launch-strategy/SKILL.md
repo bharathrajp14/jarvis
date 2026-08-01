@@ -1,12 +1,25 @@
 ---
-name: "launch-strategy"
-description: "When the user wants to plan a product launch, feature announcement, or release strategy. Also use when the user mentions 'launch,' 'Product Hunt,' 'feature release,' 'announcement,' 'go-to-market,' 'beta launch,' 'early access,' 'waitlist,' 'product update,' 'GTM plan,' 'launch checklist,' or 'launch momentum.' This skill covers phased launches, channel strategy, and ongoing launch momentum."
-license: MIT
-metadata:
-  version: 1.0.0
-  author: Alireza Rezvani
-  category: marketing
-  updated: 2026-03-06
+name: launch-strategy
+description: When the user wants to plan a product launch, feature announcement, or
+  release strategy. Also use when the user mentions 'launch,' 'Product Hunt,' 'feature
+  release,' 'announcement,' 'go-to-market,' 'beta launch,' 'early access,' 'waitlist,'
+  'product update,' 'GTM plan,' 'launch checklist,' or 'launch momentum.' This skill
+  covers phased launches, channel strategy, and ongoing launch momentum.
+category: marketing-skill
+domain: Marketing Skill
+triggers:
+- /launch-strategy
+- run launch strategy
+- launch strategy skill
+tools:
+- web_search
+- doc_tools
+- file_processor
+- browser_control
+argument-hint: '[launch strategy details]'
+when_to_use: Use when user requests launch strategy guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Launch Strategy

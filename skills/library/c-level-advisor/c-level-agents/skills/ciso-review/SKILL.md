@@ -1,6 +1,23 @@
 ---
-name: "ciso-review"
-description: "/cs:ciso-review <plan> — Risk-paranoid interrogation of any plan that touches data, compliance, or production access. Use when launching features that handle customer data, before a SOC 2 / ISO audit, or after any incident or near-miss."
+name: ciso-review
+description: /cs:ciso-review <plan> — Risk-paranoid interrogation of any plan that
+  touches data, compliance, or production access. Use when launching features that
+  handle customer data, before a SOC 2 / ISO audit, or after any incident or near-miss.
+category: c-level-advisor
+domain: C Level Advisor
+triggers:
+- /ciso-review
+- run ciso review
+- ciso review skill
+tools:
+- doc_tools
+- excel_tools
+- web_search
+- rag_library
+argument-hint: '[ciso review details]'
+when_to_use: Use when user requests ciso review guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # /cs:ciso-review — CISO Forcing Questions

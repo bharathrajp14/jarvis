@@ -1,6 +1,24 @@
 ---
-name: "post-mortem"
-description: "/cs:post-mortem <decision> — Honest retrospective on an executed decision, scored against original assumptions and dissent. Closes the strategic sprint loop. Use when a decision hits its 90-day review checkpoint or its kill criteria trigger — e.g. scoring last quarter's pricing change against its pre-committed success metrics."
+name: post-mortem
+description: /cs:post-mortem <decision> — Honest retrospective on an executed decision,
+  scored against original assumptions and dissent. Closes the strategic sprint loop.
+  Use when a decision hits its 90-day review checkpoint or its kill criteria trigger
+  — e.g. scoring last quarter's pricing change against its pre-committed success metrics.
+category: c-level-advisor
+domain: C Level Advisor
+triggers:
+- /post-mortem
+- run post mortem
+- post mortem skill
+tools:
+- doc_tools
+- excel_tools
+- web_search
+- rag_library
+argument-hint: '[post mortem details]'
+when_to_use: Use when user requests post mortem guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # /cs:post-mortem — Honest Retrospective

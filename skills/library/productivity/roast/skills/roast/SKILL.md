@@ -1,12 +1,26 @@
 ---
 name: roast
-description: Use when someone asks to roast an idea, pressure-test or stress-test an idea, validate a business idea, "convene the panel", get a brutal second opinion before building something, or says "/roast". Spins up a 5-angle panel (Critic, Champion, Analyst, Investigator, Customer) that attacks the idea from every angle, then a Judge returns one GO / RESHAPE / KILL verdict with the cheapest test to de-risk it.
-argument-hint: "[the idea to roast]"
-license: MIT
-metadata:
-  version: 1.0.0
-  build_pattern: "Path-B persona skill — adversarial panel + deterministic verdict tools"
-  distinct_from: "andreessen (single market-first lens, not a panel); c-level boardroom (enterprise C-suite pipeline requiring company-context onboarding); grill-me (interrogates, no verdict)"
+description: Use when someone asks to roast an idea, pressure-test or stress-test
+  an idea, validate a business idea, "convene the panel", get a brutal second opinion
+  before building something, or says "/roast". Spins up a 5-angle panel (Critic, Champion,
+  Analyst, Investigator, Customer) that attacks the idea from every angle, then a
+  Judge returns one GO / RESHAPE / KILL verdict with the cheapest test to de-risk
+  it.
+category: productivity
+domain: Productivity
+triggers:
+- /roast
+- run roast
+- roast skill
+tools:
+- calendar_engine
+- reminder
+- doc_tools
+- smart_email_sender
+argument-hint: '[the idea to roast]'
+when_to_use: Use when user requests roast guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Roast — 5-Angle Idea Panel → One Verdict

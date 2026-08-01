@@ -1,15 +1,28 @@
 ---
-name: "scrum-master"
-description: "Advanced Scrum Master skill for data-driven agile team analysis and coaching. Use when the user asks about sprint planning, velocity tracking, retrospectives, standup facilitation, backlog grooming, story points, burndown charts, blocker resolution, or agile team health. Runs Python scripts to analyse sprint JSON exports from Jira or similar tools: velocity_analyzer.py for Monte Carlo sprint forecasting, sprint_health_scorer.py for multi-dimension health scoring, and retrospective_analyzer.py for action-item and theme tracking. Produces confidence-interval forecasts, health grade reports, and improvement-velocity trends for high-performing Scrum teams."
-license: MIT
-metadata:
-  version: 2.0.0
-  author: Alireza Rezvani
-  category: project-management
-  domain: agile-development
-  updated: 2026-02-15
-  python-tools: velocity_analyzer.py, sprint_health_scorer.py, retrospective_analyzer.py
-  tech-stack: scrum, agile-coaching, team-dynamics, data-analysis
+name: scrum-master
+description: 'Advanced Scrum Master skill for data-driven agile team analysis and
+  coaching. Use when the user asks about sprint planning, velocity tracking, retrospectives,
+  standup facilitation, backlog grooming, story points, burndown charts, blocker resolution,
+  or agile team health. Runs Python scripts to analyse sprint JSON exports from Jira
+  or similar tools: velocity_analyzer.py for Monte Carlo sprint forecasting, sprint_health_scorer.py
+  for multi-dimension health scoring, and retrospective_analyzer.py for action-item
+  and theme tracking. Produces confidence-interval forecasts, health grade reports,
+  and improvement-velocity trends for high-performing Scrum teams.'
+category: project-management
+domain: Project Management
+triggers:
+- /scrum-master
+- run scrum master
+- scrum master skill
+tools:
+- doc_tools
+- excel_tools
+- calendar_engine
+- web_search
+argument-hint: '[scrum master details]'
+when_to_use: Use when user requests scrum master guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Scrum Master Expert

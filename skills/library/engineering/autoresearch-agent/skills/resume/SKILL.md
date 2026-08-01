@@ -1,7 +1,23 @@
 ---
-name: "resume"
-description: "Resume a paused experiment. Checkout the experiment branch, read results history, continue iterating. Use when the user runs /ar:resume or asks to pick up a previously started autoresearch experiment."
-command: /ar:resume
+name: resume
+description: Resume a paused experiment. Checkout the experiment branch, read results
+  history, continue iterating. Use when the user runs /ar:resume or asks to pick up
+  a previously started autoresearch experiment.
+category: engineering
+domain: Engineering
+triggers:
+- /resume
+- run resume
+- resume skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[resume details]'
+when_to_use: Use when user requests resume guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # /ar:resume — Resume Experiment

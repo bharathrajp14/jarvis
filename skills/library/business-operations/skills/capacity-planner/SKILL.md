@@ -1,11 +1,29 @@
 ---
 name: capacity-planner
-description: "Use when an ops leader (Director of CX, Head of Support, VP Ops, Head of BizOps, Head of IT ops, Head of Finance ops) is sizing ops capacity, building a headcount plan, modeling utilization risk, planning Q3 capacity or annual support capacity, or designing CS coverage — and needs Erlang-C queueing math, P90 demand sizing, shrinkage-adjusted FTE, manager-trigger thresholds, and a quarterly hiring sequence with ramp + attrition. Apply when sustained team utilization is above 80% or when the team is growing >50% in 12 months. Run before committing the headcount budget. This is NOT engineering capacity (see vpe-advisor for DORA + cycle time) and NOT strategic 3-year workforce planning (see chro-advisor)."
-version: 2.8.0
-author: claude-code-skills
-license: MIT
-tags: [bizops, capacity, headcount, utilization, queueing-theory, ops-planning, little-law, workforce]
-compatible_tools: [claude-code, codex-cli, cursor, antigravity, opencode, gemini-cli]
+description: Use when an ops leader (Director of CX, Head of Support, VP Ops, Head
+  of BizOps, Head of IT ops, Head of Finance ops) is sizing ops capacity, building
+  a headcount plan, modeling utilization risk, planning Q3 capacity or annual support
+  capacity, or designing CS coverage — and needs Erlang-C queueing math, P90 demand
+  sizing, shrinkage-adjusted FTE, manager-trigger thresholds, and a quarterly hiring
+  sequence with ramp + attrition. Apply when sustained team utilization is above 80%
+  or when the team is growing >50% in 12 months. Run before committing the headcount
+  budget. This is NOT engineering capacity (see vpe-advisor for DORA + cycle time)
+  and NOT strategic 3-year workforce planning (see chro-advisor).
+category: business-operations
+domain: Business Operations
+triggers:
+- /capacity-planner
+- run capacity planner
+- capacity planner skill
+tools:
+- doc_tools
+- excel_tools
+- calendar_engine
+- file_processor
+argument-hint: '[capacity planner details]'
+when_to_use: Use when user requests capacity planner guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # capacity-planner

@@ -1,13 +1,23 @@
 ---
 name: grill-me
-description: Interview the user relentlessly about a plan or design until reaching shared understanding, resolving each branch of the decision tree. Use when user wants to stress-test a plan, get grilled on their design, or mentions "grill me".
-license: MIT
-metadata:
-  derived_from: "https://github.com/mattpocock/skills/tree/main/skills/productivity/grill-me"
-  original_author: "Matt Pocock (@mattpocock)"
-  original_license: MIT
-  voice: "Matt Pocock — relentless, one-at-a-time, explores-codebase-first"
-  version: 1.0.0
+description: Interview the user relentlessly about a plan or design until reaching
+  shared understanding, resolving each branch of the decision tree. Use when user
+  wants to stress-test a plan, get grilled on their design, or mentions "grill me".
+category: engineering
+domain: Engineering
+triggers:
+- /grill-me
+- run grill me
+- grill me skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[grill me details]'
+when_to_use: Use when user requests grill me guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Grill Me

@@ -1,6 +1,29 @@
 ---
-name: "competitive-teardown"
-description: "Analyzes competitor products and companies by synthesizing data from pricing pages, app store reviews, job postings, SEO signals, and social media into structured competitive intelligence. Produces feature comparison matrices scored across 12 dimensions, SWOT analyses, positioning maps, UX audits, pricing model breakdowns, action item roadmaps, and stakeholder presentation templates. Use when conducting competitor analysis, comparing products against competitors, researching the competitive landscape, building battle cards for sales, preparing for a product strategy or roadmap session, responding to a competitor's new feature or pricing change, or performing a quarterly competitive review."
+name: competitive-teardown
+description: Analyzes competitor products and companies by synthesizing data from
+  pricing pages, app store reviews, job postings, SEO signals, and social media into
+  structured competitive intelligence. Produces feature comparison matrices scored
+  across 12 dimensions, SWOT analyses, positioning maps, UX audits, pricing model
+  breakdowns, action item roadmaps, and stakeholder presentation templates. Use when
+  conducting competitor analysis, comparing products against competitors, researching
+  the competitive landscape, building battle cards for sales, preparing for a product
+  strategy or roadmap session, responding to a competitor's new feature or pricing
+  change, or performing a quarterly competitive review.
+category: product-team
+domain: Product Team
+triggers:
+- /competitive-teardown
+- run competitive teardown
+- competitive teardown skill
+tools:
+- doc_tools
+- excel_tools
+- file_processor
+- web_search
+argument-hint: '[competitive teardown details]'
+when_to_use: Use when user requests competitive teardown guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Competitive Teardown

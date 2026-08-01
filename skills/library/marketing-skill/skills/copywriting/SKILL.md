@@ -1,12 +1,25 @@
 ---
-name: "copywriting"
-description: "When the user wants to write, rewrite, or improve marketing copy for any page — including homepage, landing pages, pricing pages, feature pages, about pages, or product pages. Also use when the user says \"write copy for,\" \"improve this copy,\" \"rewrite this page,\" \"marketing copy,\" \"headline help,\" or \"CTA copy.\" For email copy, see email-sequence. For popup copy, see popup-cro."
-license: MIT
-metadata:
-  version: 1.0.0
-  author: Alireza Rezvani
-  category: marketing
-  updated: 2026-03-06
+name: copywriting
+description: When the user wants to write, rewrite, or improve marketing copy for
+  any page — including homepage, landing pages, pricing pages, feature pages, about
+  pages, or product pages. Also use when the user says "write copy for," "improve
+  this copy," "rewrite this page," "marketing copy," "headline help," or "CTA copy."
+  For email copy, see email-sequence. For popup copy, see popup-cro.
+category: marketing-skill
+domain: Marketing Skill
+triggers:
+- /copywriting
+- run copywriting
+- copywriting skill
+tools:
+- web_search
+- doc_tools
+- file_processor
+- browser_control
+argument-hint: '[copywriting details]'
+when_to_use: Use when user requests copywriting guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Copywriting

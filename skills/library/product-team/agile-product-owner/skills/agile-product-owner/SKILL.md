@@ -1,23 +1,36 @@
 ---
-name: "agile-product-owner"
-description: Agile product ownership for backlog management and sprint execution. Covers user story writing, acceptance criteria, sprint planning, and velocity tracking. Use when writing user stories, creating acceptance criteria, planning sprints, estimating story points, breaking down epics, or prioritizing the backlog.
-not_for: Kanban-only workflows, waterfall project planning, general task management, non-Scrum agile frameworks (SAFe, LeSS) without adaptation
+name: agile-product-owner
+description: Agile product ownership for backlog management and sprint execution.
+  Covers user story writing, acceptance criteria, sprint planning, and velocity tracking.
+  Use when writing user stories, creating acceptance criteria, planning sprints, estimating
+  story points, breaking down epics, or prioritizing the backlog.
+category: product-team
+domain: Product Team
 triggers:
-  - write user story
-  - create acceptance criteria
-  - plan sprint
-  - estimate story points
-  - break down epic
-  - prioritize backlog
-  - sprint planning
-  - backlog grooming
-  - sprint retrospective
-  - definition of done
-  - INVEST criteria
-  - Given When Then
-  - user story template
-  - sprint capacity
-  - velocity tracking
+- write user story
+- create acceptance criteria
+- plan sprint
+- estimate story points
+- break down epic
+- prioritize backlog
+- sprint planning
+- backlog grooming
+- sprint retrospective
+- definition of done
+- INVEST criteria
+- Given When Then
+- user story template
+- sprint capacity
+- velocity tracking
+tools:
+- doc_tools
+- excel_tools
+- file_processor
+- web_search
+argument-hint: '[agile product owner details]'
+when_to_use: Use when user requests agile product owner guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Agile Product Owner

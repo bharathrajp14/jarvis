@@ -1,6 +1,24 @@
 ---
-name: "ux-researcher-designer"
-description: UX research and design toolkit for Senior UX Designer/Researcher including data-driven persona generation, journey mapping, usability testing frameworks, and research synthesis. Use when conducting user research, creating personas, mapping user journeys, planning usability tests, or validating designs.
+name: ux-researcher-designer
+description: UX research and design toolkit for Senior UX Designer/Researcher including
+  data-driven persona generation, journey mapping, usability testing frameworks, and
+  research synthesis. Use when conducting user research, creating personas, mapping
+  user journeys, planning usability tests, or validating designs.
+category: product-team
+domain: Product Team
+triggers:
+- /ux-researcher-designer
+- run ux researcher designer
+- ux researcher designer skill
+tools:
+- doc_tools
+- excel_tools
+- file_processor
+- web_search
+argument-hint: '[ux researcher designer details]'
+when_to_use: Use when user requests ux researcher designer guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # UX Researcher & Designer

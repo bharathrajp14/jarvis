@@ -1,15 +1,25 @@
 ---
-name: "cfo-advisor"
-description: "Financial leadership for startups and scaling companies. Financial modeling, unit economics, fundraising strategy, cash management, and board financial packages. Use when building financial models, analyzing unit economics, planning fundraising, managing cash runway, preparing board materials, or when user mentions CFO, burn rate, runway, fundraising, unit economics, LTV, CAC, term sheets, or financial strategy."
-license: MIT
-metadata:
-  version: 1.0.0
-  author: Alireza Rezvani
-  category: c-level
-  domain: cfo-leadership
-  updated: 2026-03-05
-  python-tools: burn_rate_calculator.py, unit_economics_analyzer.py, fundraising_model.py
-  frameworks: financial-planning, fundraising-playbook, cash-management
+name: cfo-advisor
+description: Financial leadership for startups and scaling companies. Financial modeling,
+  unit economics, fundraising strategy, cash management, and board financial packages.
+  Use when building financial models, analyzing unit economics, planning fundraising,
+  managing cash runway, preparing board materials, or when user mentions CFO, burn
+  rate, runway, fundraising, unit economics, LTV, CAC, term sheets, or financial strategy.
+category: c-level-advisor
+domain: C Level Advisor
+triggers:
+- /cfo-advisor
+- run cfo advisor
+- cfo advisor skill
+tools:
+- doc_tools
+- excel_tools
+- web_search
+- rag_library
+argument-hint: '[cfo advisor details]'
+when_to_use: Use when user requests cfo advisor guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # CFO Advisor

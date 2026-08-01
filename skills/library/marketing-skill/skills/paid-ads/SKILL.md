@@ -1,12 +1,25 @@
 ---
-name: "paid-ads"
-description: "When the user wants help with paid advertising campaigns on Google Ads, Meta (Facebook/Instagram), LinkedIn, Twitter/X, or other ad platforms. Also use when the user mentions 'PPC,' 'paid media,' 'ad copy,' 'ad creative,' 'ROAS,' 'CPA,' 'ad campaign,' 'retargeting,' or 'audience targeting.' This skill covers campaign strategy, ad creation, audience targeting, and optimization."
-license: MIT
-metadata:
-  version: 1.0.0
-  author: Alireza Rezvani
-  category: marketing
-  updated: 2026-03-06
+name: paid-ads
+description: When the user wants help with paid advertising campaigns on Google Ads,
+  Meta (Facebook/Instagram), LinkedIn, Twitter/X, or other ad platforms. Also use
+  when the user mentions 'PPC,' 'paid media,' 'ad copy,' 'ad creative,' 'ROAS,' 'CPA,'
+  'ad campaign,' 'retargeting,' or 'audience targeting.' This skill covers campaign
+  strategy, ad creation, audience targeting, and optimization.
+category: marketing-skill
+domain: Marketing Skill
+triggers:
+- /paid-ads
+- run paid ads
+- paid ads skill
+tools:
+- web_search
+- doc_tools
+- file_processor
+- browser_control
+argument-hint: '[paid ads details]'
+when_to_use: Use when user requests paid ads guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Paid Ads

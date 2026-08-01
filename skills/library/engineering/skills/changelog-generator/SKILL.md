@@ -1,6 +1,27 @@
 ---
-name: "changelog-generator"
-description: "Produce consistent, auditable release notes from Conventional Commits. Separates commit parsing, semantic-bump logic, and changelog rendering for automated releases with editorial control. Use when cutting a release, generating CHANGELOG.md from git history, computing the next semantic version from commits, automating release notes in CI, or planning a hotfix/rollback. Examples: 'generate the changelog for v1.4.0', 'what version bump do these commits require', 'we need an emergency hotfix process'."
+name: changelog-generator
+description: 'Produce consistent, auditable release notes from Conventional Commits.
+  Separates commit parsing, semantic-bump logic, and changelog rendering for automated
+  releases with editorial control. Use when cutting a release, generating CHANGELOG.md
+  from git history, computing the next semantic version from commits, automating release
+  notes in CI, or planning a hotfix/rollback. Examples: ''generate the changelog for
+  v1.4.0'', ''what version bump do these commits require'', ''we need an emergency
+  hotfix process''.'
+category: engineering
+domain: Engineering
+triggers:
+- /changelog-generator
+- run changelog generator
+- changelog generator skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[changelog generator details]'
+when_to_use: Use when user requests changelog generator guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Changelog Generator

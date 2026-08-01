@@ -1,7 +1,23 @@
 ---
-name: "eval"
-description: "Evaluate and rank agent results by metric or LLM judge for an AgentHub session. Use when the user runs /hub:eval or asks to score, compare, or pick a winner among completed AgentHub agents."
-command: /hub:eval
+name: eval
+description: Evaluate and rank agent results by metric or LLM judge for an AgentHub
+  session. Use when the user runs /hub:eval or asks to score, compare, or pick a winner
+  among completed AgentHub agents.
+category: engineering
+domain: Engineering
+triggers:
+- /eval
+- run eval
+- eval skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[eval details]'
+when_to_use: Use when user requests eval guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # /hub:eval — Evaluate Agent Results

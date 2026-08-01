@@ -1,6 +1,25 @@
 ---
-name: "jira-expert"
-description: Atlassian Jira expert for creating and managing projects, planning, product discovery, JQL queries, workflows, custom fields, automation, reporting, and all Jira features. Use when setting up or configuring Jira projects, writing JQL and advanced searches, creating dashboards, designing workflows, or performing technical Jira operations.
+name: jira-expert
+description: Atlassian Jira expert for creating and managing projects, planning, product
+  discovery, JQL queries, workflows, custom fields, automation, reporting, and all
+  Jira features. Use when setting up or configuring Jira projects, writing JQL and
+  advanced searches, creating dashboards, designing workflows, or performing technical
+  Jira operations.
+category: project-management
+domain: Project Management
+triggers:
+- /jira-expert
+- run jira expert
+- jira expert skill
+tools:
+- doc_tools
+- excel_tools
+- calendar_engine
+- web_search
+argument-hint: '[jira expert details]'
+when_to_use: Use when user requests jira expert guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Atlassian Jira Expert

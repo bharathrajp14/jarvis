@@ -1,6 +1,26 @@
 ---
-name: "stripe-integration-expert"
-description: "Production-grade Stripe integrations: subscriptions with trials and proration, one-time payments, usage-based billing, checkout sessions, idempotent webhook handlers, customer portal, and invoicing. Covers Next.js, Express, and Django patterns. Use when integrating Stripe for the first time, debugging webhook reliability issues, migrating from a different payment provider, or adding usage-based billing to an existing subscription product."
+name: stripe-integration-expert
+description: 'Production-grade Stripe integrations: subscriptions with trials and
+  proration, one-time payments, usage-based billing, checkout sessions, idempotent
+  webhook handlers, customer portal, and invoicing. Covers Next.js, Express, and Django
+  patterns. Use when integrating Stripe for the first time, debugging webhook reliability
+  issues, migrating from a different payment provider, or adding usage-based billing
+  to an existing subscription product.'
+category: engineering-team
+domain: Engineering Team
+triggers:
+- /stripe-integration-expert
+- run stripe integration expert
+- stripe integration expert skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[stripe integration expert details]'
+when_to_use: Use when user requests stripe integration expert guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Stripe Integration Expert

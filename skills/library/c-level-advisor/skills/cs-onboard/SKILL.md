@@ -1,14 +1,25 @@
 ---
-name: "cs-onboard"
-description: "Founder onboarding interview that captures company context across 7 dimensions. Invoke with /cs:setup for initial interview or /cs:update for quarterly refresh. Generates ~/.claude/company-context.md used by all C-suite advisor skills. Use when setting up the C-suite advisors for the first time, or when company context is missing or more than 90 days old — e.g. after a fundraise or pivot."
-license: MIT
-metadata:
-  version: 1.0.0
-  author: Alireza Rezvani
-  category: c-level
-  domain: orchestration
-  updated: 2026-03-05
-  frameworks: founder-interview, context-capture, quarterly-refresh
+name: cs-onboard
+description: Founder onboarding interview that captures company context across 7 dimensions.
+  Invoke with /cs:setup for initial interview or /cs:update for quarterly refresh.
+  Generates ~/.claude/company-context.md used by all C-suite advisor skills. Use when
+  setting up the C-suite advisors for the first time, or when company context is missing
+  or more than 90 days old — e.g. after a fundraise or pivot.
+category: c-level-advisor
+domain: C Level Advisor
+triggers:
+- /cs-onboard
+- run cs onboard
+- cs onboard skill
+tools:
+- doc_tools
+- excel_tools
+- web_search
+- rag_library
+argument-hint: '[cs onboard details]'
+when_to_use: Use when user requests cs onboard guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # C-Suite Onboarding

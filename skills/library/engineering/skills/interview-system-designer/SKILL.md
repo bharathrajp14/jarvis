@@ -1,6 +1,25 @@
 ---
-name: "interview-system-designer"
-description: This skill should be used when the user asks to "design interview processes", "create hiring pipelines", "calibrate interview loops", "generate interview questions", "design competency matrices", "analyze interviewer bias", "create scoring rubrics", "build question banks", or "optimize hiring systems". Use for designing role-specific interview loops, competency assessments, and hiring calibration systems.
+name: interview-system-designer
+description: This skill should be used when the user asks to "design interview processes",
+  "create hiring pipelines", "calibrate interview loops", "generate interview questions",
+  "design competency matrices", "analyze interviewer bias", "create scoring rubrics",
+  "build question banks", or "optimize hiring systems". Use for designing role-specific
+  interview loops, competency assessments, and hiring calibration systems.
+category: engineering
+domain: Engineering
+triggers:
+- /interview-system-designer
+- run interview system designer
+- interview system designer skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[interview system designer details]'
+when_to_use: Use when user requests interview system designer guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Interview System Designer

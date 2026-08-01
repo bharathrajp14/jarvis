@@ -1,6 +1,26 @@
 ---
-name: "senior-fullstack"
-description: Fullstack development toolkit with project scaffolding for Next.js, FastAPI, MERN, and Django stacks, code quality analysis with security and complexity scoring, and stack selection guidance. Use when the user asks to "scaffold a new project", "create a Next.js app", "set up FastAPI with React", "analyze code quality", "audit my codebase", "what stack should I use", "generate project boilerplate", or mentions fullstack development, project setup, or tech stack comparison.
+name: senior-fullstack
+description: Fullstack development toolkit with project scaffolding for Next.js, FastAPI,
+  MERN, and Django stacks, code quality analysis with security and complexity scoring,
+  and stack selection guidance. Use when the user asks to "scaffold a new project",
+  "create a Next.js app", "set up FastAPI with React", "analyze code quality", "audit
+  my codebase", "what stack should I use", "generate project boilerplate", or mentions
+  fullstack development, project setup, or tech stack comparison.
+category: engineering-team
+domain: Engineering Team
+triggers:
+- /senior-fullstack
+- run senior fullstack
+- senior fullstack skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[senior fullstack details]'
+when_to_use: Use when user requests senior fullstack guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Senior Fullstack

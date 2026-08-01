@@ -1,6 +1,24 @@
 ---
-name: "observability-designer"
-description: "Design production-ready observability strategies combining metrics, logs, and traces. Includes SLI/SLO design, golden-signals monitoring, alert optimization. Use when adding observability to a new service, refactoring alerting that is too noisy, or designing an SLO program before scaling production load."
+name: observability-designer
+description: Design production-ready observability strategies combining metrics, logs,
+  and traces. Includes SLI/SLO design, golden-signals monitoring, alert optimization.
+  Use when adding observability to a new service, refactoring alerting that is too
+  noisy, or designing an SLO program before scaling production load.
+category: engineering
+domain: Engineering
+triggers:
+- /observability-designer
+- run observability designer
+- observability designer skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[observability designer details]'
+when_to_use: Use when user requests observability designer guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Observability Designer (POWERFUL)

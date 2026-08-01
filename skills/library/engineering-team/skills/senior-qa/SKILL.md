@@ -1,6 +1,27 @@
 ---
-name: "senior-qa"
-description: Generates unit tests, integration tests, and E2E tests for React/Next.js applications. Scans components to create Jest + React Testing Library test stubs, analyzes Istanbul/LCOV coverage reports to surface gaps, scaffolds Playwright test files from Next.js routes, mocks API calls with MSW, creates test fixtures, and configures test runners. Use when the user asks to "generate tests", "write unit tests", "analyze test coverage", "scaffold E2E tests", "set up Playwright", "configure Jest", "implement testing patterns", or "improve test quality".
+name: senior-qa
+description: Generates unit tests, integration tests, and E2E tests for React/Next.js
+  applications. Scans components to create Jest + React Testing Library test stubs,
+  analyzes Istanbul/LCOV coverage reports to surface gaps, scaffolds Playwright test
+  files from Next.js routes, mocks API calls with MSW, creates test fixtures, and
+  configures test runners. Use when the user asks to "generate tests", "write unit
+  tests", "analyze test coverage", "scaffold E2E tests", "set up Playwright", "configure
+  Jest", "implement testing patterns", or "improve test quality".
+category: engineering-team
+domain: Engineering Team
+triggers:
+- /senior-qa
+- run senior qa
+- senior qa skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[senior qa details]'
+when_to_use: Use when user requests senior qa guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Senior QA Engineer

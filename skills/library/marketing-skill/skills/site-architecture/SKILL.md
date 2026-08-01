@@ -1,12 +1,28 @@
 ---
-name: "site-architecture"
-description: "When the user wants to audit, redesign, or plan their website's structure, URL hierarchy, navigation design, or internal linking strategy. Use when the user mentions 'site architecture,' 'URL structure,' 'internal links,' 'site navigation,' 'breadcrumbs,' 'topic clusters,' 'hub pages,' 'orphan pages,' 'silo structure,' 'information architecture,' or 'website reorganization.' Also use when someone has SEO problems and the root cause is structural (not content or schema). NOT for content strategy decisions about what to write (use content-strategy) or for schema markup (use schema-markup)."
-license: MIT
-metadata:
-  version: 1.0.0
-  author: Alireza Rezvani
-  category: marketing
-  updated: 2026-03-06
+name: site-architecture
+description: When the user wants to audit, redesign, or plan their website's structure,
+  URL hierarchy, navigation design, or internal linking strategy. Use when the user
+  mentions 'site architecture,' 'URL structure,' 'internal links,' 'site navigation,'
+  'breadcrumbs,' 'topic clusters,' 'hub pages,' 'orphan pages,' 'silo structure,'
+  'information architecture,' or 'website reorganization.' Also use when someone has
+  SEO problems and the root cause is structural (not content or schema). NOT for content
+  strategy decisions about what to write (use content-strategy) or for schema markup
+  (use schema-markup).
+category: marketing-skill
+domain: Marketing Skill
+triggers:
+- /site-architecture
+- run site architecture
+- site architecture skill
+tools:
+- web_search
+- doc_tools
+- file_processor
+- browser_control
+argument-hint: '[site architecture details]'
+when_to_use: Use when user requests site architecture guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Site Architecture & Internal Linking

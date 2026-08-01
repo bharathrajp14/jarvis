@@ -1,6 +1,26 @@
 ---
-name: "senior-computer-vision"
-description: Computer vision engineering skill for object detection, image segmentation, and visual AI systems. Covers CNN and Vision Transformer architectures, YOLO/Faster R-CNN/DETR detection, Mask R-CNN/SAM segmentation, and production deployment with ONNX/TensorRT. Includes PyTorch, torchvision, Ultralytics, Detectron2, and MMDetection frameworks. Use when building detection pipelines, training custom models, optimizing inference, or deploying vision systems.
+name: senior-computer-vision
+description: Computer vision engineering skill for object detection, image segmentation,
+  and visual AI systems. Covers CNN and Vision Transformer architectures, YOLO/Faster
+  R-CNN/DETR detection, Mask R-CNN/SAM segmentation, and production deployment with
+  ONNX/TensorRT. Includes PyTorch, torchvision, Ultralytics, Detectron2, and MMDetection
+  frameworks. Use when building detection pipelines, training custom models, optimizing
+  inference, or deploying vision systems.
+category: engineering-team
+domain: Engineering Team
+triggers:
+- /senior-computer-vision
+- run senior computer vision
+- senior computer vision skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[senior computer vision details]'
+when_to_use: Use when user requests senior computer vision guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Senior Computer Vision Engineer

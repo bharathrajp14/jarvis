@@ -1,11 +1,32 @@
 ---
 name: capture
-description: "Captures and organizes chaotic brain dumps into a structured, actionable system with zero information loss. Use this skill whenever the user says 'capture this', 'brain dump', 'let me dump some ideas', 'I've got a bunch of thoughts', 'here's everything on my mind', 'idea dump', 'let me get this out of my head', 'I need to organize my thoughts', 'here's what I'm thinking', or any variation where someone is unloading a messy stream of ideas, tasks, thoughts, and plans wanting them turned into something coherent. Also trigger when the user pastes or dictates a long, unstructured block of mixed ideas — even without the exact phrase — the intent is the same. Fast-to-action by design: no upfront intake. Output is four sections (Projects/Ideas, Tasks, Connections, How I Can Help) ending with a directive question. Asks at most one mid-organization clarifying question when a single item is genuinely ambiguous between task and project."
-license: MIT
-metadata:
-  source_spec: "megaprompts/05-capture-megaprompt.md"
-  build_pattern: "Path B (direct conversion)"
-  version: 1.0.0
+description: 'Captures and organizes chaotic brain dumps into a structured, actionable
+  system with zero information loss. Use this skill whenever the user says ''capture
+  this'', ''brain dump'', ''let me dump some ideas'', ''I''ve got a bunch of thoughts'',
+  ''here''s everything on my mind'', ''idea dump'', ''let me get this out of my head'',
+  ''I need to organize my thoughts'', ''here''s what I''m thinking'', or any variation
+  where someone is unloading a messy stream of ideas, tasks, thoughts, and plans wanting
+  them turned into something coherent. Also trigger when the user pastes or dictates
+  a long, unstructured block of mixed ideas — even without the exact phrase — the
+  intent is the same. Fast-to-action by design: no upfront intake. Output is four
+  sections (Projects/Ideas, Tasks, Connections, How I Can Help) ending with a directive
+  question. Asks at most one mid-organization clarifying question when a single item
+  is genuinely ambiguous between task and project.'
+category: productivity
+domain: Productivity
+triggers:
+- /capture
+- run capture
+- capture skill
+tools:
+- calendar_engine
+- reminder
+- doc_tools
+- smart_email_sender
+argument-hint: '[capture details]'
+when_to_use: Use when user requests capture guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Capture — Brain-Dump Organizer

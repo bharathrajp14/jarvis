@@ -1,7 +1,23 @@
 ---
-name: "spawn"
-description: "Launch N parallel subagents in isolated git worktrees to compete on the session task. Use when the user runs /hub:spawn or asks to start the competing agents for an initialized AgentHub session."
-command: /hub:spawn
+name: spawn
+description: Launch N parallel subagents in isolated git worktrees to compete on the
+  session task. Use when the user runs /hub:spawn or asks to start the competing agents
+  for an initialized AgentHub session.
+category: engineering
+domain: Engineering
+triggers:
+- /spawn
+- run spawn
+- spawn skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[spawn details]'
+when_to_use: Use when user requests spawn guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # /hub:spawn — Launch Parallel Agents

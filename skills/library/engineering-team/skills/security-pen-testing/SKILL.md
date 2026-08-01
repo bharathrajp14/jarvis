@@ -1,6 +1,24 @@
 ---
-name: "security-pen-testing"
-description: "Use when the user asks to perform security audits, penetration testing, vulnerability scanning, OWASP Top 10 checks, or offensive security assessments. Covers static analysis, dependency scanning, secret detection, API security testing, and pen test report generation."
+name: security-pen-testing
+description: Use when the user asks to perform security audits, penetration testing,
+  vulnerability scanning, OWASP Top 10 checks, or offensive security assessments.
+  Covers static analysis, dependency scanning, secret detection, API security testing,
+  and pen test report generation.
+category: engineering-team
+domain: Engineering Team
+triggers:
+- /security-pen-testing
+- run security pen testing
+- security pen testing skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[security pen testing details]'
+when_to_use: Use when user requests security pen testing guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Security Penetration Testing

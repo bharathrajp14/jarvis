@@ -1,12 +1,25 @@
 ---
-name: "signup-flow-cro"
-description: When the user wants to optimize signup, registration, account creation, or trial activation flows. Also use when the user mentions "signup conversions," "registration friction," "signup form optimization," "free trial signup," "reduce signup dropoff," or "account creation flow." For post-signup onboarding, see onboarding-cro. For lead capture forms (not account creation), see form-cro.
-license: MIT
-metadata:
-  version: 1.0.0
-  author: Alireza Rezvani
-  category: marketing
-  updated: 2026-03-06
+name: signup-flow-cro
+description: When the user wants to optimize signup, registration, account creation,
+  or trial activation flows. Also use when the user mentions "signup conversions,"
+  "registration friction," "signup form optimization," "free trial signup," "reduce
+  signup dropoff," or "account creation flow." For post-signup onboarding, see onboarding-cro.
+  For lead capture forms (not account creation), see form-cro.
+category: marketing-skill
+domain: Marketing Skill
+triggers:
+- /signup-flow-cro
+- run signup flow cro
+- signup flow cro skill
+tools:
+- web_search
+- doc_tools
+- file_processor
+- browser_control
+argument-hint: '[signup flow cro details]'
+when_to_use: Use when user requests signup flow cro guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Signup Flow CRO

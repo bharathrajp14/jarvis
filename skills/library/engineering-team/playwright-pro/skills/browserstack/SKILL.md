@@ -1,9 +1,23 @@
 ---
-name: "browserstack"
-description: >-
-  Run tests on BrowserStack. Use when user mentions "browserstack",
-  "cross-browser", "cloud testing", "browser matrix", "test on safari",
-  "test on firefox", or "browser compatibility".
+name: browserstack
+description: Run tests on BrowserStack. Use when user mentions "browserstack", "cross-browser",
+  "cloud testing", "browser matrix", "test on safari", "test on firefox", or "browser
+  compatibility".
+category: engineering-team
+domain: Engineering Team
+triggers:
+- /browserstack
+- run browserstack
+- browserstack skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[browserstack details]'
+when_to_use: Use when user requests browserstack guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # BrowserStack Integration

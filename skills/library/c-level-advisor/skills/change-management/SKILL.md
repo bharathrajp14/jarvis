@@ -1,14 +1,26 @@
 ---
-name: "change-management"
-description: "Framework for rolling out organizational changes without chaos. Covers the ADKAR model adapted for startups, communication templates, resistance patterns, and change fatigue management. Handles process changes, org restructures, strategy pivots, and culture changes. Use when announcing a reorg, switching tools, pivoting strategy, killing a product, changing leadership, or when user mentions change management, change rollout, managing resistance, org change, reorg, or pivot communication."
-license: MIT
-metadata:
-  version: 1.0.0
-  author: Alireza Rezvani
-  category: c-level
-  domain: change-management
-  updated: 2026-03-05
-  frameworks: change-playbook
+name: change-management
+description: Framework for rolling out organizational changes without chaos. Covers
+  the ADKAR model adapted for startups, communication templates, resistance patterns,
+  and change fatigue management. Handles process changes, org restructures, strategy
+  pivots, and culture changes. Use when announcing a reorg, switching tools, pivoting
+  strategy, killing a product, changing leadership, or when user mentions change management,
+  change rollout, managing resistance, org change, reorg, or pivot communication.
+category: c-level-advisor
+domain: C Level Advisor
+triggers:
+- /change-management
+- run change management
+- change management skill
+tools:
+- doc_tools
+- excel_tools
+- web_search
+- rag_library
+argument-hint: '[change management details]'
+when_to_use: Use when user requests change management guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Change Management Playbook

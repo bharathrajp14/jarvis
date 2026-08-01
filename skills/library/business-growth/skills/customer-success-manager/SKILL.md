@@ -1,15 +1,27 @@
 ---
-name: "customer-success-manager"
-description: Monitors customer health, predicts churn risk, and identifies expansion opportunities using weighted scoring models for SaaS customer success. Use when analyzing customer accounts, reviewing retention metrics, scoring at-risk customers, or when the user mentions churn, customer health scores, upsell opportunities, expansion revenue, retention analysis, or customer analytics. Runs three Python CLI tools to produce deterministic health scores, churn risk tiers, and prioritized expansion recommendations across Enterprise, Mid-Market, and SMB segments.
-license: MIT
-metadata:
-  version: 1.0.0
-  author: Alireza Rezvani
-  category: business-growth
-  domain: customer-success
-  updated: 2026-02-06
-  python-tools: health_score_calculator.py, churn_risk_analyzer.py, expansion_opportunity_scorer.py
-  tech-stack: customer-success, saas-metrics, health-scoring
+name: customer-success-manager
+description: Monitors customer health, predicts churn risk, and identifies expansion
+  opportunities using weighted scoring models for SaaS customer success. Use when
+  analyzing customer accounts, reviewing retention metrics, scoring at-risk customers,
+  or when the user mentions churn, customer health scores, upsell opportunities, expansion
+  revenue, retention analysis, or customer analytics. Runs three Python CLI tools
+  to produce deterministic health scores, churn risk tiers, and prioritized expansion
+  recommendations across Enterprise, Mid-Market, and SMB segments.
+category: business-growth
+domain: Business Growth
+triggers:
+- /customer-success-manager
+- run customer success manager
+- customer success manager skill
+tools:
+- doc_tools
+- excel_tools
+- web_search
+- browser_control
+argument-hint: '[customer success manager details]'
+when_to_use: Use when user requests customer success manager guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Customer Success Manager

@@ -1,11 +1,29 @@
 ---
 name: product-research
-description: Use when planning and synthesizing product/user research as a method-and-repository discipline — selecting the right method for the goal (generative interviews vs usability test vs concept test vs validation), computing method-based saturation/sample size with an explicit confidence level, or synthesizing coded observations into insights while flagging single-source anecdotes. Never fabricates user insight; an insight requires recurrence across independent participants. Distinct from product-team/ux-researcher-designer (persona/journey artifacts), product-discovery (discovery-sprint planning), and experiment-designer (live A/B) — this is the research-ops method + insight-repository layer.
-version: 2.9.0
-author: claude-code-skills
-license: MIT
-tags: [research-ops, product-research, ux-research, jtbd, usability, saturation, insight-synthesis, research-repository]
-compatible_tools: [claude-code, codex-cli, cursor, antigravity, opencode, gemini-cli]
+description: Use when planning and synthesizing product/user research as a method-and-repository
+  discipline — selecting the right method for the goal (generative interviews vs usability
+  test vs concept test vs validation), computing method-based saturation/sample size
+  with an explicit confidence level, or synthesizing coded observations into insights
+  while flagging single-source anecdotes. Never fabricates user insight; an insight
+  requires recurrence across independent participants. Distinct from product-team/ux-researcher-designer
+  (persona/journey artifacts), product-discovery (discovery-sprint planning), and
+  experiment-designer (live A/B) — this is the research-ops method + insight-repository
+  layer.
+category: research-ops
+domain: Research Ops
+triggers:
+- /product-research
+- run product research
+- product research skill
+tools:
+- web_search
+- browser_control
+- rag_library
+- excel_tools
+argument-hint: '[product research details]'
+when_to_use: Use when user requests product research guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # product-research

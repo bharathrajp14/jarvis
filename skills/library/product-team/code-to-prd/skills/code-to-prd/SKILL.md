@@ -1,14 +1,30 @@
 ---
 name: code-to-prd
-description: "Reverse-engineer any codebase into a complete Product Requirements Document (PRD). Analyzes routes, components, state management, API integrations, and user interactions to produce business-readable documentation detailed enough for engineers or AI agents to fully reconstruct every page and endpoint. Works with frontend frameworks (React, Vue, Angular, Svelte, Next.js, Nuxt), backend frameworks (NestJS, Django, Express, FastAPI), and fullstack applications. Use when users mention: generate PRD, reverse-engineer requirements, code to documentation, extract product specs from code, document page logic, analyze page fields and interactions, create a functional inventory, write requirements from an existing codebase, document API endpoints, or analyze backend routes."
-license: MIT
-metadata:
-  updated: 2026-03-17
-  tier: STANDARD
-  category: product
-  dependencies: none
-  author: Alireza Rezvani
-  version: 2.1.2
+description: 'Reverse-engineer any codebase into a complete Product Requirements Document
+  (PRD). Analyzes routes, components, state management, API integrations, and user
+  interactions to produce business-readable documentation detailed enough for engineers
+  or AI agents to fully reconstruct every page and endpoint. Works with frontend frameworks
+  (React, Vue, Angular, Svelte, Next.js, Nuxt), backend frameworks (NestJS, Django,
+  Express, FastAPI), and fullstack applications. Use when users mention: generate
+  PRD, reverse-engineer requirements, code to documentation, extract product specs
+  from code, document page logic, analyze page fields and interactions, create a functional
+  inventory, write requirements from an existing codebase, document API endpoints,
+  or analyze backend routes.'
+category: product-team
+domain: Product Team
+triggers:
+- /code-to-prd
+- run code to prd
+- code to prd skill
+tools:
+- doc_tools
+- excel_tools
+- file_processor
+- web_search
+argument-hint: '[code to prd details]'
+when_to_use: Use when user requests code to prd guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 ## Name

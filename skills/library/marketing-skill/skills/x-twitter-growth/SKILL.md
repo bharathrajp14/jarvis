@@ -1,12 +1,26 @@
 ---
-name: "x-twitter-growth"
-description: "X/Twitter growth engine for building audience, crafting viral content, and analyzing engagement. Use when the user wants to grow on X/Twitter, write tweets or threads, analyze their X profile, research competitors on X, plan a posting strategy, or optimize engagement. Complements social-content (generic multi-platform) with X-specific depth: algorithm mechanics, thread engineering, reply strategy, profile optimization, and competitive intelligence via web search."
-license: MIT
-metadata:
-  version: 1.0.0
-  author: Alireza Rezvani
-  category: marketing
-  updated: 2026-03-10
+name: x-twitter-growth
+description: 'X/Twitter growth engine for building audience, crafting viral content,
+  and analyzing engagement. Use when the user wants to grow on X/Twitter, write tweets
+  or threads, analyze their X profile, research competitors on X, plan a posting strategy,
+  or optimize engagement. Complements social-content (generic multi-platform) with
+  X-specific depth: algorithm mechanics, thread engineering, reply strategy, profile
+  optimization, and competitive intelligence via web search.'
+category: marketing-skill
+domain: Marketing Skill
+triggers:
+- /x-twitter-growth
+- run x twitter growth
+- x twitter growth skill
+tools:
+- web_search
+- doc_tools
+- file_processor
+- browser_control
+argument-hint: '[x twitter growth details]'
+when_to_use: Use when user requests x twitter growth guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # X/Twitter Growth Engine

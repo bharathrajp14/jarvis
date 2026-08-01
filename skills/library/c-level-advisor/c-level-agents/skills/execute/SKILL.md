@@ -1,6 +1,24 @@
 ---
-name: "execute"
-description: "/cs:execute <decision> — Generate a 90-day execution plan with weekly milestones, DRIs, and check-in cadence from an approved decision. Use when a logged decision needs to become an operating plan — e.g. turning an approved market-entry call into weekly milestones with DRIs."
+name: execute
+description: /cs:execute <decision> — Generate a 90-day execution plan with weekly
+  milestones, DRIs, and check-in cadence from an approved decision. Use when a logged
+  decision needs to become an operating plan — e.g. turning an approved market-entry
+  call into weekly milestones with DRIs.
+category: c-level-advisor
+domain: C Level Advisor
+triggers:
+- /execute
+- run execute
+- execute skill
+tools:
+- doc_tools
+- excel_tools
+- web_search
+- rag_library
+argument-hint: '[execute details]'
+when_to_use: Use when user requests execute guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # /cs:execute — 90-Day Execution Plan

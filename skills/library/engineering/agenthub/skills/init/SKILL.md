@@ -1,7 +1,23 @@
 ---
-name: "init"
-description: "Create a new AgentHub collaboration session with task, agent count, and evaluation criteria. Use when the user runs /hub:init or asks to start a multi-agent competition on a task."
-command: /hub:init
+name: init
+description: Create a new AgentHub collaboration session with task, agent count, and
+  evaluation criteria. Use when the user runs /hub:init or asks to start a multi-agent
+  competition on a task.
+category: engineering
+domain: Engineering
+triggers:
+- /init
+- run init
+- init skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[init details]'
+when_to_use: Use when user requests init guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # /hub:init — Create New Session

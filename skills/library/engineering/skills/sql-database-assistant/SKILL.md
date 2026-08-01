@@ -1,6 +1,23 @@
 ---
-name: "sql-database-assistant"
-description: "Use when the user asks to write SQL queries, optimize database performance, generate migrations, explore database schemas, or work with ORMs like Prisma, Drizzle, TypeORM, or SQLAlchemy."
+name: sql-database-assistant
+description: Use when the user asks to write SQL queries, optimize database performance,
+  generate migrations, explore database schemas, or work with ORMs like Prisma, Drizzle,
+  TypeORM, or SQLAlchemy.
+category: engineering
+domain: Engineering
+triggers:
+- /sql-database-assistant
+- run sql database assistant
+- sql database assistant skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[sql database assistant details]'
+when_to_use: Use when user requests sql database assistant guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # SQL Database Assistant - POWERFUL Tier Skill

@@ -1,6 +1,26 @@
 ---
-name: "skill-tester"
-description: "Validate, test, and score the quality of skills within the claude-skills ecosystem. Comprehensive meta-skill: structure validation, Python script testing (syntax + imports + runtime + output format), multi-dimensional quality scoring with letter grades and tier classification (BASIC/STANDARD/POWERFUL). Use when authoring a new skill, auditing existing skills for tier promotion, setting up pre-commit hooks for skill quality, or integrating skill QA into CI."
+name: skill-tester
+description: 'Validate, test, and score the quality of skills within the claude-skills
+  ecosystem. Comprehensive meta-skill: structure validation, Python script testing
+  (syntax + imports + runtime + output format), multi-dimensional quality scoring
+  with letter grades and tier classification (BASIC/STANDARD/POWERFUL). Use when authoring
+  a new skill, auditing existing skills for tier promotion, setting up pre-commit
+  hooks for skill quality, or integrating skill QA into CI.'
+category: engineering
+domain: Engineering
+triggers:
+- /skill-tester
+- run skill tester
+- skill tester skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[skill tester details]'
+when_to_use: Use when user requests skill tester guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Skill Tester

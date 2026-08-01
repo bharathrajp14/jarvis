@@ -1,6 +1,24 @@
 ---
-name: "gcp-cloud-architect"
-description: "Design GCP architectures for startups and enterprises. Use when asked to design Google Cloud infrastructure, deploy to GKE or Cloud Run, configure BigQuery pipelines, optimize GCP costs, or migrate to GCP. Covers Cloud Run, GKE, Cloud Functions, Cloud SQL, BigQuery, and cost optimization."
+name: gcp-cloud-architect
+description: Design GCP architectures for startups and enterprises. Use when asked
+  to design Google Cloud infrastructure, deploy to GKE or Cloud Run, configure BigQuery
+  pipelines, optimize GCP costs, or migrate to GCP. Covers Cloud Run, GKE, Cloud Functions,
+  Cloud SQL, BigQuery, and cost optimization.
+category: engineering-team
+domain: Engineering Team
+triggers:
+- /gcp-cloud-architect
+- run gcp cloud architect
+- gcp cloud architect skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[gcp cloud architect details]'
+when_to_use: Use when user requests gcp cloud architect guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # GCP Cloud Architect

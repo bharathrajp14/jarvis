@@ -1,11 +1,25 @@
 ---
 name: workflow-builder
-description: Design and write deterministic multi-agent workflow scripts (.js files in .claude/workflows/) for Claude Code's Workflow tool. Use when a user wants to build, create, author, scaffold, or run a custom Claude Code workflow, orchestrate sub-agents (fan-out, pipeline, loop, judge-panel), or automate a repeatable multi-step task across fresh-context agents.
-license: MIT
-metadata:
-  inspired_by: "https://github.com/ray-amjad/claude-code-workflow-creator (Ray Amjad)"
-  targets: "Claude Code Workflow tool (CLAUDE_CODE_WORKFLOWS=1, /workflows)"
-  version: 1.0.0
+description: Design and write deterministic multi-agent workflow scripts (.js files
+  in .claude/workflows/) for Claude Code's Workflow tool. Use when a user wants to
+  build, create, author, scaffold, or run a custom Claude Code workflow, orchestrate
+  sub-agents (fan-out, pipeline, loop, judge-panel), or automate a repeatable multi-step
+  task across fresh-context agents.
+category: engineering
+domain: Engineering
+triggers:
+- /workflow-builder
+- run workflow builder
+- workflow builder skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[workflow builder details]'
+when_to_use: Use when user requests workflow builder guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Workflow Builder

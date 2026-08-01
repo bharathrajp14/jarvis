@@ -1,6 +1,25 @@
 ---
-name: "revenue-operations"
-description: Analyzes sales pipeline health, revenue forecasting accuracy, and go-to-market efficiency metrics for SaaS revenue optimization. Use when analyzing sales pipeline coverage, forecasting revenue, evaluating go-to-market performance, reviewing sales metrics, assessing pipeline analysis, tracking forecast accuracy with MAPE, calculating GTM efficiency, or measuring sales efficiency and unit economics for SaaS teams.
+name: revenue-operations
+description: Analyzes sales pipeline health, revenue forecasting accuracy, and go-to-market
+  efficiency metrics for SaaS revenue optimization. Use when analyzing sales pipeline
+  coverage, forecasting revenue, evaluating go-to-market performance, reviewing sales
+  metrics, assessing pipeline analysis, tracking forecast accuracy with MAPE, calculating
+  GTM efficiency, or measuring sales efficiency and unit economics for SaaS teams.
+category: business-growth
+domain: Business Growth
+triggers:
+- /revenue-operations
+- run revenue operations
+- revenue operations skill
+tools:
+- doc_tools
+- excel_tools
+- web_search
+- browser_control
+argument-hint: '[revenue operations details]'
+when_to_use: Use when user requests revenue operations guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Revenue Operations

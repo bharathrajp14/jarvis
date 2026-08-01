@@ -1,6 +1,24 @@
 ---
-name: "gc-review"
-description: "/cs:gc-review <plan> — General Counsel interrogation of contracts, IP, regulatory, term sheets, and employment-law surface. Use when reviewing a term sheet before signing, redlining a customer MSA, or checking IP assignment and regulatory exposure on a new product."
+name: gc-review
+description: /cs:gc-review <plan> — General Counsel interrogation of contracts, IP,
+  regulatory, term sheets, and employment-law surface. Use when reviewing a term sheet
+  before signing, redlining a customer MSA, or checking IP assignment and regulatory
+  exposure on a new product.
+category: c-level-advisor
+domain: C Level Advisor
+triggers:
+- /gc-review
+- run gc review
+- gc review skill
+tools:
+- doc_tools
+- excel_tools
+- web_search
+- rag_library
+argument-hint: '[gc review details]'
+when_to_use: Use when user requests gc review guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # /cs:gc-review — General Counsel Forcing Questions

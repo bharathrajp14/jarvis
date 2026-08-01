@@ -1,12 +1,27 @@
 ---
 name: llm-wiki
-description: Use when building or maintaining a persistent personal knowledge base (second brain) in Obsidian where an LLM incrementally ingests sources, updates entity/concept pages, maintains cross-references, and keeps a synthesis current. Triggers include "second brain", "Obsidian wiki", "personal knowledge management", "ingest this paper/article/book", "build a research wiki", "compound knowledge", "Memex", or whenever the user wants knowledge to accumulate across sessions instead of being re-derived by RAG on every query.
-context: fork
-version: 2.9.0
-author: claude-code-skills
-license: MIT
-tags: [knowledge-management, obsidian, second-brain, pkm, rag-alternative, wiki, karpathy, memex]
-compatible_tools: [claude-code, codex-cli, cursor, antigravity, opencode, gemini-cli]
+description: Use when building or maintaining a persistent personal knowledge base
+  (second brain) in Obsidian where an LLM incrementally ingests sources, updates entity/concept
+  pages, maintains cross-references, and keeps a synthesis current. Triggers include
+  "second brain", "Obsidian wiki", "personal knowledge management", "ingest this paper/article/book",
+  "build a research wiki", "compound knowledge", "Memex", or whenever the user wants
+  knowledge to accumulate across sessions instead of being re-derived by RAG on every
+  query.
+category: engineering
+domain: Engineering
+triggers:
+- /llm-wiki
+- run llm wiki
+- llm wiki skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[llm wiki details]'
+when_to_use: Use when user requests llm wiki guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # LLM Wiki — Second Brain for Claude Code + Obsidian

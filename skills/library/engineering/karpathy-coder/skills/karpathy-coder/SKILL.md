@@ -1,12 +1,25 @@
 ---
 name: karpathy-coder
-description: Use when writing, reviewing, or committing code to enforce Karpathy's 4 coding principles — surface assumptions before coding, keep it simple, make surgical changes, define verifiable goals. Triggers on "review my diff", "check complexity", "am I overcomplicating this", "karpathy check", "before I commit", or any code quality concern where the LLM might be overcoding.
-context: fork
-version: 2.9.0
-author: claude-code-skills
-license: MIT
-tags: [code-quality, discipline, karpathy, simplicity, surgical-changes, anti-patterns, review]
-compatible_tools: [claude-code, codex-cli, cursor, antigravity, opencode, gemini-cli]
+description: Use when writing, reviewing, or committing code to enforce Karpathy's
+  4 coding principles — surface assumptions before coding, keep it simple, make surgical
+  changes, define verifiable goals. Triggers on "review my diff", "check complexity",
+  "am I overcomplicating this", "karpathy check", "before I commit", or any code quality
+  concern where the LLM might be overcoding.
+category: engineering
+domain: Engineering
+triggers:
+- /karpathy-coder
+- run karpathy coder
+- karpathy coder skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[karpathy coder details]'
+when_to_use: Use when user requests karpathy coder guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Karpathy Coder — Active Coding Discipline

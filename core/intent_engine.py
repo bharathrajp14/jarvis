@@ -474,10 +474,10 @@ class DeterministicIntentEngine:
                 public_ip = "Unknown"
                 conn_status = "Offline"
                 try:
-                    req = urllib.request.urlopen("https://api.ipify.org?format=json", timeout=2.0)
-                    data = json.loads(req.read().decode())
-                    public_ip = data.get("ip", "Unknown")
-                    conn_status = "Online (Connected)"
+                    with urllib.request.urlopen("https://api.ipify.org?format=json", timeout=2.0) as req:
+                        data = json.loads(req.read().decode())
+                        public_ip = data.get("ip", "Unknown")
+                        conn_status = "Online (Connected)"
                 except Exception:
                     pass
                 return {
@@ -1740,7 +1740,7 @@ class DeterministicIntentEngine:
         """Launch desktop application via native subprocess/start."""
         try:
             if sys.platform == "win32":
-                subprocess.Popen(f"start {app_name}", shell=True)
+                subprocess.Popen(["cmd", "/c", "start", "", app_name], shell=False)
             elif sys.platform == "darwin":
                 subprocess.Popen(["open", "-a", app_name])
             else:

@@ -1,11 +1,28 @@
 ---
 name: market-research
-description: Use when doing upstream market-research methodology — sizing a market as TAM/SAM/SOM computed BOTH top-down and bottoms-up (never a single unsourced number), planning a survey sample size with finite-population correction and per-segment minimums, or scoring candidate market segments against Kotler's measurable/substantial/accessible/differentiable/actionable criteria. Outputs always show the method and the assumptions. For market-research analysts and product-marketing at the sizing/survey/segmentation moment. Distinct from marketing-skill (campaign analytics, attribution, demand-gen) — this is the evidence-building methodology, not live-campaign optimization.
-version: 2.9.0
-author: claude-code-skills
-license: MIT
-tags: [research-ops, market-research, tam-sam-som, market-sizing, survey, sampling, segmentation, competitive-intelligence]
-compatible_tools: [claude-code, codex-cli, cursor, antigravity, opencode, gemini-cli]
+description: Use when doing upstream market-research methodology — sizing a market
+  as TAM/SAM/SOM computed BOTH top-down and bottoms-up (never a single unsourced number),
+  planning a survey sample size with finite-population correction and per-segment
+  minimums, or scoring candidate market segments against Kotler's measurable/substantial/accessible/differentiable/actionable
+  criteria. Outputs always show the method and the assumptions. For market-research
+  analysts and product-marketing at the sizing/survey/segmentation moment. Distinct
+  from marketing-skill (campaign analytics, attribution, demand-gen) — this is the
+  evidence-building methodology, not live-campaign optimization.
+category: research-ops
+domain: Research Ops
+triggers:
+- /market-research
+- run market research
+- market research skill
+tools:
+- web_search
+- browser_control
+- rag_library
+- excel_tools
+argument-hint: '[market research details]'
+when_to_use: Use when user requests market research guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # market-research

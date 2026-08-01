@@ -1,6 +1,25 @@
 ---
-name: "cdo-review"
-description: "/cs:cdo-review <plan> — Decision-driven Chief Data Officer interrogation of any plan that touches training data, data architecture, data productization, or data team hiring. Use when validating training-data rights before model work, choosing warehouse vs lakehouse vs mesh, or valuing data assets for productization or M&A."
+name: cdo-review
+description: /cs:cdo-review <plan> — Decision-driven Chief Data Officer interrogation
+  of any plan that touches training data, data architecture, data productization,
+  or data team hiring. Use when validating training-data rights before model work,
+  choosing warehouse vs lakehouse vs mesh, or valuing data assets for productization
+  or M&A.
+category: c-level-advisor
+domain: C Level Advisor
+triggers:
+- /cdo-review
+- run cdo review
+- cdo review skill
+tools:
+- doc_tools
+- excel_tools
+- web_search
+- rag_library
+argument-hint: '[cdo review details]'
+when_to_use: Use when user requests cdo review guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # /cs:cdo-review — CDO Forcing Questions

@@ -1,6 +1,22 @@
 ---
 name: product-analytics
-description: Use when defining product KPIs, building metric dashboards, running cohort or retention analysis, or interpreting feature adoption trends across product stages.
+description: Use when defining product KPIs, building metric dashboards, running cohort
+  or retention analysis, or interpreting feature adoption trends across product stages.
+category: product-team
+domain: Product Team
+triggers:
+- /product-analytics
+- run product analytics
+- product analytics skill
+tools:
+- doc_tools
+- excel_tools
+- file_processor
+- web_search
+argument-hint: '[product analytics details]'
+when_to_use: Use when user requests product analytics guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Product Analytics

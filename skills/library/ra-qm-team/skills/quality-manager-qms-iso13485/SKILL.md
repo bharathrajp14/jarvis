@@ -1,19 +1,37 @@
 ---
-name: "quality-manager-qms-iso13485"
-description: ISO 13485 Quality Management System implementation and maintenance for medical device organizations. Provides QMS design, documentation control, internal auditing, CAPA management, and certification support. Use when working with medical device quality systems, preparing for ISO 13485 audits, managing regulatory compliance documentation, setting up corrective actions, or building audit preparation programs. Useful for quality management, audit preparation, regulatory compliance, medical device documentation, and corrective action workflows.
+name: quality-manager-qms-iso13485
+description: ISO 13485 Quality Management System implementation and maintenance for
+  medical device organizations. Provides QMS design, documentation control, internal
+  auditing, CAPA management, and certification support. Use when working with medical
+  device quality systems, preparing for ISO 13485 audits, managing regulatory compliance
+  documentation, setting up corrective actions, or building audit preparation programs.
+  Useful for quality management, audit preparation, regulatory compliance, medical
+  device documentation, and corrective action workflows.
+category: ra-qm-team
+domain: Ra Qm Team
 triggers:
-  - ISO 13485
-  - QMS implementation
-  - quality management system
-  - document control
-  - internal audit
-  - management review
-  - quality manual
-  - CAPA process
-  - process validation
-  - design control
-  - supplier qualification
-  - quality records
+- ISO 13485
+- QMS implementation
+- quality management system
+- document control
+- internal audit
+- management review
+- quality manual
+- CAPA process
+- process validation
+- design control
+- supplier qualification
+- quality records
+tools:
+- doc_tools
+- excel_tools
+- rag_library
+- file_processor
+argument-hint: '[quality manager qms iso13485 details]'
+when_to_use: Use when user requests quality manager qms iso13485 guidance or task
+  execution.
+user-invocable: true
+context: inline
 ---
 
 # Quality Manager - QMS ISO 13485 Specialist

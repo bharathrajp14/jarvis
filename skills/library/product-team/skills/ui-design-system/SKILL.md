@@ -1,6 +1,24 @@
 ---
-name: "ui-design-system"
-description: UI design system toolkit for Senior UI Designer including design token generation, component documentation, responsive design calculations, and developer handoff tools. Use when creating design systems, generating design tokens, maintaining visual consistency, or facilitating design-dev collaboration and developer handoff.
+name: ui-design-system
+description: UI design system toolkit for Senior UI Designer including design token
+  generation, component documentation, responsive design calculations, and developer
+  handoff tools. Use when creating design systems, generating design tokens, maintaining
+  visual consistency, or facilitating design-dev collaboration and developer handoff.
+category: product-team
+domain: Product Team
+triggers:
+- /ui-design-system
+- run ui design system
+- ui design system skill
+tools:
+- doc_tools
+- excel_tools
+- file_processor
+- web_search
+argument-hint: '[ui design system details]'
+when_to_use: Use when user requests ui design system guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # UI Design System

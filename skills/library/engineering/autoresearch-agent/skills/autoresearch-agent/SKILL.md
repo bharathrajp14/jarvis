@@ -1,12 +1,27 @@
 ---
-name: "autoresearch-agent"
-description: "Autonomous experiment loop that optimizes any file by a measurable metric. Inspired by Karpathy's autoresearch. The agent edits a target file, runs a fixed evaluation, keeps improvements (git commit), discards failures (git reset), and loops indefinitely. Use when: user wants to optimize code speed, reduce bundle/image size, improve test pass rate, optimize prompts, improve content quality (headlines, copy, CTR), or run any measurable improvement loop. Requires: a target file, an evaluation command that outputs a metric, and a git repo."
-license: MIT
-metadata:
-  version: 2.0.0
-  author: Alireza Rezvani
-  category: engineering
-  updated: 2026-03-13
+name: autoresearch-agent
+description: 'Autonomous experiment loop that optimizes any file by a measurable metric.
+  Inspired by Karpathy''s autoresearch. The agent edits a target file, runs a fixed
+  evaluation, keeps improvements (git commit), discards failures (git reset), and
+  loops indefinitely. Use when: user wants to optimize code speed, reduce bundle/image
+  size, improve test pass rate, optimize prompts, improve content quality (headlines,
+  copy, CTR), or run any measurable improvement loop. Requires: a target file, an
+  evaluation command that outputs a metric, and a git repo.'
+category: engineering
+domain: Engineering
+triggers:
+- /autoresearch-agent
+- run autoresearch agent
+- autoresearch agent skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[autoresearch agent details]'
+when_to_use: Use when user requests autoresearch agent guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Autoresearch Agent

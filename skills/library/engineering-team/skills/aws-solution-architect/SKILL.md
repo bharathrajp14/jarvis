@@ -1,6 +1,24 @@
 ---
-name: "aws-solution-architect"
-description: Design AWS architectures for startups using serverless patterns and IaC templates. Use when asked to design serverless architecture, create CloudFormation templates, optimize AWS costs, set up CI/CD pipelines, or migrate to AWS. Covers Lambda, API Gateway, DynamoDB, ECS, Aurora, and cost optimization.
+name: aws-solution-architect
+description: Design AWS architectures for startups using serverless patterns and IaC
+  templates. Use when asked to design serverless architecture, create CloudFormation
+  templates, optimize AWS costs, set up CI/CD pipelines, or migrate to AWS. Covers
+  Lambda, API Gateway, DynamoDB, ECS, Aurora, and cost optimization.
+category: engineering-team
+domain: Engineering Team
+triggers:
+- /aws-solution-architect
+- run aws solution architect
+- aws solution architect skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[aws solution architect details]'
+when_to_use: Use when user requests aws solution architect guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # AWS Solution Architect

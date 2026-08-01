@@ -1,15 +1,28 @@
 ---
-name: "chief-data-officer-advisor"
-description: "Chief Data Officer advisory for startups: AI training data rights and consent provenance, data product strategy (warehouse vs lakehouse vs mesh, build-vs-buy), B2B customer-data-as-asset valuation and M&A readiness, data team org evolution. Use when deciding whether to train models on customer data, choosing data architecture, valuing data for fundraising or M&A, sequencing data hires, or when user mentions CDO, chief data officer, data strategy, data mesh, lakehouse, training data, data product, data monetization, or customer data asset. NOT a tactical data engineering skill — strategic decisions only."
-license: MIT
-metadata:
-  version: 1.0.0
-  author: Alireza Rezvani
-  category: c-level
-  domain: chief-data-officer-leadership
-  updated: 2026-05-12
-  python-tools: ai_training_data_audit.py, data_product_strategy_picker.py, data_asset_valuator.py
-  frameworks: training-data-rights-matrix, data-product-strategy, customer-data-as-asset, data-team-org-evolution
+name: chief-data-officer-advisor
+description: 'Chief Data Officer advisory for startups: AI training data rights and
+  consent provenance, data product strategy (warehouse vs lakehouse vs mesh, build-vs-buy),
+  B2B customer-data-as-asset valuation and M&A readiness, data team org evolution.
+  Use when deciding whether to train models on customer data, choosing data architecture,
+  valuing data for fundraising or M&A, sequencing data hires, or when user mentions
+  CDO, chief data officer, data strategy, data mesh, lakehouse, training data, data
+  product, data monetization, or customer data asset. NOT a tactical data engineering
+  skill — strategic decisions only.'
+category: c-level-advisor
+domain: C Level Advisor
+triggers:
+- /chief-data-officer-advisor
+- run chief data officer advisor
+- chief data officer advisor skill
+tools:
+- doc_tools
+- excel_tools
+- web_search
+- rag_library
+argument-hint: '[chief data officer advisor details]'
+when_to_use: Use when user requests chief data officer advisor guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Chief Data Officer Advisor

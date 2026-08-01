@@ -1,12 +1,28 @@
 ---
 name: chaos-engineering
-description: Use when planning, running, or learning from chaos engineering experiments. Triggers on "chaos experiment", "fault injection", "gameday", "resilience test", "blast radius", "steady state", "abort criteria", "Chaos Toolkit", "Chaos Mesh", "Litmus", "Gremlin", "AWS FIS", or any deliberate failure-injection question. Ships experiment designer, blast-radius calculator, and postmortem generator (all stdlib Python), 4 references on chaos principles + experiment design + attack taxonomy + tooling landscape, and a /chaos-experiment slash command. Composes with feature-flags-architect (kill switches as abort triggers) and kubernetes-operator (common chaos targets).
-context: fork
-version: 2.9.0
-author: claude-code-skills
-license: MIT
-tags: [chaos-engineering, resilience, fault-injection, gameday, sre, reliability, chaos-toolkit, chaos-mesh, litmus, gremlin, aws-fis]
-compatible_tools: [claude-code, codex-cli, cursor, antigravity, opencode, gemini-cli]
+description: Use when planning, running, or learning from chaos engineering experiments.
+  Triggers on "chaos experiment", "fault injection", "gameday", "resilience test",
+  "blast radius", "steady state", "abort criteria", "Chaos Toolkit", "Chaos Mesh",
+  "Litmus", "Gremlin", "AWS FIS", or any deliberate failure-injection question. Ships
+  experiment designer, blast-radius calculator, and postmortem generator (all stdlib
+  Python), 4 references on chaos principles + experiment design + attack taxonomy
+  + tooling landscape, and a /chaos-experiment slash command. Composes with feature-flags-architect
+  (kill switches as abort triggers) and kubernetes-operator (common chaos targets).
+category: engineering
+domain: Engineering
+triggers:
+- /chaos-engineering
+- run chaos engineering
+- chaos engineering skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[chaos engineering details]'
+when_to_use: Use when user requests chaos engineering guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Chaos Engineering

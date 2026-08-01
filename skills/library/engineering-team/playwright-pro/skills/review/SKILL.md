@@ -1,9 +1,23 @@
 ---
-name: "review"
-description: >-
-  Review Playwright tests for quality. Use when user says "review tests",
-  "check test quality", "audit tests", "improve tests", "test code review",
-  or "playwright best practices check".
+name: review
+description: Review Playwright tests for quality. Use when user says "review tests",
+  "check test quality", "audit tests", "improve tests", "test code review", or "playwright
+  best practices check".
+category: engineering-team
+domain: Engineering Team
+triggers:
+- /review
+- run review
+- review skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[review details]'
+when_to_use: Use when user requests review guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Review Playwright Tests

@@ -1,6 +1,26 @@
 ---
-name: "senior-data-engineer"
-description: Data engineering skill for building scalable data pipelines, ETL/ELT systems, and data infrastructure. Expertise in Python, SQL, Spark, Airflow, dbt, Kafka, and modern data stack. Includes data modeling, pipeline orchestration, data quality, and DataOps. Use when designing data architectures, building data pipelines, optimizing data workflows, implementing data governance, or troubleshooting data issues.
+name: senior-data-engineer
+description: Data engineering skill for building scalable data pipelines, ETL/ELT
+  systems, and data infrastructure. Expertise in Python, SQL, Spark, Airflow, dbt,
+  Kafka, and modern data stack. Includes data modeling, pipeline orchestration, data
+  quality, and DataOps. Use when designing data architectures, building data pipelines,
+  optimizing data workflows, implementing data governance, or troubleshooting data
+  issues.
+category: engineering-team
+domain: Engineering Team
+triggers:
+- /senior-data-engineer
+- run senior data engineer
+- senior data engineer skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[senior data engineer details]'
+when_to_use: Use when user requests senior data engineer guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Senior Data Engineer
@@ -188,4 +208,3 @@ See `references/dataops_best_practices.md` for:
 
 ## Troubleshooting
 → See references/troubleshooting.md for details
-

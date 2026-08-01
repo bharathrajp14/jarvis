@@ -1,6 +1,23 @@
 ---
-name: "soc2-audit-prep"
-description: "/cs:soc2-audit-prep <scope> — SOC 2 Type II readiness 6-question forcing interrogation. Observation-period focused. Use before Type II observation begins, mid-period checkpoint, or pre-field-test month-10 readiness."
+name: soc2-audit-prep
+description: /cs:soc2-audit-prep <scope> — SOC 2 Type II readiness 6-question forcing
+  interrogation. Observation-period focused. Use before Type II observation begins,
+  mid-period checkpoint, or pre-field-test month-10 readiness.
+category: compliance-os
+domain: Compliance Os
+triggers:
+- /soc2-audit-prep
+- run soc2 audit prep
+- soc2 audit prep skill
+tools:
+- doc_tools
+- excel_tools
+- rag_library
+- file_processor
+argument-hint: '[soc2 audit prep details]'
+when_to_use: Use when user requests soc2 audit prep guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # /cs:soc2-audit-prep — SOC 2 Type II Forcing Questions

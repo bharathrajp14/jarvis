@@ -1,6 +1,24 @@
 ---
-name: "ai-security"
-description: "Use when assessing AI/ML systems for prompt injection, jailbreak vulnerabilities, model inversion risk, data poisoning exposure, or agent tool abuse. Covers MITRE ATLAS technique mapping, injection signature detection, and adversarial robustness scoring."
+name: ai-security
+description: Use when assessing AI/ML systems for prompt injection, jailbreak vulnerabilities,
+  model inversion risk, data poisoning exposure, or agent tool abuse. Covers MITRE
+  ATLAS technique mapping, injection signature detection, and adversarial robustness
+  scoring.
+category: engineering-team
+domain: Engineering Team
+triggers:
+- /ai-security
+- run ai security
+- ai security skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[ai security details]'
+when_to_use: Use when user requests ai security guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # AI Security

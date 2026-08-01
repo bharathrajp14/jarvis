@@ -1,17 +1,31 @@
 ---
-name: "qms-audit-expert"
-description: ISO 13485 internal audit expertise for medical device QMS. Covers audit planning, execution, nonconformity classification, and CAPA verification. Use when planning internal audits, executing audits, classifying findings, preparing for external audits, or managing an audit program.
+name: qms-audit-expert
+description: ISO 13485 internal audit expertise for medical device QMS. Covers audit
+  planning, execution, nonconformity classification, and CAPA verification. Use when
+  planning internal audits, executing audits, classifying findings, preparing for
+  external audits, or managing an audit program.
+category: ra-qm-team
+domain: Ra Qm Team
 triggers:
-  - ISO 13485 audit
-  - internal audit
-  - QMS audit
-  - audit planning
-  - nonconformity classification
-  - CAPA verification
-  - audit checklist
-  - audit finding
-  - external audit prep
-  - audit schedule
+- ISO 13485 audit
+- internal audit
+- QMS audit
+- audit planning
+- nonconformity classification
+- CAPA verification
+- audit checklist
+- audit finding
+- external audit prep
+- audit schedule
+tools:
+- doc_tools
+- excel_tools
+- rag_library
+- file_processor
+argument-hint: '[qms audit expert details]'
+when_to_use: Use when user requests qms audit expert guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # QMS Audit Expert

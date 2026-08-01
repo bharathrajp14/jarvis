@@ -1,7 +1,22 @@
 ---
-name: "run"
-description: "Run a single experiment iteration. Edit the target file, evaluate, keep or discard. Use when the user runs /ar:run or asks for one manual autoresearch iteration."
-command: /ar:run
+name: run
+description: Run a single experiment iteration. Edit the target file, evaluate, keep
+  or discard. Use when the user runs /ar:run or asks for one manual autoresearch iteration.
+category: engineering
+domain: Engineering
+triggers:
+- /run
+- run run
+- run skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[run details]'
+when_to_use: Use when user requests run guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # /ar:run — Single Experiment Iteration

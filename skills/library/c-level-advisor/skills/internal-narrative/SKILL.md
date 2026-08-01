@@ -1,14 +1,26 @@
 ---
-name: "internal-narrative"
-description: "Build and maintain one coherent company story across all audiences — employees, investors, customers, candidates, and partners. Detects narrative contradictions and ensures the same truth is framed for each audience's needs. Use when preparing investor updates, all-hands presentations, board communications, recruiting narratives, crisis communications, or when user mentions company narrative, messaging consistency, storytelling, all-hands, investor update, or crisis communication."
-license: MIT
-metadata:
-  version: 1.0.0
-  author: Alireza Rezvani
-  category: c-level
-  domain: narrative-strategy
-  updated: 2026-03-05
-  frameworks: narrative-frameworks, all-hands-template
+name: internal-narrative
+description: Build and maintain one coherent company story across all audiences —
+  employees, investors, customers, candidates, and partners. Detects narrative contradictions
+  and ensures the same truth is framed for each audience's needs. Use when preparing
+  investor updates, all-hands presentations, board communications, recruiting narratives,
+  crisis communications, or when user mentions company narrative, messaging consistency,
+  storytelling, all-hands, investor update, or crisis communication.
+category: c-level-advisor
+domain: C Level Advisor
+triggers:
+- /internal-narrative
+- run internal narrative
+- internal narrative skill
+tools:
+- doc_tools
+- excel_tools
+- web_search
+- rag_library
+argument-hint: '[internal narrative details]'
+when_to_use: Use when user requests internal narrative guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Internal Narrative Builder

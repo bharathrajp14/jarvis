@@ -1,6 +1,25 @@
 ---
-name: "performance-profiler"
-description: "Systematic performance profiling for Node.js, Python, and Go applications. Identifies CPU, memory, and I/O bottlenecks, generates flamegraphs, analyzes bundle sizes, optimizes database queries, runs load tests with k6 and Artillery. Always measures before and after. Use when investigating a slow endpoint, planning a performance budget, or hunting a memory leak in production."
+name: performance-profiler
+description: Systematic performance profiling for Node.js, Python, and Go applications.
+  Identifies CPU, memory, and I/O bottlenecks, generates flamegraphs, analyzes bundle
+  sizes, optimizes database queries, runs load tests with k6 and Artillery. Always
+  measures before and after. Use when investigating a slow endpoint, planning a performance
+  budget, or hunting a memory leak in production.
+category: engineering
+domain: Engineering
+triggers:
+- /performance-profiler
+- run performance profiler
+- performance profiler skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[performance profiler details]'
+when_to_use: Use when user requests performance profiler guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Performance Profiler
@@ -71,4 +90,3 @@ python3 scripts/performance_profiler.py /path/to/project --large-file-threshold-
 
 - [references/profiling-recipes.md](references/profiling-recipes.md) — Node.js/Python/Go profiling commands, flamegraph generation, heap snapshots
 - [references/optimization-playbook.md](references/optimization-playbook.md) — before/after measurement template, quick-win optimization checklist (DB/Node/bundle/API), common pitfalls, best practices
-

@@ -1,14 +1,24 @@
 ---
-name: "board-deck-builder"
-description: "Assembles comprehensive board and investor update decks by pulling perspectives from all C-suite roles. Use when preparing board meetings, investor updates, quarterly business reviews, or fundraising narratives. Covers structure, narrative framework, bad news delivery, and common mistakes."
-license: MIT
-metadata:
-  version: 1.0.0
-  author: Alireza Rezvani
-  category: c-level
-  domain: board-governance
-  updated: 2026-03-05
-  frameworks: deck-frameworks, board-deck-template
+name: board-deck-builder
+description: Assembles comprehensive board and investor update decks by pulling perspectives
+  from all C-suite roles. Use when preparing board meetings, investor updates, quarterly
+  business reviews, or fundraising narratives. Covers structure, narrative framework,
+  bad news delivery, and common mistakes.
+category: c-level-advisor
+domain: C Level Advisor
+triggers:
+- /board-deck-builder
+- run board deck builder
+- board deck builder skill
+tools:
+- doc_tools
+- excel_tools
+- web_search
+- rag_library
+argument-hint: '[board deck builder details]'
+when_to_use: Use when user requests board deck builder guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Board Deck Builder

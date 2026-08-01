@@ -1,6 +1,23 @@
 ---
-name: "strict-api"
-description: "Use when the user says 'no hallucinations', 'verify APIs', 'reality check', or 'don't invent functions'. Prevents the agent from calling methods, imports, or variables that do not provably exist in the user's installed version."
+name: strict-api
+description: Use when the user says 'no hallucinations', 'verify APIs', 'reality check',
+  or 'don't invent functions'. Prevents the agent from calling methods, imports, or
+  variables that do not provably exist in the user's installed version.
+category: engineering
+domain: Engineering
+triggers:
+- /strict-api
+- run strict api
+- strict api skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[strict api details]'
+when_to_use: Use when user requests strict api guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Strict API Verification

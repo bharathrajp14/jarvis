@@ -1,13 +1,24 @@
 ---
-name: "intl-expansion"
-description: "International market expansion strategy. Market selection, entry modes, localization, regulatory compliance, and go-to-market by region. Use when expanding to new countries, evaluating international markets, planning localization, or building regional teams."
-license: MIT
-metadata:
-  version: 1.0.0
-  author: Alireza Rezvani
-  category: c-level
-  domain: international-strategy
-  updated: 2026-03-05
+name: intl-expansion
+description: International market expansion strategy. Market selection, entry modes,
+  localization, regulatory compliance, and go-to-market by region. Use when expanding
+  to new countries, evaluating international markets, planning localization, or building
+  regional teams.
+category: c-level-advisor
+domain: C Level Advisor
+triggers:
+- /intl-expansion
+- run intl expansion
+- intl expansion skill
+tools:
+- doc_tools
+- excel_tools
+- web_search
+- rag_library
+argument-hint: '[intl expansion details]'
+when_to_use: Use when user requests intl expansion guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # International Expansion

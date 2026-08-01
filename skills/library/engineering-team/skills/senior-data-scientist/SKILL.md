@@ -1,6 +1,29 @@
 ---
-name: "senior-data-scientist"
-description: World-class senior data scientist skill specialising in statistical modeling, experiment design, causal inference, and predictive analytics. Covers A/B testing (sample sizing, two-proportion z-tests, Bonferroni correction), difference-in-differences, feature engineering pipelines (Scikit-learn, XGBoost), cross-validated model evaluation (AUC-ROC, AUC-PR, SHAP), and MLflow experiment tracking — using Python (NumPy, Pandas, Scikit-learn), R, and SQL. Use when designing or analysing controlled experiments, building and evaluating classification or regression models, performing causal analysis on observational data, engineering features for structured tabular datasets, or translating statistical findings into data-driven business decisions.
+name: senior-data-scientist
+description: World-class senior data scientist skill specialising in statistical modeling,
+  experiment design, causal inference, and predictive analytics. Covers A/B testing
+  (sample sizing, two-proportion z-tests, Bonferroni correction), difference-in-differences,
+  feature engineering pipelines (Scikit-learn, XGBoost), cross-validated model evaluation
+  (AUC-ROC, AUC-PR, SHAP), and MLflow experiment tracking — using Python (NumPy, Pandas,
+  Scikit-learn), R, and SQL. Use when designing or analysing controlled experiments,
+  building and evaluating classification or regression models, performing causal analysis
+  on observational data, engineering features for structured tabular datasets, or
+  translating statistical findings into data-driven business decisions.
+category: engineering-team
+domain: Engineering Team
+triggers:
+- /senior-data-scientist
+- run senior data scientist
+- senior data scientist skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[senior data scientist details]'
+when_to_use: Use when user requests senior data scientist guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Senior Data Scientist

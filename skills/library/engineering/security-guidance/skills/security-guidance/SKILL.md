@@ -1,6 +1,30 @@
 ---
 name: security-guidance
-description: PreToolUse security-anti-pattern hook for Claude Code. Catches 12 common security risks (command injection, XSS, SQL injection, unsafe deserialization, GitHub Actions workflow injection, eval/new Function code injection) BEFORE the Edit/Write/MultiEdit operation completes. Session-state caching prevents duplicate warnings on the same file+rule combo. Stdlib only — no dependencies. Use when you want a safety net during Claude Code sessions that touch security-sensitive code (auth, payments, user input handling, IaC). Disable with ENABLE_SECURITY_REMINDER=0 if you need to perform a verified-safe operation that would otherwise trip a pattern. Triggers — "add security hook", "block unsafe code", "detect command injection before write", "prevent SQL injection patterns", "security warning hook".
+description: PreToolUse security-anti-pattern hook for Claude Code. Catches 12 common
+  security risks (command injection, XSS, SQL injection, unsafe deserialization, GitHub
+  Actions workflow injection, eval/new Function code injection) BEFORE the Edit/Write/MultiEdit
+  operation completes. Session-state caching prevents duplicate warnings on the same
+  file+rule combo. Stdlib only — no dependencies. Use when you want a safety net during
+  Claude Code sessions that touch security-sensitive code (auth, payments, user input
+  handling, IaC). Disable with ENABLE_SECURITY_REMINDER=0 if you need to perform a
+  verified-safe operation that would otherwise trip a pattern. Triggers — "add security
+  hook", "block unsafe code", "detect command injection before write", "prevent SQL
+  injection patterns", "security warning hook".
+category: engineering
+domain: Engineering
+triggers:
+- /security-guidance
+- run security guidance
+- security guidance skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[security guidance details]'
+when_to_use: Use when user requests security guidance guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Security Guidance Hook

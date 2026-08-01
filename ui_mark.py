@@ -19,31 +19,31 @@ else:
     _WIN_HIDE: dict = {}
 
 try:
-    from PyQt6.QtCore import (
+    from PyQt6.QtCore import (  # type: ignore[import-not-found]
         QEasingCurve, QMimeData, QObject, QPointF, QRectF, QSize, Qt,
         QTimer, QUrl, pyqtSignal,
     )
-    from PyQt6.QtGui import (
+    from PyQt6.QtGui import (  # type: ignore[import-not-found]
         QBrush, QColor, QConicalGradient, QDragEnterEvent, QDropEvent, QFont,
         QFontDatabase, QKeySequence, QLinearGradient, QPainter, QPainterPath,
         QPen, QPixmap, QRadialGradient, QShortcut,
     )
-    from PyQt6.QtWidgets import (
+    from PyQt6.QtWidgets import (  # type: ignore[import-not-found]
         QApplication, QFileDialog, QFrame, QHBoxLayout, QLabel, QLineEdit,
         QMainWindow, QPushButton, QScrollArea, QSizePolicy, QSplitter,
         QStackedWidget, QTextEdit, QVBoxLayout, QWidget, QProgressBar,
     )
 except ImportError:
-    from PySide6.QtCore import (
+    from PySide6.QtCore import (  # type: ignore[import-not-found]
         QEasingCurve, QMimeData, QObject, QPointF, QRectF, QSize, Qt,
         QTimer, QUrl, Signal as pyqtSignal,
     )
-    from PySide6.QtGui import (
+    from PySide6.QtGui import (  # type: ignore[import-not-found]
         QBrush, QColor, QConicalGradient, QDragEnterEvent, QDropEvent, QFont,
         QFontDatabase, QKeySequence, QLinearGradient, QPainter, QPainterPath,
         QPen, QPixmap, QRadialGradient, QShortcut,
     )
-    from PySide6.QtWidgets import (
+    from PySide6.QtWidgets import (  # type: ignore[import-not-found]
         QApplication, QFileDialog, QFrame, QHBoxLayout, QLabel, QLineEdit,
         QMainWindow, QPushButton, QScrollArea, QSizePolicy, QSplitter,
         QStackedWidget, QTextEdit, QVBoxLayout, QWidget, QProgressBar,
@@ -1660,7 +1660,7 @@ class RemoteKeyOverlay(QWidget):
             qr.make(fit=True)
             img = qr.make_image(fill_color="black", back_color="white")
             buf = BytesIO()
-            img.save(buf, format="PNG")
+            img.save(buf, "PNG")  # type: ignore
             px = QPixmap()
             px.loadFromData(buf.getvalue())
             self._qr_label.setPixmap(
@@ -3353,6 +3353,27 @@ class JarvisUI:
     def stop_speaking(self):
         if not self.muted:
             self.set_state("LISTENING")
+
+    def update_agent_task(self, task_id: str, name: str, status: str, progress: float = 0.0, result: str = "") -> None:
+        """Thread-safe update or add an agent task."""
+        if not hasattr(self, "_agent_tasks"):
+            self._agent_tasks = {}
+        self._agent_tasks[task_id] = {
+            "name": name,
+            "status": status,
+            "progress": progress,
+            "result": result
+        }
+
+    def remove_agent_task(self, task_id: str) -> None:
+        """Remove a completed or cancelled task."""
+        if hasattr(self, "_agent_tasks") and task_id in self._agent_tasks:
+            del self._agent_tasks[task_id]
+
+    def clear_agent_tasks(self) -> None:
+        """Clear all tasks."""
+        if hasattr(self, "_agent_tasks"):
+            self._agent_tasks.clear()
 
 
 if __name__ == "__main__":

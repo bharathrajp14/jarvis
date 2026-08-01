@@ -1,7 +1,23 @@
 ---
-name: "setup"
-description: "Set up a new autoresearch experiment interactively. Collects domain, target file, eval command, metric, direction, and evaluator. Use when the user runs /ar:setup or asks to start optimizing a file with the autoresearch loop."
-command: /ar:setup
+name: setup
+description: Set up a new autoresearch experiment interactively. Collects domain,
+  target file, eval command, metric, direction, and evaluator. Use when the user runs
+  /ar:setup or asks to start optimizing a file with the autoresearch loop.
+category: engineering
+domain: Engineering
+triggers:
+- /setup
+- run setup
+- setup skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[setup details]'
+when_to_use: Use when user requests setup guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # /ar:setup — Create New Experiment

@@ -1,6 +1,25 @@
 ---
-name: "behuman"
-description: "Use when the user wants more human-like AI responses — less robotic, less listy, more authentic. Triggers: 'behuman', 'be real', 'like a human', 'more human', 'less AI', 'talk like a person', 'mirror mode', 'stop being so AI', or when conversations are emotionally charged (grief, job loss, relationship advice, fear). NOT for technical questions, code generation, or factual lookups."
+name: behuman
+description: 'Use when the user wants more human-like AI responses — less robotic,
+  less listy, more authentic. Triggers: ''behuman'', ''be real'', ''like a human'',
+  ''more human'', ''less AI'', ''talk like a person'', ''mirror mode'', ''stop being
+  so AI'', or when conversations are emotionally charged (grief, job loss, relationship
+  advice, fear). NOT for technical questions, code generation, or factual lookups.'
+category: engineering
+domain: Engineering
+triggers:
+- /behuman
+- run behuman
+- behuman skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[behuman details]'
+when_to_use: Use when user requests behuman guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # BeHuman — Self-Mirror Consciousness Loop

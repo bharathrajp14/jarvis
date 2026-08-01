@@ -1,14 +1,24 @@
 ---
-name: "agent-protocol"
-description: "Inter-agent communication protocol for C-suite agent teams. Defines invocation syntax, loop prevention, isolation rules, and response formats. Use when C-suite agents need to query each other, coordinate cross-functional analysis, or run board meetings with multiple agent roles."
-license: MIT
-metadata:
-  version: 1.0.0
-  author: Alireza Rezvani
-  category: c-level
-  domain: agent-orchestration
-  updated: 2026-03-05
-  frameworks: invocation-patterns
+name: agent-protocol
+description: Inter-agent communication protocol for C-suite agent teams. Defines invocation
+  syntax, loop prevention, isolation rules, and response formats. Use when C-suite
+  agents need to query each other, coordinate cross-functional analysis, or run board
+  meetings with multiple agent roles.
+category: c-level-advisor
+domain: C Level Advisor
+triggers:
+- /agent-protocol
+- run agent protocol
+- agent protocol skill
+tools:
+- doc_tools
+- excel_tools
+- web_search
+- rag_library
+argument-hint: '[agent protocol details]'
+when_to_use: Use when user requests agent protocol guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Inter-Agent Protocol

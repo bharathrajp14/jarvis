@@ -1,6 +1,23 @@
 ---
-name: "cmo-review"
-description: "/cs:cmo-review <plan> — Narrative-first interrogation of positioning, ICP, message house, and channel mix. Use when launching a campaign or repositioning, or when CAC is rising and the one-sentence positioning test fails."
+name: cmo-review
+description: /cs:cmo-review <plan> — Narrative-first interrogation of positioning,
+  ICP, message house, and channel mix. Use when launching a campaign or repositioning,
+  or when CAC is rising and the one-sentence positioning test fails.
+category: c-level-advisor
+domain: C Level Advisor
+triggers:
+- /cmo-review
+- run cmo review
+- cmo review skill
+tools:
+- doc_tools
+- excel_tools
+- web_search
+- rag_library
+argument-hint: '[cmo review details]'
+when_to_use: Use when user requests cmo review guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # /cs:cmo-review — CMO Forcing Questions

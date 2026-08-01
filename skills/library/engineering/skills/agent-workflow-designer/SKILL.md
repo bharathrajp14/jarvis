@@ -1,6 +1,25 @@
 ---
-name: "agent-workflow-designer"
-description: "Design production-grade multi-agent workflows with clear pattern choice (sequential, parallel, hierarchical), handoff contracts, failure handling, and cost/context controls. Use when architecting a multi-step agent pipeline, choosing between single-agent vs multi-agent approaches, or refactoring an LLM workflow that suffers from context bloat or unreliable handoffs."
+name: agent-workflow-designer
+description: Design production-grade multi-agent workflows with clear pattern choice
+  (sequential, parallel, hierarchical), handoff contracts, failure handling, and cost/context
+  controls. Use when architecting a multi-step agent pipeline, choosing between single-agent
+  vs multi-agent approaches, or refactoring an LLM workflow that suffers from context
+  bloat or unreliable handoffs.
+category: engineering
+domain: Engineering
+triggers:
+- /agent-workflow-designer
+- run agent workflow designer
+- agent workflow designer skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[agent workflow designer details]'
+when_to_use: Use when user requests agent workflow designer guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Agent Workflow Designer

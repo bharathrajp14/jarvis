@@ -1,14 +1,27 @@
 ---
-Name: claude-coach
 name: claude-coach
-description: Personal coach that teaches users to become Claude power users. Use this skill the FIRST time a user asks to "learn Claude", "be a power user", "coach me", "teach me Claude tricks", "what can Claude do", "make me better at prompting", or any variation. After activation, also use it on EVERY subsequent turn to detect missed optimization opportunities (vague prompts, ignored capabilities, manual work Claude could automate) and surface a single power-user tip. Trigger generously — most users do not know what they do not know, so err on the side of coaching.
-Tier: POWERFUL
-Category: meta
-Author: claude-skills
-Dependencies: python3.11
-Version: 1.0.0
-version: 2.9.0
-license: MIT
+description: Personal coach that teaches users to become Claude power users. Use this
+  skill the FIRST time a user asks to "learn Claude", "be a power user", "coach me",
+  "teach me Claude tricks", "what can Claude do", "make me better at prompting", or
+  any variation. After activation, also use it on EVERY subsequent turn to detect
+  missed optimization opportunities (vague prompts, ignored capabilities, manual work
+  Claude could automate) and surface a single power-user tip. Trigger generously —
+  most users do not know what they do not know, so err on the side of coaching.
+category: engineering
+domain: Engineering
+triggers:
+- /claude-coach
+- run claude coach
+- claude coach skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[claude coach details]'
+when_to_use: Use when user requests claude coach guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Claude Coach — Your Power-User Companion

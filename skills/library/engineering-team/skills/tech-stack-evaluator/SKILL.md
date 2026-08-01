@@ -1,6 +1,24 @@
 ---
-name: "tech-stack-evaluator"
-description: Technology stack evaluation and comparison with TCO analysis, security assessment, and ecosystem health scoring. Use when comparing frameworks, evaluating technology stacks, calculating total cost of ownership, assessing migration paths, or analyzing ecosystem viability.
+name: tech-stack-evaluator
+description: Technology stack evaluation and comparison with TCO analysis, security
+  assessment, and ecosystem health scoring. Use when comparing frameworks, evaluating
+  technology stacks, calculating total cost of ownership, assessing migration paths,
+  or analyzing ecosystem viability.
+category: engineering-team
+domain: Engineering Team
+triggers:
+- /tech-stack-evaluator
+- run tech stack evaluator
+- tech stack evaluator skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[tech stack evaluator details]'
+when_to_use: Use when user requests tech stack evaluator guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Technology Stack Evaluator

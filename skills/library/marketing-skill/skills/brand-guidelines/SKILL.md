@@ -1,12 +1,26 @@
 ---
-name: "brand-guidelines"
-description: "When the user wants to apply, document, or enforce brand guidelines for any product or company. Also use when the user mentions 'brand guidelines,' 'brand colors,' 'typography,' 'logo usage,' 'brand voice,' 'visual identity,' 'tone of voice,' 'brand standards,' 'style guide,' 'brand consistency,' or 'company design standards.' Covers color systems, typography, logo rules, imagery guidelines, and tone matrix for any brand — including Anthropic's official identity."
-license: MIT
-metadata:
-  version: 1.0.0
-  author: Alireza Rezvani
-  category: marketing
-  updated: 2026-03-06
+name: brand-guidelines
+description: When the user wants to apply, document, or enforce brand guidelines for
+  any product or company. Also use when the user mentions 'brand guidelines,' 'brand
+  colors,' 'typography,' 'logo usage,' 'brand voice,' 'visual identity,' 'tone of
+  voice,' 'brand standards,' 'style guide,' 'brand consistency,' or 'company design
+  standards.' Covers color systems, typography, logo rules, imagery guidelines, and
+  tone matrix for any brand — including Anthropic's official identity.
+category: marketing-skill
+domain: Marketing Skill
+triggers:
+- /brand-guidelines
+- run brand guidelines
+- brand guidelines skill
+tools:
+- web_search
+- doc_tools
+- file_processor
+- browser_control
+argument-hint: '[brand guidelines details]'
+when_to_use: Use when user requests brand guidelines guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Brand Guidelines

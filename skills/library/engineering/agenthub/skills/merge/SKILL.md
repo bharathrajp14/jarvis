@@ -1,7 +1,23 @@
 ---
-name: "merge"
-description: "Merge the winning agent's branch into base, archive losers, and clean up worktrees. Use when the user runs /hub:merge or asks to land the winning AgentHub result and tidy the session."
-command: /hub:merge
+name: merge
+description: Merge the winning agent's branch into base, archive losers, and clean
+  up worktrees. Use when the user runs /hub:merge or asks to land the winning AgentHub
+  result and tidy the session.
+category: engineering
+domain: Engineering
+triggers:
+- /merge
+- run merge
+- merge skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[merge details]'
+when_to_use: Use when user requests merge guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # /hub:merge — Merge Winner

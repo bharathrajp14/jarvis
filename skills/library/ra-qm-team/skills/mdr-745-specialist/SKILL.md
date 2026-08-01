@@ -1,17 +1,34 @@
 ---
-name: "mdr-745-specialist"
-description: EU MDR 2017/745 compliance specialist for medical device classification, technical documentation, clinical evidence, and post-market surveillance. Covers Annex VIII classification rules, Annex II/III technical files, Annex XIV clinical evaluation, Art. 86 PSUR schedules, and EUDAMED integration. Use when classifying a medical device under MDR, building or gap-checking a technical file, planning clinical evaluation or PMS/PSUR cadence, or preparing for notified body review (e.g., 'what class is my device under MDR', 'review my PSUR schedule').
+name: mdr-745-specialist
+description: EU MDR 2017/745 compliance specialist for medical device classification,
+  technical documentation, clinical evidence, and post-market surveillance. Covers
+  Annex VIII classification rules, Annex II/III technical files, Annex XIV clinical
+  evaluation, Art. 86 PSUR schedules, and EUDAMED integration. Use when classifying
+  a medical device under MDR, building or gap-checking a technical file, planning
+  clinical evaluation or PMS/PSUR cadence, or preparing for notified body review (e.g.,
+  'what class is my device under MDR', 'review my PSUR schedule').
+category: ra-qm-team
+domain: Ra Qm Team
 triggers:
-  - MDR compliance
-  - EU MDR
-  - medical device classification
-  - Annex VIII
-  - technical documentation
-  - clinical evaluation
-  - PMCF
-  - EUDAMED
-  - UDI
-  - notified body
+- MDR compliance
+- EU MDR
+- medical device classification
+- Annex VIII
+- technical documentation
+- clinical evaluation
+- PMCF
+- EUDAMED
+- UDI
+- notified body
+tools:
+- doc_tools
+- excel_tools
+- rag_library
+- file_processor
+argument-hint: '[mdr 745 specialist details]'
+when_to_use: Use when user requests mdr 745 specialist guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # MDR 2017/745 Specialist

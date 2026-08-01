@@ -1,12 +1,25 @@
 ---
-name: "popup-cro"
-description: When the user wants to create or optimize popups, modals, overlays, slide-ins, or banners for conversion purposes. Also use when the user mentions "exit intent," "popup conversions," "modal optimization," "lead capture popup," "email popup," "announcement banner," or "overlay." For forms outside of popups, see form-cro. For general page conversion optimization, see page-cro.
-license: MIT
-metadata:
-  version: 1.0.0
-  author: Alireza Rezvani
-  category: marketing
-  updated: 2026-03-06
+name: popup-cro
+description: When the user wants to create or optimize popups, modals, overlays, slide-ins,
+  or banners for conversion purposes. Also use when the user mentions "exit intent,"
+  "popup conversions," "modal optimization," "lead capture popup," "email popup,"
+  "announcement banner," or "overlay." For forms outside of popups, see form-cro.
+  For general page conversion optimization, see page-cro.
+category: marketing-skill
+domain: Marketing Skill
+triggers:
+- /popup-cro
+- run popup cro
+- popup cro skill
+tools:
+- web_search
+- doc_tools
+- file_processor
+- browser_control
+argument-hint: '[popup cro details]'
+when_to_use: Use when user requests popup cro guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Popup CRO

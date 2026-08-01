@@ -1,6 +1,23 @@
 ---
-name: "ai-act-readiness"
-description: "/cs:ai-act-readiness <system> — EU AI Act 6-question forcing interrogation. Use during AI-system intake, before EU deployment, or during annual compliance refresh as Article 113 obligations phase in (2025-02-02 / 2025-08-02 / 2026-08-02 / 2027-08-02)."
+name: ai-act-readiness
+description: /cs:ai-act-readiness <system> — EU AI Act 6-question forcing interrogation.
+  Use during AI-system intake, before EU deployment, or during annual compliance refresh
+  as Article 113 obligations phase in (2025-02-02 / 2025-08-02 / 2026-08-02 / 2027-08-02).
+category: compliance-os
+domain: Compliance Os
+triggers:
+- /ai-act-readiness
+- run ai act readiness
+- ai act readiness skill
+tools:
+- doc_tools
+- excel_tools
+- rag_library
+- file_processor
+argument-hint: '[ai act readiness details]'
+when_to_use: Use when user requests ai act readiness guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # /cs:ai-act-readiness — EU AI Act Forcing Questions

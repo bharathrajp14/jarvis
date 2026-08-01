@@ -1,9 +1,23 @@
 ---
-name: "coverage"
-description: >-
-  Analyze test coverage gaps. Use when user says "test coverage",
-  "what's not tested", "coverage gaps", "missing tests", "coverage report",
-  or "what needs testing".
+name: coverage
+description: Analyze test coverage gaps. Use when user says "test coverage", "what's
+  not tested", "coverage gaps", "missing tests", "coverage report", or "what needs
+  testing".
+category: engineering-team
+domain: Engineering Team
+triggers:
+- /coverage
+- run coverage
+- coverage skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[coverage details]'
+when_to_use: Use when user requests coverage guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Analyze Test Coverage Gaps

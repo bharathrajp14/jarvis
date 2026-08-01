@@ -1,6 +1,22 @@
 ---
-name: "remember"
-description: "Explicitly save important knowledge to auto-memory with timestamp and context. Use when a discovery is too important to rely on auto-capture."
+name: remember
+description: Explicitly save important knowledge to auto-memory with timestamp and
+  context. Use when a discovery is too important to rely on auto-capture.
+category: engineering-team
+domain: Engineering Team
+triggers:
+- /remember
+- run remember
+- remember skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[remember details]'
+when_to_use: Use when user requests remember guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # /si:remember — Save Knowledge Explicitly

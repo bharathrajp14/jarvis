@@ -1,6 +1,23 @@
 ---
-name: "gdpr-audit-prep"
-description: "/cs:gdpr-audit-prep <scope> — GDPR audit 6-question Article-cited forcing interrogation. Use before annual internal GDPR review, post-breach internal audit, DPA investigation readiness, or acquisition due diligence."
+name: gdpr-audit-prep
+description: /cs:gdpr-audit-prep <scope> — GDPR audit 6-question Article-cited forcing
+  interrogation. Use before annual internal GDPR review, post-breach internal audit,
+  DPA investigation readiness, or acquisition due diligence.
+category: compliance-os
+domain: Compliance Os
+triggers:
+- /gdpr-audit-prep
+- run gdpr audit prep
+- gdpr audit prep skill
+tools:
+- doc_tools
+- excel_tools
+- rag_library
+- file_processor
+argument-hint: '[gdpr audit prep details]'
+when_to_use: Use when user requests gdpr audit prep guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # /cs:gdpr-audit-prep — GDPR DPO Forcing Questions

@@ -1,17 +1,24 @@
 ---
 name: caveman
-description: >
-  Ultra-compressed communication mode. Cuts token usage ~75% by dropping
-  filler, articles, and pleasantries while keeping full technical accuracy.
-  Use when user says "caveman mode", "talk like caveman", "use caveman",
-  "less tokens", "be brief", or invokes /caveman.
-license: MIT
-metadata:
-  derived_from: "https://github.com/mattpocock/skills/tree/main/skills/productivity/caveman"
-  original_author: "Matt Pocock (@mattpocock)"
-  original_license: MIT
-  voice: "Matt Pocock — terse, fragment-OK, no filler"
-  version: 1.0.0
+description: Ultra-compressed communication mode. Cuts token usage ~75% by dropping
+  filler, articles, and pleasantries while keeping full technical accuracy. Use when
+  user says "caveman mode", "talk like caveman", "use caveman", "less tokens", "be
+  brief", or invokes /caveman.
+category: engineering
+domain: Engineering
+triggers:
+- /caveman
+- run caveman
+- caveman skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[caveman details]'
+when_to_use: Use when user requests caveman guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Caveman Mode

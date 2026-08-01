@@ -1,6 +1,27 @@
 ---
-name: "confluence-expert"
-description: Atlassian Confluence expert for creating and managing spaces, knowledge bases, and documentation. Configures space permissions and hierarchies, creates page templates with macros, sets up documentation taxonomies, designs page layouts, and manages content governance. Use when users need to build or restructure a Confluence space, design page hierarchies with permission structures, author or standardise documentation templates, embed Jira reports in pages, run knowledge base audits, or establish documentation standards and collaborative workflows.
+name: confluence-expert
+description: Atlassian Confluence expert for creating and managing spaces, knowledge
+  bases, and documentation. Configures space permissions and hierarchies, creates
+  page templates with macros, sets up documentation taxonomies, designs page layouts,
+  and manages content governance. Use when users need to build or restructure a Confluence
+  space, design page hierarchies with permission structures, author or standardise
+  documentation templates, embed Jira reports in pages, run knowledge base audits,
+  or establish documentation standards and collaborative workflows.
+category: project-management
+domain: Project Management
+triggers:
+- /confluence-expert
+- run confluence expert
+- confluence expert skill
+tools:
+- doc_tools
+- excel_tools
+- calendar_engine
+- web_search
+argument-hint: '[confluence expert details]'
+when_to_use: Use when user requests confluence expert guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Atlassian Confluence Expert

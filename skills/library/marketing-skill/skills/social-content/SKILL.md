@@ -1,12 +1,25 @@
 ---
-name: "social-content"
-description: "When the user wants help creating, scheduling, or optimizing social media content for LinkedIn, Twitter/X, Instagram, TikTok, Facebook, or other platforms. Also use when the user mentions 'LinkedIn post,' 'Twitter thread,' 'social media,' 'content calendar,' 'social scheduling,' 'engagement,' or 'viral content.' This skill covers content creation, repurposing, and platform-specific strategies."
-license: MIT
-metadata:
-  version: 1.0.0
-  author: Alireza Rezvani
-  category: marketing
-  updated: 2026-03-06
+name: social-content
+description: When the user wants help creating, scheduling, or optimizing social media
+  content for LinkedIn, Twitter/X, Instagram, TikTok, Facebook, or other platforms.
+  Also use when the user mentions 'LinkedIn post,' 'Twitter thread,' 'social media,'
+  'content calendar,' 'social scheduling,' 'engagement,' or 'viral content.' This
+  skill covers content creation, repurposing, and platform-specific strategies.
+category: marketing-skill
+domain: Marketing Skill
+triggers:
+- /social-content
+- run social content
+- social content skill
+tools:
+- web_search
+- doc_tools
+- file_processor
+- browser_control
+argument-hint: '[social content details]'
+when_to_use: Use when user requests social content guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Social Content

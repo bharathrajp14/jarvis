@@ -1,12 +1,26 @@
 ---
-name: "referral-program"
-description: "When the user wants to design, launch, or optimize a referral or affiliate program. Use when they mention 'referral program,' 'affiliate program,' 'word of mouth,' 'refer a friend,' 'incentive program,' 'customer referrals,' 'brand ambassador,' 'partner program,' 'referral link,' or 'growth through referrals.' Covers program mechanics, incentive design, and optimization — not just the idea of referrals but the actual system."
-license: MIT
-metadata:
-  version: 1.0.0
-  author: Alireza Rezvani
-  category: marketing
-  updated: 2026-03-06
+name: referral-program
+description: When the user wants to design, launch, or optimize a referral or affiliate
+  program. Use when they mention 'referral program,' 'affiliate program,' 'word of
+  mouth,' 'refer a friend,' 'incentive program,' 'customer referrals,' 'brand ambassador,'
+  'partner program,' 'referral link,' or 'growth through referrals.' Covers program
+  mechanics, incentive design, and optimization — not just the idea of referrals but
+  the actual system.
+category: marketing-skill
+domain: Marketing Skill
+triggers:
+- /referral-program
+- run referral program
+- referral program skill
+tools:
+- web_search
+- doc_tools
+- file_processor
+- browser_control
+argument-hint: '[referral program details]'
+when_to_use: Use when user requests referral program guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Referral Program

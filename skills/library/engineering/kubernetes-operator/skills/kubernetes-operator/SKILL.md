@@ -1,12 +1,27 @@
 ---
 name: kubernetes-operator
-description: Use when building a Kubernetes Operator — custom controllers that reconcile CRD state. Triggers on "build an operator", "CRD design", "reconcile loop", "controller-runtime", "kubebuilder", "operator-sdk", "metacontroller", "KOPF", "operator capability levels", or "custom resource". Ships CRD validator, reconcile-loop linter, and OperatorHub capability auditor (all stdlib Python), 4 references on the operator pattern + CRD design + reconcile patterns + tooling landscape, and a /operator-audit slash command. NOT a generic k8s skill — specifically the Operator pattern.
-context: fork
-version: 2.9.0
-author: claude-code-skills
-license: MIT
-tags: [kubernetes, operator, crd, controller-runtime, kubebuilder, operator-sdk, metacontroller, kopf, reconcile, devops]
-compatible_tools: [claude-code, codex-cli, cursor, antigravity, opencode, gemini-cli]
+description: Use when building a Kubernetes Operator — custom controllers that reconcile
+  CRD state. Triggers on "build an operator", "CRD design", "reconcile loop", "controller-runtime",
+  "kubebuilder", "operator-sdk", "metacontroller", "KOPF", "operator capability levels",
+  or "custom resource". Ships CRD validator, reconcile-loop linter, and OperatorHub
+  capability auditor (all stdlib Python), 4 references on the operator pattern + CRD
+  design + reconcile patterns + tooling landscape, and a /operator-audit slash command.
+  NOT a generic k8s skill — specifically the Operator pattern.
+category: engineering
+domain: Engineering
+triggers:
+- /kubernetes-operator
+- run kubernetes operator
+- kubernetes operator skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[kubernetes operator details]'
+when_to_use: Use when user requests kubernetes operator guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Kubernetes Operator

@@ -1,3 +1,23 @@
+---
+name: sample-skill
+description: BR JARVIS sample-skill specialized domain skill.
+category: engineering
+domain: Engineering
+triggers:
+- /sample-skill
+- run sample skill
+- sample skill skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[sample skill details]'
+when_to_use: Use when user requests sample skill guidance or task execution.
+user-invocable: true
+context: inline
+---
+
 # Sample Text Processor
 
 ---

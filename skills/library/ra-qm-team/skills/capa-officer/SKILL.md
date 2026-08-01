@@ -1,19 +1,33 @@
 ---
-name: "capa-officer"
-description: CAPA system management for medical device QMS. Covers root cause analysis, corrective action planning, effectiveness verification, and CAPA metrics. Use when running CAPA investigations, 5-Why analysis, fishbone diagrams, root cause determination, corrective action tracking, effectiveness verification, or CAPA program optimization.
+name: capa-officer
+description: CAPA system management for medical device QMS. Covers root cause analysis,
+  corrective action planning, effectiveness verification, and CAPA metrics. Use when
+  running CAPA investigations, 5-Why analysis, fishbone diagrams, root cause determination,
+  corrective action tracking, effectiveness verification, or CAPA program optimization.
+category: ra-qm-team
+domain: Ra Qm Team
 triggers:
-  - CAPA investigation
-  - root cause analysis
-  - 5 Why analysis
-  - fishbone diagram
-  - corrective action
-  - preventive action
-  - effectiveness verification
-  - CAPA metrics
-  - nonconformance investigation
-  - quality issue investigation
-  - CAPA tracking
-  - audit finding CAPA
+- CAPA investigation
+- root cause analysis
+- 5 Why analysis
+- fishbone diagram
+- corrective action
+- preventive action
+- effectiveness verification
+- CAPA metrics
+- nonconformance investigation
+- quality issue investigation
+- CAPA tracking
+- audit finding CAPA
+tools:
+- doc_tools
+- excel_tools
+- rag_library
+- file_processor
+argument-hint: '[capa officer details]'
+when_to_use: Use when user requests capa officer guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # CAPA Officer

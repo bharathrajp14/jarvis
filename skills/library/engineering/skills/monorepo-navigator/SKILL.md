@@ -1,6 +1,26 @@
 ---
-name: "monorepo-navigator"
-description: "Navigate, manage, and optimize monorepos. Covers Turborepo, Nx, pnpm workspaces, and Lerna. Cross-package impact analysis, selective builds/tests on affected packages, remote caching, dependency graph visualization, and structured multi-repo to monorepo migrations. Use when setting up a new monorepo, optimizing CI for a large workspace, debugging cross-package dependency issues, or planning a multi-repo consolidation."
+name: monorepo-navigator
+description: Navigate, manage, and optimize monorepos. Covers Turborepo, Nx, pnpm
+  workspaces, and Lerna. Cross-package impact analysis, selective builds/tests on
+  affected packages, remote caching, dependency graph visualization, and structured
+  multi-repo to monorepo migrations. Use when setting up a new monorepo, optimizing
+  CI for a large workspace, debugging cross-package dependency issues, or planning
+  a multi-repo consolidation.
+category: engineering
+domain: Engineering
+triggers:
+- /monorepo-navigator
+- run monorepo navigator
+- monorepo navigator skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[monorepo navigator details]'
+when_to_use: Use when user requests monorepo navigator guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Monorepo Navigator

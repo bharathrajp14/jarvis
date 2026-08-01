@@ -1,12 +1,30 @@
 ---
 name: research-ops-skills
-description: Use when planning, funding, scoping, or synthesizing enterprise research across workstreams — clinical study design, R&D program finance, market sizing/surveys, or product/user research. Triggers on "design this clinical study", "what sample size", "R&D budget", "burn rate", "capitalize or expense", "TAM SAM SOM", "market sizing", "survey design", "segment the market", "plan user interviews", "usability test", "synthesize research insights". Forks context to route to one of four Research-Operations sub-skills (clinical-research, research-finance, market-research, product-research) and returns a digest. Distinct from ra-qm-team (regulatory submission), finance (corporate close/valuation), research/grants (funding discovery), product-team (persona/journey/live experiments), and marketing-skill (campaign analytics).
-context: fork
-version: 2.9.0
-author: claude-code-skills
-license: MIT
-tags: [research-ops, clinical-research, research-finance, market-research, product-research, rd, orchestrator]
-compatible_tools: [claude-code, codex-cli, cursor, antigravity, opencode, gemini-cli]
+description: Use when planning, funding, scoping, or synthesizing enterprise research
+  across workstreams — clinical study design, R&D program finance, market sizing/surveys,
+  or product/user research. Triggers on "design this clinical study", "what sample
+  size", "R&D budget", "burn rate", "capitalize or expense", "TAM SAM SOM", "market
+  sizing", "survey design", "segment the market", "plan user interviews", "usability
+  test", "synthesize research insights". Forks context to route to one of four Research-Operations
+  sub-skills (clinical-research, research-finance, market-research, product-research)
+  and returns a digest. Distinct from ra-qm-team (regulatory submission), finance
+  (corporate close/valuation), research/grants (funding discovery), product-team (persona/journey/live
+  experiments), and marketing-skill (campaign analytics).
+category: research-ops
+domain: Research Ops
+triggers:
+- /research-ops-skills
+- run research ops skills
+- research ops skills skill
+tools:
+- web_search
+- browser_control
+- rag_library
+- excel_tools
+argument-hint: '[research ops skills details]'
+when_to_use: Use when user requests research ops skills guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Research Operations — Domain Orchestrator

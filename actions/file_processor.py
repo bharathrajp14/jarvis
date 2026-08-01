@@ -91,20 +91,20 @@ def _process_image(path: Path, action: str, params: dict, speak=None) -> str:
     if action in ("describe", "ocr", "analyze", "read", "extract_text"):
         try:
             model  = _gemini_client()
-            img    = Image.open(path)
-            prompt = {
-                "describe": "Describe this image in detail.",
-                "ocr":      "Extract all text visible in this image. Return only the text, formatted clearly.",
-                "analyze":  "Analyze this image thoroughly: objects, colors, composition, any text, context.",
-                "read":     "Read all text in this image, preserving structure and formatting.",
-                "extract_text": "Extract all text from this image.",
-            }.get(action, "Describe this image.")
+            with Image.open(path) as img:
+                prompt = {
+                    "describe": "Describe this image in detail.",
+                    "ocr":      "Extract all text visible in this image. Return only the text, formatted clearly.",
+                    "analyze":  "Analyze this image thoroughly: objects, colors, composition, any text, context.",
+                    "read":     "Read all text in this image, preserving structure and formatting.",
+                    "extract_text": "Extract all text from this image.",
+                }.get(action, "Describe this image.")
 
-            if params.get("instruction"):
-                prompt = params["instruction"]
+                if params.get("instruction"):
+                    prompt = params["instruction"]
 
-            response = model.generate_content([prompt, img])
-            result   = response.text.strip()
+                response = model.generate_content([prompt, img])
+                result   = response.text.strip()
 
             if len(result) > 500 and params.get("save", True):
                 out = _output_path(path, "result", ".txt")
@@ -119,20 +119,20 @@ def _process_image(path: Path, action: str, params: dict, speak=None) -> str:
         height = int(params.get("height", 0))
         scale  = float(params.get("scale", 0))
         try:
-            img = Image.open(path)
-            w, h = img.size
-            if scale:
-                new_size = (int(w * scale), int(h * scale))
-            elif width and height:
-                new_size = (width, height)
-            elif width:
-                new_size = (width, int(h * width / w))
-            elif height:
-                new_size = (int(w * height / h), height)
-            else:
-                return "Please specify width, height, or scale."
-            out = _output_path(path, f"resized_{new_size[0]}x{new_size[1]}")
-            img.resize(new_size, Image.LANCZOS).save(out)
+            with Image.open(path) as img:
+                w, h = img.size
+                if scale:
+                    new_size = (int(w * scale), int(h * scale))
+                elif width and height:
+                    new_size = (width, height)
+                elif width:
+                    new_size = (width, int(h * width / w))
+                elif height:
+                    new_size = (int(w * height / h), height)
+                else:
+                    return "Please specify width, height, or scale."
+                out = _output_path(path, f"resized_{new_size[0]}x{new_size[1]}")
+                img.resize(new_size, Image.LANCZOS).save(out)
             return f"Resized from {w}x{h} to {new_size[0]}x{new_size[1]}. Saved: {out.name}"
         except Exception as e:
             return f"Resize failed: {e}"
@@ -143,9 +143,10 @@ def _process_image(path: Path, action: str, params: dict, speak=None) -> str:
                    "webp": "WEBP", "bmp": "BMP", "tiff": "TIFF"}
         pil_fmt = fmt_map.get(fmt, fmt.upper())
         try:
-            img = Image.open(path).convert("RGB") if fmt == "jpg" else Image.open(path)
-            out = _output_path(path, "converted", f".{fmt}")
-            img.save(out, pil_fmt)
+            with Image.open(path) as raw_img:
+                img = raw_img.convert("RGB") if fmt in ("jpg", "jpeg") else raw_img
+                out = _output_path(path, "converted", f".{fmt}")
+                img.save(out, pil_fmt)
             return f"Converted to {fmt.upper()}. Saved: {out.name}"
         except Exception as e:
             return f"Convert failed: {e}"
@@ -153,9 +154,10 @@ def _process_image(path: Path, action: str, params: dict, speak=None) -> str:
     if action == "compress":
         quality = int(params.get("quality", 70))
         try:
-            img = Image.open(path).convert("RGB")
-            out = _output_path(path, f"compressed_q{quality}", ".jpg")
-            img.save(out, "JPEG", quality=quality, optimize=True)
+            with Image.open(path) as raw_img:
+                img = raw_img.convert("RGB")
+                out = _output_path(path, f"compressed_q{quality}", ".jpg")
+                img.save(out, "JPEG", quality=quality, optimize=True)
             before = _file_size_str(path)
             after  = _file_size_str(out)
             return f"Compressed: {before} → {after}. Saved: {out.name}"
@@ -164,9 +166,9 @@ def _process_image(path: Path, action: str, params: dict, speak=None) -> str:
 
     if action == "info":
         try:
-            img = Image.open(path)
-            return (f"Image info: {img.format}, {img.size[0]}x{img.size[1]}px, "
-                    f"mode: {img.mode}, size: {_file_size_str(path)}")
+            with Image.open(path) as img:
+                return (f"Image info: {img.format}, {img.size[0]}x{img.size[1]}px, "
+                        f"mode: {img.mode}, size: {_file_size_str(path)}")
         except Exception as e:
             return f"Info failed: {e}"
 

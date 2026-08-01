@@ -1,7 +1,24 @@
 ---
-name: "self-eval"
-description: "Honestly evaluate AI work quality using a two-axis scoring system. Use after completing a task, code review, or work session to get an unbiased assessment. Detects score inflation, forces devil's advocate reasoning, and persists scores across sessions."
-license: "MIT"
+name: self-eval
+description: Honestly evaluate AI work quality using a two-axis scoring system. Use
+  after completing a task, code review, or work session to get an unbiased assessment.
+  Detects score inflation, forces devil's advocate reasoning, and persists scores
+  across sessions.
+category: engineering
+domain: Engineering
+triggers:
+- /self-eval
+- run self eval
+- self eval skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[self eval details]'
+when_to_use: Use when user requests self eval guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Self-Eval: Honest Work Evaluation

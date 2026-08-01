@@ -1,6 +1,24 @@
 ---
-name: "boardroom"
-description: "/cs:boardroom <brief> — 6-phase multi-role deliberation across the C-suite with Phase 2 isolation, critic pre-screen, and synthesis. Outputs a board memo. Use when a decision spans multiple executive domains — e.g. a pricing change touching finance, positioning, and product, or a raise-vs-cut runway call."
+name: boardroom
+description: /cs:boardroom <brief> — 6-phase multi-role deliberation across the C-suite
+  with Phase 2 isolation, critic pre-screen, and synthesis. Outputs a board memo.
+  Use when a decision spans multiple executive domains — e.g. a pricing change touching
+  finance, positioning, and product, or a raise-vs-cut runway call.
+category: c-level-advisor
+domain: C Level Advisor
+triggers:
+- /boardroom
+- run boardroom
+- boardroom skill
+tools:
+- doc_tools
+- excel_tools
+- web_search
+- rag_library
+argument-hint: '[boardroom details]'
+when_to_use: Use when user requests boardroom guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # /cs:boardroom — Multi-Role Boardroom Deliberation

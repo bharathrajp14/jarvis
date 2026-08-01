@@ -1,9 +1,23 @@
 ---
-name: "generate"
-description: >-
-  Generate Playwright tests. Use when user says "write tests", "generate tests",
-  "add tests for", "test this component", "e2e test", "create test for",
-  "test this page", or "test this feature".
+name: generate
+description: Generate Playwright tests. Use when user says "write tests", "generate
+  tests", "add tests for", "test this component", "e2e test", "create test for", "test
+  this page", or "test this feature".
+category: engineering-team
+domain: Engineering Team
+triggers:
+- /generate
+- run generate
+- generate skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[generate details]'
+when_to_use: Use when user requests generate guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Generate Playwright Tests

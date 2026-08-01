@@ -1,6 +1,22 @@
 ---
-name: "database-designer"
-description: "Use when the user asks to design database schemas, plan data migrations, optimize queries, choose between SQL and NoSQL, or model data relationships."
+name: database-designer
+description: Use when the user asks to design database schemas, plan data migrations,
+  optimize queries, choose between SQL and NoSQL, or model data relationships.
+category: engineering
+domain: Engineering
+triggers:
+- /database-designer
+- run database designer
+- database designer skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[database designer details]'
+when_to_use: Use when user requests database designer guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Database Designer - POWERFUL Tier Skill
@@ -311,4 +327,3 @@ Fixes:
 - **migration-architect** — large-scale migration planning across database engines or major schema overhauls
 - **senior-backend** — application-layer patterns (connection pooling, ORM best practices)
 - **senior-devops** — infrastructure provisioning for database clusters and replicas
-

@@ -93,7 +93,7 @@ class StepPlanner:
                 "Verify correctness and synthesize final answer",
             ]
         else:
-            initial_budget = 3
+            initial_budget = 6
             max_ceiling = 20
             complexity = "LOW"
             steps = [

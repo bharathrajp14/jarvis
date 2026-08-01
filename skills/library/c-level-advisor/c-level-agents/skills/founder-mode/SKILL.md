@@ -1,6 +1,25 @@
 ---
-name: "founder-mode"
-description: "/cs:founder-mode <question> — Auto-routes any founder question to the right C-role advisor or to /cs:boardroom for multi-role topics. The single-command entry point. Use when a founder asks any strategic question without knowing which advisor or command fits — e.g. 'runway pressure' routes to the CFO, 'gross retention dropped' routes to the CCO."
+name: founder-mode
+description: /cs:founder-mode <question> — Auto-routes any founder question to the
+  right C-role advisor or to /cs:boardroom for multi-role topics. The single-command
+  entry point. Use when a founder asks any strategic question without knowing which
+  advisor or command fits — e.g. 'runway pressure' routes to the CFO, 'gross retention
+  dropped' routes to the CCO.
+category: c-level-advisor
+domain: C Level Advisor
+triggers:
+- /founder-mode
+- run founder mode
+- founder mode skill
+tools:
+- doc_tools
+- excel_tools
+- web_search
+- rag_library
+argument-hint: '[founder mode details]'
+when_to_use: Use when user requests founder mode guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # /cs:founder-mode — The Auto-Router

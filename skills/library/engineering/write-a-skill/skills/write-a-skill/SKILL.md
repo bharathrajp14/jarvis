@@ -1,13 +1,23 @@
 ---
 name: write-a-skill
-description: Create new agent skills with proper structure, progressive disclosure, and bundled resources. Use when user wants to create, write, build, or author a new skill.
-license: MIT
-metadata:
-  derived_from: "https://github.com/mattpocock/skills/tree/main/skills/productivity/write-a-skill"
-  original_author: "Matt Pocock (@mattpocock)"
-  original_license: MIT
-  voice: "Matt Pocock — direct, concrete, imperative, example-driven"
-  version: 1.0.0
+description: Create new agent skills with proper structure, progressive disclosure,
+  and bundled resources. Use when user wants to create, write, build, or author a
+  new skill.
+category: engineering
+domain: Engineering
+triggers:
+- /write-a-skill
+- run write a skill
+- write a skill skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[write a skill details]'
+when_to_use: Use when user requests write a skill guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Writing Skills

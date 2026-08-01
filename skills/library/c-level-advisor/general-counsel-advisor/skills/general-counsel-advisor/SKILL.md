@@ -1,15 +1,27 @@
 ---
-name: "general-counsel-advisor"
-description: "General Counsel advisory for startups: contract review (MSA, SaaS, NDA, DPA, employment), IP strategy, term sheet decoding, and regulatory landscape mapping. Use when reviewing any contract or term sheet, deciding when to engage outside counsel, defining IP strategy, evaluating regulatory exposure (HIPAA, GDPR, FDA, fintech), or when user mentions general counsel, GC, legal review, contract risk, term sheet, IP assignment, or regulatory exposure. NOT a substitute for licensed counsel — surfaces questions to bring to qualified attorneys."
-license: MIT
-metadata:
-  version: 1.0.0
-  author: Alireza Rezvani
-  category: c-level
-  domain: general-counsel-leadership
-  updated: 2026-05-12
-  python-tools: contract_risk_scanner.py, term_sheet_analyzer.py
-  frameworks: contract-review, ip-strategy, term-sheet-decoding, regulatory-mapping
+name: general-counsel-advisor
+description: 'General Counsel advisory for startups: contract review (MSA, SaaS, NDA,
+  DPA, employment), IP strategy, term sheet decoding, and regulatory landscape mapping.
+  Use when reviewing any contract or term sheet, deciding when to engage outside counsel,
+  defining IP strategy, evaluating regulatory exposure (HIPAA, GDPR, FDA, fintech),
+  or when user mentions general counsel, GC, legal review, contract risk, term sheet,
+  IP assignment, or regulatory exposure. NOT a substitute for licensed counsel — surfaces
+  questions to bring to qualified attorneys.'
+category: c-level-advisor
+domain: C Level Advisor
+triggers:
+- /general-counsel-advisor
+- run general counsel advisor
+- general counsel advisor skill
+tools:
+- doc_tools
+- excel_tools
+- web_search
+- rag_library
+argument-hint: '[general counsel advisor details]'
+when_to_use: Use when user requests general counsel advisor guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # General Counsel Advisor

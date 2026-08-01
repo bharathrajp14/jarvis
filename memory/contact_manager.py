@@ -27,7 +27,7 @@ import quopri
 import re
 import sys
 from pathlib import Path
-from threading import Lock
+from threading import RLock
 from typing import Any, Dict, List, Optional
 
 
@@ -41,9 +41,9 @@ BASE_DIR = get_base_dir()
 CONTACTS_JSON_PATH = BASE_DIR / "memory" / "contacts.json"
 CONTACTS_ENC_PATH = BASE_DIR / "memory" / "contacts.enc"
 KEY_PATH = BASE_DIR / ".jarvis" / "contacts.key"
-PRIMARY_VCF_PATH = Path(r"C:\Users\bhara\Documents\contects\contacts.vcf")
+PRIMARY_VCF_PATH = Path.home() / "Documents" / "contacts.vcf"
 
-_lock = Lock()
+_lock = RLock()
 
 
 def mask_phone(phone: str) -> str:

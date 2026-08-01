@@ -1,6 +1,26 @@
 ---
-name: "rag-architect"
-description: "Use when the user asks to design a RAG pipeline, choose a chunking strategy or embedding model, pick a vector database, or evaluate retrieval quality (precision@k, recall@k, NDCG). Examples: 'design a RAG system for our docs', 'what chunk size should I use for this corpus', 'evaluate my retriever against ground truth'. NOT for general LLM cost tuning (use llm-cost-optimizer) or agent loops over retrieval (use agenthub)."
+name: rag-architect
+description: 'Use when the user asks to design a RAG pipeline, choose a chunking strategy
+  or embedding model, pick a vector database, or evaluate retrieval quality (precision@k,
+  recall@k, NDCG). Examples: ''design a RAG system for our docs'', ''what chunk size
+  should I use for this corpus'', ''evaluate my retriever against ground truth''.
+  NOT for general LLM cost tuning (use llm-cost-optimizer) or agent loops over retrieval
+  (use agenthub).'
+category: engineering
+domain: Engineering
+triggers:
+- /rag-architect
+- run rag architect
+- rag architect skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[rag architect details]'
+when_to_use: Use when user requests rag architect guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # RAG Architect

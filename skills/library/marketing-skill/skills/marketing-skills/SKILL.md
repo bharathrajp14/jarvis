@@ -1,17 +1,25 @@
 ---
-name: "marketing-skills"
-description: "Directory and router for the marketing skills library. Use when you need to find the right marketing skill for a task, see what marketing capabilities exist, or get oriented in this plugin. 44 specialist skills across 8 pods (content, SEO + AEO, CRO, channels, growth, intelligence, sales enablement, ops), 59 stdlib Python tools. Routes to one skill — it does not execute marketing work itself."
-version: 2.10.3
-author: Alireza Rezvani
-license: MIT
-tags:
-  - marketing
-  - router
-  - index
-agents:
-  - claude-code
-  - codex-cli
-  - openclaw
+name: marketing-skills
+description: Directory and router for the marketing skills library. Use when you need
+  to find the right marketing skill for a task, see what marketing capabilities exist,
+  or get oriented in this plugin. 44 specialist skills across 8 pods (content, SEO
+  + AEO, CRO, channels, growth, intelligence, sales enablement, ops), 59 stdlib Python
+  tools. Routes to one skill — it does not execute marketing work itself.
+category: marketing-skill
+domain: Marketing Skill
+triggers:
+- /marketing-skills
+- run marketing skills
+- marketing skills skill
+tools:
+- web_search
+- doc_tools
+- file_processor
+- browser_control
+argument-hint: '[marketing skills details]'
+when_to_use: Use when user requests marketing skills guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Marketing Skills — Directory + Router

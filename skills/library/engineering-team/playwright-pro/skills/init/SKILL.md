@@ -1,9 +1,23 @@
 ---
-name: "init"
-description: >-
-  Set up Playwright in a project. Use when user says "set up playwright",
-  "add e2e tests", "configure playwright", "testing setup", "init playwright",
-  or "add test infrastructure".
+name: init
+description: Set up Playwright in a project. Use when user says "set up playwright",
+  "add e2e tests", "configure playwright", "testing setup", "init playwright", or
+  "add test infrastructure".
+category: engineering-team
+domain: Engineering Team
+triggers:
+- /init
+- run init
+- init skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[init details]'
+when_to_use: Use when user requests init guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Initialize Playwright Project

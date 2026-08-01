@@ -1,6 +1,27 @@
 ---
-name: "agent-designer"
-description: "Use when the user asks to design a multi-agent system, pick an orchestration pattern (supervisor/swarm/pipeline), generate tool schemas for agents, or evaluate agent execution logs for cost, latency, and failure bottlenecks. Examples: 'design an agent architecture for research automation', 'generate Anthropic tool schemas from these tool descriptions', 'analyze these agent run logs for bottlenecks'. NOT for Claude Code workflow files (use workflow-builder) or single-agent prompt design (use agent-workflow-designer)."
+name: agent-designer
+description: 'Use when the user asks to design a multi-agent system, pick an orchestration
+  pattern (supervisor/swarm/pipeline), generate tool schemas for agents, or evaluate
+  agent execution logs for cost, latency, and failure bottlenecks. Examples: ''design
+  an agent architecture for research automation'', ''generate Anthropic tool schemas
+  from these tool descriptions'', ''analyze these agent run logs for bottlenecks''.
+  NOT for Claude Code workflow files (use workflow-builder) or single-agent prompt
+  design (use agent-workflow-designer).'
+category: engineering
+domain: Engineering
+triggers:
+- /agent-designer
+- run agent designer
+- agent designer skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[agent designer details]'
+when_to_use: Use when user requests agent designer guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Agent Designer — Multi-Agent System Architecture

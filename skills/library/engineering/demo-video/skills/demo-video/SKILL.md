@@ -1,6 +1,24 @@
 ---
-name: "demo-video"
-description: "Use when the user asks to create a demo video, product walkthrough, feature showcase, animated presentation, marketing video, or GIF from screenshots or scene descriptions. Orchestrates playwright, ffmpeg, and edge-tts MCPs to produce polished video content."
+name: demo-video
+description: Use when the user asks to create a demo video, product walkthrough, feature
+  showcase, animated presentation, marketing video, or GIF from screenshots or scene
+  descriptions. Orchestrates playwright, ffmpeg, and edge-tts MCPs to produce polished
+  video content.
+category: engineering
+domain: Engineering
+triggers:
+- /demo-video
+- run demo video
+- demo video skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[demo video details]'
+when_to_use: Use when user requests demo video guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Demo Video

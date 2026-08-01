@@ -1,6 +1,24 @@
 ---
-name: "senior-frontend"
-description: Frontend development skill for React, Next.js, TypeScript, and Tailwind CSS applications. Use when building React components, optimizing Next.js performance, analyzing bundle sizes, scaffolding frontend projects, implementing accessibility, or reviewing frontend code quality.
+name: senior-frontend
+description: Frontend development skill for React, Next.js, TypeScript, and Tailwind
+  CSS applications. Use when building React components, optimizing Next.js performance,
+  analyzing bundle sizes, scaffolding frontend projects, implementing accessibility,
+  or reviewing frontend code quality.
+category: engineering-team
+domain: Engineering Team
+triggers:
+- /senior-frontend
+- run senior frontend
+- senior frontend skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[senior frontend details]'
+when_to_use: Use when user requests senior frontend guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Senior Frontend

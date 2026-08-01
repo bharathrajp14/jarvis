@@ -1,15 +1,26 @@
 ---
-name: "ciso-advisor"
-description: "Security leadership for growth-stage companies. Risk quantification in dollars, compliance roadmap (SOC 2/ISO 27001/HIPAA/GDPR), security architecture strategy, incident response leadership, and board-level security reporting. Use when building security programs, justifying security budget, selecting compliance frameworks, managing incidents, assessing vendor risk, or when user mentions CISO, security strategy, compliance roadmap, zero trust, or board security reporting."
-license: MIT
-metadata:
-  version: 1.0.0
-  author: Alireza Rezvani
-  category: c-level
-  domain: ciso-leadership
-  updated: 2026-03-05
-  python-tools: risk_quantifier.py, compliance_tracker.py
-  frameworks: risk-based-security, zero-trust, defense-in-depth
+name: ciso-advisor
+description: Security leadership for growth-stage companies. Risk quantification in
+  dollars, compliance roadmap (SOC 2/ISO 27001/HIPAA/GDPR), security architecture
+  strategy, incident response leadership, and board-level security reporting. Use
+  when building security programs, justifying security budget, selecting compliance
+  frameworks, managing incidents, assessing vendor risk, or when user mentions CISO,
+  security strategy, compliance roadmap, zero trust, or board security reporting.
+category: c-level-advisor
+domain: C Level Advisor
+triggers:
+- /ciso-advisor
+- run ciso advisor
+- ciso advisor skill
+tools:
+- doc_tools
+- excel_tools
+- web_search
+- rag_library
+argument-hint: '[ciso advisor details]'
+when_to_use: Use when user requests ciso advisor guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # CISO Advisor

@@ -1,6 +1,23 @@
 ---
-name: "iso27001-audit-prep"
-description: "/cs:iso27001-audit-prep <scope> — ISO 27001 ISMS audit readiness 6-question forcing interrogation. Use before annual Clause 9.2 internal audit, surveillance audit prep, or stage 1 certification readiness."
+name: iso27001-audit-prep
+description: /cs:iso27001-audit-prep <scope> — ISO 27001 ISMS audit readiness 6-question
+  forcing interrogation. Use before annual Clause 9.2 internal audit, surveillance
+  audit prep, or stage 1 certification readiness.
+category: compliance-os
+domain: Compliance Os
+triggers:
+- /iso27001-audit-prep
+- run iso27001 audit prep
+- iso27001 audit prep skill
+tools:
+- doc_tools
+- excel_tools
+- rag_library
+- file_processor
+argument-hint: '[iso27001 audit prep details]'
+when_to_use: Use when user requests iso27001 audit prep guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # /cs:iso27001-audit-prep — ISO 27001 ISMS Audit Forcing Questions

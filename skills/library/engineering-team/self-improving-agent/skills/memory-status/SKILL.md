@@ -1,6 +1,23 @@
 ---
-name: "memory-status"
-description: "Memory health dashboard showing line counts, topic files, capacity, stale entries, and recommendations. Use when the user runs /si:memory-status or asks how full or healthy the agent memory is."
+name: memory-status
+description: Memory health dashboard showing line counts, topic files, capacity, stale
+  entries, and recommendations. Use when the user runs /si:memory-status or asks how
+  full or healthy the agent memory is.
+category: engineering-team
+domain: Engineering Team
+triggers:
+- /memory-status
+- run memory status
+- memory status skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[memory status details]'
+when_to_use: Use when user requests memory status guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # /si:memory-status — Memory Health Dashboard

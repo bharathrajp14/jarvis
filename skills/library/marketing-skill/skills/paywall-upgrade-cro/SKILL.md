@@ -1,12 +1,26 @@
 ---
-name: "paywall-upgrade-cro"
-description: When the user wants to create or optimize in-app paywalls, upgrade screens, upsell modals, or feature gates. Also use when the user mentions "paywall," "upgrade screen," "upgrade modal," "upsell," "feature gate," "convert free to paid," "freemium conversion," "trial expiration screen," "limit reached screen," "plan upgrade prompt," or "in-app pricing." Distinct from public pricing pages (see page-cro) — this skill focuses on in-product upgrade moments where the user has already experienced value.
-license: MIT
-metadata:
-  version: 1.0.0
-  author: Alireza Rezvani
-  category: marketing
-  updated: 2026-03-06
+name: paywall-upgrade-cro
+description: When the user wants to create or optimize in-app paywalls, upgrade screens,
+  upsell modals, or feature gates. Also use when the user mentions "paywall," "upgrade
+  screen," "upgrade modal," "upsell," "feature gate," "convert free to paid," "freemium
+  conversion," "trial expiration screen," "limit reached screen," "plan upgrade prompt,"
+  or "in-app pricing." Distinct from public pricing pages (see page-cro) — this skill
+  focuses on in-product upgrade moments where the user has already experienced value.
+category: marketing-skill
+domain: Marketing Skill
+triggers:
+- /paywall-upgrade-cro
+- run paywall upgrade cro
+- paywall upgrade cro skill
+tools:
+- web_search
+- doc_tools
+- file_processor
+- browser_control
+argument-hint: '[paywall upgrade cro details]'
+when_to_use: Use when user requests paywall upgrade cro guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Paywall and Upgrade Screen CRO

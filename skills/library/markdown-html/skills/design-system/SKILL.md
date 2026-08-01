@@ -1,11 +1,20 @@
 ---
 name: design-system
-description: Captures the user's brand identity once via a 10-question onboarding wizard (primary/accent HEX + heading + body Google Fonts + design style editorial/technical/minimal/playful + default output directory + syntax theme + TOC behavior + optional logo/company), validates body-text and link contrast against WCAG 2.2 AA, derives 12 CSS custom properties in HSL space, and stores the result for every markdown-html converter to consume. Use before any markdown-html conversion. Triggers on first-run onboarding ("set up the brand", "configure markdown-html", "run onboarding"), on explicit reset ("reset the design system", "re-onboard"), and is checked by every converter via config_loader.py before rendering. Refuses to save if body-text contrast fails AA 4.5:1 or the output dir isn't writable. Precedence: project (./.markdown-html/) > global (~/.config/markdown-html/) > built-in defaults; MARKDOWN_HTML_NO_CONFIG=1 bypasses.
-version: 2.10.0
-author: Alireza Rezvani
-license: MIT
-tags: [design-system, brand-palette, wcag, onboarding, customization, markdown-html, css-variables, typography]
-compatible_tools: [claude-code, codex-cli, cursor, antigravity, opencode, gemini-cli]
+description: BR JARVIS design-system specialized domain skill.
+category: markdown-html
+domain: Markdown Html
+triggers:
+- /design-system
+- run design system
+- design system skill
+tools:
+- doc_tools
+- file_processor
+- code_helper
+argument-hint: '[design system details]'
+when_to_use: Use when user requests design system guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Design System — Onboarding + Shared Brand Tokens

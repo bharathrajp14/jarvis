@@ -1,28 +1,42 @@
 ---
-name: "marketing-demand-acquisition"
-description: Creates demand generation campaigns, optimizes paid ad spend across LinkedIn, Google, and Meta, develops SEO strategies, and structures partnership programs. Use when planning demand gen strategy, growth marketing, advertising campaigns, PPC optimization, lead generation, pipeline generation, or marketing budgets. Covers multi-channel acquisition (Google Ads, LinkedIn Ads, Meta Ads), CAC analysis, MQL/SQL workflows, attribution modeling, technical SEO, and co-marketing partnerships. Default calibration profile is a Series A+ B2B SaaS scaling internationally (EU/US/Canada, hybrid PLG/Sales-Led) — adapt benchmarks for other stages and motions rather than skipping the skill.
+name: marketing-demand-acquisition
+description: Creates demand generation campaigns, optimizes paid ad spend across LinkedIn,
+  Google, and Meta, develops SEO strategies, and structures partnership programs.
+  Use when planning demand gen strategy, growth marketing, advertising campaigns,
+  PPC optimization, lead generation, pipeline generation, or marketing budgets. Covers
+  multi-channel acquisition (Google Ads, LinkedIn Ads, Meta Ads), CAC analysis, MQL/SQL
+  workflows, attribution modeling, technical SEO, and co-marketing partnerships. Default
+  calibration profile is a Series A+ B2B SaaS scaling internationally (EU/US/Canada,
+  hybrid PLG/Sales-Led) — adapt benchmarks for other stages and motions rather than
+  skipping the skill.
+category: marketing-skill
+domain: Marketing Skill
 triggers:
-  - demand gen
-  - demand generation
-  - paid ads
-  - paid media
-  - LinkedIn ads
-  - Google ads
-  - Meta ads
-  - CAC
-  - customer acquisition cost
-  - lead generation
-  - MQL
-  - SQL
-  - pipeline generation
-  - acquisition strategy
-  - HubSpot campaigns
-metadata:
-  version: 1.1.0
-  author: Alireza Rezvani
-  category: marketing
-  domain: demand-generation
-  updated: 2026-06
+- demand gen
+- demand generation
+- paid ads
+- paid media
+- LinkedIn ads
+- Google ads
+- Meta ads
+- CAC
+- customer acquisition cost
+- lead generation
+- MQL
+- SQL
+- pipeline generation
+- acquisition strategy
+- HubSpot campaigns
+tools:
+- web_search
+- doc_tools
+- file_processor
+- browser_control
+argument-hint: '[marketing demand acquisition details]'
+when_to_use: Use when user requests marketing demand acquisition guidance or task
+  execution.
+user-invocable: true
+context: inline
 ---
 
 # Marketing Demand & Acquisition

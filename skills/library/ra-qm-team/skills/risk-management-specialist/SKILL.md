@@ -1,6 +1,25 @@
 ---
-name: "risk-management-specialist"
-description: Medical device risk management specialist implementing ISO 14971 throughout product lifecycle. Provides risk analysis, risk evaluation, risk control, and post-production information analysis. Use when user mentions risk management, ISO 14971, risk analysis, FMEA, fault tree analysis, hazard identification, risk control, risk matrix, benefit-risk analysis, residual risk, risk acceptability, or post-market risk.
+name: risk-management-specialist
+description: Medical device risk management specialist implementing ISO 14971 throughout
+  product lifecycle. Provides risk analysis, risk evaluation, risk control, and post-production
+  information analysis. Use when user mentions risk management, ISO 14971, risk analysis,
+  FMEA, fault tree analysis, hazard identification, risk control, risk matrix, benefit-risk
+  analysis, residual risk, risk acceptability, or post-market risk.
+category: ra-qm-team
+domain: Ra Qm Team
+triggers:
+- /risk-management-specialist
+- run risk management specialist
+- risk management specialist skill
+tools:
+- doc_tools
+- excel_tools
+- rag_library
+- file_processor
+argument-hint: '[risk management specialist details]'
+when_to_use: Use when user requests risk management specialist guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Risk Management Specialist

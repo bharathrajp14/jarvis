@@ -1,6 +1,25 @@
 ---
-name: "mcp-server-builder"
-description: "Design and ship production-ready MCP (Model Context Protocol) servers from OpenAPI contracts instead of hand-written tool wrappers. Python and TypeScript support, schema validation, safe evolution. Use when exposing an existing API as an MCP server, building tool integrations for Claude or Codex or Cursor, or scaffolding an MCP project from scratch."
+name: mcp-server-builder
+description: Design and ship production-ready MCP (Model Context Protocol) servers
+  from OpenAPI contracts instead of hand-written tool wrappers. Python and TypeScript
+  support, schema validation, safe evolution. Use when exposing an existing API as
+  an MCP server, building tool integrations for Claude or Codex or Cursor, or scaffolding
+  an MCP project from scratch.
+category: engineering
+domain: Engineering
+triggers:
+- /mcp-server-builder
+- run mcp server builder
+- mcp server builder skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[mcp server builder details]'
+when_to_use: Use when user requests mcp server builder guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # MCP Server Builder

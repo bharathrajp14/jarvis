@@ -1,6 +1,25 @@
 ---
-name: "playwright-pro"
-description: "Production-grade Playwright testing toolkit. Use when the user mentions Playwright tests, end-to-end testing, browser automation, fixing flaky tests, test migration, CI/CD testing, or test suites. Generate tests, fix flaky failures, migrate from Cypress/Selenium, sync with TestRail, run on BrowserStack. 55 templates, 3 agents, smart reporting."
+name: playwright-pro
+description: Production-grade Playwright testing toolkit. Use when the user mentions
+  Playwright tests, end-to-end testing, browser automation, fixing flaky tests, test
+  migration, CI/CD testing, or test suites. Generate tests, fix flaky failures, migrate
+  from Cypress/Selenium, sync with TestRail, run on BrowserStack. 55 templates, 3
+  agents, smart reporting.
+category: engineering-team
+domain: Engineering Team
+triggers:
+- /playwright-pro
+- run playwright pro
+- playwright pro skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[playwright pro details]'
+when_to_use: Use when user requests playwright pro guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Playwright Pro

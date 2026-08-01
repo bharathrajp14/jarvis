@@ -1,12 +1,25 @@
 ---
-name: "marketing-ideas"
-description: "When the user needs marketing ideas, inspiration, or strategies for their SaaS or software product. Also use when the user asks for 'marketing ideas,' 'growth ideas,' 'how to market,' 'marketing strategies,' 'marketing tactics,' 'ways to promote,' or 'ideas to grow.' This skill provides 139 proven marketing approaches organized by category."
-license: MIT
-metadata:
-  version: 1.0.0
-  author: Alireza Rezvani
-  category: marketing
-  updated: 2026-03-06
+name: marketing-ideas
+description: When the user needs marketing ideas, inspiration, or strategies for their
+  SaaS or software product. Also use when the user asks for 'marketing ideas,' 'growth
+  ideas,' 'how to market,' 'marketing strategies,' 'marketing tactics,' 'ways to promote,'
+  or 'ideas to grow.' This skill provides 139 proven marketing approaches organized
+  by category.
+category: marketing-skill
+domain: Marketing Skill
+triggers:
+- /marketing-ideas
+- run marketing ideas
+- marketing ideas skill
+tools:
+- web_search
+- doc_tools
+- file_processor
+- browser_control
+argument-hint: '[marketing ideas details]'
+when_to_use: Use when user requests marketing ideas guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Marketing Ideas for SaaS

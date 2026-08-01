@@ -1,12 +1,25 @@
 ---
-name: "marketing-ops"
-description: "Central router for the marketing skill ecosystem. Use when unsure which marketing skill to use, when orchestrating a multi-skill campaign, or when coordinating across content, SEO, CRO, channels, and analytics. Also use when the user mentions 'marketing help,' 'campaign plan,' 'what should I do next,' 'marketing priorities,' or 'coordinate marketing.'"
-license: MIT
-metadata:
-  version: 1.0.0
-  author: Alireza Rezvani
-  category: marketing
-  updated: 2026-03-06
+name: marketing-ops
+description: Central router for the marketing skill ecosystem. Use when unsure which
+  marketing skill to use, when orchestrating a multi-skill campaign, or when coordinating
+  across content, SEO, CRO, channels, and analytics. Also use when the user mentions
+  'marketing help,' 'campaign plan,' 'what should I do next,' 'marketing priorities,'
+  or 'coordinate marketing.'
+category: marketing-skill
+domain: Marketing Skill
+triggers:
+- /marketing-ops
+- run marketing ops
+- marketing ops skill
+tools:
+- web_search
+- doc_tools
+- file_processor
+- browser_control
+argument-hint: '[marketing ops details]'
+when_to_use: Use when user requests marketing ops guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Marketing Ops

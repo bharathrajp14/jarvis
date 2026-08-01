@@ -1,6 +1,28 @@
 ---
 name: zero-hallucination-coder
-description: "Runs a disciplined Discuss -> Map -> Decompose -> Execute -> Verify loop that grounds code in verified structure — no invented APIs, no assumed imports, no placeholder code — with a lazy-senior-dev YAGNI ladder that deletes unnecessary code before it is written. Use when a coding task is high-stakes, complex, or spans existing code (auth, databases, migrations, multi-file features), or when the user explicitly asks to plan carefully before coding, avoid hallucinated code, or work rigorously. Not for trivial edits, typos, or throwaway one-off scripts — those do not need the full loop."
+description: Runs a disciplined Discuss -> Map -> Decompose -> Execute -> Verify loop
+  that grounds code in verified structure — no invented APIs, no assumed imports,
+  no placeholder code — with a lazy-senior-dev YAGNI ladder that deletes unnecessary
+  code before it is written. Use when a coding task is high-stakes, complex, or spans
+  existing code (auth, databases, migrations, multi-file features), or when the user
+  explicitly asks to plan carefully before coding, avoid hallucinated code, or work
+  rigorously. Not for trivial edits, typos, or throwaway one-off scripts — those do
+  not need the full loop.
+category: engineering
+domain: Engineering
+triggers:
+- /zero-hallucination-coder
+- run zero hallucination coder
+- zero hallucination coder skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[zero hallucination coder details]'
+when_to_use: Use when user requests zero hallucination coder guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Zero-Hallucination Coder

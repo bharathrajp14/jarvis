@@ -1,6 +1,26 @@
 ---
-name: "saas-scaffolder"
-description: "Generates complete, production-ready SaaS project boilerplate including authentication, database schemas, billing integration, API routes, and a working dashboard using Next.js 14+ App Router, TypeScript, Tailwind CSS, shadcn/ui, Drizzle ORM, and Stripe. Use when the user wants to create a new SaaS app, start a subscription-based web project, scaffold a Next.js application, or mentions terms like starter template, boilerplate, new project, or wiring up auth and payments."
+name: saas-scaffolder
+description: Generates complete, production-ready SaaS project boilerplate including
+  authentication, database schemas, billing integration, API routes, and a working
+  dashboard using Next.js 14+ App Router, TypeScript, Tailwind CSS, shadcn/ui, Drizzle
+  ORM, and Stripe. Use when the user wants to create a new SaaS app, start a subscription-based
+  web project, scaffold a Next.js application, or mentions terms like starter template,
+  boilerplate, new project, or wiring up auth and payments.
+category: product-team
+domain: Product Team
+triggers:
+- /saas-scaffolder
+- run saas scaffolder
+- saas scaffolder skill
+tools:
+- doc_tools
+- excel_tools
+- file_processor
+- web_search
+argument-hint: '[saas scaffolder details]'
+when_to_use: Use when user requests saas scaffolder guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # SaaS Scaffolder

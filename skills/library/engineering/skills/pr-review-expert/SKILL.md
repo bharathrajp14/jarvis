@@ -1,6 +1,22 @@
 ---
-name: "pr-review-expert"
-description: "Use when the user asks to review pull requests, analyze code changes, check for security issues in PRs, or assess code quality of diffs."
+name: pr-review-expert
+description: Use when the user asks to review pull requests, analyze code changes,
+  check for security issues in PRs, or assess code quality of diffs.
+category: engineering
+domain: Engineering
+triggers:
+- /pr-review-expert
+- run pr review expert
+- pr review expert skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[pr review expert details]'
+when_to_use: Use when user requests pr review expert guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # PR Review Expert

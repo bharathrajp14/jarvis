@@ -1,9 +1,23 @@
 ---
-name: "migrate"
-description: >-
-  Migrate from Cypress or Selenium to Playwright. Use when user mentions
-  "cypress", "selenium", "migrate tests", "convert tests", "switch to
-  playwright", "move from cypress", or "replace selenium".
+name: migrate
+description: Migrate from Cypress or Selenium to Playwright. Use when user mentions
+  "cypress", "selenium", "migrate tests", "convert tests", "switch to playwright",
+  "move from cypress", or "replace selenium".
+category: engineering-team
+domain: Engineering Team
+triggers:
+- /migrate
+- run migrate
+- migrate skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[migrate details]'
+when_to_use: Use when user requests migrate guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Migrate to Playwright

@@ -1,6 +1,24 @@
 ---
-name: "hard-call"
-description: "/em:hard-call — Framework for decisions with no good options. Use when every option is painful and a structured 10/10/10 + regret-minimization pass is needed — e.g. choosing between a layoff and a down round, or killing a beloved product line."
+name: hard-call
+description: /em:hard-call — Framework for decisions with no good options. Use when
+  every option is painful and a structured 10/10/10 + regret-minimization pass is
+  needed — e.g. choosing between a layoff and a down round, or killing a beloved product
+  line.
+category: c-level-advisor
+domain: C Level Advisor
+triggers:
+- /hard-call
+- run hard call
+- hard call skill
+tools:
+- doc_tools
+- excel_tools
+- web_search
+- rag_library
+argument-hint: '[hard call details]'
+when_to_use: Use when user requests hard call guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # /em:hard-call — Framework for Decisions With No Good Options

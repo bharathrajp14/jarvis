@@ -1,6 +1,23 @@
 ---
-name: "aims-audit"
-description: "/cs:aims-audit <scope> — ISO/IEC 42001 AIMS internal-audit 6-question forcing interrogation. Use before certification stage 1, before annual internal audit cycles, or when onboarding a new AI system into an existing AIMS."
+name: aims-audit
+description: /cs:aims-audit <scope> — ISO/IEC 42001 AIMS internal-audit 6-question
+  forcing interrogation. Use before certification stage 1, before annual internal
+  audit cycles, or when onboarding a new AI system into an existing AIMS.
+category: compliance-os
+domain: Compliance Os
+triggers:
+- /aims-audit
+- run aims audit
+- aims audit skill
+tools:
+- doc_tools
+- excel_tools
+- rag_library
+- file_processor
+argument-hint: '[aims audit details]'
+when_to_use: Use when user requests aims audit guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # /cs:aims-audit — AIMS ISO 42001 Forcing Questions

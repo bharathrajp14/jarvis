@@ -1,6 +1,22 @@
 ---
 name: roadmap-communicator
-description: Use when preparing roadmap narratives, release notes, changelogs, or stakeholder updates tailored for executives, engineering teams, and customers.
+description: Use when preparing roadmap narratives, release notes, changelogs, or
+  stakeholder updates tailored for executives, engineering teams, and customers.
+category: product-team
+domain: Product Team
+triggers:
+- /roadmap-communicator
+- run roadmap communicator
+- roadmap communicator skill
+tools:
+- doc_tools
+- excel_tools
+- file_processor
+- web_search
+argument-hint: '[roadmap communicator details]'
+when_to_use: Use when user requests roadmap communicator guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Roadmap Communicator

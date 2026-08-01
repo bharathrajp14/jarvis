@@ -1,6 +1,23 @@
 ---
-name: "browser-automation"
-description: "Use when the user asks to automate browser tasks, scrape websites, fill forms, capture screenshots, extract structured data from web pages, or build web automation workflows. NOT for testing — use playwright-pro for that."
+name: browser-automation
+description: Use when the user asks to automate browser tasks, scrape websites, fill
+  forms, capture screenshots, extract structured data from web pages, or build web
+  automation workflows. NOT for testing — use playwright-pro for that.
+category: engineering
+domain: Engineering
+triggers:
+- /browser-automation
+- run browser automation
+- browser automation skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[browser automation details]'
+when_to_use: Use when user requests browser automation guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Browser Automation - POWERFUL

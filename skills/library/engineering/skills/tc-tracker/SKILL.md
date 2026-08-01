@@ -1,6 +1,23 @@
 ---
-name: "tc-tracker"
-description: "Use when the user asks to track technical changes, create change records, manage TC lifecycles, or hand off work between AI sessions. Covers init/create/update/status/resume/close/export workflows for structured code change documentation."
+name: tc-tracker
+description: Use when the user asks to track technical changes, create change records,
+  manage TC lifecycles, or hand off work between AI sessions. Covers init/create/update/status/resume/close/export
+  workflows for structured code change documentation.
+category: engineering
+domain: Engineering
+triggers:
+- /tc-tracker
+- run tc tracker
+- tc tracker skill
+tools:
+- dev_agent
+- code_helper
+- repo_controller
+- file_processor
+argument-hint: '[tc tracker details]'
+when_to_use: Use when user requests tc tracker guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # TC Tracker

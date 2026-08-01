@@ -1,6 +1,26 @@
 ---
-name: "information-security-manager-iso27001"
-description: ISO 27001 ISMS implementation and cybersecurity governance for HealthTech and MedTech companies. Use when designing an ISMS, running security risk assessments, implementing controls, pursuing ISO 27001 certification, preparing security audits, responding to security incidents, or verifying compliance. Covers ISO 27001, ISO 27002, healthcare security, and medical device cybersecurity.
+name: information-security-manager-iso27001
+description: ISO 27001 ISMS implementation and cybersecurity governance for HealthTech
+  and MedTech companies. Use when designing an ISMS, running security risk assessments,
+  implementing controls, pursuing ISO 27001 certification, preparing security audits,
+  responding to security incidents, or verifying compliance. Covers ISO 27001, ISO
+  27002, healthcare security, and medical device cybersecurity.
+category: ra-qm-team
+domain: Ra Qm Team
+triggers:
+- /information-security-manager-iso27001
+- run information security manager iso27001
+- information security manager iso27001 skill
+tools:
+- doc_tools
+- excel_tools
+- rag_library
+- file_processor
+argument-hint: '[information security manager iso27001 details]'
+when_to_use: Use when user requests information security manager iso27001 guidance
+  or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Information Security Manager - ISO 27001

@@ -1,6 +1,23 @@
 ---
 name: experiment-designer
-description: Use when planning product experiments, writing testable hypotheses, estimating sample size, prioritizing tests, or interpreting A/B outcomes with practical statistical rigor.
+description: Use when planning product experiments, writing testable hypotheses, estimating
+  sample size, prioritizing tests, or interpreting A/B outcomes with practical statistical
+  rigor.
+category: product-team
+domain: Product Team
+triggers:
+- /experiment-designer
+- run experiment designer
+- experiment designer skill
+tools:
+- doc_tools
+- excel_tools
+- file_processor
+- web_search
+argument-hint: '[experiment designer details]'
+when_to_use: Use when user requests experiment designer guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Experiment Designer

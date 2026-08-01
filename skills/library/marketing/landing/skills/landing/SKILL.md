@@ -1,12 +1,30 @@
 ---
 name: landing
-description: "Generates a premium single-page HTML landing page with 3D CSS animations, GSAP scroll effects, and mouse-parallax depth. Forcing intake (product + elevator pitch, audience register, brand overrides, tone) locks down positioning before any copy or markup is written, so the page reflects the actual product rather than generic boilerplate. Use whenever the user says 'landing for X', 'create a landing page', 'build a landing page', 'make a landing page for X', 'I need a web page for Y', or provides product/service details and wants a polished website. Also triggers on 'promotional page', 'product page', 'one-pager', 'web presence', 'sales page'. Outputs a single self-contained HTML file (Claude Code) or HTML artifact (Claude.ai). Supports configurable brand colors via CSS custom property overrides."
-license: MIT
-metadata:
-  source_spec: "megaprompts/04-landing-megaprompt.md"
-  build_pattern: "Path B (direct conversion)"
-  distinct_from: "product-team/skills/landing-page-generator (different output format + optimization target)"
-  version: 1.0.0
+description: Generates a premium single-page HTML landing page with 3D CSS animations,
+  GSAP scroll effects, and mouse-parallax depth. Forcing intake (product + elevator
+  pitch, audience register, brand overrides, tone) locks down positioning before any
+  copy or markup is written, so the page reflects the actual product rather than generic
+  boilerplate. Use whenever the user says 'landing for X', 'create a landing page',
+  'build a landing page', 'make a landing page for X', 'I need a web page for Y',
+  or provides product/service details and wants a polished website. Also triggers
+  on 'promotional page', 'product page', 'one-pager', 'web presence', 'sales page'.
+  Outputs a single self-contained HTML file (Claude Code) or HTML artifact (Claude.ai).
+  Supports configurable brand colors via CSS custom property overrides.
+category: marketing
+domain: Marketing
+triggers:
+- /landing
+- run landing
+- landing skill
+tools:
+- web_search
+- doc_tools
+- file_processor
+- browser_control
+argument-hint: '[landing details]'
+when_to_use: Use when user requests landing guidance or task execution.
+user-invocable: true
+context: inline
 ---
 
 # Landing — Premium HTML Landing Page Generator
