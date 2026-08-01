@@ -30,7 +30,15 @@ try:
 except ImportError:
     pass
 
-from ui import JarvisUI
+try:
+    from ui_mark import JarvisUI
+except ImportError:
+    try:
+        from ui import JarvisUI
+    except ImportError:
+        class JarvisUI:
+            def write_log(self, msg): print(f"[UI] {msg}")
+            def set_state(self, state): pass
 from core.bootstrap import build_assistant_runtime
 from agent.task_queue import get_queue, TaskPriority
 from voice.tts import NeuralTTS

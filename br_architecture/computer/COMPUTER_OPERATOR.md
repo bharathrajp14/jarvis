@@ -42,12 +42,12 @@ graph TD
 
 | File | Primary Class | Function & OS Interlocks |
 |---|---|---|
-| [operator.py](file:///d:/BRJARVIS/Br-Jarvis/computer/operator.py) | `ComputerOperator` | Master automation operator handling click, double_click, right_click, mouse_move, drag, type_text, key_combination, mouse_scroll, and active window switching with precise coordinate handling. |
-| [clipboard_utils.py](file:///d:/BRJARVIS/Br-Jarvis/actions/clipboard_utils.py) | `MultiBackendClipboard` | 5-layer prioritized clipboard engine fallback (`pyperclip` -> Win32 `ctypes` -> `tkinter` -> PowerShell -> CLI) for robust cross-platform clipboard copy/paste. |
-| [live_os_control.py](file:///d:/BRJARVIS/Br-Jarvis/actions/live_os_control.py) | `LiveOSController` | LLM visual screenshot action execution loop; generates red target crosshairs and action bounding footprint overlays (`_save_action_visualization()`) saved to `BR_WORKSPACE/Logs/live_os/`. |
-| [semantic_operator.py](file:///d:/BRJARVIS/Br-Jarvis/computer/semantic_operator.py) | `SemanticComputerOperator` | High-level GUI element finder that maps natural language labels (e.g. `"Submit Button"`, `"Search Bar"`) to bounding box coordinates via `vision/ocr_engine.py` and accessibility trees. |
-| [recovery.py](file:///d:/BRJARVIS/Br-Jarvis/computer/recovery.py) | `OperatorRecoveryEngine` | Self-healing recovery loop handling lost window focus, popup interruptions, mouse drift, and static screen frame hash alerts. |
-| [types.py](file:///d:/BRJARVIS/Br-Jarvis/computer/types.py) | `ComputerAction`, `ActionResult` | Pydantic v2 schemas for action payloads, coordinate targets, execution status, and screenshot verification diffs. |
+| [operator.py](computer/operator.py) | `ComputerOperator` | Master automation operator handling click, double_click, right_click, mouse_move, drag, type_text, key_combination, mouse_scroll, and active window switching with precise coordinate handling. |
+| [clipboard_utils.py](actions/clipboard_utils.py) | `MultiBackendClipboard` | 5-layer prioritized clipboard engine fallback (`pyperclip` -> Win32 `ctypes` -> `tkinter` -> PowerShell -> CLI) for robust cross-platform clipboard copy/paste. |
+| [live_os_control.py](actions/live_os_control.py) | `LiveOSController` | LLM visual screenshot action execution loop; generates red target crosshairs and action bounding footprint overlays (`_save_action_visualization()`) saved to `BR_WORKSPACE/Logs/live_os/`. |
+| [semantic_operator.py](computer/semantic_operator.py) | `SemanticComputerOperator` | High-level GUI element finder that maps natural language labels (e.g. `"Submit Button"`, `"Search Bar"`) to bounding box coordinates via `vision/ocr_engine.py` and accessibility trees. |
+| [recovery.py](computer/recovery.py) | `OperatorRecoveryEngine` | Self-healing recovery loop handling lost window focus, popup interruptions, mouse drift, and static screen frame hash alerts. |
+| [types.py](computer/types.py) | `ComputerAction`, `ActionResult` | Pydantic v2 schemas for action payloads, coordinate targets, execution status, and screenshot verification diffs. |
 
 ---
 

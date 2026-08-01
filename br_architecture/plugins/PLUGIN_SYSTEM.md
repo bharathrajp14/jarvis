@@ -41,12 +41,12 @@ graph TD
 
 | Module | Component / Class | Responsibility |
 |---|---|---|
-| [plugins/plugin_manager.py](file:///d:/BRJARVIS/Br-Jarvis/plugins/plugin_manager.py) | `PluginManager` | Dynamic discovery, manifest parsing, isolated module loading, and plugin lifecycle hooks (`on_load`, `on_unload`). |
-| [tools/registry.py](file:///d:/BRJARVIS/Br-Jarvis/tools/registry.py) | `@register_tool`, `ToolRegistry` | Decorator-based tool registration engine that automatically generates JSON schemas for LLM tool invocation. |
-| [agent/scratchpad.py](file:///d:/BRJARVIS/Br-Jarvis/agent/scratchpad.py) | `ScratchpadEngine` | Isolated execution workspace at `./scratch/` supporting transient evaluation (`scratchpad_eval`) for Python, Node.js, PowerShell, and Bash with stdout/stderr capture. |
-| [tools/scratchpad_tools.py](file:///d:/BRJARVIS/Br-Jarvis/tools/scratchpad_tools.py) | 5 Scratchpad Tools | `scratchpad_write`, `scratchpad_read`, `scratchpad_eval`, `scratchpad_list`, `scratchpad_clear`. |
-| [tools/tool_runtime.py](file:///d:/BRJARVIS/Br-Jarvis/tools/tool_runtime.py) | `ToolRuntimeEngine` | High-level execution runtime enforcing permissions, input validation, execution timeouts, error sanitization, and caching. |
-| [tools/mcp_connector.py](file:///d:/BRJARVIS/Br-Jarvis/tools/mcp_connector.py) | `MCPConnector` | Adapter layer for connecting external Model Context Protocol (MCP) tool servers. |
+| [plugins/plugin_manager.py](plugins/plugin_manager.py) | `PluginManager` | Dynamic discovery, manifest parsing, isolated module loading, and plugin lifecycle hooks (`on_load`, `on_unload`). |
+| [tools/registry.py](tools/registry.py) | `@register_tool`, `ToolRegistry` | Decorator-based tool registration engine that automatically generates JSON schemas for LLM tool invocation. |
+| [agent/scratchpad.py](agent/scratchpad.py) | `ScratchpadEngine` | Isolated execution workspace at `./scratch/` supporting transient evaluation (`scratchpad_eval`) for Python, Node.js, PowerShell, and Bash with stdout/stderr capture. |
+| [tools/scratchpad_tools.py](tools/scratchpad_tools.py) | 5 Scratchpad Tools | `scratchpad_write`, `scratchpad_read`, `scratchpad_eval`, `scratchpad_list`, `scratchpad_clear`. |
+| [tools/tool_runtime.py](tools/tool_runtime.py) | `ToolRuntimeEngine` | High-level execution runtime enforcing permissions, input validation, execution timeouts, error sanitization, and caching. |
+| [tools/mcp_connector.py](tools/mcp_connector.py) | `MCPConnector` | Adapter layer for connecting external Model Context Protocol (MCP) tool servers. |
 
 ---
 

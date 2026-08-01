@@ -136,7 +136,7 @@ Br-Jarvis/
 ├── actions/             # Desktop, browser, app, and 5-tier clipboard actions (34 files)
 ├── agent/               # Planner, executor, step planner, scratchpad, artifacts, transcripts
 ├── backends/            # AI provider adapters (Gemini, Claude, GPT, Ollama, DeepSeek, NVIDIA, Mistral)
-├── br_archetecture/     # Engineering knowledge base index & specs
+├── br_architecture/      # Engineering knowledge base index & specs
 ├── computer/            # Desktop operator, win32 handles, semantic finder, recovery
 ├── config/              # Model config, hotkeys, vocabulary settings
 ├── context/             # Token counter, sliding window, context reference resolver

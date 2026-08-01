@@ -59,7 +59,7 @@ We have restructured the project to support the following advanced capabilities:
 
 ### 3.4 Custom Commands, Replies, & Variables (`actions/custom_commands.py`)
 - Create programmable action chains mapped to custom voice or text triggers.
-- Mapped in [config/custom_commands.json](file:///d:/MARKJARVIS/Jarvis-MK37/config/custom_commands.json):
+- Mapped in [config/custom_commands.json](config/custom_commands.json):
   - **Variable substitutions** (e.g., `search google for $QUERY`).
   - **Sequential execution** of speak, open app, open URL, key stroke typing, hotkeys, or shell command actions.
   - **Startup Commands** that execute automatically on boot.
@@ -88,7 +88,7 @@ We have restructured the project to support the following advanced capabilities:
 
 ## 4. Configuration Environment Variables
 
-Configure these settings in your [**.env**](file:///d:/MARKJARVIS/Jarvis-MK37/.env) file:
+Configure these settings in your [**.env**](.env.template) file:
 
 ```env
 # ── Assistant Profile Configuration ───────────────────

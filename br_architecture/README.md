@@ -7,7 +7,7 @@ Welcome to the **BR JARVIS (Project BR / JARVIS MK37 & MK38)** Engineering Knowl
 ## 📁 Knowledge Base Hierarchy
 
 ```
-br_archetecture/
+br_architecture/
 ├── README.md                          # Root Knowledge Base index (This file)
 ├── fullproject.md                     # Master Full Project Specification & Architecture
 ├── PROJECT_VISION.md                  # Project BR vision, philosophy & objectives

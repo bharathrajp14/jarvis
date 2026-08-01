@@ -2230,7 +2230,7 @@ class MainWindow(QMainWindow):
         Never opens a terminal, console, or PowerShell window on any platform.
         """
         import stat as _stat
-        script  = Path(__file__).resolve().parent / "main.py"
+        script  = Path(__file__).resolve().parent / "start.py"
         python  = Path(sys.executable)
         desktop = self._get_desktop_dir()
 
@@ -2974,7 +2974,7 @@ class MainWindow(QMainWindow):
     def _toggle_autostart(self):
         currently_on = self._check_autostart()
         try:
-            script = str(Path(__file__).resolve().parent / "main.py")
+            script = str(Path(__file__).resolve().parent / "start.py")
             if _OS == "Windows":
                 import winreg
                 reg = winreg.OpenKey(winreg.HKEY_CURRENT_USER,

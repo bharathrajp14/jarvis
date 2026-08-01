@@ -3,7 +3,10 @@ from __future__ import annotations
 
 import unittest
 from unittest.mock import MagicMock
-from ui import JarvisUI
+try:
+    from ui_mark import JarvisUI
+except ImportError:
+    from ui import JarvisUI
 
 
 class TestUIMultiTask(unittest.TestCase):

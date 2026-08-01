@@ -33,10 +33,10 @@ graph TD
 
 | File | Class / Entity | Responsibility |
 |---|---|---|
-| [bus.py](file:///d:/BRJARVIS/Br-Jarvis/events/bus.py) | `EventBus` | Thread-safe, async Pub/Sub event dispatcher supporting wildcard topic subscriptions (e.g. `task.*`, `step_planner.*`, `system.error`). Includes Dead Letter Queue management. |
-| [handlers.py](file:///d:/BRJARVIS/Br-Jarvis/events/handlers.py) | `@subscribe` | Decorator framework for registering synchronous and asynchronous subscriber functions. |
-| [store.py](file:///d:/BRJARVIS/Br-Jarvis/events/store.py) | `EventStore` | High-throughput append-only JSONL persistent store logging system telemetry to `events.jsonl`. |
-| [types.py](file:///d:/BRJARVIS/Br-Jarvis/events/types.py) | `Event`, `EventType`, `VisionEvent` | Enums and Pydantic v2 schemas defining event payloads across system lifecycle, step planning, vision graph updates, tasks, tools, errors, and security audits. |
+| [bus.py](events/bus.py) | `EventBus` | Thread-safe, async Pub/Sub event dispatcher supporting wildcard topic subscriptions (e.g. `task.*`, `step_planner.*`, `system.error`). Includes Dead Letter Queue management. |
+| [handlers.py](events/handlers.py) | `@subscribe` | Decorator framework for registering synchronous and asynchronous subscriber functions. |
+| [store.py](events/store.py) | `EventStore` | High-throughput append-only JSONL persistent store logging system telemetry to `events.jsonl`. |
+| [types.py](events/types.py) | `Event`, `EventType`, `VisionEvent` | Enums and Pydantic v2 schemas defining event payloads across system lifecycle, step planning, vision graph updates, tasks, tools, errors, and security audits. |
 
 ---
 

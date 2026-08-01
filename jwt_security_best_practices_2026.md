@@ -1,1 +1,0 @@
-Detailed markdown report summarizing the latest JWT security best practices for 2026 based on the web search results.

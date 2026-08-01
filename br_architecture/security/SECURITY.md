@@ -37,12 +37,12 @@ graph TD
 
 | File | Class | Responsibility |
 |---|---|---|
-| [integrity.py](file:///d:/BRJARVIS/Br-Jarvis/guardian/integrity.py) | `SystemIntegrityChecker` | Verifies SHA-256 hashes of core safety files against `.guardian_hashes.json`. |
-| [kill_switch.py](file:///d:/BRJARVIS/Br-Jarvis/guardian/kill_switch.py) | `KillSwitch` | Monitors `guardian/PAUSED` flag file, CLI pause commands, and global emergency hotkey. |
-| [snapshot.py](file:///d:/BRJARVIS/Br-Jarvis/guardian/snapshot.py) | `SnapshotManager` | Manages pre-upgrade git commits, database backups, and rolling retention (20 snapshots / 7 days). |
-| [rollback.py](file:///d:/BRJARVIS/Br-Jarvis/guardian/rollback.py) | `RollbackEngine` | Automated git and database state recovery if post-deploy healthchecks fail. |
-| [audit_log.py](file:///d:/BRJARVIS/Br-Jarvis/guardian/audit_log.py) | `AuditLog` | Append-only JSONL audit ledger logging all autonomous events to `workspace/logs/autonomy_audit.jsonl`. |
-| [path_policy.py](file:///d:/BRJARVIS/Br-Jarvis/guardian/path_policy.py) | `PathPolicy` | Path bounds validator ensuring workspace path isolation and cloud context exclusion. |
+| [integrity.py](guardian/integrity.py) | `SystemIntegrityChecker` | Verifies SHA-256 hashes of core safety files against `.guardian_hashes.json`. |
+| [kill_switch.py](guardian/kill_switch.py) | `KillSwitch` | Monitors `guardian/PAUSED` flag file, CLI pause commands, and global emergency hotkey. |
+| [snapshot.py](guardian/snapshot.py) | `SnapshotManager` | Manages pre-upgrade git commits, database backups, and rolling retention (20 snapshots / 7 days). |
+| [rollback.py](guardian/rollback.py) | `RollbackEngine` | Automated git and database state recovery if post-deploy healthchecks fail. |
+| [audit_log.py](guardian/audit_log.py) | `AuditLog` | Append-only JSONL audit ledger logging all autonomous events to `workspace/logs/autonomy_audit.jsonl`. |
+| [path_policy.py](guardian/path_policy.py) | `PathPolicy` | Path bounds validator ensuring workspace path isolation and cloud context exclusion. |
 
 ---
 

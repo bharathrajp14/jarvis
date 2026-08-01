@@ -40,9 +40,9 @@ graph TD
 
 | File | Class | Responsibility |
 |---|---|---|
-| [accessibility.py](file:///d:/BRJARVIS/Br-Jarvis/vision/accessibility.py) | `AccessibilityBridge` | Tier 1 Windows UI Automation API bridge extracting native UI control trees via `ctypes` in under 10ms with 0 LLM token cost. |
-| [dom_bridge.py](file:///d:/BRJARVIS/Br-Jarvis/vision/dom_bridge.py) | `CDPBridge` | Tier 2 Chrome/Edge DevTools Protocol debugging bridge extracting web page DOM trees directly from port 9222. |
-| [ocr_engine.py](file:///d:/BRJARVIS/Br-Jarvis/vision/ocr_engine.py) | `OCREngine` | Tier 3 SHA-256 cached PyTesseract bounding box locator extracting text elements from non-accessible desktop applications. |
-| [engine.py](file:///d:/BRJARVIS/Br-Jarvis/vision/engine.py) | `VisionEngine` | Master vision coordinator publishing `screen.understood` & `graph.updated` events onto `EventBus`. |
-| [types.py](file:///d:/BRJARVIS/Br-Jarvis/vision/types.py) | `SemanticUINode`, `SemanticUIGraph` | Data models and hierarchy DAG representing UI roles (`BUTTON`, `TEXTBOX`, `DROPDOWN`, `TAB`, `WINDOW`, etc.). |
-| [live_os_control.py](file:///d:/BRJARVIS/Br-Jarvis/actions/live_os_control.py) | `LiveOSController` | Visual grounding action loop drawing red target crosshairs and action bounding footprints saved to `BR_WORKSPACE/Logs/live_os/`. |
+| [accessibility.py](vision/accessibility.py) | `AccessibilityBridge` | Tier 1 Windows UI Automation API bridge extracting native UI control trees via `ctypes` in under 10ms with 0 LLM token cost. |
+| [dom_bridge.py](vision/dom_bridge.py) | `CDPBridge` | Tier 2 Chrome/Edge DevTools Protocol debugging bridge extracting web page DOM trees directly from port 9222. |
+| [ocr_engine.py](vision/ocr_engine.py) | `OCREngine` | Tier 3 SHA-256 cached PyTesseract bounding box locator extracting text elements from non-accessible desktop applications. |
+| [engine.py](vision/engine.py) | `VisionEngine` | Master vision coordinator publishing `screen.understood` & `graph.updated` events onto `EventBus`. |
+| [types.py](vision/types.py) | `SemanticUINode`, `SemanticUIGraph` | Data models and hierarchy DAG representing UI roles (`BUTTON`, `TEXTBOX`, `DROPDOWN`, `TAB`, `WINDOW`, etc.). |
+| [live_os_control.py](actions/live_os_control.py) | `LiveOSController` | Visual grounding action loop drawing red target crosshairs and action bounding footprints saved to `BR_WORKSPACE/Logs/live_os/`. |

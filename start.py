@@ -611,13 +611,18 @@ def _pre_launch_check() -> bool:
     return True
 
 def launch_voice():
-    console.print("\n[bold cyan]▶ Starting BR Voice Assistant[/]")
-    console.print("[dim]Note: The GUI will open in a new window. Press Ctrl+C to stop.[/]\n")
+    console.print("\n[bold cyan]▶ Starting BR Voice Assistant Cyberpunk HUD[/]")
+    console.print("[dim]Note: The Cyberpunk HUD GUI will open in a new window. Press Ctrl+C to stop.[/]\n")
     if getattr(sys, "frozen", False):
-        from main import main as voice_main
-        _run_script("main.py", voice_main)
+        try:
+            from ui_mark import JarvisUI
+            app = JarvisUI()
+            if hasattr(app, "root") and hasattr(app.root, "mainloop"):
+                app.root.mainloop()
+        except Exception:
+            _run_script("ui_mark.py", None)
     else:
-        _run_script("main.py", None)
+        _run_script("ui_mark.py", None)
 
 def launch_floating_voice():
     console.print("\n[bold cyan]▶ Starting Floating Gemini Live Voice Overlay[/]")
@@ -628,7 +633,7 @@ def launch_floating_voice():
         try:
             from floating_voice_ui import FloatingGeminiVoiceUI  # type: ignore[import-not-found]
         except ImportError:
-            from ui import JarvisUI as FloatingGeminiVoiceUI  # type: ignore[assignment]
+            from ui_mark import JarvisUI as FloatingGeminiVoiceUI  # type: ignore[assignment]
 
     app = FloatingGeminiVoiceUI()
     if hasattr(app, "run"):
@@ -690,26 +695,31 @@ def launch_dashboard_server():
 
 def launch_mark_ui():
     console.print("\n[bold cyan]▶ Launching Mark Cyberpunk HUD Interface (JarvisLive Gemini Session + PyQt6 HUD)[/]")
-    main_mark_script = BASE_DIR / "main_mark.py"
-    if not main_mark_script.exists():
-        console.print("[red]✗ main_mark.py script not found.[/]")
+    ui_mark_script = BASE_DIR / "ui_mark.py"
+    if not ui_mark_script.exists():
+        console.print("[red]✗ ui_mark.py script not found.[/]")
         return
-    _run_script("main_mark.py", None)
+    _run_script("ui_mark.py", None)
 
 def launch_both():
     console.print("\n[bold cyan]▶ Starting Modes in Parallel[/]\n")
     if getattr(sys, "frozen", False):
-        from main import main as voice_main
-        from main_mk37 import main as cli_main
-        threading.Thread(target=voice_main, daemon=True).start()
-        cli_main()
+        try:
+            from ui_mark import JarvisUI
+            from main_mk37 import main as cli_main
+            app = JarvisUI()
+            threading.Thread(target=app.root.mainloop if hasattr(app, "root") else lambda: None, daemon=True).start()
+            cli_main()
+        except Exception:
+            _run_script("ui_mark.py", None)
+            _run_script("main_mk37.py", None)
     else:
         _ensure_log_dir()
         voice_log = LOG_DIR / f"voice_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
         log_handle = open(voice_log, "w", encoding="utf-8")
         try:
             vproc = subprocess.Popen(
-                [PYTHON, str(BASE_DIR / "main.py")],
+                [PYTHON, str(BASE_DIR / "ui_mark.py")],
                 cwd=str(BASE_DIR),
                 stdout=log_handle,
                 stderr=subprocess.STDOUT,
@@ -746,7 +756,7 @@ def launch_silent():
         try:
             log_handle = open(voice_log, "w", encoding="utf-8")
             proc = subprocess.Popen(
-                [PYTHON, str(BASE_DIR / "main.py")],
+                [PYTHON, str(BASE_DIR / "ui_mark.py")],
                 cwd=str(BASE_DIR),
                 stdout=log_handle,
                 stderr=subprocess.STDOUT,

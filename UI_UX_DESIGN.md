@@ -7,9 +7,9 @@
 
 ## 🔗 Master Architectural Blueprints
 
-- 📄 **[AI OS Master Redesign Specification](file:///d:/BRJARVIS/Br-Jarvis/br_archetecture/ui_img/AI_OS_REDESIGN_MASTER_SPEC.md)** — Complete next-generation AI OS design system, dynamic wallpaper sampler engine, physical motion guidelines, 4 operating states (Sleep Orb, Compact Assistant, Workspace Mode, Mission Control), Max Control Center, and modern web stack handoff.
-- 📐 **[Original Prompt Vision Specification](file:///d:/BRJARVIS/Br-Jarvis/br_archetecture/ui_img/redesign.md)** — Core design principles and goals.
-- 🖥️ **[Current UI Implementation (ui.py)](file:///d:/BRJARVIS/Br-Jarvis/ui.py)** — Active Tkinter/Pillow GUI implementation (12 integration tiles, dynamic particles, equalizer waveform).
+- 📄 **[AI OS Master Redesign Specification](br_architecture/ui_img/AI_OS_REDESIGN_MASTER_SPEC.md)** — Complete next-generation AI OS design system, dynamic wallpaper sampler engine, physical motion guidelines, 4 operating states (Sleep Orb, Compact Assistant, Workspace Mode, Mission Control), Max Control Center, and modern web stack handoff.
+- 📐 **[Original Prompt Vision Specification](br_architecture/ui_img/redesign.md)** — Core design principles and goals.
+- 🖥️ **[Current UI Implementation (ui_mark.py)](ui_mark.py)** — Cyberpunk PyQt6 HUD implementation.
 
 ---
 
@@ -90,11 +90,11 @@ Accessible via HUD or shortcut (`Ctrl + Shift + C`), **Max Control Center** prov
 
 ## 🛠️ Code Structure & Core Files
 
-- Master AI OS Spec: [AI_OS_REDESIGN_MASTER_SPEC.md](file:///d:/BRJARVIS/Br-Jarvis/br_archetecture/ui_img/AI_OS_REDESIGN_MASTER_SPEC.md)
-- Current Python UI Implementation: [ui.py](file:///d:/BRJARVIS/Br-Jarvis/ui.py)
-- Application Launcher: [start.py](file:///d:/BRJARVIS/Br-Jarvis/start.py)
-- Main Event Orchestrator: [main_mk37.py](file:///d:/BRJARVIS/Br-Jarvis/main_mk37.py)
-- Architecture Folder: [br_archetecture](file:///d:/BRJARVIS/Br-Jarvis/br_archetecture)
+- Master AI OS Spec: [AI_OS_REDESIGN_MASTER_SPEC.md](br_architecture/ui_img/AI_OS_REDESIGN_MASTER_SPEC.md)
+- Current Python UI Implementation: [ui_mark.py](ui_mark.py)
+- Application Launcher: [start.py](start.py)
+- Main Event Orchestrator: [main_mk37.py](main_mk37.py)
+- Architecture Folder: [br_architecture](br_architecture)
 
 ---
 

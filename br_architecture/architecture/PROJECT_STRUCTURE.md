@@ -24,7 +24,7 @@ Br-Jarvis/
 │   ├── task_scheduler.py      # Async Task DAG scheduler & worker dispatcher
 │   └── transcript_logger.py   # Trajectory JSON Lines transcript logger (`transcript.jsonl`)
 ├── backends/                  # AI Provider Adapters (Gemini, Claude, GPT, Ollama, DeepSeek, NVIDIA, Mistral)
-├── br_archetecture/           # Persistent Engineering Knowledge Base index & specifications
+├── br_architecture/            # Persistent Engineering Knowledge Base index & specifications
 ├── computer/                  # Desktop operator & OS window management
 │   ├── operator.py            # PyAutoGUI desktop operator & win32 handle manager
 │   ├── recovery.py            # Self-healing popup recovery engine

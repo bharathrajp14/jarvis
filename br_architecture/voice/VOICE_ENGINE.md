@@ -58,10 +58,10 @@ Raw spoken speech frequently contains hesitation fillers, stutters, conversation
 
 | File | Class / Entity | Primary Responsibility |
 |---|---|---|
-| [assistant.py](file:///d:/BRJARVIS/Br-Jarvis/voice/assistant.py) | `BRVoiceAssistant` | Master voice loop coordinator handling state transitions (`IDLE`, `LISTENING`, `THINKING`, `SPEAKING`), wake-word gating, and interrupts. |
-| [silero_vad.py](file:///d:/BRJARVIS/Br-Jarvis/voice/silero_vad.py) | `SileroVAD` | Fast ONNX-based voice activity detector for acoustic chunking (<10ms latency overhead). |
-| [prompt_refiner.py](file:///d:/BRJARVIS/Br-Jarvis/voice/prompt_refiner.py) | `VoicePromptRefiner` | Acoustic speech cleaner, vocal filler stripper (`um`, `uh`, `like`), vocabulary mapper, and high-precision prompt generator. |
-| [stt.py](file:///d:/BRJARVIS/Br-Jarvis/voice/stt.py) | `SounddeviceMicrophone` | Zero-dependency `sounddevice` audio stream recorder and speech recognition adapter. |
-| [whisper_local.py](file:///d:/BRJARVIS/Br-Jarvis/voice/whisper_local.py) | `LocalWhisperASR` | Offline local OpenAI Whisper model worker with zero-disk in-memory byte streaming, RMS silence gate, and hallucination filter. |
-| [tts.py](file:///d:/BRJARVIS/Br-Jarvis/voice/tts.py) | `NeuralTTS` | Text-to-speech engine using PyTTSx3 / gTTS with SAPI5 COM safety and Win32 MCI low-latency audio stream playback. |
-| [multilingual.py](file:///d:/BRJARVIS/Br-Jarvis/voice/multilingual.py) | `MultilingualVoice` | Automatic language detection and translation wrapper supporting English, Tamil, Hindi, Spanish, French, and German. |
+| [assistant.py](voice/assistant.py) | `BRVoiceAssistant` | Master voice loop coordinator handling state transitions (`IDLE`, `LISTENING`, `THINKING`, `SPEAKING`), wake-word gating, and interrupts. |
+| [silero_vad.py](voice/silero_vad.py) | `SileroVAD` | Fast ONNX-based voice activity detector for acoustic chunking (<10ms latency overhead). |
+| [prompt_refiner.py](voice/prompt_refiner.py) | `VoicePromptRefiner` | Acoustic speech cleaner, vocal filler stripper (`um`, `uh`, `like`), vocabulary mapper, and high-precision prompt generator. |
+| [stt.py](voice/stt.py) | `SounddeviceMicrophone` | Zero-dependency `sounddevice` audio stream recorder and speech recognition adapter. |
+| [whisper_local.py](voice/whisper_local.py) | `LocalWhisperASR` | Offline local OpenAI Whisper model worker with zero-disk in-memory byte streaming, RMS silence gate, and hallucination filter. |
+| [tts.py](voice/tts.py) | `NeuralTTS` | Text-to-speech engine using PyTTSx3 / gTTS with SAPI5 COM safety and Win32 MCI low-latency audio stream playback. |
+| [multilingual.py](voice/multilingual.py) | `MultilingualVoice` | Automatic language detection and translation wrapper supporting English, Tamil, Hindi, Spanish, French, and German. |

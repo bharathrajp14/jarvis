@@ -116,7 +116,7 @@ Yes! JARVIS includes built-in support for offline local AI models (such as Ollam
 
 If you want to inspect the architecture, build plugins, or contribute to the project:
 
-- **System Architecture Blueprint**: Read the comprehensive [v2 Architecture Blueprint](file:///C:/Users/bhara/.gemini/antigravity-ide/brain/120af7be-89a7-4181-9b13-275e73883e2f/br_jarvis_v2_architecture_blueprint.md).
+- **System Architecture Blueprint**: Read the comprehensive [v2 Architecture Blueprint](br_architecture/README.md).
 - **Automated Test Suite**: Run `python -m pytest tests/` to verify all **136 unit and integration tests**.
 - **Plugin Platform**: Register custom tool handlers inside `tools/registry.py`.
 

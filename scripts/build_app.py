@@ -33,10 +33,10 @@ def build_app():
     print(f"[OK] Packaged Web/PWA distribution assets -> {web_dest}")
 
     # 2. Copy core architecture configuration & knowledge base
-    arch_dest = DIST_DIR / "br_archetecture"
+    arch_dest = DIST_DIR / "br_architecture"
     if arch_dest.exists():
         shutil.rmtree(arch_dest)
-    shutil.copytree(ROOT_DIR / "br_archetecture", arch_dest)
+    shutil.copytree(ROOT_DIR / "br_architecture", arch_dest)
     print(f"[OK] Packaged Architecture Knowledge Base -> {arch_dest}")
 
     # 3. Generate Platform Launchers
