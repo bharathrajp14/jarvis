@@ -736,16 +736,34 @@ async def websocket_endpoint(websocket: WebSocket):
             req = json.loads(data)
             msg_type = req.get("type")
 
-            if msg_type == "command":
-                cmd = req.get("message", "")
+            if msg_type in ("chat_prompt", "command", "chat"):
+                cmd = req.get("prompt") or req.get("message") or req.get("text") or ""
+                backend_choice = req.get("backend")
+                if backend_choice and ORCHESTRATOR and ORCHESTRATOR.router:
+                    try:
+                        ORCHESTRATOR.router.switch_backend(backend_choice)
+                    except Exception:
+                        pass
+
                 if cmd.strip():
                     ws_ref = websocket
                     async def run_cmd_job(ws=ws_ref, command=cmd):
                         try:
-                            resp = await asyncio.to_thread(ORCHESTRATOR.chat, command)
-                            await _safe_ws_send(ws, {"type": "response", "message": resp})
+                            await _safe_ws_send(ws, {"type": "stream_start"})
+                            if ORCHESTRATOR:
+                                chat_gen = ORCHESTRATOR.chat_stream(command)
+                                async for token in run_generator_in_thread(lambda: chat_gen):
+                                    await _safe_ws_send(ws, {"type": "stream_chunk", "text": token})
+                            else:
+                                await _safe_ws_send(ws, {"type": "stream_chunk", "text": "JARVIS Core not initialized."})
+                            await _safe_ws_send(ws, {"type": "stream_end"})
                         except Exception as e:
-                            await _safe_ws_send(ws, {"type": "error", "message": str(e)})
+                            # Fallback to direct chat if stream is unsupported
+                            try:
+                                resp = await asyncio.to_thread(ORCHESTRATOR.chat, command) if ORCHESTRATOR else f"Error: {e}"
+                                await _safe_ws_send(ws, {"type": "chat_response", "response": resp})
+                            except Exception:
+                                await _safe_ws_send(ws, {"type": "error", "message": str(e)})
                     asyncio.create_task(run_cmd_job())
 
     except WebSocketDisconnect:

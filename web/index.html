@@ -660,7 +660,7 @@
                         <div class="rag-dropzone mb-15" id="contactDropzone"
                             onclick="triggerFileImport('contact')">
                             <input type="file" id="contactFileInput" class="hidden-file-input" title="Import Mobile Contacts" aria-label="Import Mobile Contacts" accept=".vcf,.csv,.txt"
-                                multiple>
+                                multiple onclick="event.stopPropagation()">
                             <div class="drop-icon">📱</div>
                             <span class="drop-text">Drag & Drop .VCF vCard or .CSV contact list here</span>
                             <span class="drop-sub">or <button type="button" class="btn-link"
