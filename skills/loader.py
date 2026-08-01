@@ -4,6 +4,7 @@ Skill loading: parse markdown files with YAML frontmatter into SkillDef objects.
 Adapted from the Claude Code collection's skill system for JARVIS MK37.
 
 Skills can be loaded from:
+  - <cwd>/skills/library/  (curated domain skill library)
   - <cwd>/.jarvis/skills/  (project-level, highest priority)
   - ~/.jarvis/skills/       (user-level)
   - Built-in skills         (lowest priority)
@@ -14,6 +15,12 @@ import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
+
+try:
+    import yaml
+    _HAS_YAML = True
+except ImportError:
+    _HAS_YAML = False
 
 
 @dataclass
@@ -26,6 +33,8 @@ class SkillDef:
     prompt: str                  # full prompt body after frontmatter
     file_path: str
     # Enhanced fields
+    category: str = "general"    # e.g. "engineering", "c-level-advisor", "marketing"
+    domain: str = ""             # e.g. "Security", "Code Audit", "Legal"
     when_to_use: str = ""        # when JARVIS should auto-invoke this skill
     argument_hint: str = ""      # e.g. "[branch] [description]"
     arguments: list[str] = field(default_factory=list)  # named arg names
@@ -48,19 +57,25 @@ def _get_skill_paths() -> list[Path]:
 
     return [
         pkg_skills,                                   # package built-in dir (skills/)
+        pkg_skills / "library",                       # domain skills library (skills/library/)
         *extra_dirs,
         Path.home() / ".gemini" / "config" / "skills", # global customization root
         Path.home() / ".jarvis" / "skills",           # user-level
         Path.cwd() / ".agents" / "skills",            # workspace customization root
         Path.cwd() / "skills",                        # project-level skills/
+        Path.cwd() / "skills" / "library",            # project-level skills/library/
         Path.cwd() / ".jarvis" / "skills",            # project-level .jarvis/skills/
     ]
 
 
 # ── List field parser ──────────────────────────────────────────────────────
 
-def _parse_list_field(value: str) -> list[str]:
-    """Parse YAML-like list: ``[a, b, c]`` or ``"a, b, c"``."""
+def _parse_list_field(value: Any) -> list[str]:
+    """Parse YAML-like list: ``[a, b, c]``, ``"a, b, c"``, or list object."""
+    if isinstance(value, list):
+        return [str(v).strip() for v in value if v]
+    if not isinstance(value, str):
+        return []
     value = value.strip()
     if value.startswith("[") and value.endswith("]"):
         value = value[1:-1]
@@ -75,10 +90,10 @@ def _parse_skill_file(path: Path, source: str = "user") -> Optional[SkillDef]:
     Frontmatter fields:
         name, description, triggers, tools / allowed-tools,
         when_to_use, argument-hint, arguments, model,
-        user-invocable, context
+        user-invocable, context, category, domain
     """
     try:
-        text = path.read_text(encoding="utf-8")
+        text = path.read_text(encoding="utf-8", errors="replace")
     except Exception:
         return None
 
@@ -92,53 +107,76 @@ def _parse_skill_file(path: Path, source: str = "user") -> Optional[SkillDef]:
     frontmatter_raw = parts[1].strip()
     prompt = parts[2].strip()
 
-    fields: dict[str, str] = {}
-    for line in frontmatter_raw.splitlines():
-        line = line.strip()
-        if not line or ":" not in line:
-            continue
-        key, _, val = line.partition(":")
-        fields[key.strip().lower()] = val.strip()
+    fields: dict[str, Any] = {}
+    if _HAS_YAML:
+        try:
+            parsed_yaml = yaml.safe_load(frontmatter_raw)
+            if isinstance(parsed_yaml, dict):
+                fields = {str(k).lower(): v for k, v in parsed_yaml.items()}
+        except Exception:
+            pass
 
-    name = fields.get("name", "")
+    # Fallback to key-value string parsing if PyYAML fails or isn't available
+    if not fields:
+        for line in frontmatter_raw.splitlines():
+            line = line.strip()
+            if not line or ":" not in line:
+                continue
+            key, _, val = line.partition(":")
+            fields[key.strip().lower()] = val.strip()
+
+    name = str(fields.get("name", "")).strip().strip('"\'')
     if not name:
         return None
 
     # allowed-tools wins over tools if present
     tools_raw = fields.get("allowed-tools", fields.get("tools", ""))
-    tools = _parse_list_field(tools_raw) if tools_raw else []
+    tools = _parse_list_field(tools_raw)
 
     triggers_raw = fields.get("triggers", "")
     triggers = _parse_list_field(triggers_raw) if triggers_raw else [f"/{name}"]
 
     arguments_raw = fields.get("arguments", "")
-    arguments = _parse_list_field(arguments_raw) if arguments_raw else []
+    arguments = _parse_list_field(arguments_raw)
 
-    user_invocable_raw = fields.get("user-invocable", "true")
+    user_invocable_raw = str(fields.get("user-invocable", fields.get("user_invocable", "true")))
     user_invocable = user_invocable_raw.lower() not in ("false", "0", "no")
 
-    context = fields.get("context", "inline").strip().lower()
+    context = str(fields.get("context", "inline")).strip().lower()
     if context not in ("inline", "fork"):
         context = "inline"
 
+    # Infer category from directory layout if not specified
+    category = str(fields.get("category", "")).strip()
+    if not category:
+        parts_path = path.parts
+        if "library" in parts_path:
+            idx = parts_path.index("library")
+            if idx + 1 < len(parts_path):
+                category = parts_path[idx + 1]
+    if not category:
+        category = "general"
+
     return SkillDef(
         name=name,
-        description=fields.get("description", ""),
+        description=str(fields.get("description", "")).strip(),
         triggers=triggers,
         tools=tools,
         prompt=prompt,
         file_path=str(path),
-        when_to_use=fields.get("when_to_use", ""),
-        argument_hint=fields.get("argument-hint", ""),
+        category=category,
+        domain=str(fields.get("domain", "")).strip(),
+        when_to_use=str(fields.get("when_to_use", "")).strip(),
+        argument_hint=str(fields.get("argument-hint", fields.get("argument_hint", ""))).strip(),
         arguments=arguments,
-        model=fields.get("model", ""),
+        model=str(fields.get("model", "")).strip(),
         user_invocable=user_invocable,
         context=context,
         source=source,
     )
 
 
-# ── Registry of built-in skills (registered by builtin.py) ────────────────
+# ── Registry of built-in skills ────────────────────────────────────────────
 
 _BUILTIN_SKILLS: list[SkillDef] = []
 
@@ -166,16 +204,16 @@ def load_skills(include_builtins: bool = True) -> list[SkillDef]:
     for skill_dir in skill_paths:
         if not skill_dir.is_dir():
             continue
-        src = "project" if str(skill_dir).startswith(str(Path.cwd())) else ("builtin" if str(skill_dir) == pkg_skills_str else "user")
+        src = "project" if str(skill_dir).startswith(str(Path.cwd())) else ("builtin" if str(skill_dir).startswith(pkg_skills_str) else "user")
         
-        # 1. Scan single *.md files
+        # 1. Scan direct *.md files
         for md_file in sorted(skill_dir.glob("*.md")):
             skill = _parse_skill_file(md_file, source=src)
             if skill:
                 seen[skill.name] = skill
 
-        # 2. Scan directory skill packages (skills/<name>/SKILL.md)
-        for skill_md in sorted(skill_dir.glob("*/SKILL.md")):
+        # 2. Scan recursive SKILL.md packages (**/*/SKILL.md)
+        for skill_md in sorted(skill_dir.rglob("SKILL.md")):
             skill = _parse_skill_file(skill_md, source=src)
             if skill:
                 seen[skill.name] = skill
@@ -189,12 +227,18 @@ def find_skill(query: str) -> Optional[SkillDef]:
     if not query:
         return None
 
-    first_word = query.split()[0]
+    q_clean = query.lstrip("/").lower()
+    first_word = q_clean.split()[0]
+
     for skill in load_skills():
+        s_name = skill.name.lower()
+        if first_word == s_name:
+            return skill
         for trigger in skill.triggers:
-            if first_word == trigger:
+            t_clean = trigger.lstrip("/").lower()
+            if first_word == t_clean:
                 return skill
-            if trigger.startswith(first_word + " "):
+            if t_clean.startswith(first_word + " "):
                 return skill
     return None
 
@@ -202,14 +246,9 @@ def find_skill(query: str) -> Optional[SkillDef]:
 # ── Argument substitution ─────────────────────────────────────────────────
 
 def substitute_arguments(prompt: str, args: str, arg_names: list[str]) -> str:
-    """Replace $ARGUMENTS (whole args string) and $ARG_NAME placeholders.
-
-    Named args are positional: first word → first name, etc.
-    """
-    # Always substitute $ARGUMENTS
+    """Replace $ARGUMENTS (whole args string) and $ARG_NAME placeholders."""
     result = prompt.replace("$ARGUMENTS", args)
 
-    # Named args: split by whitespace
     arg_values = args.split()
     for i, arg_name in enumerate(arg_names):
         placeholder = f"${arg_name.upper()}"

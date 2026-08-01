@@ -141,30 +141,57 @@ def _handle_parallel_run(cmd_text: str):
             print(f"  • {g}: {str(r)[:150]}")
 
 
-def _list_skills():
+def _list_skills(category: str = None):
     try:
-        from skills.loader import get_skill_registry
-        reg = get_skill_registry()
-        skills = reg.list_skills() if hasattr(reg, "list_skills") else []
+        from skills.registry import get_skills_by_category, list_skill_categories, get_all_skills
+        all_skills = get_all_skills()
+        categories = list_skill_categories()
+        
         if _HAS_RICH:
-            table = Table(title=f"Registered Skills ({len(skills)})", border_style="cyan")
-            table.add_column("Skill", style="cyan")
-            table.add_column("Description", style="white")
-            table.add_column("Source", style="dim")
-            for s in skills:
-                name = getattr(s, "name", str(s))
-                desc = getattr(s, "description", "")
-                src = getattr(s, "source", "builtin")
-                table.add_row(name, desc[:80], src)
+            console.print(f"\n[bold cyan]⚡ BR JARVIS Skill Ecosystem ({len(all_skills)} Active Skills Across {len(categories)} Categories)[/bold cyan]")
+            table = Table(title="Domain Skill Categories", border_style="cyan")
+            table.add_column("Category", style="cyan")
+            table.add_column("Skill Count", style="yellow")
+            table.add_column("Sample Skills", style="white")
+            
+            by_cat = get_skills_by_category()
+            for cat_name, count in categories.items():
+                if category and category.lower() not in cat_name.lower():
+                    continue
+                sample = ", ".join([s.name for s in by_cat.get(cat_name, [])[:4]])
+                table.add_row(cat_name, str(count), sample)
             console.print(table)
+            console.print("[dim]Use /search-skills <query> to search or /skill <name> to execute.[/dim]\n")
         else:
-            print(f"\nRegistered Skills ({len(skills)}):")
-            for s in skills:
-                name = getattr(s, "name", str(s))
-                desc = getattr(s, "description", "")
-                print(f"  • {name}: {desc[:60]}")
+            print(f"\nBR JARVIS Skills ({len(all_skills)} Total):")
+            for cat_name, count in categories.items():
+                print(f"  • {cat_name}: {count} skills")
     except Exception as e:
         print(f"[JARVIS] Skills lookup failed: {e}")
+
+
+def _search_skills(query: str):
+    try:
+        from skills.registry import search_skills
+        results = search_skills(query)
+        if not results:
+            print(f"[JARVIS] No skills matching '{query}' found.")
+            return
+
+        if _HAS_RICH:
+            table = Table(title=f"Search Results for '{query}' ({len(results)} matches)", border_style="cyan")
+            table.add_column("Skill Name", style="cyan")
+            table.add_column("Category", style="yellow")
+            table.add_column("Description", style="white")
+            for s in results:
+                table.add_row(s.name, s.category, s.description[:75])
+            console.print(table)
+        else:
+            print(f"\nSearch Results for '{query}':")
+            for s in results:
+                print(f"  • {s.name} [{s.category}]: {s.description[:60]}")
+    except Exception as e:
+        print(f"[JARVIS] Search skills failed: {e}")
 
 
 def _show_tasks():
@@ -248,8 +275,28 @@ def main():
                 print(res or f"[JARVIS] Active mode: {orchestrator.current_mode.upper()}")
                 continue
 
-            if cmd_lower == "/skills":
-                _list_skills()
+            if cmd_lower.startswith("/search-skills") or cmd_lower.startswith("/search_skills"):
+                q = user_input.partition(" ")[2].strip()
+                _search_skills(q)
+                continue
+
+            if cmd_lower.startswith("/skill "):
+                skill_query = user_input[7:].strip()
+                from skills.loader import find_skill
+                from skills.executor import execute_skill
+                target_skill = find_skill(skill_query)
+                if target_skill:
+                    print(f"[JARVIS] Executing Skill '{target_skill.name}' ({target_skill.category})...")
+                    args_text = skill_query[len(target_skill.name):].strip()
+                    res = execute_skill(target_skill, args_text, orchestrator)
+                    print(f"\n{res}\n")
+                else:
+                    print(f"[JARVIS] Skill '{skill_query}' not found. Use /search-skills to search.")
+                continue
+
+            if cmd_lower == "/skills" or cmd_lower.startswith("/skills "):
+                cat_filter = user_input[7:].strip() if len(user_input) > 7 else None
+                _list_skills(category=cat_filter)
                 continue
 
             if cmd_lower == "/tasks":
