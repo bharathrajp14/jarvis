@@ -238,6 +238,10 @@ class VectorMemory:
             return self._fallback.recall(query, n)
         return []
 
+    def search(self, query: str, top_k: int = 5) -> list[str]:
+        """Alias for recall() — backwards compatibility with orchestrator.py."""
+        return self.recall(query=query, n=top_k)
+
     @property
     def available(self) -> bool:
         return self._available

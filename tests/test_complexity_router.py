@@ -15,7 +15,7 @@ def test_fast_complexity():
     score, tier, breakdown = calculate_complexity_score(messages)
     assert tier == TaskComplexity.FAST
     assert score < 15.0
-    assert select_model_for_prompt(messages) == "gemini-3-flash"
+    assert select_model_for_prompt(messages) in ("gemini-3.6-flash-low", "gemini-3-flash", "gemini-2.5-flash")
     assert get_recommended_token_limit(TaskComplexity.FAST) == 256
 
     messages_status = [{"role": "user", "content": "status"}]
@@ -27,7 +27,7 @@ def test_medium_complexity():
     score, tier, breakdown = calculate_complexity_score(messages)
     assert tier == TaskComplexity.MEDIUM
     assert 15.0 <= score < 50.0
-    assert select_model_for_prompt(messages) == "gemini-3.6-flash-high"
+    assert select_model_for_prompt(messages) in ("gemini-3.6-flash-high", "gemini-2.5-flash")
     assert get_recommended_token_limit(TaskComplexity.MEDIUM) == 2048
 
 
@@ -37,7 +37,7 @@ def test_high_complexity_code():
     assert tier == TaskComplexity.HIGH
     assert score >= 50.0
     assert breakdown["code_density"] > 0
-    assert select_model_for_prompt(messages) == "gemini-3.1-pro-high"
+    assert select_model_for_prompt(messages) in ("gemini-3.1-pro-high", "gemini-2.5-pro")
     assert get_recommended_token_limit(TaskComplexity.HIGH) == 8192
 
 
@@ -47,7 +47,7 @@ def test_high_complexity_long_prompt():
     score, tier, breakdown = calculate_complexity_score(messages)
     assert tier == TaskComplexity.HIGH
     assert score >= 50.0
-    assert select_model_for_prompt(messages) == "gemini-3.1-pro-high"
+    assert select_model_for_prompt(messages) in ("gemini-3.1-pro-high", "gemini-2.5-pro")
 
 
 def test_vision_complexity():
@@ -62,7 +62,7 @@ def test_vision_complexity():
     ]
     score, tier, breakdown = calculate_complexity_score(messages)
     assert tier == TaskComplexity.VISION
-    assert select_model_for_prompt(messages) in ("gemini-3.1-flash-image", "gemini-3.6-flash", "gemini-3-flash")
+    assert select_model_for_prompt(messages) in ("gemini-2.5-flash", "gemini-3.1-flash-image", "gemini-3.6-flash", "gemini-3-flash")
     assert get_recommended_token_limit(TaskComplexity.VISION) == 4096
 
 

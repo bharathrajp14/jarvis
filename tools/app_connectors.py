@@ -113,15 +113,15 @@ def gmail_send_email(to: str, subject: str, body: str) -> str:
     }
 )
 def notion_search_pages(*args, **kwargs) -> str:
-    query = args[0] if args else kwargs.get("query", "")
-    if isinstance(query, dict): query = query.get("query", str(query))
     """Search Notion workspace for pages and databases."""
+    query = args[0] if args else kwargs.get("query", "")
     if isinstance(query, dict):
         query = query.get("query", str(query))
 
     logger.info(f"📝 NotionConnector: Searching workspace for query='{query}'")
     return json.dumps({
         "status": "success",
+        "mode": "demo_stub",
         "source": "notion_connector",
         "query": query,
         "results": [
@@ -154,10 +154,9 @@ def notion_search_pages(*args, **kwargs) -> str:
     }
 )
 def notion_create_page(*args, **kwargs) -> str:
+    """Create a new page in Notion workspace."""
     title = args[0] if args else kwargs.get("title", "")
     content = args[1] if len(args)>1 else kwargs.get("content", "")
-    if isinstance(title, dict): content = title.get("content", content); title = title.get("title", str(title))
-    """Create a new page in Notion workspace."""
     if isinstance(title, dict):
         content = title.get("content", content)
         title = title.get("title", str(title))

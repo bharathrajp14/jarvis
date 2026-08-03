@@ -86,8 +86,6 @@ class SounddeviceMicrophone(_BaseAudioSource):
                     def_name = def_dev.get("name", "").lower()
                     if def_dev.get("max_input_channels", 0) > 0 and not any(vk in def_name for vk in virtual_keywords):
                         self.device_index = def_idx
-            except Exception as e:
-                print(f"[SounddeviceMicrophone] Device query error: {e}")
 
                 # 3. Fallback to any non-virtual input device
                 if self.device_index is None:
@@ -97,7 +95,8 @@ class SounddeviceMicrophone(_BaseAudioSource):
                             if not any(vk in d_name for vk in virtual_keywords):
                                 self.device_index = idx
                                 break
-            except Exception:
+            except Exception as e:
+                print(f"[SounddeviceMicrophone] Device query error: {e}")
                 self.device_index = None
 
         self.SAMPLE_RATE = sample_rate
@@ -176,29 +175,30 @@ class SounddeviceMicrophone(_BaseAudioSource):
         self.stream = None
 
     def _resample(self, data_bytes: bytes) -> bytes:
-        import struct
-        num_samples = len(data_bytes) // 2
-        if num_samples == 0:
+        if not data_bytes:
             return b""
-        samples = struct.unpack(f"<{num_samples}h", data_bytes)
-        ratio = self.device_sample_rate / self.SAMPLE_RATE
-        
-        out_samples = []
-        pos = self._resample_phase
-        while pos < num_samples:
-            idx = int(pos)
-            frac = pos - idx
-            if idx + 1 < num_samples:
-                val = int(samples[idx] * (1.0 - frac) + samples[idx + 1] * frac)
-            else:
-                val = samples[idx]
-            out_samples.append(val)
-            pos += ratio
-            
-        self._resample_phase = pos - num_samples
-        if not out_samples:
-            return b""
-        return struct.pack(f"<{len(out_samples)}h", *out_samples)
+        try:
+            import numpy as np
+            samples = np.frombuffer(data_bytes, dtype=np.int16)
+            if len(samples) == 0:
+                return b""
+            orig_len = len(samples)
+            target_len = max(1, int(orig_len * (self.SAMPLE_RATE / self.device_sample_rate)))
+            x_orig = np.linspace(0, orig_len - 1, num=orig_len)
+            x_target = np.linspace(0, orig_len - 1, num=target_len)
+            resampled = np.interp(x_target, x_orig, samples).astype(np.int16)
+            return resampled.tobytes()
+        except Exception:
+            import struct
+            num_samples = len(data_bytes) // 2
+            if num_samples == 0:
+                return b""
+            samples = struct.unpack(f"<{num_samples}h", data_bytes)
+            step = self.device_sample_rate / self.SAMPLE_RATE
+            out_samples = [samples[int(i * step)] for i in range(int(num_samples / step)) if int(i * step) < num_samples]
+            if not out_samples:
+                return b""
+            return struct.pack(f"<{len(out_samples)}h", *out_samples)
 
     def _callback(self, indata, frames, time_info, status):
         raw_bytes = bytes(indata)

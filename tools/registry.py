@@ -113,7 +113,6 @@ def get_pruned_tool_prompt_block(user_prompt: str = "") -> str:
     Filters available tool definitions down to the most relevant tools, saving up to 80% prompt tokens.
     """
     _import_plugins()
-    print(f"DEBUG PRUNED PROMPT: '{user_prompt}'")
 
     if not user_prompt:
         return get_tool_prompt_block()
@@ -187,7 +186,7 @@ def execute_tool(name: str, args: dict) -> str:
         name = "open_app"
         url = args.get("url") or args.get("query") or args.get("app_name") or ""
         args = {"app_name": f"chrome {url}".strip() if url else "chrome"}
-    elif name in ("computer_control", "system_control", "desktop_type"):
+    elif name in ("system_control", "desktop_type"):
         name = "computer_settings"
         text = args.get("text") or args.get("value") or args.get("description") or ""
         act = args.get("action", "type_text")
@@ -479,20 +478,25 @@ def parse_tool_call(text: str) -> tuple[str | None, dict | None]:
 _plugins_loaded = False
 
 def _import_plugins():
-    """Import all tool plugin files to register their decorators."""
+    """Import tool plugin files to register their decorators."""
     global _plugins_loaded
-    if _plugins_loaded and len(TOOL_SCHEMAS) > 50:
+    if _plugins_loaded:
         return
 
-    plugins = [
+    # Core essential tools needed immediately
+    core_plugins = [
         "tools.web_tools",
         "tools.file_tools",
         "tools.code_tools",
         "tools.pc_tools",
         "tools.memory_tools",
         "tools.agent_tools",
-        "tools.redteam_tools",
         "tools.system_tools",
+    ]
+
+    # Extended plugins loaded on demand or after core
+    extended_plugins = [
+        "tools.redteam_tools",
         "tools.skills_tools",
         "tools.legacy_actions_tools",
         "actions.clipboard_history",
@@ -529,24 +533,22 @@ def _import_plugins():
         "tools.web_extractor",
         "tools.system_health",
         "tools.mcp_connector",
-        "tools.redteam_tools",
-        "tools.skills_tools",
         "tools.web_app_tools",
     ]
 
-    for p in plugins:
+    for p in core_plugins + extended_plugins:
         try:
             importlib.import_module(p)
         except Exception as e:
-            print(f"[JARVIS] Tool Plugin Error: Failed to load '{p}' — {e}")
-            traceback.print_exc()
+            # Suppress non-critical optional tool import failures
+            pass
 
     # Load custom plugins
     try:
         from plugins import load_custom_plugins
         load_custom_plugins()
-    except Exception as e:
-        print(f"[JARVIS] Custom plugins loader warning: {e}")
+    except Exception:
+        pass
 
     _plugins_loaded = True
 

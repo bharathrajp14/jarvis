@@ -14,17 +14,18 @@ _MODELS_JSON = _CONFIG_DIR / "models.json"
 
 # ── Defaults (Gemini-first) ────────────────────────────────────────────────
 _DEFAULTS = {
-    "voice_live":       "models/gemini-3.1-flash-live-preview",
+    "voice_live":       "gemini-3.6-flash-low",
     "voice_name":       "Charon",
     "gemini":           "gemini-3.6-flash-high",
     "gemini_code":      "gemini-3.1-pro-high",
     "gemini_reasoning": "gemini-3.1-pro-high",
     "gemini_general":   "gemini-3.6-flash-high",
     "gemini_agent":     "gemini-3.6-flash-medium",
-    "gemini_fast":      "gemini-3-flash",
-    "gemini_vision":    "gemini-3.6-flash",
+    "gemini_fast":      "gemini-3.6-flash-low",
+    "gemini_vision":    "gemini-3.1-flash-image",
     "gemini_lite":      "gemini-3.1-flash-lite",
     "claude":           "claude-sonnet-4-6",
+    "claude_opus":      "claude-opus-4-6-thinking",
     "gpt":              "gemini-3.6-flash-high",
     "gpt_mini":         "gemini-3.1-flash-lite",
     "gpt_4o":           "gemini-3.1-pro-high",
@@ -32,10 +33,10 @@ _DEFAULTS = {
     "nvidia":           "meta/llama-3.1-70b-instruct",
     "mistral":          "mistral-large-latest",
     "default_backend":  "gemini",
-    "planner_model":    "gemini-3.6-flash-high",
-    "fast_model":       "gemini-3-flash",
+    "planner_model":    "gemini-3.1-pro-high",
+    "fast_model":       "gemini-3.6-flash-low",
     "openai_base_url":  "http://127.0.0.1:8045/v1",
-    "openai_api_key":   "sk-aae07922d4a64fc29e6d9f54542a564f",
+    "openai_api_key":   "",
     "openai_model":     "gemini-3.6-flash-high",
 }
 

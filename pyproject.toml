@@ -8,7 +8,7 @@ version = "37.5.0"
 description = "BR JARVIS — Cognitive Multi-Modal AI Operating System & Autonomous Controller"
 readme = "readme.md"
 license = {text = "MIT"}
-requires-python = ">=3.11"
+requires-python = ">=3.11, <3.14"
 authors = [
     {name = "Bharath Raj", email = "bharathraj14120@gmail.com"},
 ]
@@ -133,7 +133,7 @@ include = [
 
 [tool.ruff]
 line-length = 120
-target-version = "py311"
+target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I"]

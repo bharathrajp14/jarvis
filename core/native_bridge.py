@@ -42,10 +42,14 @@ def _init_native():
     if not LIB_PATH.exists() and not _compile_attempted:
         _compile_attempted = True
         try:
-            from setup_native import compile_native
+            from scripts.setup_native import compile_native
             compile_native()
         except Exception:
-            pass
+            try:
+                from setup_native import compile_native
+                compile_native()
+            except Exception:
+                pass
 
     if LIB_PATH.exists():
         try:

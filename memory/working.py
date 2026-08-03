@@ -42,7 +42,7 @@ class WorkingMemory:
         if len(self.history) > max_turns:
             root_msg = self.history[0]
             self.history = self.history[-max_turns:]
-            if root_msg and root_msg not in self.history:
+            if root_msg is not None and not any(m is root_msg for m in self.history):
                 self.history.insert(0, root_msg)
             # Recalculate char count after structural change
             self._char_count = sum(len(m.get("content", "")) for m in self.history)

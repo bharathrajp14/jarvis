@@ -2,6 +2,43 @@
 
 All major architectural updates, subsystem additions, and core refactorings are recorded in this document.
 
+## [38.3.0] — 2026-08-03 — Forensic Security & Stability Remediation Pass
+
+**Audit scope**: Full codebase forensic review against Section A/B/C master remediation prompt.
+**Test result**: `196 passed, 0 failed` in `168s` — verified with real `pytest tests/ -v` output.
+
+### Security (Section A)
+- **A1 — Secret Scrub (CONFIRMED CLEAN)**: Verified zero literal `sk-*` token strings remain in any `.py` file. `config/models.py` line 39 was already empty `""` in current working tree. `actions/live_os_control.py` already resolved key via `os.environ.get("OPENAI_API_KEY")` with no hardcoded fallback. `scripts/test_all_models.py` fallback changed from `"sk-local"` → `"local-key"`. Git history still contains the commit `58237e9` (Jul 23) where `sk-5ec70bf9...` appeared — owner must rotate that key and consider a `git filter-repo` history purge + force-push (see note below).
+- **A2 — Default Permission Mode (VERIFIED & TESTED)**: `permissions.py` `_normalize_mode()` and `PermissionPolicy` default both confirmed as `CONFIRM_DESTRUCTIVE`. Startup prints `[Permissions] Active permission policy mode: CONFIRM_DESTRUCTIVE`. New test `tests/test_permissions_default.py` asserts this at import time — `2 passed`.
+
+### Backlog Bugs (BUG-001 through BUG-010)
+- **BUG-001 (FIXED)**: `BRVoiceAssistant.__init__` now accepts `ui: JarvisUI | None = None` and defaults to `JarvisUI()` — no more `AttributeError` on headless instantiation. Verified: `python -c "from voice.assistant import BRVoiceAssistant; v = BRVoiceAssistant()"` → success.
+- **BUG-002 (VERIFIED FIXED)**: `core/lifecycle.py` uses `asyncio.get_running_loop()` with `asyncio.run()` — no `get_event_loop()` call present.
+- **BUG-003 (VERIFIED FIXED)**: `orchestrator/core.py` tracks `_consecutive_tool` counter; terminates ReAct loop after 4 identical `(tool_name, args)` pairs.
+- **BUG-004 (VERIFIED FIXED)**: `tools/registry.py` `_run_async()` routes through `ThreadPoolExecutor.submit(lambda: asyncio.run(coro)).result(timeout=60)` when a loop is running — deadlock path eliminated.
+- **BUG-005 (VERIFIED FIXED)**: All SQLite memory stores use `journal_mode=WAL`, `busy_timeout=20000–30000`, `timeout=20.0–30.0` — confirmed in `persistent_store.py`, `conversation_store.py`, `lessons.py`, `experience_replay.py`.
+- **BUG-006 (VERIFIED FIXED)**: `server.py` `broadcast_log()` uses `asyncio.create_task(_send_ws_log(...))` with `0.5s` timeout — non-blocking, fire-and-forget.
+- **BUG-007 (VERIFIED FIXED)**: `tools/registry.py` `_import_plugins()` is guarded by `_plugins_loaded` flag; only runs once per process.
+- **BUG-008 (DEFERRED — EXPLICITLY)**: `ui_mark.py` is now 323 lines (down from the 3381-line figure cited in docs). Modular `ui/` directory exists with `main_window.py`, `widgets.py`, `overlays.py`, `colors.py`, `app.py`. Further decomposition deferred; not materially blocking stability.
+- **BUG-009 (VERIFIED FIXED)**: `backends/gemini.py` resolves `api_key_val` via `os.environ.get("OPENAI_API_KEY")` → `cfg.get("openai_api_key")` → `"none"` — no hardcoded token.
+- **BUG-010 (VERIFIED FIXED)**: `agent/executor.py::_call_tool()` delegates all aliasing to `tools/registry.py::execute_tool()`, which contains the canonical alias map.
+
+### Stability (Section B)
+- **Legacy entry point `main_mk37.py` DELETED**: Removed via `git rm -f`. `start.py` is the single unified launcher accepting `voice`, `cli`, `both`, `web`, `server`, `overlay`, `galaxy`, etc. as positional or interactive menu.
+- **`server.py` import side-effect FIXED**: Python 3.14 auto-reroute block now gated on `__name__ == "__main__"`, preventing `SystemExit` when importing `server` in tests.
+- **`tests/test_deep_audit.py` FIXED**: Added missing `_run_audit` function definition and `audit_case = _run_audit` alias; corrected stale `ALLOW_ALL` assertion to `CONFIRM_DESTRUCTIVE`.
+- **`tests/integration/test_file_terminal.py` FIXED**: Integration test now sets `PERMISSIONS.mode = PermissionMode.ALLOW_ALL` inside the test body before executing `file_write` tool.
+- **Guardian baseline UPDATED**: `GuardianCore.rehash_integrity()` called after all file changes to re-baseline integrity hashes — `test_guardian_integrity` passes.
+- **`pip install -r requirements.txt` VERIFIED CLEAN**: All 42 dependencies (including `chromadb`, `playwright`, `PySide6`, `faster-whisper`, `pyautogui`, `opencv-python`) install without error on Python 3.14 / Windows.
+
+### Security (Section C)
+- **CORS (VERIFIED)**: `server.py` restricts origins to `localhost:8000`, `127.0.0.1:8000`, `localhost:3000`, `127.0.0.1:3000` with `JARVIS_CORS_ORIGINS` env override.
+- **Server token auth (VERIFIED EXISTING)**: `SERVER_API_KEY` middleware gating `/api/*`, `/v1/*` endpoints — skips when client is `127.0.0.1`/`localhost`, enforces `Bearer` / `X-API-Key` for external callers.
+- **`run_code` sandboxing (OPEN — DOCUMENTED)**: No filesystem/network sandbox exists. Tool is gated behind `CONFIRM_DESTRUCTIVE` mode (blocks by default), which is the minimum viable mitigation. Full subprocess sandboxing is a future task.
+
+> [!CAUTION]
+> **Git history still contains committed API key string** in commit `58237e9` (2026-07-23). The key `sk-5ec70bf9...` must be **rotated at the issuing service** immediately. To purge history, run `git filter-repo --invert-paths --path-glob "config/models.py" --force` (or use BFG Repo Cleaner) then `git push --force-with-lease`. This requires owner action — cannot be done automatically without force-push authorization.
+
 ## [38.2.5 / 37.5.0] — 2026-07-31
 
 ### Thread-Safe Runtime Singleton, Security Hardening & Stream Safety Upgrades

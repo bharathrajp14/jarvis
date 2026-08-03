@@ -743,3 +743,90 @@ body {
     font-size: 11px;
     color: var(--text-secondary);
 }
+
+/* ── SUB-AGENT TASK WORKFLOW PANELS ── */
+.web-agent-task-panel {
+    margin-top: 16px;
+    padding: 12px;
+    background: rgba(15, 22, 35, 0.75);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--border-glass);
+    border-radius: var(--radius-md);
+}
+
+.web-agent-task-panel .panel-hdr {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--accent-cyan);
+    margin-bottom: 8px;
+}
+
+.agent-task-card {
+    background: rgba(23, 32, 47, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: var(--radius-sm);
+    padding: 8px 10px;
+    margin-bottom: 6px;
+    transition: all 0.2s ease;
+}
+
+.agent-task-card:hover {
+    border-color: var(--border-accent);
+    transform: translateY(-1px);
+}
+
+.task-card-hdr {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.task-name {
+    font-family: var(--font-main);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.task-badge {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 4px;
+    text-transform: uppercase;
+}
+
+.task-badge.running { background: rgba(0, 242, 254, 0.15); color: var(--accent-cyan); border: 1px solid var(--accent-cyan); }
+.task-badge.completed { background: rgba(48, 209, 88, 0.15); color: var(--accent-green); border: 1px solid var(--accent-green); }
+.task-badge.failed { background: rgba(255, 45, 85, 0.15); color: var(--accent-pink); border: 1px solid var(--accent-pink); }
+.task-badge.queued { background: rgba(255, 159, 10, 0.15); color: var(--accent-amber); border: 1px solid var(--accent-amber); }
+
+.task-progress-track {
+    height: 4px;
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.task-progress-bar {
+    height: 100%;
+    background: var(--accent-blue);
+    border-radius: 2px;
+    transition: width 0.3s ease;
+}
+
+.task-progress-bar.running { background: linear-gradient(90deg, var(--accent-blue), var(--accent-cyan)); }
+.task-progress-bar.completed { background: var(--accent-green); }
+.task-progress-bar.failed { background: var(--accent-pink); }
+
+.task-result {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-top: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}

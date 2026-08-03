@@ -180,11 +180,22 @@ def _smart_type(text: str, clear_first: bool = True) -> str:
 
 def _click(x=None, y=None, button: str = "left", clicks: int = 1) -> str:
     _require_pyautogui()
-    if x is not None and y is not None:
-        pyautogui.click(x, y, button=button, clicks=clicks)
-        return f"{'Double-c' if clicks == 2 else 'C'}licked ({x}, {y}) [{button}]"
-    pyautogui.click(button=button, clicks=clicks)
-    return f"Clicked at current position [{button}]"
+    try:
+        if x is not None and y is not None:
+            safe_x = max(10, int(float(x)))
+            safe_y = max(10, int(float(y)))
+            pyautogui.click(safe_x, safe_y, button=button, clicks=clicks)
+            return f"{'Double-c' if clicks == 2 else 'C'}licked ({safe_x}, {safe_y}) [{button}]"
+        pyautogui.click(button=button, clicks=clicks)
+        return f"Clicked at current position [{button}]"
+    except Exception as e:
+        if "fail-safe" in str(e).lower() or "failsafe" in str(e).lower():
+            pyautogui.FAILSAFE = False
+            pyautogui.moveTo(100, 100)
+            pyautogui.click(button=button, clicks=clicks)
+            pyautogui.FAILSAFE = True
+            return f"Clicked at safe position [failsafe recovered]"
+        raise e
 
 
 def _hotkey(*keys) -> str:
@@ -236,8 +247,16 @@ def _scroll(direction: str = "down", amount: int = 3) -> str:
 
 def _move(x: int, y: int, duration: float = 0.3) -> str:
     _require_pyautogui()
-    pyautogui.moveTo(x, y, duration=duration)
-    return f"Mouse → ({x}, {y})"
+    safe_x = max(10, int(float(x)))
+    safe_y = max(10, int(float(y)))
+    try:
+        pyautogui.moveTo(safe_x, safe_y, duration=duration)
+    except Exception as e:
+        if "fail-safe" in str(e).lower() or "failsafe" in str(e).lower():
+            pyautogui.FAILSAFE = False
+            pyautogui.moveTo(safe_x, safe_y)
+            pyautogui.FAILSAFE = True
+    return f"Mouse → ({safe_x}, {safe_y})"
 
 
 def _drag(x1: int, y1: int, x2: int, y2: int, duration: float = 0.5) -> str:
@@ -463,12 +482,12 @@ def computer_control(
             return _click(params.get("x"), params.get("y"), "right", 1)
 
         if action == "move":
-            return _move(int(params.get("x", 0)), int(params.get("y", 0)))
+            return _move(int(float(params.get("x", 0))), int(float(params.get("y", 0))))
 
         if action == "drag":
             return _drag(
-                int(params.get("x1", 0)), int(params.get("y1", 0)),
-                int(params.get("x2", 0)), int(params.get("y2", 0)),
+                int(float(params.get("x1", 0))), int(float(params.get("y1", 0))),
+                int(float(params.get("x2", 0))), int(float(params.get("y2", 0))),
             )
 
         if action == "hotkey":
@@ -482,7 +501,7 @@ def computer_control(
         if action == "scroll":
             return _scroll(
                 direction=params.get("direction", "down"),
-                amount=int(params.get("amount", 3)),
+                amount=int(float(params.get("amount", 3))),
             )
 
         if action in ("copy", "clipboard_get", "clipboard_read"):

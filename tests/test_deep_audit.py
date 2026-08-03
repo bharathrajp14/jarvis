@@ -13,21 +13,18 @@ failed = 0
 errors = []
 
 def _run_audit(name, func):
-    global passed, failed
+    global passed, failed, errors
     try:
         func()
-        print(f"  [PASS] {name}")
         passed += 1
+        print(f"  ✅ PASS: {name}")
     except Exception as e:
-        print(f"  [FAIL] {name}: {e}")
-        errors.append((name, traceback.format_exc()))
         failed += 1
+        errors.append((name, str(e)))
+        print(f"  ❌ FAIL: {name} -> {e}")
 
 audit_case = _run_audit
 
-
-print("=" * 60)
-print("  JARVIS MK37 -- Deep Audit")
 print("=" * 60)
 
 # == 1. Permissions ==
@@ -43,8 +40,8 @@ _run_audit("ALLOW_ALL permits all tools", t_perm_allow_all)
 
 def t_perm_global_singleton():
     from permissions import PERMISSIONS, PermissionMode
-    assert PERMISSIONS.mode == PermissionMode.ALLOW_ALL
-_run_audit("Global PERMISSIONS is ALLOW_ALL", t_perm_global_singleton)
+    assert PERMISSIONS.mode == PermissionMode.CONFIRM_DESTRUCTIVE
+_run_audit("Global PERMISSIONS is CONFIRM_DESTRUCTIVE", t_perm_global_singleton)
 
 def t_perm_deny_list():
     from permissions import PermissionMode, PermissionPolicy

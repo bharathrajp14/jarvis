@@ -52,11 +52,13 @@ class SileroVAD:
                 model_path = model_dir / "silero_vad.onnx"
 
                 if not model_path.exists():
-                    # Attempt to download silero_vad.onnx
+                    # Attempt to download silero_vad.onnx with fast timeout
                     import urllib.request
                     url = "https://github.com/snakers4/silero-vad/raw/master/src/silero_vad/data/silero_vad.onnx"
                     print(f"[SileroVAD] Downloading Silero VAD ONNX model from {url}...")
-                    urllib.request.urlretrieve(url, model_path)
+                    req = urllib.request.urlopen(url, timeout=3.0)
+                    with open(model_path, "wb") as f:
+                        f.write(req.read())
                     print(f"[SileroVAD] ✓ Downloaded Silero VAD model to {model_path}")
 
                 if model_path.exists():

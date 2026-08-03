@@ -7,6 +7,7 @@ from __future__ import annotations
 import os
 import time
 from enum import Enum
+from typing import Any
 
 
 class AgentProfile(Enum):
@@ -162,7 +163,7 @@ class AgentRouter:
         fallback_chain = [self.default, AgentProfile.GEMINI] + list(self.backends.keys())
 
         for f_profile in fallback_chain:
-            if f_profile == profile or f_profile in [t[0] for t in tried]:
+            if f_profile == profile or f_profile.value in [t[0] for t in tried]:
                 continue
             f_backend = self.backends.get(f_profile)
             if f_backend and f_backend.available:

@@ -10,6 +10,7 @@ from __future__ import annotations
 import logging
 import os
 import sys
+import threading
 
 logger = logging.getLogger("JARVIS.SoundEffects")
 
@@ -20,10 +21,15 @@ except ImportError:
     _HAS_WINSOUND = False
 
 
-import threading
+def _is_sound_enabled() -> bool:
+    """Return True unless JARVIS_ENABLE_SOUND_EFFECTS env var is explicitly set to false/0/off."""
+    val = os.environ.get("JARVIS_ENABLE_SOUND_EFFECTS", "true").lower()
+    return val not in ("false", "0", "no", "off")
 
 
 def _run_async_sound(fn):
+    if not _is_sound_enabled():
+        return
     t = threading.Thread(target=fn, daemon=True)
     t.start()
 

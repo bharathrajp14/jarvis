@@ -9,7 +9,7 @@ import re
 import yaml
 from pathlib import Path
 
-LIBRARY_DIR = Path(r"d:\BRJARVIS\Br-Jarvis\skills\library")
+LIBRARY_DIR = Path(__file__).resolve().parent.parent / "skills" / "library"
 
 # Native BR JARVIS Tool Mapping by Category / Domain
 DEFAULT_TOOLS_BY_CAT = {

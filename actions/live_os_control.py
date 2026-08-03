@@ -425,13 +425,14 @@ def _call_vision_llm(img_bytes: bytes, system_instruction: str, api_key: str, mo
                 ]
             }
             data_bytes = json.dumps(payload).encode("utf-8")
+            headers = {"Content-Type": "application/json"}
+            api_key = os.environ.get("OPENAI_API_KEY", "").strip()
+            if api_key:
+                headers["Authorization"] = f"Bearer {api_key}"
             req = urllib.request.Request(
                 "http://localhost:8045/v1/chat/completions",
                 data=data_bytes,
-                headers={
-                    "Content-Type": "application/json",
-                    "Authorization": "Bearer sk-5ec70bf9fa324084b7a7326babf52c45"
-                }
+                headers=headers
             )
             with urllib.request.urlopen(req, timeout=3.5) as resp:
                 body = json.loads(resp.read().decode("utf-8"))
@@ -465,27 +466,6 @@ def _call_vision_llm(img_bytes: bytes, system_instruction: str, api_key: str, mo
             raise RuntimeError("Cloud quota exceeded (429). Cooldown active...") from err
         raise err
 
-
-def _save_action_visualization(img_bytes: bytes, px_x: int, px_y: int, action: str, step: int) -> None:
-    """Draw click target visualization (red crosshair) and action label for step trace."""
-    try:
-        from PIL import Image, ImageDraw
-        img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
-        draw = ImageDraw.Draw(img)
-        # Draw red circle around target
-        r = 15
-        draw.ellipse([px_x - r, px_y - r, px_x + r, px_y + r], outline="red", width=3)
-        # Draw crosshair lines
-        draw.line([px_x - 25, px_y, px_x + 25, px_y], fill="red", width=2)
-        draw.line([px_x, px_y - 25, px_x, px_y + 25], fill="red", width=2)
-        # Draw action text label
-        draw.text((px_x + r + 5, px_y - 10), f"Step {step}: {action.upper()}", fill="red")
-        
-        debug_dir = Path("BR_WORKSPACE/Logs/live_os")
-        debug_dir.mkdir(parents=True, exist_ok=True)
-        img.save(debug_dir / f"step_{step}_action.png")
-    except Exception:
-        pass
 
 
 def _execute_single_action(act_dict: dict, screen_w: int, screen_h: int) -> str:

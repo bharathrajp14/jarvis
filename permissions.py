@@ -74,11 +74,11 @@ ALWAYS_ALLOWED: FrozenSet[str] = frozenset(
 
 def _normalize_mode(value: str | None) -> PermissionMode:
     if not value:
-        return PermissionMode.ALLOW_ALL
+        return PermissionMode.CONFIRM_DESTRUCTIVE
     try:
         return PermissionMode(value.strip().lower())
     except Exception:
-        return PermissionMode.ALLOW_ALL
+        return PermissionMode.CONFIRM_DESTRUCTIVE
 
 
 def _load_scope_defaults() -> dict[str, object]:
@@ -98,7 +98,7 @@ def _load_scope_defaults() -> dict[str, object]:
 
 @dataclass(slots=True)
 class PermissionPolicy:
-    mode: PermissionMode = PermissionMode.ALLOW_ALL
+    mode: PermissionMode = PermissionMode.CONFIRM_DESTRUCTIVE
     deny_names: FrozenSet[str] = field(default_factory=frozenset)
     allow_names: FrozenSet[str] = field(default_factory=frozenset)
 
@@ -125,9 +125,12 @@ class PermissionPolicy:
 def _build_global_policy() -> PermissionPolicy:
     scope_defaults = _load_scope_defaults()
     env_value = os.environ.get("JARVIS_PERMISSION_MODE")
-    env_mode = _normalize_mode(env_value)
-    scope_mode = _normalize_mode(scope_defaults.get("mode") if isinstance(scope_defaults.get("mode"), str) else None)
-    mode = env_mode if env_value else scope_mode
+    env_mode = _normalize_mode(env_value) if env_value else None
+    scope_raw = scope_defaults.get("mode") if isinstance(scope_defaults.get("mode"), str) else None
+    scope_mode = _normalize_mode(scope_raw) if scope_raw else None
+    
+    mode = env_mode or scope_mode or PermissionMode.CONFIRM_DESTRUCTIVE
+    print(f"[Permissions] Active permission policy mode: {mode.value.upper()}")
 
     deny_tools = scope_defaults.get("deny_tools", [])
     if not isinstance(deny_tools, list):

@@ -4,7 +4,7 @@ import time
 from openai import OpenAI
 
 BASE_URL = "http://127.0.0.1:8045/v1"
-API_KEY = os.environ.get("OPENAI_API_KEY", "sk-local")
+API_KEY = os.environ.get("OPENAI_API_KEY", "") or "local-key"
 
 client = OpenAI(
     base_url=BASE_URL,

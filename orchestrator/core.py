@@ -350,6 +350,7 @@ class JarvisOrchestrator:
         return None
 
     def chat(self, user_input: str) -> str:
+        self._prompted_continuation = False
         mode_result = self._parse_mode(user_input)
         if mode_result:
             return mode_result

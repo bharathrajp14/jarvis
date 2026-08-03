@@ -21,7 +21,7 @@ _OS = platform.system()
 
 
 def get_project_dir() -> Path:
-    return Path(__file__).resolve().parent
+    return Path(__file__).resolve().parent.parent
 
 
 def install_linux():

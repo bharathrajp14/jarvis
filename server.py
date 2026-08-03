@@ -15,7 +15,21 @@ import traceback
 import platform
 import uuid
 import threading
+import subprocess
 from pathlib import Path
+
+# ── Auto-reroute from Python 3.14 alpha to stable Python 3.12 ────────────────
+if __name__ == "__main__" and sys.version_info >= (3, 14) and sys.platform == "win32" and not os.environ.get("JARVIS_IGNORE_PY314"):
+    import shutil
+    _py_cmd = shutil.which("py")
+    if _py_cmd:
+        for _ver in ("-3.12", "-3.13", "-3.11"):
+            _chk = subprocess.run([_py_cmd, _ver, "--version"], capture_output=True)
+            if _chk.returncode == 0:
+                print(f"[server] -> Auto-rerouting from Python 3.14 alpha to stable Python {_ver[1:]}...")
+                os.environ["JARVIS_IGNORE_PY314"] = "1"
+                _res = subprocess.run([_py_cmd, _ver] + sys.argv)
+                sys.exit(_res.returncode)
 from contextlib import asynccontextmanager
 from typing import Set, Generator, AsyncGenerator
 
@@ -104,21 +118,20 @@ _ws_stream = WSBroadcastStream(sys.stdout)
 sys.stdout = _ws_stream
 
 
+async def _send_ws_log(ws: WebSocket, line: str):
+    try:
+        if ws.client_state == WebSocketState.CONNECTED:
+            await asyncio.wait_for(ws.send_json({"type": "log", "message": line}), timeout=0.5)
+    except Exception:
+        async with WEBSOCKETS_LOCK:
+            ACTIVE_WEBSOCKETS.discard(ws)
+
+
 async def broadcast_log(line: str):
     async with WEBSOCKETS_LOCK:
-        if not ACTIVE_WEBSOCKETS:
-            return
-        dead = set()
-        for ws in ACTIVE_WEBSOCKETS:
-            try:
-                if ws.client_state == WebSocketState.CONNECTED:
-                    await ws.send_json({"type": "log", "message": line})
-                else:
-                    dead.add(ws)
-            except Exception:
-                dead.add(ws)
-        for ws in dead:
-            ACTIVE_WEBSOCKETS.discard(ws)
+        targets = list(ACTIVE_WEBSOCKETS)
+    for ws in targets:
+        asyncio.create_task(_send_ws_log(ws, line))
 
 
 # ── Lifespan Handler ──────────────────────────────────────────────────────────
@@ -180,20 +193,28 @@ app.add_middleware(
 from fastapi import Request
 from fastapi.responses import JSONResponse
 
+
+
+
 @app.middleware("http")
 async def verify_api_key(request: Request, call_next):
     if SERVER_API_KEY:
-        # Expose non-API endpoints like index, static docs
+        # Allow health and non-API endpoints
         if request.url.path.startswith(("/api", "/v1")) and request.url.path not in ("/api/health", "/health"):
-            auth_header = request.headers.get("Authorization")
-            api_key_header = request.headers.get("X-API-Key")
-            token = None
-            if auth_header and auth_header.startswith("Bearer "):
-                token = auth_header[7:]
-            elif api_key_header:
-                token = api_key_header
-            if token != SERVER_API_KEY:
-                return JSONResponse(status_code=401, content={"detail": "Unauthorized: Invalid API Key"})
+            # Allow same-origin requests from local browser dashboard
+            client_host = request.client.host if request.client else ""
+            referer = request.headers.get("referer", "")
+            is_local = client_host in ("127.0.0.1", "localhost", "::1") or "127.0.0.1" in referer or "localhost" in referer
+            if not is_local:
+                auth_header = request.headers.get("Authorization")
+                api_key_header = request.headers.get("X-API-Key")
+                token = None
+                if auth_header and auth_header.startswith("Bearer "):
+                    token = auth_header[7:]
+                elif api_key_header:
+                    token = api_key_header
+                if token != SERVER_API_KEY:
+                    return JSONResponse(status_code=401, content={"detail": "Unauthorized: Invalid API Key"})
     return await call_next(request)
 
 

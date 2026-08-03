@@ -77,7 +77,8 @@ class LifecycleManager:
         try:
             loop = asyncio.get_running_loop()
         except RuntimeError:
-            loop = asyncio.get_event_loop_policy().get_event_loop()
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
         for sig in (signal.SIGINT, signal.SIGTERM):
             try:
                 loop.add_signal_handler(

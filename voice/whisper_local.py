@@ -7,11 +7,15 @@ No API calls — everything runs on the local machine.
 from __future__ import annotations
 
 import io
+import logging
 import os
 import tempfile
 import traceback
 import threading
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+
+logger = logging.getLogger("JARVIS.WhisperLocal")
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 
@@ -236,7 +240,7 @@ def transcribe_wake_fast(audio_bytes: Any, language: str = "en", initial_prompt:
         return ""
 
     engine, engine_type = _get_engine()
-    if not engine or engine_type != "faster_whisper":
+    if not engine or engine_type != "faster":
         return transcribe(audio_bytes, language=language, initial_prompt=initial_prompt)
 
     try:

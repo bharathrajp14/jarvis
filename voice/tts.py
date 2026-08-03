@@ -67,6 +67,7 @@ class MCIPlayer:
     _winmm = None
     _lock = threading.Lock()
     _active_processes: dict[str, subprocess.Popen] = {}
+    _sd_finish_time: float = 0.0
 
     @classmethod
     def _init_winmm(cls):
@@ -86,6 +87,7 @@ class MCIPlayer:
             data, fs = sf.read(filepath_str, dtype="float32")
             out_dev = resolve_output_device()
             sd.play(data, fs, device=out_dev)
+            cls._sd_finish_time = time.time() + (len(data) / float(fs))
             return alias
         except Exception:
             pass
@@ -117,6 +119,9 @@ class MCIPlayer:
 
     @classmethod
     def is_playing(cls, alias: str) -> bool:
+        if time.time() < cls._sd_finish_time:
+            return True
+
         try:
             import sounddevice as sd
             if sd.get_stream() and sd.get_stream().active:
@@ -388,6 +393,22 @@ class NeuralTTS:
         )
         thread.start()
 
+    def speak_stream(self, token_generator, on_start=None, on_finish=None):
+        """Streaming text token generator interface for continuous speech playback."""
+        def text_collector():
+            parts = []
+            for token in token_generator:
+                parts.append(token)
+            return "".join(parts)
+
+        try:
+            full_text = text_collector()
+            self.speak_async(full_text, on_start=on_start, on_finish=on_finish)
+        except Exception as e:
+            print(f"[JARVIS] speak_stream error: {e}")
+            if on_finish:
+                on_finish()
+
     def _synth_sentence(self, sentence: str) -> tuple[str | None, str]:
         """Synthesize a sentence to audio file path or return ('sapi5', sentence)."""
         if self._cancel_event.is_set():
@@ -416,15 +437,21 @@ class NeuralTTS:
                 if mp3_path.exists() and mp3_path.stat().st_size >= 100:
                     return (str(mp3_path), sentence)
 
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
                 try:
                     communicate = edge_tts.Communicate(text=sentence, voice=self.voice, rate=self.rate, pitch=self.pitch)
-                    loop.run_until_complete(communicate.save(str(mp3_path)))
+                    try:
+                        asyncio.run(communicate.save(str(mp3_path)))
+                    except RuntimeError:
+                        loop = asyncio.new_event_loop()
+                        try:
+                            loop.run_until_complete(communicate.save(str(mp3_path)))
+                        finally:
+                            loop.close()
+
                     if mp3_path.exists() and mp3_path.stat().st_size >= 100:
                         return (str(mp3_path), sentence)
-                finally:
-                    loop.close()
+                except Exception as ex_save:
+                    print(f"[JARVIS] EdgeTTS save error: {ex_save}")
             except Exception as e:
                 err_str = str(e).lower()
                 if any(w in err_str for w in ("getaddrinfo", "connect", "dns", "ssl", "timeout", "network")):
@@ -466,8 +493,8 @@ class NeuralTTS:
                     break
 
                 try:
-                    # 1ms ultra-fast queue dispatch for 1ms gap between sentences
-                    audio_type, s_text = synth_queue.get(timeout=0.001)
+                    # Efficient blocking queue fetch with 50ms timeout (0% CPU spin)
+                    audio_type, s_text = synth_queue.get(block=True, timeout=0.05)
                 except queue.Empty:
                     continue
 

@@ -65,6 +65,7 @@ class ConversationStore:
                 FOREIGN KEY(session_id) REFERENCES sessions(id)
             )
         """)
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_turns_session ON turns(session_id);")
         conn.commit()
 
     def _execute_write(self, sql: str, params: tuple = ()) -> None:

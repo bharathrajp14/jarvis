@@ -21,7 +21,7 @@ def run_master_suite() -> int:
     test_dir = project_root / "tests"
     
     print("=" * 60)
-    print("⚡ BR JARVIS — MASTER SYSTEM TEST SUITE RUNNER")
+    print("BR JARVIS -- MASTER SYSTEM TEST SUITE RUNNER")
     print("=" * 60)
 
     exit_code = pytest.main([

@@ -16,6 +16,7 @@ import json
 from datetime import datetime
 from pathlib import Path
 from threading import Lock
+from threading import RLock
 import sys
 
 
@@ -27,7 +28,7 @@ def get_base_dir() -> Path:
 
 BASE_DIR         = get_base_dir()
 MEMORY_PATH      = BASE_DIR / "memory" / "long_term.json"
-_lock            = Lock()
+_lock            = RLock()
 MAX_VALUE_LENGTH = 380
 MEMORY_MAX_CHARS = 2200
 
@@ -257,19 +258,19 @@ def save_session_summary(summary: str, language: str = "") -> None:
     summary = (summary or "").strip()
     if not summary:
         return
-    memory   = load_memory()
-    sessions = memory.get("sessions", [])
-    if not isinstance(sessions, list):
-        sessions = []
-    entry: dict = {
-        "date":    datetime.now().strftime("%Y-%m-%d"),
-        "summary": summary[:280],
-    }
-    if language:
-        entry["language"] = language
-    sessions.append(entry)
-    memory["sessions"] = sessions[-_SESSION_MAX:]
     with _lock:
+        memory   = load_memory()
+        sessions = memory.get("sessions", [])
+        if not isinstance(sessions, list):
+            sessions = []
+        entry: dict = {
+            "date":    datetime.now().strftime("%Y-%m-%d"),
+            "summary": summary[:280],
+        }
+        if language:
+            entry["language"] = language
+        sessions.append(entry)
+        memory["sessions"] = sessions[-_SESSION_MAX:]
         MEMORY_PATH.parent.mkdir(parents=True, exist_ok=True)
         MEMORY_PATH.write_text(
             json.dumps(memory, indent=2, ensure_ascii=False),

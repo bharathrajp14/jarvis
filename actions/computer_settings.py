@@ -35,9 +35,17 @@ def _get_base_dir() -> Path:
     return Path(__file__).resolve().parent.parent
 
 def _get_api_key() -> str:
-    path = _get_base_dir() / "config" / "api_keys.json"
-    with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)["gemini_api_key"]
+    val = os.environ.get("GEMINI_API_KEY", "").strip() or os.environ.get("GOOGLE_API_KEY", "").strip()
+    if val:
+        return val
+    try:
+        path = _get_base_dir() / "config" / "api_keys.json"
+        if path.exists():
+            with open(path, "r", encoding="utf-8") as f:
+                return json.load(f).get("gemini_api_key", "").strip()
+    except Exception:
+        pass
+    return ""
 
 def _get_macos_wifi_interface() -> str:
     try:
@@ -57,6 +65,7 @@ def _get_macos_wifi_interface() -> str:
 
 def volume_up():
     if _OS == "Windows":
+        if not _PYAUTOGUI: return "pyautogui not available"
         for _ in range(5): pyautogui.press("volumeup")
     elif _OS == "Darwin":
         subprocess.run(["osascript", "-e",
@@ -68,6 +77,7 @@ def volume_up():
 
 def volume_down():
     if _OS == "Windows":
+        if not _PYAUTOGUI: return "pyautogui not available"
         for _ in range(5): pyautogui.press("volumedown")
     elif _OS == "Darwin":
         subprocess.run(["osascript", "-e",
@@ -79,6 +89,7 @@ def volume_down():
 
 def volume_mute():
     if _OS == "Windows":
+        if not _PYAUTOGUI: return "pyautogui not available"
         pyautogui.press("volumemute")
     elif _OS == "Darwin":
         subprocess.run(["osascript", "-e", "set volume with output muted"],

@@ -21,15 +21,46 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, TextIO, TypedDict, cast, Callable
 
+# ── Auto-reroute from Python 3.14 alpha to stable Python 3.12 ────────────────
+if __name__ == "__main__" and sys.version_info >= (3, 14) and sys.platform == "win32" and not os.environ.get("JARVIS_IGNORE_PY314"):
+    import shutil
+    _py_cmd = shutil.which("py")
+    if _py_cmd:
+        for _ver in ("-3.12", "-3.13", "-3.11"):
+            _chk = subprocess.run([_py_cmd, _ver, "--version"], capture_output=True)
+            if _chk.returncode == 0:
+                print(f"[JARVIS] -> Auto-rerouting from Python 3.14 alpha to stable Python {_ver[1:]}...")
+                os.environ["JARVIS_IGNORE_PY314"] = "1"
+                _res = subprocess.run([_py_cmd, _ver] + sys.argv)
+                sys.exit(_res.returncode)
+
 try:
     from dotenv import load_dotenv  # type: ignore[import-not-found]
     load_dotenv()
 except ImportError:
     pass
 
-# Fix terminal encoding issues on Windows
+# Fix terminal encoding & Qt DLL plugin paths on Windows
 if sys.platform == "win32":
     os.environ["PYTHONIOENCODING"] = "utf-8"
+    for _mod_name in ("PySide6", "PyQt6", "PyQt5"):
+        try:
+            _m = __import__(_mod_name)
+            _mod_dir = os.path.dirname(_m.__file__)
+            _plugins_dir = os.path.join(_mod_dir, "plugins")
+            _platforms_dir = os.path.join(_plugins_dir, "platforms")
+            os.environ["QT_PLUGIN_PATH"] = _plugins_dir
+            os.environ["QT_QPA_PLATFORM_PLUGIN_PATH"] = _platforms_dir
+            if hasattr(os, "add_dll_directory"):
+                for _d in (_mod_dir, _plugins_dir, _platforms_dir):
+                    if os.path.exists(_d):
+                        try:
+                            os.add_dll_directory(_d)
+                        except Exception:
+                            pass
+            break
+        except ImportError:
+            continue
     try:
         stdout_reconfigure = getattr(sys.stdout, "reconfigure", None)
         stderr_reconfigure = getattr(sys.stderr, "reconfigure", None)
@@ -576,14 +607,14 @@ def _ensure_log_dir():
     LOG_DIR.mkdir(parents=True, exist_ok=True)
 
 def _run_script(script_name: str, entry_func: Callable | None = None):
-    """Run a sub-script either via subprocess or direct import if frozen."""
-    if getattr(sys, "frozen", False) and entry_func is not None:
+    """Run a sub-script either via direct entry function or subprocess fallback."""
+    if entry_func is not None:
         try:
             entry_func()
         except KeyboardInterrupt:
             pass
         except Exception as e:
-            console.print(f"[red]Error running {script_name} in-process: {e}[/]")
+            console.print(f"[red]Error running {script_name}: {e}[/]")
     else:
         try:
             subprocess.run([PYTHON, str(BASE_DIR / script_name)], cwd=str(BASE_DIR))
@@ -612,15 +643,13 @@ def _pre_launch_check() -> bool:
 
 def launch_voice():
     console.print("\n[bold cyan]▶ Starting BR Voice Assistant Cyberpunk HUD[/]")
-    console.print("[dim]Note: The Cyberpunk HUD GUI will open in a new window. Press Ctrl+C to stop.[/]\n")
+    console.print("[dim]Note: The Cyberpunk HUD GUI will open in a new window with active voice engine. Press Ctrl+C to stop.[/]\n")
     if getattr(sys, "frozen", False):
         try:
-            from ui_mark import JarvisUI
-            app = JarvisUI()
-            if hasattr(app, "root") and hasattr(app.root, "mainloop"):
-                app.root.mainloop()
-        except Exception:
-            _run_script("ui_mark.py", None)
+            from ui_mark import run_voice_ui
+            _run_script("ui_mark.py", run_voice_ui)
+        except Exception as e:
+            console.print(f"[red]Error launching Voice GUI: {e}[/]")
     else:
         _run_script("ui_mark.py", None)
 

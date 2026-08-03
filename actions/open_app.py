@@ -100,6 +100,22 @@ def _launch_windows(app_name: str) -> bool:
         except Exception:
             pass
 
+    # Try native Windows start command or os.startfile
+    try:
+        import os
+        if hasattr(os, "startfile"):
+            try:
+                os.startfile(app_name)
+                time.sleep(1.0)
+                return True
+            except Exception:
+                pass
+        subprocess.Popen(f"start {app_name}", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        time.sleep(1.0)
+        return True
+    except Exception:
+        pass
+
     try:
         import pyautogui
         pyautogui.PAUSE = 0.1

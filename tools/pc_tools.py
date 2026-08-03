@@ -400,3 +400,33 @@ def tool_keyboard_key_up(args: dict) -> str:
     except Exception as e:
         return f"keyUp error: {e}"
 
+
+@register_tool(
+    name="computer_control",
+    description="Mouse, keyboard, and screen automation engine (click, move, drag, type, hotkey, press, scroll, screenshot, screen_find, screen_click).",
+    parameters={
+        "type": "object",
+        "properties": {
+            "action": {"type": "string", "description": "type, smart_type, click, double_click, right_click, move, drag, hotkey, press, scroll, copy, paste, screenshot, wait, clear_field, focus_window, screen_find, screen_click, random_data, user_data"},
+            "text": {"type": "string"},
+            "x": {"type": "number"},
+            "y": {"type": "number"},
+            "x1": {"type": "number"},
+            "y1": {"type": "number"},
+            "x2": {"type": "number"},
+            "y2": {"type": "number"},
+            "keys": {"type": "string"},
+            "key": {"type": "string"},
+            "direction": {"type": "string"},
+            "amount": {"type": "number"},
+            "seconds": {"type": "number"},
+            "title": {"type": "string"},
+            "description": {"type": "string"},
+        },
+        "required": ["action"],
+    }
+)
+def tool_computer_control(args: dict) -> str:
+    cc = _get_computer_control()
+    return cc(parameters=args)
+

@@ -5,9 +5,13 @@ import os
 import pytest
 from tools.registry import execute_tool
 
+os.environ["JARVIS_PERMISSION_MODE"] = "allow_all"
+
 
 def test_scenario_10_file_operations():
     """Scenario 10: Create a test file, write text, and read it back."""
+    from permissions import PERMISSIONS, PermissionMode
+    PERMISSIONS.mode = PermissionMode.ALLOW_ALL
     test_path = "integration_test_file.txt"
     content = "Hello from BR JARVIS Integration Suite!"
 

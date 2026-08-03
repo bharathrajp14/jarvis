@@ -66,8 +66,11 @@ class HotkeyManager:
                 keys = hk.get("keys", "")
                 action = hk.get("action", "")
                 if keys and action:
-                    keyboard.add_hotkey(keys, self._trigger_action, args=(action, keys))
-                    print(f"  [+] Registered hotkey: {keys} -> {action}")
+                    try:
+                        keyboard.add_hotkey(keys, self._trigger_action, args=(action, keys))
+                        print(f"  [+] Registered hotkey: {keys} -> {action}")
+                    except Exception as e:
+                        print(f"  [-] Could not register hotkey {keys}: {e}")
 
             # Keep thread alive
             while self._running:

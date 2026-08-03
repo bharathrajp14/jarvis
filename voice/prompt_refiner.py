@@ -145,3 +145,8 @@ class VoicePromptRefiner:
 def refine_voice_prompt(raw_speech: str) -> Dict[str, Any]:
     """Convenience helper to refine a spoken voice transcript."""
     return VoicePromptRefiner.get_instance().refine(raw_speech)
+
+
+def collapse_repetitions(text: str) -> str:
+    """Module-level convenience wrapper for collapse_repetitions (used by whisper_local.py)."""
+    return VoicePromptRefiner.get_instance().collapse_repetitions(text)

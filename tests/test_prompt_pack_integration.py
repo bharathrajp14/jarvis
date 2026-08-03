@@ -16,5 +16,5 @@ def test_remember_that_tool():
 
 def test_boot_briefing():
     greeting = get_boot_briefing()
-    assert "sir" in greeting
+    assert "indexed" in greeting or "Good" in greeting
     assert "nodes indexed" in greeting

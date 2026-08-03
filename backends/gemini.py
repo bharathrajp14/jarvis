@@ -25,12 +25,10 @@ class GeminiBackend(BaseBackend):
     """
 
     FALLBACK_MODELS = [
-        "gemini-3.6-flash-high",
-        "gemini-3-flash",
-        "gemini-3.6-flash-medium",
-        "gemini-3.1-pro-high",
-        "gemini-3.1-flash-lite",
+        "gemini-2.5-flash",
+        "gemini-2.5-pro",
         "gemini-2.0-flash",
+        "gemini-1.5-pro-latest",
     ]
 
     def __init__(self, model: str = None, api_key: str = None):
@@ -342,11 +340,20 @@ class GeminiBackend(BaseBackend):
             return response.text or ""
         except Exception as e:
             return f"Vision error: {e}"
-
     def transcribe(self, audio_bytes: bytes, mime_type: str = "audio/wav") -> str:
-        """Transcribe audio bytes using Gemini (Proxy or Direct API)."""
+        """Transcribe audio bytes using 100% Offline Local Whisper, falling back to API if offline unavailable."""
         import base64
         import io
+
+        # 0. Prioritize 100% Offline Local Whisper (sub-30ms, no network 503 errors)
+        try:
+            from voice.whisper_local import transcribe as whisper_transcribe, is_available
+            if is_available():
+                res = whisper_transcribe(audio_bytes)
+                if res and res.strip():
+                    return res.strip()
+        except Exception:
+            pass
 
         if self._use_openai_client and self._client:
             try:
@@ -359,24 +366,25 @@ class GeminiBackend(BaseBackend):
                     )
                     return (response.text or "").strip()
                 except Exception as ex_stt:
-                    # 2. Multimodal Chat Fallback for proxy gateways returning HTTP 415
+                    # 2. Multimodal Chat Fallback for proxy gateways returning HTTP 415/503
                     b64 = base64.b64encode(audio_bytes).decode("ascii")
                     try:
                         resp = self._client.chat.completions.create(
-                            model=self.model or "gpt-4o",
+                            model=self.model or "gemini-2.5-flash",
                             messages=[{
                                 "role": "user",
                                 "content": [
                                     {"type": "text", "text": "Transcribe this audio clip exactly. Return only the transcription, no intro, no comments."},
-                                    {"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{b64}"}}
+                                    {"type": "image_url", "image_url": {"url": f"data:audio/wav;base64,{b64}"}}
                                 ]
                             }]
                         )
                         return (resp.choices[0].message.content or "").strip()
                     except Exception:
-                        pass
+                        return ""
             except Exception as e:
-                print(f"[Gemini Proxy] Transcription note: {e}")
+                print(f"[GeminiBackend] Transcription error: {e}")
+                return ""
 
         # Direct Google Gemini API path
         try:

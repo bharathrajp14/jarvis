@@ -115,9 +115,9 @@ def _get_sqlite_conn(scope: str = "user") -> sqlite3.Connection:
     db_dir = get_memory_dir(scope)
     db_dir.mkdir(parents=True, exist_ok=True)
     db_path = db_dir / "memory.db"
-    conn = sqlite3.connect(str(db_path), check_same_thread=False)
+    conn = sqlite3.connect(str(db_path), check_same_thread=False, timeout=30.0)
     conn.execute("PRAGMA journal_mode=WAL")
-    conn.execute("PRAGMA busy_timeout=5000")
+    conn.execute("PRAGMA busy_timeout=30000")
     conn.execute("""
         CREATE TABLE IF NOT EXISTS memories (
             id TEXT PRIMARY KEY,

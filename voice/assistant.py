@@ -37,8 +37,21 @@ except ImportError:
         from ui import JarvisUI
     except ImportError:
         class JarvisUI:
-            def write_log(self, msg): print(f"[UI] {msg}")
-            def set_state(self, state): pass
+            def __init__(self):
+                self.speaking = False
+                self.muted = False
+                self._state = "IDLE"
+                self.on_text_command = None
+                self.mic_energy_level = 0.0
+
+            def write_log(self, msg: str) -> None:
+                print(f"[UI] {msg}")
+
+            def set_state(self, state: str) -> None:
+                self._state = state
+
+            def update_agent_task(self, task_id: str, desc: str, status: str) -> None:
+                pass
 from core.bootstrap import build_assistant_runtime
 from agent.task_queue import get_queue, TaskPriority
 from voice.tts import NeuralTTS
@@ -48,8 +61,8 @@ from voice.stt import SounddeviceMicrophone
 class BRVoiceAssistant:
     """Hands-free Voice Assistant coordinator for JARVIS MK37."""
 
-    def __init__(self, ui: JarvisUI):
-        self.ui = ui
+    def __init__(self, ui: JarvisUI | None = None):
+        self.ui = ui if ui is not None else JarvisUI()
         # Initialize ReAct Orchestrator & Backend Gateway via shared runtime
         try:
             runtime = build_assistant_runtime()
@@ -126,7 +139,9 @@ class BRVoiceAssistant:
     async def _switch_to_new_command(self, text: str):
         """Cancel any running task/speech, then start the new command with lock synchronization."""
         if self._async_task_lock is None:
-            self._async_task_lock = asyncio.Lock()
+            with self._task_lock:
+                if self._async_task_lock is None:
+                    self._async_task_lock = asyncio.Lock()
 
         async with self._async_task_lock:
             # 1. Stop TTS immediately
@@ -168,11 +183,10 @@ class BRVoiceAssistant:
             self.ui.speaking = False
 
     def _play_listening_chime(self):
-        """Play ascending dual-tone acoustic activation chime and deep sub-bass pulse."""
+        """Play ascending dual-tone acoustic activation chime when wake word is recognized."""
         try:
-            from voice.sound_effects import play_activation_beep, play_deep_listening_bass
+            from voice.sound_effects import play_activation_beep
             play_activation_beep()
-            play_deep_listening_bass()
         except Exception:
             pass
 
@@ -600,6 +614,12 @@ class BRVoiceAssistant:
                         self.r.pause_threshold = 0.25
                         self.r.non_speaking_duration = 0.15
 
+                        # Drain microphone buffer so old frames recorded while speaking/thinking/executing are flushed
+                        try:
+                            mic.drain()
+                        except Exception:
+                            pass
+
                         # ⚡ Listen for wake phrase (4.0s limit captures single-breath wake+command)
                         audio = await self._loop.run_in_executor(
                             None, lambda: self.r.listen(
@@ -609,12 +629,7 @@ class BRVoiceAssistant:
                             )
                         )
 
-                        # ⚡ Play soft double micro-beep as soon as voice is detected
-                        try:
-                            from voice.sound_effects import play_voice_detected_beep
-                            play_voice_detected_beep()
-                        except Exception:
-                            pass
+
 
                         # ⚡ ULTRAFAST wake decoding
                         text = await self._transcribe_wake(audio)
@@ -668,6 +683,10 @@ class BRVoiceAssistant:
                                     self.ui.set_state("LISTENING")
                             except sr.WaitTimeoutError:
                                 self.ui.write_log("SYS: Command capture timed out — no input heard.")
+                                try:
+                                    mic.drain()
+                                except Exception:
+                                    pass
                                 self.ui.set_state("LISTENING")
 
                     except sr.WaitTimeoutError:

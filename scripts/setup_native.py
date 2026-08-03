@@ -23,7 +23,7 @@ if sys.platform == "win32":
     except Exception:
         pass
 
-BASE_DIR   = Path(__file__).resolve().parent
+BASE_DIR   = Path(__file__).resolve().parent.parent
 NATIVE_DIR = BASE_DIR / "native"
 C_SRC      = NATIVE_DIR / "jarvis_native.c"
 

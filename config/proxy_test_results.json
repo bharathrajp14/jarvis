@@ -1,0 +1,97 @@
+{
+  "gemini-3.6-flash-high": {
+    "ok": true,
+    "latency_ms": 2965.79,
+    "output": "OK"
+  },
+  "gemini-3.5-flash": {
+    "ok": true,
+    "latency_ms": 2751.19,
+    "output": "OK"
+  },
+  "gemini-2.5-flash-thinking": {
+    "ok": true,
+    "latency_ms": 2136.5,
+    "output": "OK"
+  },
+  "gemini-3.1-pro": {
+    "ok": true,
+    "latency_ms": 3634.86,
+    "output": "OK"
+  },
+  "gemini-3.6-flash-medium": {
+    "ok": true,
+    "latency_ms": 2269.52,
+    "output": "OK"
+  },
+  "gemini-2.5-pro": {
+    "ok": false,
+    "latency_ms": 25562.17,
+    "output": "Request timed out."
+  },
+  "gemini-3.1-flash-lite": {
+    "ok": true,
+    "latency_ms": 1683.24,
+    "output": "OK"
+  },
+  "gemini-3.6-flash-low": {
+    "ok": true,
+    "latency_ms": 1355.17,
+    "output": "OK"
+  },
+  "claude-sonnet-4-6": {
+    "ok": true,
+    "latency_ms": 14170.01,
+    "output": "OK"
+  },
+  "gemini-2.5-flash": {
+    "ok": true,
+    "latency_ms": 3007.98,
+    "output": "OK."
+  },
+  "gemini-3.6-flash-tiered": {
+    "ok": true,
+    "latency_ms": 2889.08,
+    "output": "OK"
+  },
+  "gpt-oss-120b-medium": {
+    "ok": false,
+    "latency_ms": 10587.89,
+    "output": "Error code: 400 - {'error': {'message': '{\\n  \"error\": {\\n    \"code\": 400,\\n    \"message\": \"Request contains an invalid argument.\",\\n    \"status\": \"INVALID_ARGUMENT\"\\n  }\\n}\\n', 'type': 'upstream_error', 'code': 400}}"
+  },
+  "gemini-2.5-flash-lite": {
+    "ok": true,
+    "latency_ms": 2554.78,
+    "output": "OK"
+  },
+  "claude-opus-4-6-thinking": {
+    "ok": true,
+    "latency_ms": 12331.15,
+    "output": "OK"
+  },
+  "gemini-3.1-flash-image": {
+    "ok": true,
+    "latency_ms": 2881.65,
+    "output": "OK"
+  },
+  "gemini-3.1-pro-high": {
+    "ok": true,
+    "latency_ms": 4764.16,
+    "output": "OK"
+  },
+  "gemini-3-flash": {
+    "ok": true,
+    "latency_ms": 2716.52,
+    "output": "OK"
+  },
+  "gemini-3-pro-image": {
+    "ok": false,
+    "latency_ms": 1620.75,
+    "output": "Token error: No accounts available with quota for model: gemini-3-pro-image"
+  },
+  "gemini-3.1-pro-low": {
+    "ok": true,
+    "latency_ms": 3334.55,
+    "output": "OK"
+  }
+}

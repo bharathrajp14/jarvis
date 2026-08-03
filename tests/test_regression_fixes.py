@@ -44,7 +44,9 @@ class TestRegressionFixes(unittest.TestCase):
         self.assertTrue(res.success)
 
     def test_permissions_path_policy_enforcement(self):
-        self.assertTrue(check_permission("view_file", {"AbsolutePath": "d:/BRJARVIS/Br-Jarvis/main.py"}))
+        from pathlib import Path
+        main_py = str(Path("main.py").resolve().as_posix())
+        self.assertTrue(check_permission("view_file", {"AbsolutePath": main_py}))
         self.assertFalse(check_permission("view_file", {"AbsolutePath": "C:/Windows/System32/config/SAM"}))
 
     def test_voice_assistant_energy_floor(self):

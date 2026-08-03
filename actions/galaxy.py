@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import re
+import time
 from pathlib import Path
 from typing import Any
 
@@ -86,13 +87,22 @@ def build_galaxy_graph() -> dict[str, Any]:
     return graph_data
 
 
+_cached_galaxy_graph: dict[str, Any] | None = None
+_cached_galaxy_time: float = 0.0
+
 def query_galaxy(query: str, top_k: int = 6) -> dict[str, Any]:
     """
     Score notes against a user query using keyword & title overlap.
     Returns dict: {"answer": str, "source_nodes": [int]}
     """
-    graph = build_galaxy_graph()
-    nodes = graph["nodes"]
+    global _cached_galaxy_graph, _cached_galaxy_time
+    now = time.time()
+    if _cached_galaxy_graph is None or (now - _cached_galaxy_time) > 60.0:
+        _cached_galaxy_graph = build_galaxy_graph()
+        _cached_galaxy_time = now
+
+    graph = _cached_galaxy_graph
+    nodes = graph.get("nodes", [])
 
     if not nodes:
         return {"answer": "No notes found in knowledge galaxy, sir.", "source_nodes": []}

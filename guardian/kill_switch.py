@@ -8,7 +8,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-PAUSED_FLAG_FILE = Path("guardian/PAUSED")
+PAUSED_FLAG_FILE = Path(__file__).resolve().parent / "PAUSED"
 
 
 class KillSwitch:

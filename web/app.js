@@ -4,7 +4,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const protocol = window.location.protocol === 'https:' ? 'https' : 'http';
     const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
     const API_BASE = `${protocol}://${host}`;
-    const WS_URL = `${wsProtocol}://${host}/ws`;
+    const apiKey = localStorage.getItem('jarvis_api_key') || window.JARVIS_API_KEY || '';
+    const WS_URL = `${wsProtocol}://${host}/ws${apiKey ? `?token=${encodeURIComponent(apiKey)}` : ''}`;
+
+    function apiFetch(url, options = {}) {
+        const opts = Object.assign({}, options);
+        opts.headers = Object.assign({}, opts.headers || {});
+        if (apiKey) {
+            opts.headers['X-API-Key'] = apiKey;
+            opts.headers['Authorization'] = `Bearer ${apiKey}`;
+        }
+        return fetch(url, opts);
+    }
 
     // DOM Elements
     const networkLatencyEl = document.getElementById('network-latency');
@@ -189,7 +200,47 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (data.type === 'chat_response' || data.type === 'response') {
             finalizeChatStream();
             appendChatMessage('JARVIS', data.response || data.message || data.text || '', 'system');
+        } else if (data.type === 'agent_task_update' || data.type === 'task_update') {
+            updateWebTaskCard(data.task_id || data.id, data.name || data.task_name, data.status, data.progress, data.result);
+        } else if (data.type === 'agent_task_remove' || data.type === 'task_remove') {
+            removeWebTaskCard(data.task_id || data.id);
         }
+    }
+
+    function updateWebTaskCard(taskId, name, status, progress, result) {
+        let taskList = document.getElementById('webAgentTaskList');
+        if (!taskList) {
+            const sidebar = document.querySelector('.left-panel .nav-section') || document.body;
+            taskList = document.createElement('div');
+            taskList.id = 'webAgentTaskList';
+            taskList.className = 'web-agent-task-panel';
+            taskList.innerHTML = '<div class="panel-hdr">⚡ LIVE SUB-AGENT WORKFLOWS</div>';
+            sidebar.appendChild(taskList);
+        }
+        let card = document.getElementById(`task-card-${taskId}`);
+        if (!card) {
+            card = document.createElement('div');
+            card.id = `task-card-${taskId}`;
+            card.className = 'agent-task-card';
+            taskList.appendChild(card);
+        }
+        const st = (status || 'running').toLowerCase();
+        const pct = Math.round((progress || 0) * 100);
+        card.innerHTML = `
+            <div class="task-card-hdr">
+                <span class="task-name">🤖 ${name || taskId}</span>
+                <span class="task-badge ${st}">${st.toUpperCase()}</span>
+            </div>
+            <div class="task-progress-track">
+                <div class="task-progress-bar ${st}" style="width: ${pct}%"></div>
+            </div>
+            ${result ? `<div class="task-result">${result}</div>` : ''}
+        `;
+    }
+
+    function removeWebTaskCard(taskId) {
+        const card = document.getElementById(`task-card-${taskId}`);
+        if (card) card.remove();
     }
 
     // ── CHAT TRANSMISSION ──
