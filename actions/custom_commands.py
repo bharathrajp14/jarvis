@@ -129,8 +129,19 @@ class CustomCommandEngine:
                     results.append(f"Opened App: {content}")
 
                 elif action_type == "run_command":
-                    # Run shell command asynchronously or sync
-                    subprocess.Popen(content, shell=True)
+                    # Raw shell execution is intentionally opt-in.
+                    allow_unsafe_shell = os.environ.get("JARVIS_ALLOW_UNSAFE_SHELL", "false").strip().lower() in {
+                        "1", "true", "yes", "on"
+                    }
+                    if not allow_unsafe_shell:
+                        results.append("Action 'run_command' blocked by policy. Set JARVIS_ALLOW_UNSAFE_SHELL=true to allow.")
+                        continue
+
+                    if os.name == "nt":
+                        cmd = ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", content]
+                    else:
+                        cmd = ["/bin/bash", "-lc", content] if Path("/bin/bash").exists() else ["/bin/sh", "-lc", content]
+                    subprocess.Popen(cmd)
                     results.append(f"Ran command: {content}")
 
                 elif action_type == "press_keys":

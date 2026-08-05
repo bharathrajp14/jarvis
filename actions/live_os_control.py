@@ -8,12 +8,15 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import logging
 import os
 import platform
 import re
 import sys
 import time
 from pathlib import Path
+
+logger = logging.getLogger("JARVIS.Actions.LiveOS")
 
 from actions.computer_control import (
     _screen_size,
@@ -580,11 +583,10 @@ class LiveOSController:
             video_rec = _compile_session_recording(self.frame_paths, self.session_id)
             analytics_log = _export_session_analytics(self.goal, self.subgoals, self.history, dur_s, self.session_id)
             if video_rec:
-                print(f" 🎥 Animated WebP Session Recording: {video_rec}")
-            if analytics_log:
-                print(f" 📊 Visual Analytics Telemetry Log: {analytics_log}")
+                logger.info("Animated WebP Session Recording: %s", video_rec)
+                logger.info("Visual Analytics Telemetry Log: %s", analytics_log)
         except Exception as e:
-            print(f" ⚠️ Finalize session error: {e}")
+            logger.warning("Finalize session error: %s", e)
 
     def run(self, player=None, speak=None) -> str:
         """Execute the live visual control loop until goal is achieved or steps exhausted."""
@@ -603,18 +605,10 @@ class LiveOSController:
             speak(f"Starting live OS control for: {self.goal}")
 
         bg_tag = " (Background Daemon Mode 🛡️)" if self.is_background else ""
-        print(f"\n============================================================")
-        print(f" 🤖 JARVIS LIVE OS CONTROL ENGINE (Cognitive Mode){bg_tag}")
-        print(f" Goal: {self.goal}")
-        print(f" Subgoals ({len(self.subgoals)}): " + " -> ".join([sg['description'] for sg in self.subgoals]))
-        print(f" Step Limit: {self.limit_label}")
-        print(f" Initial Step Delay: {self.step_delay}s (Adaptive Velocity Active)")
-        print(f" Screen Resolution: {screen_w}×{screen_h}")
-        print(f" Vision Model: {model_name} (via Gateway / Fallback)")
-        print(f" Session ID: {self.session_id}")
-        print(f" Perception: High-Res 1600x900 + SOM Grid + Cognitive Reasoning")
-        print(f" Mode: Think First -> 100% Visual Perception Driven")
-        print(f"============================================================\n")
+        logger.info(
+            "JARVIS LIVE OS CONTROL ENGINE (Goal: %s, Subgoals: %d, Steps: %s, Res: %dx%d, Model: %s)",
+            self.goal, len(self.subgoals), self.limit_label, screen_w, screen_h, model_name
+        )
 
         for step in range(1, self.max_steps + 1):
             time.sleep(self.step_delay)
@@ -622,7 +616,7 @@ class LiveOSController:
             # 1. Capture screen frame
             img_bytes = _take_screenshot_bytes()
             if not img_bytes:
-                print(f"[LiveOS Step {step}] ⚠️ Failed to capture screenshot.")
+                logger.warning("[LiveOS Step %d] Failed to capture screenshot.", step)
                 continue
 
             # Native C fast FNV-1a hash check for static screen detection
@@ -643,7 +637,7 @@ class LiveOSController:
 
             # Adaptive recovery on persistent static screen
             if self._static_count >= 2:
-                print("   ⚠️ Static screen detected across 2 turns. Triggering adaptive recovery shortcut (Ctrl+L focus)...")
+                logger.warning("Static screen detected across 2 turns. Triggering adaptive recovery shortcut (Ctrl+L focus)...")
                 _focus_window("Edge") or _focus_window("Chrome") or _focus_window("Brave") or _focus_window("Firefox")
                 _hotkey("ctrl", "l")
                 time.sleep(0.1)
@@ -729,7 +723,7 @@ class LiveOSController:
                 raw_text = _call_vision_llm(img_bytes, system_instruction, api_key, model_name, density=grid_density)
                 data = _parse_vision_json(raw_text)
             except Exception as e:
-                print(f"[LiveOS Step {step}] ⚠️ Vision inference parsing fallback: {e}")
+                logger.warning("[LiveOS Step %d] Vision inference parsing fallback: %s", step, e)
                 data = {"thought": "Parsing fallback triggered", "action": "wait", "done": False}
 
             thought = data.get("thought", "")
@@ -746,7 +740,7 @@ class LiveOSController:
                 for sg in self.subgoals:
                     if sg["id"] == mark_sg_id and not sg.get("completed"):
                         sg["completed"] = True
-                        print(f"   ➔ [Subgoal Marked Completed by Vision LLM]: Subgoal {sg['id']} ({sg['description']})")
+                        logger.info("Subgoal Marked Completed by Vision LLM: Subgoal %s (%s)", sg['id'], sg['description'])
 
             # Native hardware grid transform: (0..1000) -> actual pixels
             px_x, px_y = None, None
@@ -763,8 +757,7 @@ class LiveOSController:
                 if f_path:
                     self.frame_paths.append(f_path)
 
-            print(f"➔ [Step {step}/{self.max_steps}] Thought: {thought}")
-            print(f"   Action: '{action}' | Target Coords: ({px_x}, {px_y}) | Input: '{text_val or keys_val}'")
+            logger.info("[Step %d/%d] Thought: %s | Action: '%s' | Coords: (%d, %d)", step, self.max_steps, thought, action, px_x, px_y)
 
             if player:
                 player.write_log(f"[LiveOS #{step}] {action} -> ({px_x},{px_y})")
@@ -774,15 +767,15 @@ class LiveOSController:
             try:
                 if action == "done" or is_done:
                     summary = f"Goal achieved in {step} steps: {thought}"
-                    print(f"\n✅ {summary}\n")
+                    logger.info("Success: %s", summary)
                     if speak and not self.is_background:
                         speak("Task completed successfully, sir.")
                     self._finalize_session(summary)
                     return summary
 
-                if action == "fail":
+                elif action == "fail":
                     summary = f"Task marked unachievable at step {step}: {thought}"
-                    print(f"\n❌ {summary}\n")
+                    logger.warning("Failed: %s", summary)
                     self._finalize_session(summary)
                     return summary
 
@@ -833,7 +826,7 @@ class LiveOSController:
 
             except Exception as ex:
                 result_str = f"Action execution error: {ex}"
-                print(f"   ⚠️ Action error: {ex}")
+                logger.warning("Action error: %s", ex)
 
             # Flexible Subgoal Auto-Fulfillment
             if action in ["type", "press", "hotkey", "click"]:
@@ -841,7 +834,7 @@ class LiveOSController:
                     if not sg.get("completed") and sg.get("type") == "UI_ACTION":
                         if action == "type" or (action in ["press", "hotkey"] and ("enter" in keys_val or "win+" in keys_val)):
                             sg["completed"] = True
-                            print(f"   ➔ [Subgoal Auto-Fulfilled]: {sg['description']}")
+                            logger.info("Subgoal Auto-Fulfilled: %s", sg['description'])
                             break
 
             self.history.append({
@@ -852,7 +845,7 @@ class LiveOSController:
             })
 
         summary = f"Live OS Control reached maximum step limit ({self.max_steps}). Goal: {self.goal}"
-        print(f"\n⚠️ {summary}\n")
+        logger.warning("Step limit reached: %s", summary)
         self._finalize_session(summary)
         return summary
 

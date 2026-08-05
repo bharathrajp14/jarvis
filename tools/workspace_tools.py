@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import json
 import os
-import subprocess
 import sys
 from pathlib import Path
 
@@ -39,7 +38,7 @@ def open_workspace_file(args: dict) -> str:
 
     if sys.platform == "win32":
         try:
-            subprocess.Popen(f'start "" "{target}"', shell=True)
+            os.startfile(str(target))
             ws.log_timeline_event("FILE_OPENED", f"Opened file '{target.name}'", metadata={"query": query})
             return f"⚡ Opened '{target.name}' from workspace ({target})."
         except Exception as e:

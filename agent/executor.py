@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import concurrent.futures
 import json
+import logging
 import re
 import sys
 import time
@@ -17,6 +18,9 @@ import threading
 import traceback
 from pathlib import Path
 from typing import Callable
+
+logger = logging.getLogger("JARVIS.AgentExecutor")
+
 
 # Ensure project root in path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -42,10 +46,11 @@ def _call_tool(tool: str, parameters: dict, speak: Callable | None = None) -> st
     
     # Strict execution check — do NOT fabricate success via web search if tool is missing
     if result.startswith("ERROR: Unknown tool"):
-        print(f"[Executor] ❌ Unknown tool '{tool}' cannot be executed.")
+        logger.error(f"❌ Unknown tool '{tool}' cannot be executed.")
         raise RuntimeError(f"Tool '{tool}' is not available on this system.")
         
     return result
+
 
 
 
@@ -82,9 +87,8 @@ class AgentExecutor:
         speak:       Callable | None = None,
         cancel_flag: threading.Event | None = None,
     ) -> str:
-        print(f"\n{'='*60}")
-        print(f"[Executor] 🎯 Goal: {goal}")
-        print(f"{'='*60}")
+        logger.info(f"🎯 Goal: {goal}")
+
 
         replan_count   = 0
         completed_steps = []
@@ -121,7 +125,7 @@ class AgentExecutor:
                 if speak: speak(msg)
                 return msg
 
-            print(f"[Executor] 🔄 Replanning (attempt {replan_count + 1})...")
+            logger.info("Replanning (attempt %d)...", replan_count + 1)
             if speak: speak("Adjusting my approach, sir.")
             replan_count += 1
             plan = replan(goal, completed_steps, failed_step, failed_error)
@@ -165,7 +169,7 @@ class AgentExecutor:
 
             # Run parallel steps together, then sequential one-by-one
             if parallel_steps:
-                print(f"\n[Executor] ⚡ Running {len(parallel_steps)} steps in PARALLEL")
+                logger.info("Running %d steps in PARALLEL", len(parallel_steps))
                 results = self._run_parallel(parallel_steps, goal, speak)
                 for step_num, result in results.items():
                     step = pending.pop(step_num)
@@ -173,7 +177,7 @@ class AgentExecutor:
                         step_results[step_num] = result.output
                         completed.add(step_num)
                         completed_steps.append(step)
-                        print(f"[Executor] ✅ Step {step_num} done ({result.duration:.1f}s)")
+                        logger.info("Step %s done (%.1fs)", step_num, result.duration)
                     else:
                         recovery = self._handle_failure(step, result.error, speak)
                         if recovery["abort"]:
@@ -199,7 +203,7 @@ class AgentExecutor:
                     step_results[step_num] = result.output
                     completed.add(step_num)
                     completed_steps.append(step)
-                    print(f"[Executor] ✅ Step {step_num} done ({result.duration:.1f}s): {result.output[:80]}")
+                    logger.info("Step %s done (%.1fs): %s", step_num, result.duration, result.output[:80])
                 else:
                     recovery = self._handle_failure(step, result.error, speak)
                     if recovery["abort"]:
@@ -245,7 +249,7 @@ class AgentExecutor:
         # Inject context from previous results
         params = self._inject_context(params, tool, context_results, goal)
 
-        print(f"\n[Executor] ▶️ Step {step_num}: [{tool}] {desc}")
+        logger.info("Step %s: [%s] %s", step_num, tool, desc)
         t_start = time.time()
 
         max_attempts = 3 if step.get("critical") else 2
@@ -259,7 +263,7 @@ class AgentExecutor:
 
             except Exception as e:
                 err = str(e)
-                print(f"[Executor] ❌ Step {step_num} attempt {attempt}/{max_attempts}: {err[:100]}")
+                logger.warning("Step %s attempt %d/%d failed: %s", step_num, attempt, max_attempts, err[:100])
 
                 if attempt < max_attempts:
                     # Try recovery
@@ -303,7 +307,7 @@ class AgentExecutor:
         msg         = f"Step {step.get('step')} failed: {error[:80]}"
 
         if not is_critical:
-            print(f"[Executor] ⏭️ Skipping non-critical step: {msg}")
+            logger.info("Skipping non-critical step: %s", msg)
             return {"skip": True, "abort": False, "replan": False}
 
         # Try to determine if we should abort vs replan

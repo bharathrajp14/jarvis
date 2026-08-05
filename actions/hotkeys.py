@@ -7,11 +7,14 @@ running clipboard queries, or taking screenshots.
 from __future__ import annotations
 
 import json
+import logging
 import os
 import threading
 import time
 import traceback
 from pathlib import Path
+
+logger = logging.getLogger("JARVIS.Actions.Hotkeys")
 
 _CONFIG_PATH = Path("config/hotkeys.json")
 
@@ -40,13 +43,13 @@ class HotkeyManager:
             data = json.loads(_CONFIG_PATH.read_text(encoding="utf-8"))
             self.hotkeys = data.get("hotkeys", [])
         except Exception as e:
-            print(f"[Hotkeys] Load error: {e}")
+            logger.warning("Load error: %s", e)
             self.hotkeys = []
 
     def start(self):
         """Start listening for hotkeys in a background thread."""
         if not _HAS_KEYBOARD:
-            print("[Hotkeys] Info: 'keyboard' module not installed. Install with 'pip install keyboard' to enable global background hotkeys.")
+            logger.info("'keyboard' module not installed — global background hotkeys disabled.")
             return
 
         self.load_hotkeys()
@@ -56,7 +59,7 @@ class HotkeyManager:
         self._running = True
         self._listener_thread = threading.Thread(target=self._loop, daemon=True)
         self._listener_thread.start()
-        print("[Hotkeys] Global keyboard hotkeys engine active.")
+        logger.info("Global keyboard hotkeys engine active.")
 
     def _loop(self):
         """Bind keys and block."""
@@ -68,15 +71,15 @@ class HotkeyManager:
                 if keys and action:
                     try:
                         keyboard.add_hotkey(keys, self._trigger_action, args=(action, keys))
-                        print(f"  [+] Registered hotkey: {keys} -> {action}")
+                        logger.info("Registered hotkey: %s -> %s", keys, action)
                     except Exception as e:
-                        print(f"  [-] Could not register hotkey {keys}: {e}")
+                        logger.warning("Could not register hotkey %s: %s", keys, e)
 
             # Keep thread alive
             while self._running:
                 time.sleep(0.5)
         except Exception as e:
-            print(f"[Hotkeys] Thread error: {e}")
+            logger.error("Thread error: %s", e)
             traceback.print_exc()
 
     def stop(self):
@@ -90,7 +93,7 @@ class HotkeyManager:
 
     def _trigger_action(self, action_name: str, keys: str):
         """Execute the hotkey action."""
-        print(f"[Hotkeys] Hotkey triggered: {keys} -> {action_name}")
+        logger.info("Hotkey triggered: %s -> %s", keys, action_name)
         if not self.assistant:
             return
 
@@ -126,4 +129,4 @@ class HotkeyManager:
                 ).start()
 
         except Exception as e:
-            print(f"[Hotkeys] Failed to execute hotkey action '{action_name}': {e}")
+            logger.error("Failed to execute hotkey action '%s': %s", action_name, e)

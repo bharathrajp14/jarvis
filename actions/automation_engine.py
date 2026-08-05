@@ -46,14 +46,22 @@ class UniversalAutomationEngine:
         if not command:
             return {"success": False, "output": "No command provided", "returncode": -1}
 
-        shell_cmd = command
-        if sys.platform == "win32" and not command.startswith("powershell"):
-            shell_cmd = f"powershell.exe -NoProfile -ExecutionPolicy Bypass -Command \"{command}\""
+        if sys.platform == "win32":
+            cmd = [
+                "powershell.exe",
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-Command",
+                command,
+            ]
+        else:
+            cmd = ["/bin/bash", "-lc", command] if os.path.exists("/bin/bash") else ["/bin/sh", "-lc", command]
 
         try:
             res = subprocess.run(
-                shell_cmd,
-                shell=True,
+                cmd,
+                shell=False,
                 capture_output=True,
                 text=True,
                 encoding="utf-8",

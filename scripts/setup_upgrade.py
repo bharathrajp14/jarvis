@@ -60,7 +60,7 @@ def _resolve_target_dir() -> Path:
 
 FILES_TO_UPGRADE = [
     # (source_relative, target_relative)
-    ("gemini_backend.py",           "gemini_backend.py"),
+    ("backends/gemini.py",          "backends/gemini.py"),
     ("router.py",                   "router.py"),
     ("orchestrator.py",             "orchestrator.py"),
     ("main_mk37.py",                "main_mk37.py"),

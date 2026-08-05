@@ -4,6 +4,7 @@ from __future__ import annotations
 import time
 import uuid
 from typing import Any, Dict, Optional
+
 from pydantic import BaseModel, Field
 
 
@@ -17,40 +18,44 @@ class BaseEvent(BaseModel):
 
 
 class SystemEvent(BaseEvent):
-    topic: str = "system.notification"
+    """System lifecycle event (startup, shutdown, health changes).
+
+    FIXED: topic is no longer defaulted to a misleading value — callers must
+    pass the specific topic (e.g., topic='system.startup').
+    """
     state: Optional[str] = None
 
 
 class TaskEvent(BaseEvent):
-    topic: str = "task.created"
+    """Task lifecycle event (created, running, completed, failed)."""
     task_id: str
     goal: str
     status: str = "pending"
 
 
 class AuditEvent(BaseEvent):
-    topic: str = "audit.action"
+    """Security audit event for permission-controlled actions."""
     action_type: str
     target: str
     user_confirmed: bool = True
 
 
 class ErrorEvent(BaseEvent):
-    topic: str = "system.error"
+    """System or tool error event."""
     error_message: str
     exception_type: Optional[str] = None
     stack_trace: Optional[str] = None
 
 
 class VoiceEvent(BaseEvent):
-    topic: str = "voice.transcript"
+    """Voice recognition event."""
     transcript: str
     confidence: float = 1.0
     speaker: str = "user"
 
 
 class ToolExecutionEvent(BaseEvent):
-    topic: str = "tool.exec.start"
+    """Tool execution lifecycle event."""
     tool_name: str
     args: Dict[str, Any] = Field(default_factory=dict)
     success: Optional[bool] = None
@@ -59,7 +64,7 @@ class ToolExecutionEvent(BaseEvent):
 
 
 class VisionEvent(BaseEvent):
-    topic: str = "screen.understood"
+    """Screen understanding / vision event."""
     active_window: Optional[str] = None
     nodes_count: int = 0
     verification_success: Optional[bool] = None

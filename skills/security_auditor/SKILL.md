@@ -1,6 +1,6 @@
 ---
 name: security_auditor
-description: Autonomous project security auditor, hardcoded secret scanner, and permissions policy validator.
+description: Autonomous project compliance, credentials placement, and permissions policy validator.
 user_invocable: true
 ---
 

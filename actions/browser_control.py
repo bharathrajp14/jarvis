@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import concurrent.futures
+import logging
 import os
 import platform
 import shutil
@@ -11,6 +12,8 @@ import threading
 import webbrowser
 from pathlib import Path
 from typing import Optional
+
+logger = logging.getLogger("JARVIS.Actions.BrowserControl")
 
 from playwright.async_api import (
     async_playwright,

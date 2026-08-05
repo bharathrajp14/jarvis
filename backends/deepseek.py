@@ -5,11 +5,14 @@ Supports DeepSeek-R1 reasoning models, DeepSeek-V3, and OpenRouter unified proxy
 """
 from __future__ import annotations
 
+import logging
 import os
 import traceback
 from typing import Generator, List, Dict, Any
 
 from backends.base import BaseBackend
+
+logger = logging.getLogger("JARVIS.DeepSeek")
 
 
 class DeepSeekBackend(BaseBackend):
@@ -28,9 +31,9 @@ class DeepSeekBackend(BaseBackend):
             try:
                 import openai
                 self.client = openai.OpenAI(api_key=_api_key, base_url=self.base_url)
-                print(f"[DeepSeek] [OK] Initialized backend with model: {self.model} on base_url: {self.base_url}")
+                logger.info("Initialized backend with model: %s on base_url: %s", self.model, self.base_url)
             except ImportError:
-                print("[DeepSeek] Warning: openai client library is not installed.")
+                logger.warning("openai client library is not installed.")
 
     @property
     def name(self) -> str:

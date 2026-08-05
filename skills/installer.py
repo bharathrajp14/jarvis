@@ -21,6 +21,7 @@ CLI:
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 import shutil
@@ -28,6 +29,8 @@ import subprocess
 import sys
 from pathlib import Path
 from datetime import datetime
+
+logger = logging.getLogger("JARVIS.Skills.Installer")
 
 # ── Paths ─────────────────────────────────────────────────────────────────
 SKILLS_USER_DIR = Path.home() / ".jarvis" / "skills"
@@ -172,7 +175,7 @@ def install_skill_pack(pack_name: str) -> str:
     # Clone or pull
     pack_dir = SKILLS_PACKS_DIR / pack_name
     if pack_dir.exists():
-        print(f"[Installer] Updating {pack_name}...")
+        logger.info("Updating %s...", pack_name)
         try:
             subprocess.run(
                 ["git", "pull"], cwd=str(pack_dir),
@@ -181,7 +184,7 @@ def install_skill_pack(pack_name: str) -> str:
         except Exception as e:
             return f"Git pull failed: {e}"
     else:
-        print(f"[Installer] Cloning {pack_name}...")
+        logger.info("Cloning %s...", pack_name)
         try:
             subprocess.run(
                 ["git", "clone", "--depth=1", repo_url, str(pack_dir)],

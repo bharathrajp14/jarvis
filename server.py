@@ -7,6 +7,8 @@ from __future__ import annotations
 
 import asyncio
 import json
+import hmac
+import logging
 import os
 import re
 import sys
@@ -17,6 +19,9 @@ import uuid
 import threading
 import subprocess
 from pathlib import Path
+
+logger = logging.getLogger("JARVIS.Server")
+
 
 # ── Auto-reroute from Python 3.14 alpha to stable Python 3.12 ────────────────
 if __name__ == "__main__" and sys.version_info >= (3, 14) and sys.platform == "win32" and not os.environ.get("JARVIS_IGNORE_PY314"):
@@ -72,7 +77,19 @@ WEB_DIR.mkdir(exist_ok=True)
 # Singletons
 ORCHESTRATOR: JarvisOrchestrator | None = None
 ACTIVE_WEBSOCKETS: Set[WebSocket] = set()
-WEBSOCKETS_LOCK = asyncio.Lock()
+WEBSOCKETS_LOCK: asyncio.Lock | None = None
+
+
+def _get_ws_lock() -> asyncio.Lock:
+    global WEBSOCKETS_LOCK
+    if WEBSOCKETS_LOCK is None:
+        WEBSOCKETS_LOCK = asyncio.Lock()
+    return WEBSOCKETS_LOCK
+_SKILLS_CACHE: list[dict] | None = None
+_SKILLS_CACHE_TS = 0.0
+_CONNECTORS_CACHE: dict | None = None
+_CONNECTORS_CACHE_TS = 0.0
+_CACHE_TTL_SECONDS = float(os.environ.get("JARVIS_API_CACHE_TTL", "5"))
 
 # ── Rich markup stripper ─────────────────────────────────────────────────────
 _RICH_RE = re.compile(r'\[/?[a-z_]+\]', re.IGNORECASE)
@@ -85,9 +102,26 @@ def _strip_rich(text: str) -> str:
 
 # ── Custom stdout redirector to broadcast logs via WS ─────────────────────────
 class WSBroadcastStream:
+    """Redirect stdout to both original stream and WebSocket broadcast.
+
+    FIXED: No longer calls asyncio.get_running_loop() from sync write() — that
+    caused RuntimeError on every print() from non-async threads.
+    Instead stores the running loop reference at activation time and uses
+    call_soon_threadsafe() for thread-safe async scheduling.
+    """
     def __init__(self, original):
         self.original = original
-        self._active = False  # Only broadcast when async loop is available
+        self._active = False
+        self._loop: asyncio.AbstractEventLoop | None = None  # Set in lifespan
+
+    def activate(self, loop: asyncio.AbstractEventLoop) -> None:
+        """Activate broadcasting — must be called from inside the running async loop."""
+        self._loop = loop
+        self._active = True
+
+    def deactivate(self) -> None:
+        self._active = False
+        self._loop = None
 
     def write(self, text):
         try:
@@ -97,21 +131,20 @@ class WSBroadcastStream:
                 self.original.write(text.encode('ascii', errors='replace').decode('ascii'))
             except Exception:
                 pass
-        if self._active and text.strip():
+        if self._active and self._loop and self._loop.is_running() and text.strip():
             clean = _strip_rich(text.strip())
             if clean:
-                try:
-                    loop = asyncio.get_running_loop()
-                    if loop.is_running():
-                        asyncio.run_coroutine_threadsafe(broadcast_log(clean), loop)
-                except RuntimeError:
-                    pass
+                # FIXED: use call_soon_threadsafe — safe from any thread
+                self._loop.call_soon_threadsafe(
+                    lambda c=clean: asyncio.ensure_future(broadcast_log(c), loop=self._loop)
+                )
 
     def flush(self):
         self.original.flush()
 
     def isatty(self):
         return hasattr(self.original, 'isatty') and self.original.isatty()
+
 
 
 _ws_stream = WSBroadcastStream(sys.stdout)
@@ -123,12 +156,12 @@ async def _send_ws_log(ws: WebSocket, line: str):
         if ws.client_state == WebSocketState.CONNECTED:
             await asyncio.wait_for(ws.send_json({"type": "log", "message": line}), timeout=0.5)
     except Exception:
-        async with WEBSOCKETS_LOCK:
+        async with _get_ws_lock():
             ACTIVE_WEBSOCKETS.discard(ws)
 
 
 async def broadcast_log(line: str):
-    async with WEBSOCKETS_LOCK:
+    async with _get_ws_lock():
         targets = list(ACTIVE_WEBSOCKETS)
     for ws in targets:
         asyncio.create_task(_send_ws_log(ws, line))
@@ -139,21 +172,24 @@ async def broadcast_log(line: str):
 async def lifespan(app: FastAPI):
     """FastAPI lifespan handler — builds and tears down runtime singleton."""
     global ORCHESTRATOR
-    print("[Server] ⚙ Starting JARVIS Core...")
-    runtime = build_assistant_runtime()
+    logger.info("[Server] ⚙ Starting JARVIS Core...")
+    # FLAW-8 FIX: Offload heavy model loading & runtime setup to thread pool
+    runtime = await asyncio.to_thread(build_assistant_runtime)
     ORCHESTRATOR = runtime.orchestrator
     get_queue()
-    # Activate WebSocket log broadcasting now that the async loop is running
-    _ws_stream._active = True
-    print("[Server] ✓ JARVIS Core ready.")
+    # FIXED: Activate WebSocket log broadcasting by passing the running loop reference
+    # so write() can use call_soon_threadsafe() instead of get_running_loop()
+    _ws_stream.activate(asyncio.get_running_loop())
+    logger.info("[Server] ✓ JARVIS Core ready.")
     yield
     # Shutdown
-    _ws_stream._active = False
+    _ws_stream.deactivate()
     if ORCHESTRATOR:
         try:
             ORCHESTRATOR.shutdown()
         except Exception:
             pass
+
 
 
 app = FastAPI(title="JARVIS MK37 Core Server", version="37.0", lifespan=lifespan)
@@ -201,20 +237,15 @@ async def verify_api_key(request: Request, call_next):
     if SERVER_API_KEY:
         # Allow health and non-API endpoints
         if request.url.path.startswith(("/api", "/v1")) and request.url.path not in ("/api/health", "/health"):
-            # Allow same-origin requests from local browser dashboard
-            client_host = request.client.host if request.client else ""
-            referer = request.headers.get("referer", "")
-            is_local = client_host in ("127.0.0.1", "localhost", "::1") or "127.0.0.1" in referer or "localhost" in referer
-            if not is_local:
-                auth_header = request.headers.get("Authorization")
-                api_key_header = request.headers.get("X-API-Key")
-                token = None
-                if auth_header and auth_header.startswith("Bearer "):
-                    token = auth_header[7:]
-                elif api_key_header:
-                    token = api_key_header
-                if token != SERVER_API_KEY:
-                    return JSONResponse(status_code=401, content={"detail": "Unauthorized: Invalid API Key"})
+            auth_header = request.headers.get("Authorization")
+            api_key_header = request.headers.get("X-API-Key")
+            token = None
+            if auth_header and auth_header.startswith("Bearer "):
+                token = auth_header[7:]
+            elif api_key_header:
+                token = api_key_header
+            if not token or not hmac.compare_digest(token, SERVER_API_KEY):
+                return JSONResponse(status_code=401, content={"detail": "Unauthorized: Invalid API Key"})
     return await call_next(request)
 
 
@@ -280,8 +311,18 @@ async def run_generator_in_thread(gen_func, *args, **kwargs) -> AsyncGenerator[s
         yield item
 
 
-# ── Thread lock for serializing concurrent API requests ────────────────────
-_CHAT_LOCK = threading.Lock()
+# ── Async lock for serializing concurrent /api/chat requests ───────────────
+# FIXED: threading.Lock was defined but never used — replaced with asyncio.Lock
+# which works correctly inside async endpoint handlers.
+_CHAT_ASYNC_LOCK: asyncio.Lock | None = None
+
+
+def _get_chat_lock() -> asyncio.Lock:
+    """Return the per-process asyncio.Lock for chat serialization."""
+    global _CHAT_ASYNC_LOCK
+    if _CHAT_ASYNC_LOCK is None:
+        _CHAT_ASYNC_LOCK = asyncio.Lock()
+    return _CHAT_ASYNC_LOCK
 
 
 # ── OpenAI-Compatible Endpoint ────────────────────────────────────────────────
@@ -383,8 +424,12 @@ async def chat(req: ChatRequest):
         nodes = res.get("nodes", [])
         return {"response": response, "nodes": nodes}
     except Exception:
-        response = await asyncio.to_thread(ORCHESTRATOR.chat, req.message)
+        # FIXED: Serialize concurrent requests through asyncio.Lock to prevent
+        # orchestrator state corruption from simultaneous /api/chat calls
+        async with _get_chat_lock():
+            response = await asyncio.to_thread(ORCHESTRATOR.chat, req.message)
         return {"response": response, "nodes": []}
+
 
 
 @app.get("/api/galaxy/data")
@@ -509,14 +554,27 @@ async def switch_active_backend(req: SwitchBackendRequest):
 @app.get("/api/skills")
 async def get_skills_list():
     """List user-invocable skills."""
+    global _SKILLS_CACHE, _SKILLS_CACHE_TS
+    now = time.time()
+    if _SKILLS_CACHE is not None and (now - _SKILLS_CACHE_TS) < _CACHE_TTL_SECONDS:
+        return _SKILLS_CACHE
+
     from skills import load_skills
     skills = [s for s in load_skills() if s.user_invocable]
-    return [{"name": s.name, "description": s.description, "triggers": s.triggers} for s in skills]
+    payload = [{"name": s.name, "description": s.description, "triggers": s.triggers} for s in skills]
+    _SKILLS_CACHE = payload
+    _SKILLS_CACHE_TS = now
+    return payload
 
 
 @app.get("/api/connectors")
 async def get_connectors_list():
     """List registered App Connectors with real-time availability & auth status."""
+    global _CONNECTORS_CACHE, _CONNECTORS_CACHE_TS
+    now = time.time()
+    if _CONNECTORS_CACHE is not None and (now - _CONNECTORS_CACHE_TS) < _CACHE_TTL_SECONDS:
+        return _CONNECTORS_CACHE
+
     from tools.registry import TOOL_REGISTRY, _import_plugins
     _import_plugins()
 
@@ -553,7 +611,10 @@ async def get_connectors_list():
         {"name": "Google Calendar", "icon": "📅", "status": _check_tools(["create_calendar_event", "list_calendar_events"]), "tools": ["create_calendar_event", "list_calendar_events"], "desc": "Schedule meetings, inspect agenda and events"},
         {"name": "WhatsApp Automation", "icon": "💬", "status": _check_tools(["send_whatsapp", "manage_whatsapp_contacts"]), "tools": ["send_whatsapp", "manage_whatsapp_contacts"], "desc": "Send instant & scheduled messages by contact name"},
     ]
-    return {"connectors": connectors}
+    payload = {"connectors": connectors}
+    _CONNECTORS_CACHE = payload
+    _CONNECTORS_CACHE_TS = now
+    return payload
 
 
 @app.post("/api/import/contacts")
@@ -780,7 +841,7 @@ async def _safe_ws_send(ws: WebSocket, data: dict) -> bool:
 async def websocket_endpoint(websocket: WebSocket):
     if SERVER_API_KEY:
         token = websocket.query_params.get("token")
-        if token != SERVER_API_KEY:
+        if not token or not hmac.compare_digest(token, SERVER_API_KEY):
             await websocket.accept()
             await websocket.close(code=4001, reason="Unauthorized")
             return

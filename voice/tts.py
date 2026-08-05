@@ -6,6 +6,7 @@ instant <200ms audio startup, parallel pre-fetching, and HD Windows OneCore Fema
 from __future__ import annotations
 
 import asyncio
+import logging
 import os
 import re
 import sys
@@ -18,6 +19,9 @@ import threading
 import subprocess
 import traceback
 from pathlib import Path
+
+logger = logging.getLogger("JARVIS.TTS")
+
 
 try:
     import pythoncom
@@ -194,6 +198,16 @@ def clean_for_speech(text: str) -> str:
     if not text:
         return ""
 
+    raw_check = text.strip()
+    if (
+        raw_check.startswith("[Executed Tool:")
+        or raw_check.startswith("Executed Tool")
+        or "import os" in text
+        or "os.walk" in text
+        or "open(filepath" in text
+    ):
+        return "I have executed the requested operations, sir."
+
     def _path_to_basename(match):
         full_path = match.group(0)
         parts = [p.strip() for p in re.split(r"[\\/]", full_path) if p.strip()]
@@ -231,6 +245,15 @@ def split_sentences(text: str) -> list[str]:
 
 def summarize_for_speech(text: str, max_chars: int = 600) -> str:
     """Summarize and clean long AI output for natural spoken audio."""
+    raw_check = (text or "").strip()
+    if (
+        raw_check.startswith("[Executed Tool:")
+        or raw_check.startswith("Executed Tool")
+        or "import os" in text
+        or "os.walk" in text
+    ):
+        return "I have executed the requested operations, sir."
+
     clean = clean_for_speech(text)
     if not clean:
         return ""
@@ -267,8 +290,9 @@ class NeuralTTS:
         self._gen_lock = threading.Lock()         # thread lock for generation ID
         self._last_edge_check = 0.0              # timestamp of last DNS socket check
         self._edge_cooldown_until = 0.0          # cooldown timestamp when Edge-TTS fails
-        self._prune_cache()
+        threading.Thread(target=self._prune_cache, daemon=True).start()
         self._init_fallback_speaker()
+
 
     def _init_fallback_speaker(self):
         """Always initialize local fallback speaker for robust runtime recovery."""
@@ -335,15 +359,16 @@ class NeuralTTS:
                         if fname.lower() in desc.lower():
                             self._sapi_speaker.Voice = voices.Item(i)
                             onecore_loaded = True
-                            print(f"[JARVIS] ✅ SAPI5 Female Voice loaded: '{desc}'")
+                            logger.info(f"✅ SAPI5 Female Voice loaded: '{desc}'")
                             break
                     if onecore_loaded:
                         break
 
             self._sapi_speaker.Rate = 2
         except Exception as e:
-            print(f"[JARVIS] Warning: SAPI5 fallback failed: {e}")
+            logger.warning(f"SAPI5 fallback failed: {e}")
             self._sapi_speaker = None
+
 
     def _init_linux_tts(self):
         """Initialize Linux speech dispatcher or espeak fallback."""
@@ -439,25 +464,23 @@ class NeuralTTS:
 
                 try:
                     communicate = edge_tts.Communicate(text=sentence, voice=self.voice, rate=self.rate, pitch=self.pitch)
+                    loop = asyncio.new_event_loop()
                     try:
-                        asyncio.run(communicate.save(str(mp3_path)))
-                    except RuntimeError:
-                        loop = asyncio.new_event_loop()
-                        try:
-                            loop.run_until_complete(communicate.save(str(mp3_path)))
-                        finally:
-                            loop.close()
+                        loop.run_until_complete(communicate.save(str(mp3_path)))
+                    finally:
+                        loop.close()
 
                     if mp3_path.exists() and mp3_path.stat().st_size >= 100:
                         return (str(mp3_path), sentence)
                 except Exception as ex_save:
-                    print(f"[JARVIS] EdgeTTS save error: {ex_save}")
+                    logger.warning(f"EdgeTTS save error: {ex_save}")
             except Exception as e:
                 err_str = str(e).lower()
                 if any(w in err_str for w in ("getaddrinfo", "connect", "dns", "ssl", "timeout", "network")):
                     self._edge_cooldown_until = time.time() + 60.0
 
         return ("sapi5", sentence)
+
 
     def _speak_streaming_worker(self, text: str, on_start, on_finish, gen_id: int):
         """Parallel producer-consumer pipelined speech worker. Pre-fetches next sentences while current audio plays for ZERO gap after periods."""

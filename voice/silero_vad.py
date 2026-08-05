@@ -6,6 +6,7 @@ Provides ultra-accurate speech start/end boundary detection with >99% accuracy.
 """
 from __future__ import annotations
 
+import logging
 import os
 import sys
 import math
@@ -13,6 +14,8 @@ import struct
 import numpy as np
 from pathlib import Path
 from typing import Optional, Tuple
+
+logger = logging.getLogger("JARVIS.Voice.SileroVAD")
 
 _HAS_ORT = False
 try:
@@ -55,11 +58,11 @@ class SileroVAD:
                     # Attempt to download silero_vad.onnx with fast timeout
                     import urllib.request
                     url = "https://github.com/snakers4/silero-vad/raw/master/src/silero_vad/data/silero_vad.onnx"
-                    print(f"[SileroVAD] Downloading Silero VAD ONNX model from {url}...")
+                    logger.info("Downloading Silero VAD ONNX model from %s...", url)
                     req = urllib.request.urlopen(url, timeout=3.0)
                     with open(model_path, "wb") as f:
                         f.write(req.read())
-                    print(f"[SileroVAD] ✓ Downloaded Silero VAD model to {model_path}")
+                    logger.info("Downloaded Silero VAD model to %s", model_path)
 
                 if model_path.exists():
                     opts = ort.SessionOptions()
@@ -67,10 +70,10 @@ class SileroVAD:
                     opts.intra_op_num_threads = 1
                     self._session = ort.InferenceSession(str(model_path), opts, providers=['CPUExecutionProvider'])
                     self._reset_states()
-                    print("[SileroVAD] ✓ ONNX Neural VAD initialized successfully")
+                    logger.info("ONNX Neural VAD initialized successfully")
                     return
             except Exception as e:
-                print(f"[SileroVAD] ONNX load failed: {e}")
+                logger.warning("ONNX load failed: %s", e)
 
         if _HAS_TORCH:
             try:
@@ -81,12 +84,12 @@ class SileroVAD:
                     onnx=False
                 )
                 self._torch_model = model
-                print("[SileroVAD] ✓ PyTorch Silero VAD loaded via Torch Hub")
+                logger.info("PyTorch Silero VAD loaded via Torch Hub")
                 return
             except Exception as e:
-                print(f"[SileroVAD] PyTorch Hub load failed: {e}")
+                logger.warning("PyTorch Hub load failed: %s", e)
 
-        print("[SileroVAD] ⚡ Using High-Precision Fast RMS Zero-Crossing Fallback VAD")
+        logger.info("Using High-Precision Fast RMS Zero-Crossing Fallback VAD")
 
     def _reset_states(self):
         """Reset internal ONNX RNN state tensors."""

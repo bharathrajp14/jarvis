@@ -1,11 +1,14 @@
+# ui/widgets.py — JARVIS HUD Widget Components
+# ===============================================
+# Provides: _SysMetrics, HudCanvas, MetricBar, LogWidget,
+#           SubAgentTaskWidget, SubAgentTaskPanel, FileDropZone, _CameraPreview
 from __future__ import annotations
 
 import json
+import logging
 import math
-import os
 import platform
 import random
-import subprocess
 import sys
 import threading
 import time
@@ -13,75 +16,16 @@ from pathlib import Path
 
 import psutil
 
-if platform.system() == "Windows":
-    _WIN_HIDE: dict = {"creationflags": subprocess.CREATE_NO_WINDOW}
-    for _mod_name in ("PySide6", "PyQt6", "PyQt5"):
-        try:
-            _m = __import__(_mod_name)
-            _mod_dir = os.path.dirname(_m.__file__)
-            _plugins_dir = os.path.join(_mod_dir, "plugins")
-            _platforms_dir = os.path.join(_plugins_dir, "platforms")
-            os.environ["QT_PLUGIN_PATH"] = _plugins_dir
-            os.environ["QT_QPA_PLATFORM_PLUGIN_PATH"] = _platforms_dir
-            if hasattr(os, "add_dll_directory"):
-                for _d in (_mod_dir, _plugins_dir, _platforms_dir):
-                    if os.path.exists(_d):
-                        try:
-                            os.add_dll_directory(_d)
-                        except Exception:
-                            pass
-            break
-        except ImportError:
-            continue
-else:
-    _WIN_HIDE: dict = {}
+logger = logging.getLogger("JARVIS.UI.Widgets")
 
-_USE_PYSIDE6 = False
-try:
-    import PySide6
-    _USE_PYSIDE6 = True
-except ImportError:
-    pass
-
-if _USE_PYSIDE6:
-    from PySide6.QtCore import (  # type: ignore[import-not-found]
-        QEasingCurve, QMimeData, QObject, QPointF, QRectF, QSize, Qt,
-        QTimer, QUrl, Signal as pyqtSignal,
-    )
-    from PySide6.QtGui import (  # type: ignore[import-not-found]
-        QBrush, QColor, QConicalGradient, QDragEnterEvent, QDropEvent, QFont,
-        QFontDatabase, QKeySequence, QLinearGradient, QPainter, QPainterPath,
-        QPen, QPixmap, QRadialGradient, QShortcut,
-    )
-    from PySide6.QtWidgets import (  # type: ignore[import-not-found]
-        QApplication, QFileDialog, QFrame, QHBoxLayout, QLabel, QLineEdit,
-        QMainWindow, QPushButton, QScrollArea, QSizePolicy, QSplitter,
-        QStackedWidget, QTextEdit, QVBoxLayout, QWidget, QProgressBar,
-    )
-else:
-    from PyQt6.QtCore import (  # type: ignore[import-not-found]
-        QEasingCurve, QMimeData, QObject, QPointF, QRectF, QSize, Qt,
-        QTimer, QUrl, pyqtSignal,
-    )
-    from PyQt6.QtGui import (  # type: ignore[import-not-found]
-        QBrush, QColor, QConicalGradient, QDragEnterEvent, QDropEvent, QFont,
-        QFontDatabase, QKeySequence, QLinearGradient, QPainter, QPainterPath,
-        QPen, QPixmap, QRadialGradient, QShortcut,
-    )
-    from PyQt6.QtWidgets import (  # type: ignore[import-not-found]
-        QApplication, QFileDialog, QFrame, QHBoxLayout, QLabel, QLineEdit,
-        QMainWindow, QPushButton, QScrollArea, QSizePolicy, QSplitter,
-        QStackedWidget, QTextEdit, QVBoxLayout, QWidget, QProgressBar,
-    )
-
-def _base_dir() -> Path:
-    if getattr(sys, "frozen", False):
-        return Path(sys.executable).parent
-    return Path(__file__).resolve().parent
+from ui import _base_dir, _WIN_HIDE  # noqa: F401
+from ui._qt import *  # noqa: F401,F403
 
 BASE_DIR   = _base_dir()
 CONFIG_DIR = BASE_DIR / "config"
 API_FILE   = CONFIG_DIR / "api_keys.json"
+
+_OS = platform.system()  # "Windows" | "Darwin" | "Linux"
 
 
 def _read_full_config() -> dict:
@@ -90,15 +34,6 @@ def _read_full_config() -> dict:
         return json.loads(API_FILE.read_text(encoding="utf-8"))
     except Exception:
         return {}
-
-
-_DEFAULT_W, _DEFAULT_H = 980, 700
-_MIN_W,     _MIN_H     = 820, 580
-_LEFT_W  = 148
-_RIGHT_W = 340
-
-_OS = platform.system()  # "Windows" | "Darwin" | "Linux"
-
 
 
 from ui.colors import C, qcol, apply_ui_accent, current_palette, retheme_all_widgets, _nvml_gpu_windows
@@ -259,8 +194,9 @@ class HudCanvas(QWidget):
 
     def _load_face(self, path: str):
         try:
-            from PIL import Image, ImageDraw
+            from PIL import Image, ImageDraw  # type: ignore[import-not-found]
             import io
+
             img = Image.open(path).convert("RGBA")
             sz  = min(img.size)
             img = img.resize((sz, sz), Image.LANCZOS)
@@ -643,7 +579,7 @@ class SubAgentTaskWidget(QWidget):
         self.task_id = task_id
         self.setStyleSheet(f"""
             QWidget {{
-                background: {C.CARD};
+                background: {C.PANEL2};
                 border: 1px solid {C.BORDER};
                 border-radius: 4px;
                 padding: 4px;
@@ -705,10 +641,10 @@ class SubAgentTaskWidget(QWidget):
             fg = C.RED
         elif st == "running":
             bg = "#003b4d"
-            fg = C.CYAN
+            fg = C.PRI
         elif st == "queued":
             bg = "#3a2800"
-            fg = C.AMBER
+            fg = C.ACC2
 
         self.status_badge.setStyleSheet(f"""
             background: {bg};

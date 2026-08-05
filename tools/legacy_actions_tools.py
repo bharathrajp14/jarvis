@@ -111,26 +111,7 @@ def tool_youtube_video(args: dict) -> str:
     return youtube_video(parameters=args) or "Done."
 
 
-@register_tool(
-    name="reminder",
-    description="Set a new user reminder.",
-    parameters={
-        "type": "object",
-        "properties": {
-            "date": {"type": "string", "description": "Format: YYYY-MM-DD"},
-            "time": {"type": "string", "description": "Format: HH:MM"},
-            "message": {"type": "string"},
-        },
-        "required": ["date", "time", "message"],
-    }
-)
-def tool_reminder(args: dict) -> str:
-    from actions.reminders import reminder_tool_action
-    return reminder_tool_action(
-        action="add",
-        text=args.get("message", ""),
-        time_str=f"{args.get('time', '')}",
-    ) or "Done."
+
 
 
 @register_tool(

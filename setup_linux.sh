@@ -61,7 +61,7 @@ echo -e "\033[1;33m[+] Installing Python dependencies from requirements.txt...\0
 python3 -m pip install -r requirements.txt --quiet || python3 -m pip install -r requirements.txt --break-system-packages --quiet
 
 echo -e "\033[1;33m[+] Compiling native C extension library...\033[0m"
-python3 setup_native.py || echo "[-] C native compilation skipped (using Python fallback)"
+python3 scripts/setup_native.py || echo "[-] C native compilation skipped (using Python fallback)"
 
 echo -e "\033[1;32m========================================================\033[0m"
 echo -e "\033[1;32m   BR JARVIS MK37 — Multi-Distro Linux Setup Complete!  \033[0m"

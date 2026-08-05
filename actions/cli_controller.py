@@ -233,9 +233,16 @@ def _run_oneshot(
         env.update(env_extra)
     env["PYTHONUNBUFFERED"] = "1"
 
+    if platform.system() == "Windows":
+        exec_cmd = ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", cmd]
+    else:
+        shell_bin = shutil.which("bash") or "/bin/sh"
+        exec_cmd = [shell_bin, "-lc", cmd]
+
     try:
         result = subprocess.run(
-            cmd, shell=True,
+            exec_cmd,
+            shell=False,
             capture_output=True,
             text=True, encoding="utf-8", errors="replace",
             cwd=cwd or str(Path.home()),

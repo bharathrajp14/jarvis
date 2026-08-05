@@ -61,15 +61,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function fetchTelemetry() {
-        fetch(`${API_BASE}/health`)
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3000);
+
+        fetch(`${API_BASE}/health`, { signal: controller.signal })
             .then(res => res.json())
             .then(data => {
+                clearTimeout(timeoutId);
                 if (data.cpu_percent !== undefined) setGauge(cpuRing, cpuValue, data.cpu_percent);
                 if (data.memory_percent !== undefined) setGauge(ramRing, ramValue, data.memory_percent);
                 if (data.disk_percent !== undefined) setGauge(diskRing, diskValue, data.disk_percent);
             })
-            .catch(() => {});
+            .catch(() => {
+                clearTimeout(timeoutId);
+            });
     }
+
 
     // ── VIEW SWITCHER ──
     window.switchView = function(viewId) {
@@ -127,11 +134,15 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // ── WEBSOCKET CONNECTION ──
+    let wsReconnectDelay = 1000;
+    let wsReconnectTimer = null;
+
     function initWebSocket() {
         try {
             socket = new WebSocket(WS_URL);
 
             socket.onopen = () => {
+                wsReconnectDelay = 1000;
                 showToast('WebSocket Link Active', 'Connected to JARVIS AI Core Server.', 'success');
                 fetchTelemetry();
             };
@@ -146,12 +157,17 @@ document.addEventListener('DOMContentLoaded', () => {
             };
 
             socket.onclose = () => {
-                setTimeout(initWebSocket, 3000);
+                if (wsReconnectTimer) clearTimeout(wsReconnectTimer);
+                wsReconnectTimer = setTimeout(() => {
+                    initWebSocket();
+                }, wsReconnectDelay);
+                wsReconnectDelay = Math.min(wsReconnectDelay * 2, 16000);
             };
         } catch (e) {
             console.error('WebSocket Init Error:', e);
         }
     }
+
 
     let currentStreamBubble = null;
     let currentStreamBody = null;
@@ -297,7 +313,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function formatMarkdown(text) {
         if (!text) return '';
-        let escaped = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        let escaped = String(text)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+
         escaped = escaped.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
         escaped = escaped.replace(/`([^`]+)`/g, '<code>$1</code>');
         escaped = escaped.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');

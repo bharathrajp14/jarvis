@@ -29,6 +29,7 @@ if "%ERRORLEVEL%"=="0" (
     set PYEXE=py -3.11
     goto :launch
 )
+
 python --version >nul 2>&1
 if "%ERRORLEVEL%" NEQ "0" (
     echo [ERROR] Python not found in PATH.

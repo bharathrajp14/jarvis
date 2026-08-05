@@ -6,7 +6,15 @@ Features Rich TUI for Windows-compatible colorization.
 """
 
 import warnings
-warnings.simplefilter("ignore")
+# FIXED: Removed blanket warnings.simplefilter('ignore') which silenced ALL
+# Python warnings globally, hiding real bugs. Only suppress known-harmless ones.
+warnings.filterwarnings("ignore", category=DeprecationWarning, module="pkg_resources")
+warnings.filterwarnings("ignore", message=".*imp module.*", category=DeprecationWarning)
+warnings.filterwarnings("ignore", message=".*audioop.*", category=DeprecationWarning)
+warnings.filterwarnings("ignore", message=".*duckduckgo_search.*renamed.*", category=RuntimeWarning)
+warnings.filterwarnings("ignore", category=RuntimeWarning, module="duckduckgo_search")
+
+import atexit
 import importlib
 import json
 import os
@@ -20,6 +28,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 from typing import Any, TextIO, TypedDict, cast, Callable
+
 
 # ── Auto-reroute from Python 3.14 alpha to stable Python 3.12 ────────────────
 if __name__ == "__main__" and sys.version_info >= (3, 14) and sys.platform == "win32" and not os.environ.get("JARVIS_IGNORE_PY314"):
@@ -39,6 +48,7 @@ try:
     load_dotenv()
 except ImportError:
     pass
+
 
 # Fix terminal encoding & Qt DLL plugin paths on Windows
 if sys.platform == "win32":
@@ -94,6 +104,17 @@ BASE_DIR = Path(__file__).resolve().parent
 PYTHON   = sys.executable
 LOG_DIR  = BASE_DIR / "logs"
 PID_FILE = BASE_DIR / ".jarvis.pid"
+
+# FIXED: Register PID file cleanup via atexit so stale PIDs never block restart
+def _cleanup_pid_file():
+    try:
+        if PID_FILE.exists():
+            PID_FILE.unlink(missing_ok=True)
+    except Exception:
+        pass
+
+atexit.register(_cleanup_pid_file)
+
 
 # ── Banner ───────────────────────────────────────────────────────────────────
 
@@ -331,7 +352,7 @@ def doctor(auto_confirm: bool = False):
         "opencv-python": "cv2",
         "requests": "requests",
         "httpx": "httpx",
-        "duckduckgo-search": "ddgs",
+        "ddgs": "ddgs",
         "beautifulsoup4": "bs4",
         "playwright": "playwright",
         "youtube-transcript-api": "youtube_transcript_api",
@@ -343,6 +364,7 @@ def doctor(auto_confirm: bool = False):
         "openpyxl": "openpyxl",
         "keyboard": "keyboard",
         "cryptography": "cryptography",
+        "pydantic": "pydantic",
     }
     
     missing_pip: list[tuple[str, str]] = []
@@ -526,7 +548,7 @@ def doctor(auto_confirm: bool = False):
 
     try:
         from router import load_available_backends
-        active_backends = load_available_backends()
+        active_backends = load_available_backends(force_refresh=True)
         for prof, b_inst in active_backends.items():
             try:
                 ok = b_inst.ping(timeout=6.0)
@@ -1054,6 +1076,7 @@ def main():
     else:
         console.print(f"[red]✗ Unknown launch argument provided.[/]")
         sys.exit(1)
+
 
 if __name__ == "__main__":
     try:

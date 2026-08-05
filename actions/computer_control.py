@@ -1,11 +1,13 @@
-#computer_control.py
 import io
 import json
+import logging
 import platform
 import re
 import string
 import subprocess
 import sys
+
+logger = logging.getLogger("JARVIS.Actions.ComputerControl")
 
 if platform.system() == "Windows":
     _WIN_HIDE: dict = {"creationflags": subprocess.CREATE_NO_WINDOW}
@@ -398,7 +400,7 @@ def _screen_find(description: str) -> tuple[int, int] | None:
             return int(match.group(1)), int(match.group(2))
 
     except Exception as e:
-        print(f"[ComputerControl] ⚠️ screen_find failed: {e}")
+        logger.warning("screen_find failed: %s", e)
 
     return None
 
@@ -459,7 +461,7 @@ def computer_control(
     if player:
         player.write_log(f"[Computer] {action}")
 
-    print(f"[ComputerControl] ▶ {action}  {params}")
+    logger.info("Action: %s Params: %s", action, params)
 
     try:
 
@@ -541,7 +543,7 @@ def computer_control(
         if action == "random_data":
             dt     = params.get("type", "name")
             result = _random_data(dt)
-            print(f"[ComputerControl] 🎲 random {dt} → {result}")
+            logger.info("random %s → %s", dt, result)
             return result
 
         if action == "user_data":
@@ -550,11 +552,11 @@ def computer_control(
             value   = profile.get(field, "")
             if not value:
                 value = _random_data(field)
-                print(f"[ComputerControl] ⚠️ No '{field}' in memory, using random: {value}")
+                logger.info("No '%s' in memory, using random: %s", field, value)
             return value
 
         return f"Unknown action: '{action}'"
 
     except Exception as e:
-        print(f"[ComputerControl] ❌ {action}: {e}")
+        logger.error("Action %s failed: %s", action, e)
         return f"computer_control '{action}' failed: {e}"

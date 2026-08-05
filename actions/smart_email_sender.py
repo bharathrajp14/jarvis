@@ -261,7 +261,7 @@ class SmartEmailSender:
                 self._save_scheduled()
 
                 for item in due_items:
-                    print(f"[Email Scheduler] ⏰ Triggering scheduled email to {item['recipient']}")
+                    logger.info("Triggering scheduled email to %s", item['recipient'])
                     self.send_email(item["recipient"], item["subject"], item["body"])
 
             time.sleep(10)

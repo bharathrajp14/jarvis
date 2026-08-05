@@ -4,12 +4,15 @@ import asyncio
 import base64
 import io
 import json
+import logging
 import re
 import sys
 import threading
 import time
 from pathlib import Path
 from typing import Optional
+
+logger = logging.getLogger("JARVIS.Actions.ScreenProcessor")
 
 import numpy as np
 import sounddevice as sd
@@ -59,7 +62,7 @@ def _save_config_key(key: str, value) -> None:
         cfg[key] = value
         _CONFIG_PATH.write_text(json.dumps(cfg, indent=4), encoding="utf-8")
     except Exception as e:
-        print(f"[Vision] ⚠️  Could not save config key '{key}': {e}")
+        logger.warning("Could not save config key '%s': %s", key, e)
 
 
 def _get_api_key() -> str:
@@ -104,7 +107,7 @@ def _compress(img_bytes: bytes, source_format: str = "PNG") -> tuple[bytes, str]
         img.save(buf, format="JPEG", quality=_JPEG_Q, optimize=False)
         return buf.getvalue(), "image/jpeg"
     except Exception as e:
-        print(f"[Vision] ⚠️  Image compress failed: {e}")
+        logger.warning("Image compress failed: %s", e)
         return img_bytes, f"image/{source_format.lower()}"
 
 def _capture_screen() -> tuple[bytes, str]:
@@ -153,15 +156,15 @@ def _probe_camera(index: int, backend: int, warmup: int = 5) -> bool:
 def _detect_camera_index() -> int:
 
     backend = _cv2_backend()
-    print("[Vision] 🔍 Auto-detecting camera...")
+    logger.info("Auto-detecting camera...")
     for idx in range(6):
         if _probe_camera(idx, backend):
-            print(f"[Vision] ✅ Camera found at index {idx}")
+            logger.info("Camera found at index %d", idx)
             _save_config_key("camera_index", idx)
             return idx
-        print(f"[Vision] ⚠️  Camera index {idx}: no usable frame")
+        logger.warning("Camera index %d: no usable frame", idx)
 
-    print("[Vision] ⚠️  No camera found — defaulting to index 0")
+    logger.warning("No camera found — defaulting to index 0")
     _save_config_key("camera_index", 0)
     return 0
 
@@ -214,6 +217,7 @@ class _VisionSession:
         self._ready_evt:  threading.Event                     = threading.Event()
         self._player                                           = None
         self._lock:       threading.Lock                       = threading.Lock()
+        self._started:    bool                                = False
 
     def start(self, player=None, timeout: float = 25.0) -> None:
         with self._lock:
@@ -231,11 +235,11 @@ class _VisionSession:
 
         if not self._ready_evt.wait(timeout=timeout):
             raise RuntimeError(f"Vision session did not connect within {timeout}s.")
-        print("[Vision] ✅ Session ready")
+        logger.info("Session ready")
 
     def analyze(self, image_bytes: bytes, mime_type: str, user_text: str) -> None:
-        if not self._loop or not self._out_queue:
-            print("[Vision] ⚠️  Session not started — dropping request")
+        if not self._started:
+            logger.warning("Session not started — dropping request")
             return
         asyncio.run_coroutine_threadsafe(
             self._out_queue.put((image_bytes, mime_type, user_text)),
@@ -259,9 +263,7 @@ class _VisionSession:
             http_options={"api_version": "v1beta"},
         )
         config = gtypes.LiveConnectConfig(
-            response_modalities=["AUDIO"],
-            output_audio_transcription={},
-            system_instruction=_SYSTEM_PROMPT,
+            response_modalities=[gtypes.LiveModality.AUDIO],
             speech_config=gtypes.SpeechConfig(
                 voice_config=gtypes.VoiceConfig(
                     prebuilt_voice_config=gtypes.PrebuiltVoiceConfig(
@@ -272,16 +274,17 @@ class _VisionSession:
         )
 
         backoff = 2.0
+        self._started = True
         while True:
             try:
-                print("[Vision] 🔌 Connecting...")
+                logger.info("Connecting...")
                 async with client.aio.live.connect(
                     model=_LIVE_MODEL, config=config
                 ) as session:
                     self._session = session
                     self._ready_evt.set()
                     backoff = 2.0  
-                    print("[Vision] ✅ Connected")
+                    logger.info("Connected")
 
                     async with asyncio.TaskGroup() as tg:
                         tg.create_task(self._send_loop())
@@ -290,12 +293,12 @@ class _VisionSession:
 
             except* Exception as eg:
                 for exc in eg.exceptions:
-                    print(f"[Vision] ⚠️  Session error: {exc}")
+                    logger.warning("Session error: %s", exc)
             finally:
                 self._session = None
                 self._ready_evt.clear()
 
-            print(f"[Vision] 🔄 Reconnecting in {backoff:.0f}s...")
+            logger.info("Reconnecting in %.0fs...", backoff)
             await asyncio.sleep(backoff)
             backoff = min(backoff * 1.5, 30.0)
             self._ready_evt.set()  
@@ -304,22 +307,21 @@ class _VisionSession:
         while True:
             image_bytes, mime_type, user_text = await self._out_queue.get()
             if not self._session:
-                print("[Vision] ⚠️  No session — dropping image")
+                logger.warning("No session — dropping image")
                 continue
             try:
-                b64 = base64.b64encode(image_bytes).decode("ascii")
-                await self._session.send_client_content(
-                    turns={
-                        "parts": [
-                            {"inline_data": {"mime_type": mime_type, "data": b64}},
-                            {"text": user_text},
+                await self._session.send(
+                    input=gtypes.Content(
+                        parts=[
+                            gtypes.Part.from_bytes(data=image_bytes, mime_type="image/jpeg"),
+                            gtypes.Part.from_text(text=user_text),
                         ]
-                    },
-                    turn_complete=True,
+                    ),
+                    end_of_turn=True,
                 )
-                print(f"[Vision] 📤 Sent {len(image_bytes):,} bytes — '{user_text[:60]}'")
+                logger.info("Sent %d bytes — '%s'", len(image_bytes), user_text[:60])
             except Exception as e:
-                print(f"[Vision] ⚠️  Send error: {e}")
+                logger.warning("Send error: %s", e)
                 raise  # propagate to TaskGroup → triggers session reconnect
 
     async def _recv_loop(self) -> None:
@@ -343,7 +345,7 @@ class _VisionSession:
                         full = re.sub(r"\s+", " ", " ".join(transcript)).strip()
                         if full:
                             self._player.write_log(f"Jarvis: {full}")
-                            print(f"[Vision] 💬 {full}")
+                            logger.info("Response: %s", full)
                     transcript = []
                     # Auto-close camera ~2s after JARVIS finishes speaking
                     if self._player and hasattr(self._player, "stop_camera_stream"):
@@ -356,7 +358,7 @@ class _VisionSession:
                         asyncio.create_task(_deferred_close())
 
         except Exception as e:
-            print(f"[Vision] ⚠️  Recv error: {e}")
+            logger.warning("Recv error: %s", e)
             raise  
 
     async def _play_loop(self) -> None:
@@ -372,7 +374,7 @@ class _VisionSession:
                 chunk = await self._audio_in.get()
                 await asyncio.to_thread(stream.write, chunk)
         except Exception as e:
-            print(f"[Vision] ❌ Play error: {e}")
+            logger.error("Play error: %s", e)
             raise
         finally:
             stream.stop()
@@ -405,31 +407,31 @@ def screen_process(
     angle     = params.get("angle", "screen").lower().strip()
 
     if not user_text:
-        print("[Vision] ⚠️  No question provided — aborting")
+        logger.warning("No question provided — aborting")
         return False
 
-    print(f"[Vision] ▶ angle={angle!r}  question='{user_text[:80]}'")
+    logger.info("angle=%r  question='%s'", angle, user_text[:80])
 
     try:
         _ensure_session(player=player)
     except Exception as e:
-        print(f"[Vision] ❌ Could not start session: {e}")
+        logger.error("Could not start session: %s", e)
         return False
 
     try:
         if angle == "camera":
             image_bytes, mime_type = _capture_camera()
-            print(f"[Vision] 📷 Camera: {len(image_bytes):,} bytes")
+            logger.info("Camera: %d bytes", len(image_bytes))
             if player and hasattr(player, "start_camera_stream"):
                 try:
                     player.start_camera_stream()
                 except Exception as _e:
-                    print(f"[Vision] ⚠️  Camera stream failed: {_e}")
+                    logger.warning("Camera stream failed: %s", _e)
             elif player and hasattr(player, "show_camera_frame"):
                 try:
                     player.show_camera_frame(image_bytes)
                 except Exception as _e:
-                    print(f"[Vision] ⚠️  Camera preview failed: {_e}")
+                    logger.warning("Camera preview failed: %s", _e)
         else:
             image_bytes, mime_type = _capture_screen()
             print(f"[Vision] 🖥️  Screen: {len(image_bytes):,} bytes")

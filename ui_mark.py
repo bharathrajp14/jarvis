@@ -6,8 +6,7 @@ ui_mark.py — BR JARVIS MK38 Cyberpunk HUD Entry Point
 Unified launcher for the Cyberpunk HUD GUI + Hands-Free Voice Engine
 + FastAPI backend server.
 
-Requires Python 3.12+ (stable) — do NOT run with Python 3.14 alpha
-(aiohttp/attrs GC access violation on CPython 3.14 pre-release).
+Requires Python 3.12+ (stable). Python 3.14 alpha auto-reroutes to 3.12.
 
 Run:
     py -3.12 ui_mark.py
@@ -46,6 +45,7 @@ if __name__ == "__main__" and sys.version_info >= (3, 14) and sys.platform == "w
 # ─────────────────────────────────────────────────────────────────────────────
 # 2.  Ensure project root is in sys.path so all project imports resolve
 # ─────────────────────────────────────────────────────────────────────────────
+
 _ROOT = Path(__file__).resolve().parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
@@ -60,24 +60,10 @@ if sys.platform == "win32":
         sys.stderr.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[attr-defined]
     except Exception:
         pass
-    # Put Qt plugin path so PySide6 finds platform DLLs
-    for _qt_pkg in ("PySide6", "PyQt6", "PyQt5"):
-        try:
-            _m = __import__(_qt_pkg)
-            _md = os.path.dirname(_m.__file__)
-            _pl = os.path.join(_md, "plugins")
-            os.environ["QT_PLUGIN_PATH"] = _pl
-            os.environ["QT_QPA_PLATFORM_PLUGIN_PATH"] = os.path.join(_pl, "platforms")
-            if hasattr(os, "add_dll_directory"):
-                for _d in (_md, _pl, os.path.join(_pl, "platforms")):
-                    if os.path.isdir(_d):
-                        try:
-                            os.add_dll_directory(_d)
-                        except Exception:
-                            pass
-            break
-        except ImportError:
-            continue
+
+from ui import setup_qt_paths
+setup_qt_paths()
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 4.  Logging setup — structured, coloured-friendly, goes to stdout + file
@@ -101,15 +87,15 @@ log = logging.getLogger("ui_mark")
 # ─────────────────────────────────────────────────────────────────────────────
 _USE_PYSIDE6 = False
 try:
-    import PySide6  # noqa: F401
+    import PySide6  # type: ignore[import-not-found] # noqa: F401
     _USE_PYSIDE6 = True
 except ImportError:
     try:
-        import PyQt6  # noqa: F401
+        import PyQt6  # type: ignore[import-not-found] # noqa: F401
     except ImportError:
         print(
             "[ui_mark] ❌ Neither PySide6 nor PyQt6 is installed.\n"
-            "         Run: py -3.12 -m pip install PySide6",
+            "         Run: py -3.14 -m pip install PySide6",
             file=sys.stderr,
         )
 

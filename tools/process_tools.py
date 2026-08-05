@@ -79,11 +79,11 @@ def kill_process(args: dict) -> str:
 
     if sys.platform == "win32":
         if identifier.isdigit():
-            cmd = f"taskkill /F /PID {identifier}"
+            cmd = ["taskkill", "/F", "/PID", identifier]
         else:
-            cmd = f"taskkill /F /IM {identifier}"
+            cmd = ["taskkill", "/F", "/IM", identifier]
         try:
-            res = subprocess.run(cmd, shell=True, capture_output=True, text=True, encoding="utf-8", errors="replace")
+            res = subprocess.run(cmd, shell=False, capture_output=True, text=True, encoding="utf-8", errors="replace")
             if res.returncode == 0:
                 return f"Successfully terminated process '{identifier}'."
             return f"Failed to kill process: {res.stderr.strip()}"

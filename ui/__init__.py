@@ -1,6 +1,89 @@
-# ui package entry point
-from ui.colors import C, apply_ui_accent, current_palette, retheme_all_widgets, qcol
-from ui.widgets import HudCanvas, MetricBar, LogWidget, SubAgentTaskWidget, SubAgentTaskPanel, FileDropZone
-from ui.overlays import SetupOverlay, HueWheel, CustomizeOverlay, ClipboardPanel, RemoteKeyOverlay
-from ui.main_window import MainWindow
-from ui.app import JarvisUI, HeadlessJarvisUI, is_gui_available, run_voice_ui, _RootShim
+# ui/__init__.py — JARVIS Desktop UI Package Initialization
+"""
+JARVIS Desktop UI Package.
+
+Provides:
+  - setup_qt_paths()  : configure Qt plugin paths for Windows
+  - _base_dir()       : canonical project-root resolver used by all ui/ modules
+  - _WIN_HIDE         : subprocess flag to suppress console windows on Windows
+"""
+from __future__ import annotations
+
+import os
+import platform
+import subprocess
+import sys
+from pathlib import Path
+
+
+def setup_qt_paths() -> None:
+    """Configure Qt plugin and platform paths for PySide6/PyQt6 on Windows."""
+    if sys.platform == "win32":
+        os.environ.setdefault("PYTHONIOENCODING", "utf-8")
+        for _mod_name in ("PySide6", "PyQt6", "PyQt5"):
+            try:
+                _m = __import__(_mod_name)
+                _mod_dir = os.path.dirname(_m.__file__)
+                _plugins_dir = os.path.join(_mod_dir, "plugins")
+                _platforms_dir = os.path.join(_plugins_dir, "platforms")
+                os.environ["QT_PLUGIN_PATH"] = _plugins_dir
+                os.environ["QT_QPA_PLATFORM_PLUGIN_PATH"] = _platforms_dir
+                if hasattr(os, "add_dll_directory"):
+                    for _d in (_mod_dir, _plugins_dir, _platforms_dir):
+                        if os.path.exists(_d):
+                            try:
+                                os.add_dll_directory(_d)
+                            except Exception:
+                                pass
+                break
+            except ImportError:
+                continue
+
+
+def _base_dir() -> Path:
+    """
+    Return the project root directory regardless of whether the app is
+    frozen (PyInstaller) or running from source.
+
+    The ui/ package lives at <project_root>/ui/, so we go two levels up
+    from this file (__file__ → ui/__init__.py → ui/ → project root).
+    """
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).parent
+    # __file__ is  <root>/ui/__init__.py  → .parent = ui/  → .parent = root
+    return Path(__file__).resolve().parent.parent
+
+
+# ── Platform-specific subprocess flag ────────────────────────────────────────
+if platform.system() == "Windows":
+    _WIN_HIDE: dict = {"creationflags": subprocess.CREATE_NO_WINDOW}
+else:
+    _WIN_HIDE: dict = {}
+
+# Call setup_qt_paths immediately when the package is imported so that any
+# module doing `from ui._qt import *` already has the correct env vars set.
+setup_qt_paths()
+
+
+# ── Re-export public UI API ───────────────────────────────────────────────────
+# The ui/ package directory shadows ui.py at the project root — Python always
+# prefers a package directory over a same-named .py file. Therefore,
+# `from ui import JarvisUI` resolves here (ui/__init__.py), NOT to ui.py.
+# We re-export all public symbols so all callers get what they expect.
+#
+# IMPORTANT: Use lazy imports to prevent circular import.
+#   ui/__init__.py  →  ui.app  →  ui.main_window  →  ui.overlays  →  ui.widgets
+#   →  ui.colors  →  ui.__init__    (would be circular if done at module level)
+#
+def __getattr__(name: str):
+    """Lazy re-export: resolve ui.JarvisUI, ui._RootShim, etc. on first access."""
+    _public = {
+        "JarvisUI", "HeadlessJarvisUI", "is_gui_available", "_RootShim",
+    }
+    if name in _public:
+        from ui import app as _app  # noqa: PLC0415
+        val = getattr(_app, name, None)
+        if val is not None:
+            globals()[name] = val  # cache for subsequent accesses
+            return val
+    raise AttributeError(f"module 'ui' has no attribute {name!r}")

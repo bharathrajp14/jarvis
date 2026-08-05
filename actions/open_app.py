@@ -1,7 +1,10 @@
+import logging
 import time
 import subprocess
 import platform
 import shutil
+
+logger = logging.getLogger("JARVIS.Actions.OpenApp")
 
 try:
     import psutil
@@ -78,12 +81,12 @@ def _normalize(raw: str) -> str:
     return raw  
 
 def _launch_windows(app_name: str) -> bool:
+    import os
 
     if shutil.which(app_name) or shutil.which(app_name.split(".")[0]):
         try:
             subprocess.Popen(
-                app_name,
-                shell=True,
+                [app_name],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
             )
@@ -94,7 +97,10 @@ def _launch_windows(app_name: str) -> bool:
 
     if ":" in app_name:
         try:
-            subprocess.Popen(f"start {app_name}", shell=True)
+            if hasattr(os, "startfile"):
+                os.startfile(app_name)
+            else:
+                subprocess.Popen(["cmd.exe", "/c", "start", "", app_name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             time.sleep(1.0)
             return True
         except Exception:
@@ -102,7 +108,6 @@ def _launch_windows(app_name: str) -> bool:
 
     # Try native Windows start command or os.startfile
     try:
-        import os
         if hasattr(os, "startfile"):
             try:
                 os.startfile(app_name)
@@ -110,7 +115,7 @@ def _launch_windows(app_name: str) -> bool:
                 return True
             except Exception:
                 pass
-        subprocess.Popen(f"start {app_name}", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.Popen(["cmd.exe", "/c", "start", "", app_name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         time.sleep(1.0)
         return True
     except Exception:
@@ -153,8 +158,8 @@ def _launch_macos(app_name: str) -> bool:
         if result.returncode == 0:
             time.sleep(1.0)
             return True
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("[open_app] Mac app launch failed: %s", exc)
 
     binary = shutil.which(app_name) or shutil.which(app_name.lower())
     if binary:
@@ -166,8 +171,8 @@ def _launch_macos(app_name: str) -> bool:
             )
             time.sleep(1.0)
             return True
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("[open_app] Binary launch failed: %s", exc)
 
     try:
         import pyautogui
@@ -179,7 +184,7 @@ def _launch_macos(app_name: str) -> bool:
         time.sleep(1.5)
         return True
     except Exception as e:
-        print(f"[open_app] Spotlight failed: {e}")
+        logger.warning("[open_app] Spotlight failed: %s", e)
 
     return False
 

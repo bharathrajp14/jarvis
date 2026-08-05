@@ -39,8 +39,17 @@ def t_perm_allow_all():
 _run_audit("ALLOW_ALL permits all tools", t_perm_allow_all)
 
 def t_perm_global_singleton():
-    from permissions import PERMISSIONS, PermissionMode
-    assert PERMISSIONS.mode == PermissionMode.CONFIRM_DESTRUCTIVE
+    from permissions import _build_global_policy, PermissionMode
+    import os
+    orig_env = os.environ.get("JARVIS_PERMISSION_MODE")
+    if orig_env:
+        del os.environ["JARVIS_PERMISSION_MODE"]
+    try:
+        policy = _build_global_policy()
+        assert policy.mode == PermissionMode.CONFIRM_DESTRUCTIVE
+    finally:
+        if orig_env:
+            os.environ["JARVIS_PERMISSION_MODE"] = orig_env
 _run_audit("Global PERMISSIONS is CONFIRM_DESTRUCTIVE", t_perm_global_singleton)
 
 def t_perm_deny_list():

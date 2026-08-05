@@ -48,12 +48,12 @@ class TestMasterSuiteRunner(unittest.TestCase):
             return
 
         res = pytest.main([
-            str(root / "tests" / "test_step_planner.py"),
-            str(root / "tests" / "test_ui_multitask.py"),
-            str(root / "tests" / "test_voice_pipeline.py"),
-            str(root / "tests" / "test_antigravity_system.py"),
-            str(root / "tests" / "test_regression_fixes.py"),
-            str(root / "tests" / "test_clipboard_read.py"),
+            str(root / "tests" / "unit" / "test_step_planner.py"),
+            str(root / "tests" / "unit" / "test_ui_multitask.py"),
+            str(root / "tests" / "unit" / "test_voice_pipeline.py"),
+            str(root / "tests" / "unit" / "test_antigravity_system.py"),
+            str(root / "tests" / "unit" / "test_regression_fixes.py"),
+            str(root / "tests" / "unit" / "test_clipboard_read.py"),
             "-W", "ignore::DeprecationWarning"
         ])
         self.assertEqual(res, 0, "Master system component verification failed")

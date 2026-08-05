@@ -29,7 +29,7 @@ _engine_lock = threading.Lock()
 
 
 def _get_engine():
-    """Lazy-load the Whisper engine. Tries faster-whisper first, then openai-whisper."""
+    """Lazy-load the Whisper engine under lock. Tries faster-whisper first, then openai-whisper."""
     global _whisper_engine, _engine_type
 
     with _engine_lock:
@@ -38,36 +38,37 @@ def _get_engine():
 
         model_name = WHISPER_MODEL
 
-    # Try faster-whisper first (much faster with CTranslate2)
-    try:
-        from faster_whisper import WhisperModel
-        device = "cuda" if _cuda_available() else "cpu"
-        compute_type = "float16" if device == "cuda" else "int8"
-        print(f"[WhisperLocal] Loading faster-whisper model '{model_name}' on {device}...")
-        _whisper_engine = WhisperModel(model_name, device=device, compute_type=compute_type)
-        _engine_type = "faster"
-        print(f"[WhisperLocal] ✓ faster-whisper '{model_name}' ready ({device})")
-        return _whisper_engine, _engine_type
-    except ImportError:
-        pass
-    except Exception as e:
-        print(f"[WhisperLocal] faster-whisper failed: {e}")
+        # Try faster-whisper first (much faster with CTranslate2)
+        try:
+            from faster_whisper import WhisperModel
+            device = "cuda" if _cuda_available() else "cpu"
+            compute_type = "float16" if device == "cuda" else "int8"
+            logger.info(f"Loading faster-whisper model '{model_name}' on {device}...")
+            _whisper_engine = WhisperModel(model_name, device=device, compute_type=compute_type)
+            _engine_type = "faster"
+            logger.info(f"✓ faster-whisper '{model_name}' ready ({device})")
+            return _whisper_engine, _engine_type
+        except ImportError:
+            pass
+        except Exception as e:
+            logger.warning(f"faster-whisper failed: {e}")
 
-    # Fallback to openai-whisper
-    try:
-        import whisper
-        device = "cuda" if _cuda_available() else "cpu"
-        print(f"[WhisperLocal] Loading openai-whisper model '{model_name}' on {device}...")
-        _whisper_engine = whisper.load_model(model_name, device=device)
-        _engine_type = "openai"
-        print(f"[WhisperLocal] ✓ openai-whisper '{model_name}' ready ({device})")
-        return _whisper_engine, _engine_type
-    except ImportError:
-        pass
-    except Exception as e:
-        print(f"[WhisperLocal] openai-whisper failed: {e}")
+        # Fallback to openai-whisper
+        try:
+            import whisper
+            device = "cuda" if _cuda_available() else "cpu"
+            logger.info(f"Loading openai-whisper model '{model_name}' on {device}...")
+            _whisper_engine = whisper.load_model(model_name, device=device)
+            _engine_type = "openai"
+            logger.info(f"✓ openai-whisper '{model_name}' ready ({device})")
+            return _whisper_engine, _engine_type
+        except ImportError:
+            pass
+        except Exception as e:
+            logger.warning(f"openai-whisper failed: {e}")
 
-    return None, None
+        return None, None
+
 
 
 def _cuda_available() -> bool:

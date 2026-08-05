@@ -7,6 +7,7 @@ Falls back gracefully on any model error.
 from __future__ import annotations
 
 import json
+import logging
 import os
 import time
 from pathlib import Path
@@ -14,8 +15,22 @@ from typing import Generator
 
 from backends.base import BaseBackend
 
+logger = logging.getLogger("JARVIS.GeminiBackend")
 
-from config import get_gemini_api_key as _load_api_key
+
+def _load_api_key() -> str:
+    """Load Gemini API key from environment variable or config/api_keys.json."""
+    key = os.environ.get("GEMINI_API_KEY", "").strip()
+    if key:
+        return key
+    try:
+        cfg_file = Path(__file__).resolve().parent.parent / "config" / "api_keys.json"
+        if cfg_file.exists():
+            data = json.loads(cfg_file.read_text(encoding="utf-8"))
+            return data.get("GEMINI_API_KEY", "").strip()
+    except Exception:
+        pass
+    return ""
 
 
 class GeminiBackend(BaseBackend):
@@ -36,33 +51,28 @@ class GeminiBackend(BaseBackend):
         self._client = None
         self._explicit_model = model
 
-        # Check if local proxy gateway should be used (default: True)
         use_proxy = os.environ.get("JARVIS_ROUTE_GEMINI_TO_GATEWAY", "true").lower() == "true"
         if use_proxy:
             try:
                 from openai import OpenAI  # type: ignore
-                from config.models import get_model_config
-                cfg = get_model_config()
-                base_url = cfg.get("openai_base_url", "http://localhost:8045/v1")
-                api_key_val = os.environ.get("OPENAI_API_KEY", "").strip() or cfg.get("openai_api_key", "").strip() or "none"
+                base_url = os.environ.get("OPENAI_BASE_URL", "http://localhost:8045/v1")
+                api_key_val = os.environ.get("OPENAI_API_KEY", "").strip() or "none"
                 self._client = OpenAI(base_url=base_url, api_key=api_key_val)
                 self._use_openai_client = True
                 self.model = model or self._pick_model()
-                print(f"[Gemini] Routed via local proxy gateway: {base_url} (auto-model routing enabled)")
+                logger.info(f"Routed via local proxy gateway: {base_url}")
                 return
             except Exception as e:
-                print(f"[Gemini] Failed to initialize local proxy client: {e}. Falling back to direct Google client.")
+                logger.warning(f"Failed to initialize local proxy client: {e}. Falling back to direct Google client.")
 
         # Standard direct Google fallback
-        try:
-            self.api_key = api_key or _load_api_key()
-        except ValueError as e:
-            raise e
+        self.api_key = api_key or _load_api_key()
 
         self.model = model or self._pick_model()
         from google import genai
         self._client = genai.Client(api_key=self.api_key)
-        print(f"[Gemini] [OK] Using model: {self.model}")
+        logger.info(f"[OK] Using model: {self.model}")
+
 
     @property
     def name(self) -> str:
@@ -139,20 +149,17 @@ class GeminiBackend(BaseBackend):
                 )
                 return response.choices[0].message.content or ""
             except Exception as e:
-                print(f"[Gemini Proxy] Model {target_model} failed: {e} — trying fallbacks...")
-                for fallback in self.FALLBACK_MODELS:
-                    if fallback == target_model:
-                        continue
+                logger.warning("Model %s failed: %s — trying fallbacks...", target_model, e)
+                for fallback_mod in self.FALLBACK_MODELS:
                     try:
-                        response = self._client.chat.completions.create(
-                            model=fallback,
+                        resp = self._client.chat.completions.create(
+                            model=fallback_mod,
                             messages=full_messages,
-                            max_tokens=max_output_tokens,
                         )
-                        return response.choices[0].message.content or ""
+                        return resp.choices[0].message.content or ""
                     except Exception:
-                        pass
-                print(f"[Gemini Proxy] All proxy models exhausted/failed. Falling back to direct Google client...")
+                        continue
+                logger.warning("All proxy models exhausted/failed. Falling back to direct Google client...")
                 try:
                     direct_key = _load_api_key()
                     from google import genai
@@ -173,7 +180,7 @@ class GeminiBackend(BaseBackend):
                     )
                     return resp.text or ""
                 except Exception as ex_direct:
-                    print(f"[Gemini Direct Fallback Error]: {ex_direct}")
+                    logger.error("Gemini Direct Fallback Error: %s", ex_direct)
                     # Return error string gracefully instead of crashing ReAct loop
                     return f"ERROR: Proxy gateway and direct Gemini fallback both unavailable ({e})"
 
@@ -208,11 +215,10 @@ class GeminiBackend(BaseBackend):
                 if "quota" in err_str or "rate" in err_str or "429" in err_str:
                     import random
                     backoff = min(60, (2 ** attempt) + random.uniform(0, 1))
-                    print(f"[Gemini] Rate limit on {target_model}, backoff {backoff:.1f}s...")
+                    logger.info("Rate limit on %s, backoff %.1fs...", target_model, backoff)
                     time.sleep(backoff)
-                if attempt == len(self.FALLBACK_MODELS) - 1:
-                    raise
-                print(f"[Gemini] Model {target_model} failed: {e} — trying next...")
+                else:
+                    logger.warning("Model %s failed: %s — trying next...", target_model, e)
                 time.sleep(0.5)
 
         return ""
@@ -295,7 +301,7 @@ class GeminiBackend(BaseBackend):
             )
             return response.text or ""
         except Exception as e:
-            print(f"[Gemini] Search grounding failed: {e} — falling back to regular completion")
+            logger.warning("Search grounding failed: %s — falling back to regular completion", e)
             return self.complete([{"role": "user", "content": query}], system)
 
     def complete_with_vision(self, image_bytes: bytes, mime_type: str, prompt: str) -> str:
@@ -383,7 +389,7 @@ class GeminiBackend(BaseBackend):
                     except Exception:
                         return ""
             except Exception as e:
-                print(f"[GeminiBackend] Transcription error: {e}")
+                logger.warning("GeminiBackend Transcription error: %s", e)
                 return ""
 
         # Direct Google Gemini API path
@@ -425,7 +431,7 @@ class GeminiBackend(BaseBackend):
             except Exception:
                 pass
         except Exception as e:
-            print(f"[Gemini Direct] Transcription failed: {e}")
+            logger.warning("Gemini Direct Transcription failed: %s", e)
 
         return ""
 

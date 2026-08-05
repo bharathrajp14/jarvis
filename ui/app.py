@@ -1,10 +1,12 @@
+# ui/app.py — JARVIS Application Wrapper
+# =========================================
+# Provides: JarvisUI, HeadlessJarvisUI, is_gui_available, _RootShim
 from __future__ import annotations
 
 import json
-import math
+import logging
 import os
 import platform
-import random
 import subprocess
 import sys
 import threading
@@ -13,84 +15,14 @@ from pathlib import Path
 
 import psutil
 
-if platform.system() == "Windows":
-    _WIN_HIDE: dict = {"creationflags": subprocess.CREATE_NO_WINDOW}
-    for _mod_name in ("PySide6", "PyQt6", "PyQt5"):
-        try:
-            _m = __import__(_mod_name)
-            _mod_dir = os.path.dirname(_m.__file__)
-            _plugins_dir = os.path.join(_mod_dir, "plugins")
-            _platforms_dir = os.path.join(_plugins_dir, "platforms")
-            os.environ["QT_PLUGIN_PATH"] = _plugins_dir
-            os.environ["QT_QPA_PLATFORM_PLUGIN_PATH"] = _platforms_dir
-            if hasattr(os, "add_dll_directory"):
-                for _d in (_mod_dir, _plugins_dir, _platforms_dir):
-                    if os.path.exists(_d):
-                        try:
-                            os.add_dll_directory(_d)
-                        except Exception:
-                            pass
-            break
-        except ImportError:
-            continue
-else:
-    _WIN_HIDE: dict = {}
+logger = logging.getLogger("JARVIS.UI.App")
 
-_USE_PYSIDE6 = False
-try:
-    import PySide6
-    _USE_PYSIDE6 = True
-except ImportError:
-    pass
-
-if _USE_PYSIDE6:
-    from PySide6.QtCore import (  # type: ignore[import-not-found]
-        QEasingCurve, QMimeData, QObject, QPointF, QRectF, QSize, Qt,
-        QTimer, QUrl, Signal as pyqtSignal,
-    )
-    from PySide6.QtGui import (  # type: ignore[import-not-found]
-        QBrush, QColor, QConicalGradient, QDragEnterEvent, QDropEvent, QFont,
-        QFontDatabase, QKeySequence, QLinearGradient, QPainter, QPainterPath,
-        QPen, QPixmap, QRadialGradient, QShortcut,
-    )
-    from PySide6.QtWidgets import (  # type: ignore[import-not-found]
-        QApplication, QFileDialog, QFrame, QHBoxLayout, QLabel, QLineEdit,
-        QMainWindow, QPushButton, QScrollArea, QSizePolicy, QSplitter,
-        QStackedWidget, QTextEdit, QVBoxLayout, QWidget, QProgressBar,
-    )
-else:
-    from PyQt6.QtCore import (  # type: ignore[import-not-found]
-        QEasingCurve, QMimeData, QObject, QPointF, QRectF, QSize, Qt,
-        QTimer, QUrl, pyqtSignal,
-    )
-    from PyQt6.QtGui import (  # type: ignore[import-not-found]
-        QBrush, QColor, QConicalGradient, QDragEnterEvent, QDropEvent, QFont,
-        QFontDatabase, QKeySequence, QLinearGradient, QPainter, QPainterPath,
-        QPen, QPixmap, QRadialGradient, QShortcut,
-    )
-    from PyQt6.QtWidgets import (  # type: ignore[import-not-found]
-        QApplication, QFileDialog, QFrame, QHBoxLayout, QLabel, QLineEdit,
-        QMainWindow, QPushButton, QScrollArea, QSizePolicy, QSplitter,
-        QStackedWidget, QTextEdit, QVBoxLayout, QWidget, QProgressBar,
-    )
-
-def _base_dir() -> Path:
-    if getattr(sys, "frozen", False):
-        return Path(sys.executable).parent
-    return Path(__file__).resolve().parent.parent
+from ui import _base_dir, _WIN_HIDE  # noqa: F401
+from ui._qt import *  # noqa: F401,F403
 
 BASE_DIR   = _base_dir()
 CONFIG_DIR = BASE_DIR / "config"
 API_FILE   = CONFIG_DIR / "api_keys.json"
-
-
-def _read_full_config() -> dict:
-    """Read api_keys.json config dict. Returns {} on any error."""
-    try:
-        return json.loads(API_FILE.read_text(encoding="utf-8"))
-    except Exception:
-        return {}
-
 
 _DEFAULT_W, _DEFAULT_H = 980, 700
 _MIN_W,     _MIN_H     = 820, 580
@@ -99,6 +31,13 @@ _RIGHT_W = 340
 
 _OS = platform.system()  # "Windows" | "Darwin" | "Linux"
 
+
+def _read_full_config() -> dict:
+    """Read api_keys.json config dict. Returns {} on any error."""
+    try:
+        return json.loads(API_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
 
 
 from ui.colors import C, qcol, current_palette
@@ -111,16 +50,11 @@ class _RootShim:
         if exec_fn:
             def _gui_excepthook(tp, val, tb):
                 import traceback
-                print("=" * 60)
-                print("❌ UNHANDLED GUI EXCEPTION:")
-                traceback.print_exception(tp, val, tb)
-                print("=" * 60)
-                sys.stdout.flush()
-                sys.stderr.flush()
+                logger.error("UNHANDLED GUI EXCEPTION:\n%s", "".join(traceback.format_exception(tp, val, tb)))
             sys.excepthook = _gui_excepthook
-            print("🚀 Starting Qt Event Loop...")
+            logger.info("Starting Qt Event Loop...")
             res = exec_fn()
-            print(f"⏹ Qt Event Loop exited with code: {res}")
+            logger.info("Qt Event Loop exited with code: %s", res)
             sys.exit(res)
     def protocol(self, *_):
         pass
@@ -172,7 +106,7 @@ class HeadlessJarvisUI:
     @muted.setter
     def muted(self, v: bool):
         self._muted = v
-        print(f"[UI] Mute status changed to: {v}")
+        logger.info("Mute status changed to: %s", v)
 
     @property
     def speaking(self) -> bool:
@@ -191,20 +125,20 @@ class HeadlessJarvisUI:
         return None
 
     def notify_phone_connected(self) -> None:
-        print("[UI] Phone connected.")
+        logger.info("Phone connected.")
 
     def set_state(self, state: str):
         self._current_state = state
-        print(f"[UI State] {state}")
+        logger.debug("[UI State] %s", state)
 
     def write_log(self, text: str):
-        print(f"[UI Log] {text}")
+        logger.debug("[UI Log] %s", text)
 
     def wait_for_api_key(self):
         pass
 
     def show_content(self, title: str, text: str):
-        print(f"\n--- {title} ---\n{text}\n----------------")
+        logger.info("--- %s ---\n%s", title, text)
 
     def prompt_reconfig(self):
         pass
@@ -227,9 +161,8 @@ class HeadlessJarvisUI:
     def stop_speaking(self):
         self._speaking = False
 
-    def update_agent_task(self, task_id: str, name: str, status: str, progress: float = 0.0, result: str = "") -> None:
-        self._agent_tasks[task_id] = {"name": name, "status": status, "progress": progress}
-        print(f"[UI Task] {name}: {status} ({progress*100}%)")
+    def update_agent_task(self, name: str, status: str, progress: float = 0.0):
+        logger.debug("[UI Task] %s: %s (%.0f%%)", name, status, progress * 100)
 
     def remove_agent_task(self, task_id: str) -> None:
         if task_id in self._agent_tasks:
@@ -238,29 +171,30 @@ class HeadlessJarvisUI:
     def clear_agent_tasks(self) -> None:
         self._agent_tasks.clear()
 
-    def mainloop(self):
-        print("[UI] Headless Voice Assistant is active. Speak 'Hey Jarvis' or type standard commands.")
-        print("[UI] Type 'exit' or press Ctrl+C to quit.")
+    def run_headless_loop(self):
+        logger.info("Headless Voice Assistant is active. Speak 'Hey Jarvis' or type standard commands.")
+        logger.info("Type 'exit' or press Ctrl+C to quit.")
         try:
             while True:
-                cmd = input()
-                if cmd.strip().lower() in ("exit", "quit"):
+                line = input("> ").strip()
+                if line.lower() in ("exit", "quit", "q"):
                     break
-                if self.on_text_command:
-                    self.on_text_command(cmd)
-        except KeyboardInterrupt:
-            print("[UI] Interrupted by user.")
-        except EOFError:
-            print("[UI] Console input unavailable. Running in passive hands-free voice daemon mode.")
-            try:
-                while True:
-                    time.sleep(10)
-            except KeyboardInterrupt:
-                pass
-        print("[UI] Headless Voice Assistant shutting down...")
+                if line and self.on_text_command:
+                    self.on_text_command(line)
+        except (KeyboardInterrupt, EOFError):
+            logger.info("Interrupted by user.")
+        except Exception:
+            logger.info("Console input unavailable. Running in passive hands-free voice daemon mode.")
+            while True:
+                time.sleep(1.0)
+        finally:
+            logger.info("Headless Voice Assistant shutting down...")
 
     def protocol(self, *_):
         pass
+
+
+_GLOBAL_UI_INSTANCE: JarvisUI | None = None
 
 
 class JarvisUI:
@@ -399,53 +333,20 @@ class JarvisUI:
             self._win._task_clear_sig.emit()
 
 
-def run_voice_ui():
-    """Launch Cyberpunk HUD GUI alongside background Hands-Free BRVoiceAssistant."""
-    if is_gui_available():
-        ui = JarvisUI()
-        print("▶ Starting BR JARVIS Cyberpunk HUD UI with Hands-Free Voice Engine...")
-    else:
-        ui = HeadlessJarvisUI()
-        print("▶ Starting BR JARVIS Headless Voice Assistant...")
-
-    # Start FastAPI backend server in background so web dashboard works
-    def server_worker():
-        try:
-            import uvicorn
-            from server import app as fastapi_app
-            port = int(os.environ.get("PORT", os.environ.get("BR_SERVER_PORT", "8000")))
-            uvicorn.run(fastapi_app, host="127.0.0.1", port=port, log_level="warning")
-        except Exception as e:
-            print(f"[Server] Backend server note: {e}")
-
-    server_t = threading.Thread(target=server_worker, daemon=True, name="backend-server")
-    server_t.start()
-
-    def voice_worker():
-        import asyncio
-        try:
-            from voice.assistant import BRVoiceAssistant
-            assistant = BRVoiceAssistant(ui)
-            asyncio.run(assistant.run())
-        except Exception as e:
-            print(f"[VoiceUI] Voice assistant worker note: {e}")
-
-    t = threading.Thread(target=voice_worker, daemon=True)
-    t.start()
-
-    if hasattr(ui, "root") and hasattr(ui.root, "mainloop"):
-        ui.root.mainloop()
-
 
 if __name__ == "__main__":
+    # When run directly, defer to the canonical launcher in ui_mark.py
     try:
+        from ui_mark import run_voice_ui
         run_voice_ui()
     except BaseException as e:
         import traceback
         try:
-            with open("scratch/ui_crash.log", "w", encoding="utf-8") as f:
+            _crash = _base_dir() / "scratch" / "ui_crash.log"
+            _crash.parent.mkdir(parents=True, exist_ok=True)
+            with open(_crash, "w", encoding="utf-8") as f:
                 traceback.print_exc(file=f)
                 f.write(f"\nExit: {e} ({type(e)})")
         except Exception:
             pass
-        raise
+        raise

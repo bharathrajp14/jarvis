@@ -12,6 +12,9 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 
+import warnings
+warnings.filterwarnings("ignore", category=RuntimeWarning)
+
 _DDG_AVAILABLE = False
 try:
     from ddgs import DDGS

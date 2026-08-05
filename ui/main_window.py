@@ -1,8 +1,11 @@
+# ui/main_window.py — JARVIS MainWindow (QMainWindow)
+# =====================================================
+# Provides: MainWindow
 from __future__ import annotations
 
 import json
+import logging
 import math
-import os
 import platform
 import random
 import subprocess
@@ -11,77 +14,21 @@ import threading
 import time
 from pathlib import Path
 
-import psutil
+logger = logging.getLogger("JARVIS.UI.MainWindow")
 
-if platform.system() == "Windows":
-    _WIN_HIDE: dict = {"creationflags": subprocess.CREATE_NO_WINDOW}
-    for _mod_name in ("PySide6", "PyQt6", "PyQt5"):
-        try:
-            _m = __import__(_mod_name)
-            _mod_dir = os.path.dirname(_m.__file__)
-            _plugins_dir = os.path.join(_mod_dir, "plugins")
-            _platforms_dir = os.path.join(_plugins_dir, "platforms")
-            os.environ["QT_PLUGIN_PATH"] = _plugins_dir
-            os.environ["QT_QPA_PLATFORM_PLUGIN_PATH"] = _platforms_dir
-            if hasattr(os, "add_dll_directory"):
-                for _d in (_mod_dir, _plugins_dir, _platforms_dir):
-                    if os.path.exists(_d):
-                        try:
-                            os.add_dll_directory(_d)
-                        except Exception:
-                            pass
-            break
-        except ImportError:
-            continue
-else:
-    _WIN_HIDE: dict = {}
-
-_USE_PYSIDE6 = False
-try:
-    import PySide6
-    _USE_PYSIDE6 = True
-except ImportError:
-    pass
-
-if _USE_PYSIDE6:
-    from PySide6.QtCore import (  # type: ignore[import-not-found]
-        QEasingCurve, QMimeData, QObject, QPointF, QRectF, QSize, Qt,
-        QTimer, QUrl, Signal as pyqtSignal,
-    )
-    from PySide6.QtGui import (  # type: ignore[import-not-found]
-        QBrush, QColor, QConicalGradient, QDragEnterEvent, QDropEvent, QFont,
-        QFontDatabase, QKeySequence, QLinearGradient, QPainter, QPainterPath,
-        QPen, QPixmap, QRadialGradient, QShortcut,
-    )
-    from PySide6.QtWidgets import (  # type: ignore[import-not-found]
-        QApplication, QFileDialog, QFrame, QHBoxLayout, QLabel, QLineEdit,
-        QMainWindow, QPushButton, QScrollArea, QSizePolicy, QSplitter,
-        QStackedWidget, QTextEdit, QVBoxLayout, QWidget, QProgressBar,
-    )
-else:
-    from PyQt6.QtCore import (  # type: ignore[import-not-found]
-        QEasingCurve, QMimeData, QObject, QPointF, QRectF, QSize, Qt,
-        QTimer, QUrl, pyqtSignal,
-    )
-    from PyQt6.QtGui import (  # type: ignore[import-not-found]
-        QBrush, QColor, QConicalGradient, QDragEnterEvent, QDropEvent, QFont,
-        QFontDatabase, QKeySequence, QLinearGradient, QPainter, QPainterPath,
-        QPen, QPixmap, QRadialGradient, QShortcut,
-    )
-    from PyQt6.QtWidgets import (  # type: ignore[import-not-found]
-        QApplication, QFileDialog, QFrame, QHBoxLayout, QLabel, QLineEdit,
-        QMainWindow, QPushButton, QScrollArea, QSizePolicy, QSplitter,
-        QStackedWidget, QTextEdit, QVBoxLayout, QWidget, QProgressBar,
-    )
-
-def _base_dir() -> Path:
-    if getattr(sys, "frozen", False):
-        return Path(sys.executable).parent
-    return Path(__file__).resolve().parent.parent
+from ui import _base_dir, _WIN_HIDE  # noqa: F401
+from ui._qt import *  # noqa: F401,F403
 
 BASE_DIR   = _base_dir()
 CONFIG_DIR = BASE_DIR / "config"
 API_FILE   = CONFIG_DIR / "api_keys.json"
+
+_DEFAULT_W, _DEFAULT_H = 980, 700
+_MIN_W,     _MIN_H     = 820, 580
+_LEFT_W  = 148
+_RIGHT_W = 340
+
+_OS = platform.system()  # "Windows" | "Darwin" | "Linux"
 
 
 def _read_full_config() -> dict:
@@ -92,16 +39,7 @@ def _read_full_config() -> dict:
         return {}
 
 
-_DEFAULT_W, _DEFAULT_H = 980, 700
-_MIN_W,     _MIN_H     = 820, 580
-_LEFT_W  = 148
-_RIGHT_W = 340
-
-_OS = platform.system()  # "Windows" | "Darwin" | "Linux"
-
-
-
-from ui.colors import C, qcol, current_palette, retheme_all_widgets, DEFAULT_UI_COLOR
+from ui.colors import C, qcol, current_palette, retheme_all_widgets, DEFAULT_UI_COLOR, apply_ui_accent
 from ui.widgets import _SysMetrics, HudCanvas, MetricBar, LogWidget, SubAgentTaskPanel, FileDropZone, _CameraPreview, _metrics, _file_category, _FILE_ICONS, _fmt_size
 from ui.overlays import SetupOverlay, CustomizeOverlay, ClipboardPanel, RemoteKeyOverlay
 class MainWindow(QMainWindow):

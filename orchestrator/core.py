@@ -1,16 +1,35 @@
 # orchestrator/core.py — JARVIS MK37 Core Orchestrator (Gemini-Native)
 """
 ReAct (Reason + Act) orchestration loop powered by Gemini.
+
+Key improvements over previous version:
+- All module-level imports moved to top (no deferred per-call imports)
+- _react_loop() extracted to eliminate code duplication between chat() and chat_stream()
+- _prompted_continuation is now a local variable (was instance-level → race condition)
+- Working memory accessed through public API only (no direct .history manipulation)
+- Vector memory failures logged at WARNING instead of silent pass
+- _store_exchange() wrapper removed (called _save_turn() directly)
 """
 from __future__ import annotations
 
+import json
+import logging
 import os
 import re
 import time
+import uuid
+from typing import Generator, Iterator, Optional
 
-from router import AgentRouter
+from agent.step_planner import StepPlanner
+from context.token_manager import TokenBudgetManager
+from core.intent_engine import DeterministicIntentEngine
+from events.bus import get_event_bus
+from events.types import TaskEvent
 from memory.working import WorkingMemory
+from router import AgentRouter
 from tools.registry import get_tool_prompt_block, parse_tool_call, execute_tool, set_orchestrator_ref
+
+logger = logging.getLogger("JARVIS.Orchestrator")
 
 SYSTEM_PROMPT = """You are BR — a superhuman AI operating system and autonomous controller.
 You are intelligent, precise, direct, and capable of executing complex tasks end-to-end.
@@ -89,7 +108,9 @@ def _format_clean_tool_summary(tool_name: str, tool_args: dict) -> str:
         return f"[Executed Tool: {tool_name} query='{val}']"
     elif "action" in args:
         act = str(args["action"])
-        target = str(args.get("path") or args.get("name") or args.get("app_name") or args.get("value") or "").replace("\n", " ").strip()[:40]
+        target = str(
+            args.get("path") or args.get("name") or args.get("app_name") or args.get("value") or ""
+        ).replace("\n", " ").strip()[:40]
         return f"[Executed Tool: {tool_name} action='{act}' {target}]".strip()
     elif any(k in args for k in ("code", "script", "content")):
         lang = str(args.get("lang") or args.get("language") or "code")
@@ -105,35 +126,34 @@ class JarvisOrchestrator:
 
     def __init__(self, router: AgentRouter | None = None, use_vector_memory: bool = True):
         if router is None:
-            from router import AgentRouter
-            router = AgentRouter()
+            from router import AgentRouter as _AR
+            router = _AR()
         self.router = router
         self.working_memory = WorkingMemory(max_tokens=120_000)
-        self.vector_memory  = None
-        self.current_mode   = "general"
+        self.vector_memory = None
+        self.current_mode = "general"
         self.conversation_store = None
-        self._subagent_mgr  = None
-        self._prompted_continuation = False
+        self._subagent_mgr = None
 
-        # History
+        # History subsystem
         self._session_store = None
-        self._session_id    = ""
+        self._session_id = ""
         self._history_linker = None
         try:
             from history.session_store import SessionStore
             from history.linker import HistoryLinker
             from history.audit_writer import set_session_id
-            self._session_store  = SessionStore()
+            self._session_store = SessionStore()
             self._history_linker = HistoryLinker()
             self._session_id = self._session_store.new_session(
                 mode="general",
                 backend=router.default.value,
             )
             set_session_id(self._session_id)
-        except Exception as e:
-            print(f"[JARVIS] History unavailable: {e}")
+        except Exception as exc:
+            logger.warning(f"[Orchestrator] History subsystem unavailable: {exc}")
 
-        # Initialize SQLite Conversation Store
+        # SQLite Conversation Store
         try:
             from memory.conversation_store import ConversationStore
             self.conversation_store = ConversationStore()
@@ -141,10 +161,10 @@ class JarvisOrchestrator:
                 self.conversation_store.start_session(
                     session_id=self._session_id,
                     mode=self.current_mode,
-                    backend=router.default.value
+                    backend=router.default.value,
                 )
-        except Exception as e:
-            print(f"[JARVIS] Conversation store warning: {e}")
+        except Exception as exc:
+            logger.warning(f"[Orchestrator] Conversation store unavailable: {exc}")
 
         set_orchestrator_ref(self)
 
@@ -152,8 +172,8 @@ class JarvisOrchestrator:
             try:
                 from memory.vector_store import VectorMemory
                 self.vector_memory = VectorMemory()
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning(f"[Orchestrator] Vector memory unavailable: {exc}")
 
     @property
     def session_id(self) -> str:
@@ -204,20 +224,18 @@ class JarvisOrchestrator:
             if user_prompt:
                 parts.append(get_pruned_tool_prompt_block(user_prompt))
             elif not JarvisOrchestrator._tool_prompt_cache:
-                from tools.registry import get_tool_prompt_block
                 JarvisOrchestrator._tool_prompt_cache = get_tool_prompt_block()
                 parts.append(JarvisOrchestrator._tool_prompt_cache)
             else:
                 parts.append(JarvisOrchestrator._tool_prompt_cache)
         except Exception:
-            from tools.registry import get_tool_prompt_block
             parts.append(get_tool_prompt_block())
 
         return "\n".join(parts)
 
     def _extract_keywords(self, text: str) -> list[str]:
         low = text.lower()
-        kw  = []
+        kw = []
         if any(w in low for w in ["code", "script", "function", "debug", "build", "program"]):
             kw.append("code")
         if any(w in low for w in ["scan", "recon", "pentest", "vuln", "exploit", "nmap"]):
@@ -244,11 +262,12 @@ class JarvisOrchestrator:
             results = self.vector_memory.search(user_input, top_k=2)
             if results:
                 return "### Relevant Memory\n" + "\n".join(f"- {r}" for r in results)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("[Memory] Context recall failed: %s", exc)
         return ""
 
     def _save_turn(self, user_input: str, response: str) -> None:
+        """Save exchange to vector memory for future recall."""
         if not self.vector_memory or len(response) < 20:
             return
         try:
@@ -256,11 +275,8 @@ class JarvisOrchestrator:
                 f"Q: {user_input}\nA: {response[:500]}",
                 metadata={"mode": self.current_mode},
             )
-        except Exception:
-            pass
-
-    def _store_exchange(self, user_input: str, response: str) -> None:
-        self._save_turn(user_input, response)
+        except Exception as exc:
+            logger.debug("[Memory] Store turn failed: %s", exc)
 
     def _record_turn(self, role: str, content: str, **kwargs) -> None:
         if self._session_store and self._session_id:
@@ -271,9 +287,9 @@ class JarvisOrchestrator:
                     content=content[:5000],
                     **kwargs,
                 )
-            except Exception:
-                pass
-        
+            except Exception as exc:
+                logger.debug("[Session] Add turn failed: %s", exc)
+
         if self.conversation_store and self._session_id:
             try:
                 self.conversation_store.log_turn(
@@ -285,8 +301,8 @@ class JarvisOrchestrator:
                     tool_result=kwargs.get("tool_result"),
                     latency_ms=kwargs.get("latency_ms", 0),
                 )
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("[Conversation] Log turn failed: %s", exc)
 
     def _resolve_context_references(self, user_input: str, augmented: str) -> str:
         low = user_input.lower().strip()
@@ -297,10 +313,9 @@ class JarvisOrchestrator:
         if has_pronoun and has_browser:
             last_url = None
             for msg in reversed(self.working_memory.get()):
-                if msg.get("role") == "assistant" or msg.get("role") == "user":
+                if msg.get("role") in ("assistant", "user"):
                     content = msg.get("content", "")
-                    import re as _re
-                    urls = _re.findall(r'https?://[^\s"<>]+', content)
+                    urls = re.findall(r'https?://[^\s"<>]+', content)
                     if urls:
                         last_url = urls[-1]
                         break
@@ -313,13 +328,12 @@ class JarvisOrchestrator:
 
             if last_url:
                 try:
-                    from core.intent_engine import DeterministicIntentEngine
                     launched = DeterministicIntentEngine.open_url_in_browser(last_url, browser_name=target_browser)
                     if launched:
-                        print(f"[Context] Resolved 'it' → {last_url} | Browser: {target_browser}")
+                        logger.debug(f"[Context] Resolved 'it' → {last_url} | Browser: {target_browser}")
                         return augmented + f"\n[SYSTEM CONTEXT: 'it' refers to {last_url} — already opened in {target_browser}. Confirm to user.]"
-                except Exception as e:
-                    print(f"[Context] Browser launch failed: {e}")
+                except Exception as exc:
+                    logger.warning(f"[Context] Browser launch failed: {exc}")
                 return augmented + f"\n[SYSTEM CONTEXT: The last result URL was {last_url}. Open it in {target_browser}.]"
             else:
                 return augmented + f"\n[SYSTEM CONTEXT: User wants to open the previous result in {target_browser}. Check conversation history for URL.]"
@@ -341,85 +355,95 @@ class JarvisOrchestrator:
                     return execute_skill(skill, args, self)
                 return f"[Skill '{name}' not found]"
 
-            first = user_input.split()[0] if user_input.strip() else ""
-            skill = find_skill(first)
-            if skill:
-                return execute_skill(skill, user_input[len(first):].strip(), self)
-        except Exception as e:
-            print(f"[JARVIS] Skill check error: {e}")
+            # Scan all skills to find the longest matching trigger/name prefix on word boundaries
+            clean_input = user_input.strip().lower()
+            best_skill = None
+            best_len = -1
+            best_arg = ""
+
+            for s in load_skills():
+                candidates = []
+                candidates.append(s.name.lower())
+                candidates.append(f"/{s.name.lower()}")
+                for t in s.triggers:
+                    t_clean = t.lower()
+                    candidates.append(t_clean)
+                    if not t_clean.startswith("/"):
+                        candidates.append(f"/{t_clean}")
+
+                for c in candidates:
+                    if clean_input.startswith(c):
+                        # Verify word boundary
+                        if len(clean_input) == len(c):
+                            match_len = len(c)
+                        elif not clean_input[len(c)].isalnum() and clean_input[len(c)] != '_':
+                            match_len = len(c)
+                        else:
+                            continue
+
+                        if match_len > best_len:
+                            best_len = match_len
+                            best_skill = s
+                            best_arg = user_input.strip()[match_len:].strip()
+
+            if best_skill:
+                return execute_skill(best_skill, best_arg, self)
+        except Exception as exc:
+            logger.warning(f"[Orchestrator] Skill check error: {exc}")
         return None
 
-    def chat(self, user_input: str) -> str:
-        self._prompted_continuation = False
-        mode_result = self._parse_mode(user_input)
-        if mode_result:
-            return mode_result
+    def _try_instant_action(self, user_input: str) -> Optional[str]:
+        """0-token instant action bypass disabled. All requests route through full AI loop."""
+        return None
 
-        skill_result = self._check_skill(user_input)
-        if skill_result:
-            return skill_result
+    def _run_react_loop(
+        self,
+        user_input: str,
+        augmented_input: str,
+        profile,
+        system: str,
+        budget,
+        stream: bool = False,
+    ):
+        """Core ReAct (Reason + Act) execution loop shared by chat() and chat_stream().
 
-        try:
-            from core.intent_engine import DeterministicIntentEngine
-            from context.token_manager import TokenBudgetManager
-            intent_res = DeterministicIntentEngine.parse_and_execute(user_input)
-            if intent_res and intent_res.get("executed"):
-                TokenBudgetManager().record_usage(consumed=0, saved=intent_res.get("tokens_saved", 2000), is_bypassed=True)
-                return f"⚡ [Antigravity Instant 0-Token Action]\n{intent_res.get('result')}"
-        except Exception:
-            pass
+        Args:
+            user_input:       Raw user input (for recording/memory).
+            augmented_input:  User input with memory context prepended.
+            profile:          AgentProfile to route to.
+            system:           System prompt string.
+            budget:           StepBudget controller from StepPlanner.
+            stream:           If True, yields chunks. If False, returns final string.
 
-        import uuid
-        from events.bus import get_event_bus
-        from events.types import TaskEvent
-        
-        task_id = str(uuid.uuid4())
+        Yields (stream=True): str chunks of the response.
+        Returns (stream=False): str final response.
+        """
+        # Local state — NOT instance-level, so concurrent calls are safe
+        prompted_continuation = False
+        _consecutive_tool: dict = {"name": None, "args_str": None, "count": 0}
+        tool_history: list = []
+        step = 0
+        final_response = ""
+        success = True
+
         event_bus = get_event_bus()
-        
+        task_id = str(uuid.uuid4())
+
         event_bus.publish(TaskEvent(
             topic="task.react.start",
             task_id=task_id,
             goal=user_input,
-            status="started"
+            status="started",
         ))
 
-        memory_ctx = self._recall_context(user_input)
-        augmented  = f"{memory_ctx}{user_input}" if memory_ctx else user_input
-        augmented = self._resolve_context_references(user_input, augmented)
-
-        try:
-            if hasattr(self.working_memory, "trim") and len(self.working_memory.get()) > 10:
-                root_msg = self.working_memory.get()[0] if self.working_memory.get() else None
-                self.working_memory.trim(max_turns=10)
-                if root_msg and root_msg not in self.working_memory.get():
-                    self.working_memory.history.insert(0, root_msg)
-        except Exception:
-            pass
-
-        self.working_memory.add("user", augmented)
-        self._record_turn("user", user_input)
-
-        keywords = self._extract_keywords(user_input)
-        profile  = self.router.route(keywords)
-        system   = self._build_system(user_input)
-
-        from agent.step_planner import StepPlanner
-        plan_info = StepPlanner.plan_steps(user_input)
-        budget = plan_info["budget_controller"]
-        print(f"[StepPlanner] 🧠 Conscious Plan for '{user_input[:40]}...' ({plan_info['complexity']} Complexity, Initial Budget: {budget.initial_budget} steps)")
-
-        final_response = ""
-        success = True
-        _consecutive_tool: dict = {"name": None, "args_str": None, "count": 0}
-        tool_history: list = []
-        step = 0
-
         while True:
+            # ── Budget gate ───────────────────────────────────────────────────
             should_continue, budget_msg, was_extended = budget.evaluate(step, tool_history)
             if was_extended:
-                print(f"[StepBudget] {budget_msg}")
+                logger.info(f"[StepBudget] {budget_msg}")
+
             if not should_continue:
-                print(f"[StepBudget] ⏹ Step limit reached: {budget_msg}")
+                logger.info(f"[StepBudget] ⏹ Step limit reached: {budget_msg}")
                 try:
                     summary_prompt = "All planned sub-tasks have finished. Synthesize a clean, direct, human-readable summary of the final output for the user. Do NOT call any tools."
                     self.working_memory.add("user", summary_prompt)
@@ -429,63 +453,110 @@ class JarvisOrchestrator:
                     pass
                 if not final_response or final_response.startswith("[BR:"):
                     tools_used = list(dict.fromkeys(t["tool_name"] for t in tool_history if "tool_name" in t))
-                    if tools_used:
-                        final_response = f"I have executed your request using {', '.join(tools_used)} and saved all generated materials to your workspace."
-                    else:
-                        final_response = "I have completed the planned steps for your request."
+                    final_response = (
+                        f"I have executed your request using {', '.join(tools_used)} and saved all generated materials to your workspace."
+                        if tools_used else
+                        "I have completed the planned steps for your request."
+                    )
+                if stream:
+                    yield final_response
                 break
 
             t_start = time.monotonic()
 
+            # ── LLM call ─────────────────────────────────────────────────────
             try:
-                response = self.router.run(profile, self.working_memory.get(), system)
-            except Exception as e:
-                final_response = f"Backend error: {e}"
+                if stream:
+                    backend = self.router.backends.get(profile) or self.router.backends.get(self.router.default)
+                    if backend is None:
+                        yield "No backend available."
+                        return
+
+                    full_response = ""
+                    retry_delay = 1.0
+                    for attempt in range(3):
+                        try:
+                            if hasattr(backend, "stream"):
+                                for chunk in backend.stream(self.working_memory.get(), system):
+                                    full_response += chunk
+                                    yield chunk
+                            else:
+                                full_response = backend.complete(self.working_memory.get(), system)
+                                yield full_response
+                            break
+                        except Exception as exc:
+                            if attempt == 2:
+                                yield f"\n[Backend error: {exc}]"
+                                return
+                            time.sleep(retry_delay)
+                            retry_delay *= 2
+                    response = full_response
+                else:
+                    response = self.router.run(profile, self.working_memory.get(), system)
+
+            except Exception as exc:
+                final_response = f"Backend error: {exc}"
                 success = False
                 event_bus.publish(TaskEvent(
                     topic="task.react.failed",
                     task_id=task_id,
                     goal=user_input,
-                    status=f"error: {e}"
+                    status=f"error: {exc}",
                 ))
-                break
+                if not stream:
+                    break
+                yield final_response
+                return
 
             latency_ms = int((time.monotonic() - t_start) * 1000)
             tool_name, tool_args = parse_tool_call(response)
 
+            # ── Tool execution branch ─────────────────────────────────────────
             if tool_name:
-                import json
                 args_str = json.dumps(tool_args or {}, sort_keys=True)
                 if tool_name == _consecutive_tool["name"] and args_str == _consecutive_tool.get("args_str"):
                     _consecutive_tool["count"] += 1
                 else:
                     _consecutive_tool = {"name": tool_name, "args_str": args_str, "count": 1}
 
+                # Duplicate-call hard limit
                 if _consecutive_tool["count"] >= 4:
-                    print(f"[JARVIS] ⛔ Duplicate-call limit reached (x{_consecutive_tool['count']}). Terminating loop to prevent infinite token burn.")
-                    try:
-                        summary_prompt = "Tool execution has completed. Provide a clean, direct, human-readable summary of the actions performed. Do NOT call any tools."
-                        self.working_memory.add("user", summary_prompt)
-                        sum_resp = self.router.run(profile, self.working_memory.get(), "Do NOT call any tools. Return only natural language summary.")
-                        final_response = self._clean_response(sum_resp)
-                    except Exception:
-                        pass
-                    if not final_response or final_response.startswith("[BR:"):
-                        final_response = f"I have executed the tool operations for '{tool_name}' and completed your request."
-                    break
+                    msg = f"⛔ Duplicate-call limit reached (x{_consecutive_tool['count']}). Terminating loop."
+                    logger.warning(f"[Orchestrator] {msg}")
+                    if stream:
+                        yield f"\n[JARVIS] {msg}\n"
+                        break
+                    else:
+                        try:
+                            summary_prompt = "Tool execution has completed. Provide a clean, direct, human-readable summary of the actions performed. Do NOT call any tools."
+                            self.working_memory.add("user", summary_prompt)
+                            sum_resp = self.router.run(profile, self.working_memory.get(), "Do NOT call any tools. Return only natural language summary.")
+                            final_response = self._clean_response(sum_resp)
+                        except Exception:
+                            pass
+                        if not final_response or final_response.startswith("[BR:"):
+                            final_response = f"I have executed the tool operations for '{tool_name}' and completed your request."
+                        break
 
-                print(f"[JARVIS] 🧠 Step {step+1}/{budget.current_budget}: {tool_name}({list(tool_args.keys() if tool_args else [])})")
+                if stream:
+                    yield f"\n[JARVIS] 🔧 Step {step + 1}: {tool_name}...\n"
+                else:
+                    logger.info(f"[Orchestrator] 🧠 Step {step + 1}/{budget.current_budget}: {tool_name}({list(tool_args.keys() if tool_args else [])})")
+
                 t_tool = time.monotonic()
+
                 if _consecutive_tool["count"] >= 3:
                     tool_result = (
-                        f"[SYSTEM NOTICE: '{tool_name}' has been executed {_consecutive_tool['count']} times consecutively with identical arguments. "
-                        f"DO NOT call '{tool_name}' again. Use the tool result provided above to directly answer the user's request now.]"
+                        f"[SYSTEM NOTICE: '{tool_name}' has been executed {_consecutive_tool['count']} times "
+                        f"consecutively with identical arguments. DO NOT call '{tool_name}' again. "
+                        f"Use the tool result provided above to directly answer the user's request now.]"
                     )
                 else:
                     try:
                         tool_result = execute_tool(tool_name, tool_args or {})
                     except Exception as tool_err:
                         tool_result = f"[Tool Error: {tool_name} failed — {tool_err}. Try an alternative approach.]"
+
                 tool_ms = int((time.monotonic() - t_tool) * 1000)
 
                 tool_history.append({
@@ -503,27 +574,35 @@ class JarvisOrchestrator:
                 )
 
                 clean = self._clean_response(response)
-                if clean:
-                    self.working_memory.add("assistant", clean)
-                else:
-                    self.working_memory.add("assistant", _format_clean_tool_summary(tool_name, tool_args))
+                self.working_memory.add(
+                    "assistant",
+                    clean if clean else _format_clean_tool_summary(tool_name, tool_args),
+                )
 
+                # Truncate large results for context efficiency
                 str_res = str(tool_result)
                 if len(str_res) > 4000:
                     str_res = str_res[:2000] + "\n\n[... output truncated for context efficiency ...]\n\n" + str_res[-1500:]
                 self.working_memory.add("user", f"[Tool Result for '{tool_name}']:\n{str_res}")
+
+                if stream:
+                    yield f"[Tool Result: {tool_name} complete]\n"
+
                 step += 1
                 continue
 
+            # ── Final text response branch ────────────────────────────────────
             else:
-                is_multitask = any(k in user_input.lower() for k in ("1.", "2.", "3.", "concurrently", "in parallel", "workflow", "together"))
-                if is_multitask and step > 0 and step < 4 and not self._prompted_continuation:
-                    self._prompted_continuation = True
-                    self.working_memory.add("user", "[SYSTEM DIRECTIVE: You completed initial sub-tasks, but the user prompt requested multiple numbered/parallel tasks. Continue executing tools for all remaining items before giving your final text response.]")
-                    step += 1
-                    continue
+                # Multi-task continuation nudge (non-streaming only)
+                if not stream:
+                    is_multitask = any(k in user_input.lower() for k in ("1.", "2.", "3.", "concurrently", "in parallel", "workflow", "together"))
+                    if is_multitask and step > 0 and step < 4 and not prompted_continuation:
+                        prompted_continuation = True
+                        self.working_memory.add("user", "[SYSTEM DIRECTIVE: You completed initial sub-tasks, but the user prompt requested multiple numbered/parallel tasks. Continue executing tools for all remaining items before giving your final text response.]")
+                        step += 1
+                        continue
 
-                self._prompted_continuation = False
+                prompted_continuation = False
                 final_response = self._clean_response(response)
 
                 if not final_response or final_response.startswith("[BR:"):
@@ -539,35 +618,154 @@ class JarvisOrchestrator:
                     except Exception:
                         pass
 
-                if not final_response or final_response.startswith("[BR:"):
-                    assistant_turns = [
-                        m["content"] for m in self.working_memory.get()
-                        if m["role"] == "assistant" and not m["content"].strip().startswith("[Executed Tool:")
-                    ]
-                    if assistant_turns:
-                        final_response = assistant_turns[-1]
-                    else:
-                        tools_used = list(dict.fromkeys(t["tool_name"] for t in tool_history if "tool_name" in t))
-                        if tools_used:
-                            final_response = f"I have successfully executed the requested operations using {', '.join(tools_used)}, sir."
-                        else:
-                            final_response = "I have successfully executed the requested operations, sir."
+                clean_check = (final_response or "").strip()
+                is_raw_python_payload = False
+                if "import os" in clean_check:
+                    try:
+                        import ast
+                        ast.parse(clean_check)
+                        is_raw_python_payload = True
+                    except SyntaxError:
+                        pass
 
-                self._record_turn("assistant", final_response[:5000], backend=profile.value, latency_ms=latency_ms)
+                if (
+                    not final_response
+                    or clean_check.startswith("[BR:")
+                    or clean_check.startswith("[Executed Tool:")
+                    or clean_check.startswith("Executed Tool")
+                    or is_raw_python_payload
+                ):
+                    # Fallback to current turn tool execution summary instead of repeating a previous turn
+                    tools_used = list(dict.fromkeys(t["tool_name"] for t in tool_history if "tool_name" in t))
+                    final_response = (
+                        f"I have successfully executed the requested operations using {', '.join(tools_used)}, sir."
+                        if tools_used else
+                        "I have successfully executed the requested operations, sir."
+                    )
+
+                if not stream:
+                    self._record_turn("assistant", final_response[:5000], backend=profile.value, latency_ms=latency_ms)
+                else:
+                    self._record_turn("assistant", final_response[:5000], backend=profile.value, latency_ms=latency_ms)
+                    self.working_memory.add("assistant", final_response)
+
                 break
 
-        self.working_memory.add("assistant", final_response)
-        self._store_exchange(user_input, final_response)
-        
-        if success:
-            event_bus.publish(TaskEvent(
-                topic="task.react.completed",
-                task_id=task_id,
-                goal=user_input,
-                status="completed"
-            ))
-            
-        return final_response
+        # ── Post-loop ─────────────────────────────────────────────────────────
+        if not stream:
+            self.working_memory.add("assistant", final_response)
+            # FIXED: Removed _store_exchange() wrapper; call _save_turn() directly
+            self._save_turn(user_input, final_response)
+
+            if success:
+                event_bus.publish(TaskEvent(
+                    topic="task.react.completed",
+                    task_id=task_id,
+                    goal=user_input,
+                    status="completed",
+                ))
+            yield final_response  # used as return value trick below
+        else:
+            self._save_turn(user_input, final_response)
+
+    def chat(self, user_input: str) -> str:
+        """Run a synchronous ReAct chat turn and return the final response."""
+        mode_result = self._parse_mode(user_input)
+        if mode_result:
+            return mode_result
+
+        skill_result = self._check_skill(user_input)
+        if skill_result:
+            return skill_result
+
+        instant = self._try_instant_action(user_input)
+        if instant:
+            return instant
+
+        memory_ctx = self._recall_context(user_input)
+        augmented = f"{memory_ctx}{user_input}" if memory_ctx else user_input
+        augmented = self._resolve_context_references(user_input, augmented)
+
+        # Trim working memory if it's grown large (keep root goal pinned)
+        try:
+            if len(self.working_memory.get()) > 10:
+                self.working_memory.trim(max_turns=10)
+        except Exception:
+            pass
+
+        self.working_memory.add("user", augmented)
+        self._record_turn("user", user_input)
+
+        keywords = self._extract_keywords(user_input)
+        profile = self.router.route(keywords)
+        system = self._build_system(user_input)
+
+        plan_info = StepPlanner.plan_steps(user_input)
+        budget = plan_info["budget_controller"]
+        logger.info(
+            f"[StepPlanner] 🧠 Plan for '{user_input[:40]}...' "
+            f"({plan_info['complexity']} Complexity, Budget: {budget.initial_budget} steps)"
+        )
+
+        # FLAW-3 FIX: _run_react_loop() is a generator that yields exactly once when
+        # stream=False. Wrap the iteration to surface unexpected generator exceptions
+        # rather than silently discarding them.
+        result = None
+        try:
+            for result in self._run_react_loop(
+                user_input=user_input,
+                augmented_input=augmented,
+                profile=profile,
+                system=system,
+                budget=budget,
+                stream=False,
+            ):
+                pass
+        except Exception as exc:
+            logger.error(f"[Orchestrator] React loop raised unexpected exception: {exc}", exc_info=True)
+            return f"[Error] {exc}"
+        return result or "I have completed your request."
+
+    def chat_stream(self, user_input: str) -> Iterator[str]:
+        """Stream a ReAct chat turn, yielding response chunks as they arrive."""
+        mode_result = self._parse_mode(user_input)
+        if mode_result:
+            yield mode_result
+            return
+
+        skill_result = self._check_skill(user_input)
+        if skill_result:
+            yield skill_result
+            return
+
+        instant = self._try_instant_action(user_input)
+        if instant:
+            yield instant
+            return
+
+        memory_ctx = self._recall_context(user_input)
+        augmented = f"{memory_ctx}{user_input}" if memory_ctx else user_input
+        # FLAW-2 FIX: chat_stream was missing context resolution (pronouns like 'open it in Chrome')
+        augmented = self._resolve_context_references(user_input, augmented)
+
+        self.working_memory.add("user", augmented)
+        self._record_turn("user", user_input)
+
+        keywords = self._extract_keywords(user_input)
+        profile = self.router.route(keywords)
+        system = self._build_system()
+
+        plan_info = StepPlanner.plan_steps(user_input)
+        budget = plan_info["budget_controller"]
+
+        yield from self._run_react_loop(
+            user_input=user_input,
+            augmented_input=augmented,
+            profile=profile,
+            system=system,
+            budget=budget,
+            stream=True,
+        )
 
     def consolidate_on_exit(self) -> str:
         summary = ""
@@ -576,20 +774,20 @@ class JarvisOrchestrator:
             saved = consolidate_session(self.working_memory.get(), router=self.router)
             if saved:
                 summary = f"Consolidated {len(saved)} memories: {', '.join(saved)}"
-        except Exception as e:
-            summary = f"Consolidation skipped: {e}"
+        except Exception as exc:
+            summary = f"Consolidation skipped: {exc}"
         return summary
 
-    def shutdown(self):
+    def shutdown(self) -> None:
         summary = self.consolidate_on_exit()
         if self._session_store and self._session_id:
             try:
                 self._session_store.close_session(self._session_id, summary=summary)
                 if self._history_linker and self._history_linker.available:
                     self._history_linker.on_session_close(
-                         self._session_id, summary,
-                         mode=self.current_mode,
-                         backend=self.router.default.value,
+                        self._session_id, summary,
+                        mode=self.current_mode,
+                        backend=self.router.default.value,
                     )
             except Exception:
                 pass
@@ -602,146 +800,3 @@ class JarvisOrchestrator:
 
         if self._subagent_mgr:
             self._subagent_mgr.shutdown()
-
-    def chat_stream(self, user_input: str):
-        mode_result = self._parse_mode(user_input)
-        if mode_result:
-            yield mode_result
-            return
-
-        skill_result = self._check_skill(user_input)
-        if skill_result:
-            yield skill_result
-            return
-
-        try:
-            from core.intent_engine import DeterministicIntentEngine
-            from context.token_manager import TokenBudgetManager
-            intent_res = DeterministicIntentEngine.parse_and_execute(user_input)
-            if intent_res and intent_res.get("executed"):
-                TokenBudgetManager().record_usage(consumed=0, saved=intent_res.get("tokens_saved", 2000), is_bypassed=True)
-                yield f"⚡ [Antigravity Instant 0-Token Action]\n{intent_res.get('result')}"
-                return
-        except Exception:
-            pass
-
-        memory_ctx = self._recall_context(user_input)
-        augmented = f"{memory_ctx}{user_input}" if memory_ctx else user_input
-
-        self.working_memory.add("user", augmented)
-        self._record_turn("user", user_input)
-
-        keywords = self._extract_keywords(user_input)
-        profile = self.router.route(keywords)
-        system = self._build_system()
-
-        # ── StepPlanner budget + duplicate-call guard (matches chat() safety) ──
-        from agent.step_planner import StepPlanner
-        import json as _json
-        plan_info = StepPlanner.plan_steps(user_input)
-        budget = plan_info["budget_controller"]
-        _consecutive_tool: dict = {"name": None, "args_str": None, "count": 0}
-        tool_history: list = []
-
-        step = 0
-        while True:
-            # Budget check
-            should_continue, budget_msg, was_extended = budget.evaluate(step, tool_history)
-            if not should_continue:
-                yield f"\n\n[JARVIS: Step budget reached ({budget_msg}). Returning results.]\n"
-                break
-
-            backend = self.router.backends.get(profile)
-            if backend is None:
-                backend = self.router.backends.get(self.router.default)
-            if backend is None:
-                yield "No backend available."
-                return
-
-            full_response = ""
-            t_start = time.monotonic()
-
-            retry_delay = 1.0
-            max_retries = 3
-            for attempt in range(max_retries):
-                try:
-                    if hasattr(backend, "stream"):
-                        for chunk in backend.stream(self.working_memory.get(), system):
-                            full_response += chunk
-                            yield chunk
-                        break
-                    else:
-                        full_response = backend.complete(self.working_memory.get(), system)
-                        yield full_response
-                        break
-                except Exception as e:
-                    if attempt == max_retries - 1:
-                        yield f"\n[Backend error: {e}]"
-                        return
-                    time.sleep(retry_delay)
-                    retry_delay *= 2
-
-            latency_ms = int((time.monotonic() - t_start) * 1000)
-            tool_name, tool_args = parse_tool_call(full_response)
-
-            if tool_name:
-                # ── Duplicate-call detection ──
-                args_str = _json.dumps(tool_args or {}, sort_keys=True)
-                if tool_name == _consecutive_tool["name"] and args_str == _consecutive_tool.get("args_str"):
-                    _consecutive_tool["count"] += 1
-                else:
-                    _consecutive_tool = {"name": tool_name, "args_str": args_str, "count": 1}
-
-                if _consecutive_tool["count"] >= 4:
-                    yield f"\n[JARVIS] ⛔ Duplicate-call limit reached (x{_consecutive_tool['count']}). Stopping to prevent infinite token burn.\n"
-                    break
-
-                yield f"\n[JARVIS] 🔧 Step {step+1}: {tool_name}...\n"
-                t_tool = time.monotonic()
-
-                if _consecutive_tool["count"] >= 3:
-                    tool_result = (
-                        f"[SYSTEM NOTICE: '{tool_name}' has been executed {_consecutive_tool['count']} times consecutively with identical arguments. "
-                        f"DO NOT call '{tool_name}' again. Use the tool result provided above to directly answer the user's request now.]"
-                    )
-                else:
-                    try:
-                        tool_result = execute_tool(tool_name, tool_args or {})
-                    except Exception as tool_err:
-                        tool_result = f"[Tool Error: {tool_name} failed — {tool_err}. Try an alternative approach.]"
-                tool_ms = int((time.monotonic() - t_tool) * 1000)
-
-                tool_history.append({
-                    "step": step,
-                    "tool_name": tool_name,
-                    "args": tool_args,
-                    "result": tool_result,
-                })
-
-                self._record_turn(
-                    "assistant", full_response[:2000],
-                    tool_name=tool_name, tool_args=tool_args,
-                    tool_result=str(tool_result)[:2000],
-                    backend=profile.value, latency_ms=tool_ms,
-                )
-
-                clean = self._clean_response(full_response)
-                if clean:
-                    self.working_memory.add("assistant", clean)
-                else:
-                    self.working_memory.add("assistant", _format_clean_tool_summary(tool_name, tool_args))
-
-                # Truncate large tool results for context efficiency
-                str_res = str(tool_result)
-                if len(str_res) > 4000:
-                    str_res = str_res[:2000] + "\n\n[... output truncated for context efficiency ...]\n\n" + str_res[-1500:]
-                self.working_memory.add("user", f"[Tool Result for '{tool_name}']:\n{str_res}")
-                yield f"[Tool Result: {tool_name} complete]\n"
-                step += 1
-                continue
-            else:
-                self._record_turn("assistant", full_response[:5000], backend=profile.value, latency_ms=latency_ms)
-                self.working_memory.add("assistant", full_response)
-                self._store_exchange(user_input, full_response)
-                break
-

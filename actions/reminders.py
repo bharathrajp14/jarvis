@@ -6,6 +6,7 @@ and triggers native Windows desktop notification toasts with sound alerts.
 """
 from __future__ import annotations
 
+import logging
 import os
 import sys
 import time
@@ -16,7 +17,10 @@ import subprocess
 from pathlib import Path
 from datetime import datetime, timedelta
 
+logger = logging.getLogger("JARVIS.Reminders")
+
 _REMINDERS_FILE = Path(__file__).resolve().parent.parent / "workspace" / "reminders.json"
+
 
 
 class ReminderManager:
@@ -47,7 +51,7 @@ class ReminderManager:
                 json.dumps({"reminders": self._reminders}, indent=2), encoding="utf-8"
             )
         except Exception as e:
-            print(f"[Reminders] Save error: {e}")
+            logger.warning("Save error: %s", e)
 
     def start(self):
         """Start background reminder polling thread."""
@@ -76,34 +80,18 @@ class ReminderManager:
             time.sleep(5)
 
     def _trigger_toast(self, text: str):
-        """Trigger native OS desktop notification toast."""
-        print(f"[Reminder Alert] ⏰ REMINDER: {text}")
+        """Trigger native OS desktop notification toast using actions/reminder.py."""
+        logger.info(f"⏰ REMINDER: {text}")
 
-        if sys.platform == "win32":
-            try:
-                # Windows PowerShell Toast Notification
-                ps_script = f'''
-                [Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications, ContentType = WindowsRuntime] | Out-Null
-                [Windows.Data.Xml.Dom.XmlDocument, Windows.Data.Xml.Dom.XmlDocument, ContentType = WindowsRuntime] | Out-Null
-                $template = @"
-                <toast>
-                    <visual>
-                        <binding template="ToastGeneric">
-                            <text>⏰ BR JARVIS Reminder</text>
-                            <text>{text}</text>
-                        </binding>
-                    </visual>
-                    <audio src="ms-winsoundevent:Notification.Default"/>
-                </toast>
-"@
-                $xml = New-Object Windows.Data.Xml.Dom.XmlDocument
-                $xml.LoadXml($template)
-                $toast = [Windows.UI.Notifications.ToastNotification]::new($xml)
-                [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier("BR JARVIS").Show($toast)
-                '''
-                subprocess.Popen(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", ps_script], shell=False)
-            except Exception:
-                pass
+        try:
+            from actions.reminder import reminder
+            now = datetime.now() + timedelta(seconds=1)
+            date_str = now.strftime("%Y-%m-%d")
+            time_str = now.strftime("%H:%M")
+            reminder({"date": date_str, "time": time_str, "message": text})
+        except Exception as e:
+            logger.warning(f"Failed to trigger toast via reminder action: {e}")
+
 
     def add_reminder(self, text: str, delay_seconds: int = 0, target_time_str: str = "") -> dict:
         """Add a new reminder."""

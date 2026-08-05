@@ -15,7 +15,7 @@ import os
 import queue
 _HAS_SR = False
 try:
-    import speech_recognition as sr
+    import speech_recognition as sr  # type: ignore[import-not-found]
     _HAS_SR = True
     _BaseAudioSource = sr.AudioSource
 except ImportError:
@@ -24,10 +24,11 @@ except ImportError:
 
 _HAS_SD = False
 try:
-    import sounddevice as sd
+    import sounddevice as sd  # type: ignore[import-not-found]
     _HAS_SD = True
 except ImportError:
     pass
+
 
 
 class SounddeviceMicrophone(_BaseAudioSource):
@@ -41,10 +42,15 @@ class SounddeviceMicrophone(_BaseAudioSource):
         if self.device_index is not None and _HAS_SD:
             try:
                 devs = sd.query_devices()
-                if not (0 <= self.device_index < len(devs)) or devs[self.device_index].get("max_input_channels", 0) <= 0:
+                if isinstance(devs, list) and (0 <= self.device_index < len(devs)):
+                    dev_info = devs[self.device_index]
+                    if isinstance(dev_info, dict) and dev_info.get("max_input_channels", 0) <= 0:
+                        self.device_index = None
+                else:
                     self.device_index = None
             except Exception:
                 self.device_index = None
+
 
         # 1. Environment override for audio input device
         env_device = os.environ.get("JARVIS_AUDIO_INPUT_DEVICE")
@@ -178,7 +184,7 @@ class SounddeviceMicrophone(_BaseAudioSource):
         if not data_bytes:
             return b""
         try:
-            import numpy as np
+            import numpy as np  # type: ignore[import-not-found]
             samples = np.frombuffer(data_bytes, dtype=np.int16)
             if len(samples) == 0:
                 return b""
@@ -211,14 +217,15 @@ class SounddeviceMicrophone(_BaseAudioSource):
 
     def read(self, size):
         bytes_to_read = size * self.SAMPLE_WIDTH
-        data = b''
+        data = bytearray()
         while len(data) < bytes_to_read:
             try:
                 chunk = self.q.get(timeout=0.1)
-                data += chunk
+                data.extend(chunk)
             except queue.Empty:
                 break
-        return data[:bytes_to_read]
+        return bytes(data[:bytes_to_read])
+
 
     def drain(self):
         """Instantly flush all queued audio data. Call before listen() for fresh input."""

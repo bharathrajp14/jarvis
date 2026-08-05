@@ -1,13 +1,18 @@
+from __future__ import annotations
+
 import os
 import platform
 import re
 import sys
 import json
+import logging
 import time
 import subprocess
 import threading
 from pathlib import Path
 from datetime import datetime
+
+logger = logging.getLogger("JARVIS.Actions.GameUpdater")
 
 from config import get_os, is_windows, is_mac, is_linux
 

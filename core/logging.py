@@ -9,11 +9,9 @@ import time
 from contextvars import ContextVar
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-LOGS_DIR = BASE_DIR / "logs"
-LOGS_DIR.mkdir(parents=True, exist_ok=True)
 
 # Ensure UTF-8 output on Windows consoles
 if sys.platform == "win32":
@@ -29,9 +27,30 @@ if sys.platform == "win32":
 # Context Var for Correlation IDs across async tasks
 correlation_id_ctx: ContextVar[str] = ContextVar("correlation_id", default="sys-init")
 
+# Suppress only specific known-noisy third-party libraries.
+# REMOVED: warnings.filterwarnings("ignore") — blanket suppression hides real bugs.
+_NOISY_LOGGERS = [
+    "urllib3",
+    "chromadb",
+    "google.auth",
+    "asyncio",
+    "httpx",
+    "httpcore",
+    "onnxruntime",
+    "PIL",
+    "comtypes",
+]
+
+
+def _suppress_noisy_loggers() -> None:
+    """Silence known verbose third-party loggers at WARNING level."""
+    for name in _NOISY_LOGGERS:
+        logging.getLogger(name).setLevel(logging.WARNING)
+
 
 class JSONFormatter(logging.Formatter):
     """Machine-readable JSON log formatter with context vars."""
+
     def format(self, record: logging.LogRecord) -> str:
         log_entry: Dict[str, Any] = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -46,17 +65,18 @@ class JSONFormatter(logging.Formatter):
             log_entry["data"] = record.extra_data
         if record.exc_info:
             log_entry["exception"] = self.formatException(record.exc_info)
-        return json.dumps(log_entry)
+        return json.dumps(log_entry, ensure_ascii=False)
 
 
 class ColoredConsoleFormatter(logging.Formatter):
     """Human-readable colorized console log formatter."""
+
     COLORS = {
-        "DEBUG": "\033[36m",    # Cyan
-        "INFO": "\033[32m",     # Green
-        "WARNING": "\033[33m",  # Yellow
-        "ERROR": "\033[31m",    # Red
-        "CRITICAL": "\033[41m", # Red background
+        "DEBUG":    "\033[36m",   # Cyan
+        "INFO":     "\033[32m",   # Green
+        "WARNING":  "\033[33m",   # Yellow
+        "ERROR":    "\033[31m",   # Red
+        "CRITICAL": "\033[41m",   # Red background
     }
     RESET = "\033[0m"
 
@@ -72,19 +92,20 @@ class ColoredConsoleFormatter(logging.Formatter):
 
 
 def setup_logger(name: str = "JARVIS", level: str = "INFO", log_to_file: bool = True) -> logging.Logger:
-    """Configures and returns a structured logger instance."""
+    """Configure and return a structured logger instance.
+
+    Logs are written to both a colorized console handler and a JSONL file.
+    The LOGS_DIR is created lazily on first file-handler setup to avoid
+    creating directories at import time before the working directory is set.
+    """
     logger = logging.getLogger(name)
     logger.setLevel(getattr(logging, level.upper(), logging.INFO))
     logger.propagate = False
 
-    # Suppress verbose third-party logging
-    for third_party in ["urllib3", "chromadb", "google", "asyncio", "httpx", "onnxruntime"]:
-        logging.getLogger(third_party).setLevel(logging.WARNING)
+    _suppress_noisy_loggers()
 
-    import warnings
-    warnings.filterwarnings("ignore")
-
-    if logger.handlers:
+    # Avoid adding duplicate handlers if already configured
+    if any(isinstance(h, logging.StreamHandler) for h in logger.handlers):
         return logger
 
     # Console Handler
@@ -94,18 +115,24 @@ def setup_logger(name: str = "JARVIS", level: str = "INFO", log_to_file: bool = 
     console_handler.setFormatter(ColoredConsoleFormatter())
     logger.addHandler(console_handler)
 
-    # File Handler (JSONL)
+    # File Handler (JSONL) — created lazily here, not at import time
     if log_to_file:
-        file_path = LOGS_DIR / "jarvis.jsonl"
-        file_handler = logging.FileHandler(file_path, encoding="utf-8")
-        file_handler.setFormatter(JSONFormatter())
-        logger.addHandler(file_handler)
+        try:
+            logs_dir = BASE_DIR / "logs"
+            logs_dir.mkdir(parents=True, exist_ok=True)
+            file_path = logs_dir / "jarvis.jsonl"
+            file_handler = logging.FileHandler(file_path, encoding="utf-8")
+            file_handler.setFormatter(JSONFormatter())
+            logger.addHandler(file_handler)
+        except OSError as exc:
+            logger.warning(f"[Logging] Could not create log file handler: {exc}")
 
     return logger
 
 
 class LogTimer:
     """Context manager for timing operational code blocks."""
+
     def __init__(self, logger: logging.Logger, operation_name: str):
         self.logger = logger
         self.operation_name = operation_name
@@ -119,6 +146,10 @@ class LogTimer:
     def __exit__(self, exc_type, exc_val, exc_tb):
         duration_ms = (time.perf_counter() - self.start_time) * 1000
         if exc_type:
-            self.logger.error(f"❌ Failed: {self.operation_name} after {duration_ms:.2f}ms ({exc_val})")
+            self.logger.error(
+                f"❌ Failed: {self.operation_name} after {duration_ms:.2f}ms ({exc_val})"
+            )
         else:
-            self.logger.info(f"✓ Completed: {self.operation_name} in {duration_ms:.2f}ms")
+            self.logger.info(
+                f"✓ Completed: {self.operation_name} in {duration_ms:.2f}ms"
+            )

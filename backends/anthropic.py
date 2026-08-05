@@ -5,11 +5,14 @@ Safe initialization, standardized error handling, and text streaming.
 """
 from __future__ import annotations
 
+import logging
 import os
 import traceback
 from typing import Generator
 
 from backends.base import BaseBackend
+
+logger = logging.getLogger("JARVIS.Claude")
 
 
 class ClaudeBackend(BaseBackend):
@@ -31,9 +34,9 @@ class ClaudeBackend(BaseBackend):
             try:
                 import anthropic
                 self.client = anthropic.Anthropic(api_key=_api_key)
-                print(f"[Claude] [OK] Using model: {self.model}")
+                logger.info("Using model: %s", self.model)
             except ImportError:
-                print("[Claude] Warning: anthropic package is not installed.")
+                logger.warning("anthropic package is not installed.")
 
     @property
     def name(self) -> str:
@@ -81,7 +84,7 @@ class ClaudeBackend(BaseBackend):
             response = self.client.messages.create(**kwargs)
             return response.content[0].text
         except Exception as e:
-            print(f"[Claude] Error: {e}")
+            logger.error("Claude Error: %s", e)
             raise
 
     def stream(self, messages: list, system: str = "") -> Generator[str, None, None]:

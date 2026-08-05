@@ -149,25 +149,21 @@ def install_windows():
         f'WShell.Run "{quote}{quote}{bat_source}{quote}{quote} --silent", 0, False\r\n'
     )
 
-    bat_file = startup_dir / "BR.bat"
-    bat_content = (
-        '@echo off\r\n'
-        f'start "" /D "{project_dir}" /MIN "{bat_source}" --silent\r\n'
-    )
-
-    for legacy in ("JARVIS_MK37.vbs", "JARVIS_MK37.bat"):
+    # Clean up duplicate/legacy startup scripts in Windows Startup folder
+    for legacy in ("BR.bat", "JARVIS_MK37.vbs", "JARVIS_MK37.bat"):
         legacy_file = startup_dir / legacy
         if legacy_file.exists():
-            legacy_file.unlink()
+            try:
+                legacy_file.unlink()
+            except Exception:
+                pass
 
     vbs_file.write_text(vbs_content, encoding="utf-8")
-    bat_file.write_text(bat_content, encoding="utf-8")
 
     print("=" * 55)
     print("  BR — Auto-Startup Installed (Windows)")
     print("=" * 55)
     print(f"  VBS Launcher : {vbs_file}")
-    print(f"  BAT Fallback : {bat_file}")
     print(f"  Default Mode : Voice Assistant")
     print("=" * 55)
 

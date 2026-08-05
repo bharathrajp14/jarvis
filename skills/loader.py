@@ -222,23 +222,20 @@ def load_skills(include_builtins: bool = True) -> list[SkillDef]:
 
 
 def find_skill(query: str) -> Optional[SkillDef]:
-    """Find a skill whose trigger matches the first word (or whole string) of query."""
+    """Find a skill whose name or trigger matches the query (case-insensitive)."""
     query = query.strip()
     if not query:
         return None
 
     q_clean = query.lstrip("/").lower()
-    first_word = q_clean.split()[0]
 
     for skill in load_skills():
         s_name = skill.name.lower()
-        if first_word == s_name:
+        if q_clean == s_name:
             return skill
         for trigger in skill.triggers:
             t_clean = trigger.lstrip("/").lower()
-            if first_word == t_clean:
-                return skill
-            if t_clean.startswith(first_word + " "):
+            if q_clean == t_clean:
                 return skill
     return None
 

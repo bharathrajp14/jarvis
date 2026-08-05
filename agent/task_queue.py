@@ -9,6 +9,7 @@ High-performance task queue with parallel execution support.
 """
 from __future__ import annotations
 
+import logging
 import os
 import threading
 import time
@@ -17,6 +18,9 @@ import uuid
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Callable, Any
+
+logger = logging.getLogger("JARVIS.TaskQueue")
+
 
 
 class TaskStatus(Enum):
@@ -84,7 +88,8 @@ class TaskQueue:
             )
             t.start()
             self._workers.append(t)
-        print(f"[TaskQueue] ✅ Started with {self._max} auto-tuned workers")
+        logger.info(f"✅ Started with {self._max} auto-tuned workers")
+
 
     def stop(self) -> None:
         self._running = False
@@ -101,7 +106,8 @@ class TaskQueue:
         self._paused = False
         with self._cond:
             self._cond.notify_all()
-        print("[TaskQueue] ▶️ Task queue resumed")
+        logger.info("▶️ Task queue resumed")
+
 
     def submit(
         self,
@@ -128,8 +134,9 @@ class TaskQueue:
             self._prune_history()
             self._cond.notify()
 
-        print(f"[TaskQueue] 📥 Queued [{task_id}]: {goal[:60]}")
+        logger.info(f"📥 Queued [{task_id}]: {goal[:60]}")
         return task_id
+
 
     def submit_many(
         self,
@@ -248,7 +255,7 @@ class TaskQueue:
         return None
 
     def _run_task(self, task: Task) -> None:
-        print(f"[TaskQueue] ▶️ Running [{task.task_id}]: {task.goal[:60]}")
+        logger.info(f"▶️ Running [{task.task_id}]: {task.goal[:60]}")
         try:
             from agent.executor import AgentExecutor
             executor = AgentExecutor()
@@ -271,10 +278,10 @@ class TaskQueue:
                 try:
                     task.on_complete(task.task_id, result)
                 except Exception as e:
-                    print(f"[TaskQueue] on_complete error: {e}")
+                    logger.warning(f"on_complete error: {e}")
 
             dur = task.finished_at - task.started_at if task.finished_at else 0
-            print(f"[TaskQueue] ✅ [{task.task_id}] Completed in {dur:.1f}s")
+            logger.info(f"✅ [{task.task_id}] Completed in {dur:.1f}s")
 
         except Exception as e:
             with self._lock:
@@ -282,11 +289,11 @@ class TaskQueue:
                 task.error      = str(e)
                 task.finished_at = time.time()
                 self._active   -= 1
-            print(f"[TaskQueue] ❌ [{task.task_id}] Failed: {e}")
-            traceback.print_exc()
+            logger.error(f"❌ [{task.task_id}] Failed: {e}", exc_info=True)
 
         with self._cond:
             self._cond.notify_all()
+
 
 
 # ── Global singleton ───────────────────────────────────────────────────────

@@ -44,14 +44,14 @@ def run_integration_tests():
         load_agent_definitions, get_agent_definition
     )
     defs = load_agent_definitions()
-    assert len(defs) >= 6, f'Expected 6+ agent types, got {len(defs)}'
-    assert 'coder' in defs
-    assert 'reviewer' in defs
-    assert 'editor' in defs
-    coder = get_agent_definition('coder')
-    assert coder is not None
-    assert coder.source == 'built-in'
-    print(f'[PASS] 4. Multi-Agent: {len(defs)} agent types (coder, reviewer, editor, etc)')
+    assert len(defs) >= 5, f'Expected 5+ agent types, got {len(defs)}'
+    assert 'code_engineer' in defs
+    assert 'security_auditor' in defs
+    assert 'web_researcher' in defs
+    code_engineer = get_agent_definition('code_engineer')
+    assert code_engineer is not None
+    assert code_engineer.role == 'code_engineer'
+    print(f'[PASS] 4. Multi-Agent: {len(defs)} agent types (code_engineer, security_auditor, etc)')
 
     # 5. Persistent Memory
     from memory.persistent_store import (
@@ -89,7 +89,7 @@ def run_integration_tests():
     _import_plugins()
     assert len(TOOL_SCHEMAS) >= 37, f'Expected 37+ tools, got {len(TOOL_SCHEMAS)}'
     prompt_block = get_tool_prompt_block()
-    assert 'AUTO-ALLOW' in prompt_block
+    assert 'POLICY MODE' in prompt_block
     assert 'cursor_click' in prompt_block
     assert 'spawn_agent' in prompt_block
     assert 'memory_save' in prompt_block
@@ -104,7 +104,7 @@ def run_integration_tests():
     print(f'[PASS] 8. Tool Registry: {len(TOOL_SCHEMAS)} tools, prompt block, parser all OK')
 
     # 9. Orchestrator
-    from orchestrator import JarvisOrchestrator, MAX_REACT_STEPS
+    from orchestrator.core import JarvisOrchestrator, MAX_REACT_STEPS
     assert MAX_REACT_STEPS == 20
     print('[PASS] 9. Orchestrator: MAX_REACT_STEPS=20, imports clean')
 

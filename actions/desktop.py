@@ -1,13 +1,15 @@
-#desktop.py
-import os
-import sys
 import json
+import logging
+import os
+import platform
 import shutil
 import subprocess
+import sys
 import tempfile
-import platform
 from pathlib import Path
 from datetime import datetime
+
+logger = logging.getLogger("JARVIS.Actions.Desktop")
 
 try:
     import pyautogui
@@ -107,24 +109,25 @@ def _execute_generated_code(code: str, player=None) -> str:
 
     is_safe, reason = _is_ast_safe(code)
     if not is_safe:
-        print(f"[Desktop] Security blocked execution: {reason}")
-        return f"Execution blocked: {reason}"
-
-    sandbox      = _build_sandbox()
-    output_lines = []
-    sandbox["__builtins__"]["print"] = lambda *a: output_lines.append(" ".join(str(x) for x in a))
+        logger.warning("Security blocked execution: %s", reason)
+        return f"⚠️ Security Block: {reason}"
 
     try:
-        exec(compile(code, "<jarvis_desktop>", "exec"), sandbox)
-        return "\n".join(output_lines) if output_lines else "Done."
+        scope: dict = _build_sandbox()
+        exec(code, scope)
+        fn = scope.get("run_desktop_task")
+        if callable(fn):
+            fn()
+            return "Task completed successfully."
+        return "Script executed."
     except Exception as e:
-        print(f"[Desktop] Exec error: {e}\nCode:\n{code[:300]}")
+        logger.error("Exec error: %s\nCode:\n%s", e, code[:300])
         return f"Execution error: {e}"
 
 
 def _ask_gemini_for_desktop_action(task: str) -> str:
 
-    from google import genai as _genai
+    from google import genai as _genai  # type: ignore
     _client = _genai.Client(api_key=_get_api_key())
 
     desktop = str(_get_desktop())
@@ -184,7 +187,7 @@ def set_wallpaper(image_path: str) -> str:
             import ctypes
             if path.suffix.lower() in {".webp", ".png"}:
                 try:
-                    from PIL import Image
+                    from PIL import Image  # type: ignore
                     bmp_path = Path(tempfile.mktemp(suffix=".bmp"))
                     Image.open(path).convert("RGB").save(bmp_path, "BMP")
                     path = bmp_path
@@ -483,7 +486,6 @@ def desktop_control(
             if not actual_task:
                 return "Please describe what you want to do on the desktop."
 
-            print(f"[Desktop] Asking Gemini: {actual_task}")
             if player:
                 player.write_log("[Desktop] Generating action...")
 
@@ -497,5 +499,5 @@ def desktop_control(
             return "No action or task specified."
 
     except Exception as e:
-        print(f"[Desktop] Error: {e}")
+        logger.error("Error: %s", e)
         return f"Desktop control error: {e}"

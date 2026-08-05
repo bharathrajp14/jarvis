@@ -15,7 +15,7 @@ def test_generate_walkthrough_tool():
     res = generate_walkthrough(args)
     assert "Generated Walkthrough document successfully" in res
 
-    file_path = Path(__file__).resolve().parent.parent / "test_generated_walkthrough.md"
+    file_path = Path(__file__).resolve().parent.parent.parent / "test_generated_walkthrough.md"
     assert file_path.exists()
     
     content = file_path.read_text(encoding="utf-8")

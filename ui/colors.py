@@ -1,129 +1,49 @@
+# ui/colors.py — JARVIS Cyberpunk Color System & Palette Engine
+# ==============================================================
+# Provides:
+#   C                  — singleton color namespace (all theme colors)
+#   apply_ui_accent()  — live hue-shift the entire palette to a new accent
+#   current_palette()  — snapshot of the accent-linked colors
+#   retheme_all_widgets() — instantly re-skin every Qt widget in the app
+#   qcol()             — convenience QColor factory with alpha
+#   _nvml_gpu_windows() — NVIDIA GPU utilization via nvml.dll (no subprocess)
 from __future__ import annotations
 
-import json
-import math
-import os
 import platform
-import random
-import subprocess
-import sys
-import threading
-import time
-from pathlib import Path
 
-import psutil
+from ui import _base_dir, setup_qt_paths
 
-if platform.system() == "Windows":
-    _WIN_HIDE: dict = {"creationflags": subprocess.CREATE_NO_WINDOW}
-    for _mod_name in ("PySide6", "PyQt6", "PyQt5"):
-        try:
-            _m = __import__(_mod_name)
-            _mod_dir = os.path.dirname(_m.__file__)
-            _plugins_dir = os.path.join(_mod_dir, "plugins")
-            _platforms_dir = os.path.join(_plugins_dir, "platforms")
-            os.environ["QT_PLUGIN_PATH"] = _plugins_dir
-            os.environ["QT_QPA_PLATFORM_PLUGIN_PATH"] = _platforms_dir
-            if hasattr(os, "add_dll_directory"):
-                for _d in (_mod_dir, _plugins_dir, _platforms_dir):
-                    if os.path.exists(_d):
-                        try:
-                            os.add_dll_directory(_d)
-                        except Exception:
-                            pass
-            break
-        except ImportError:
-            continue
-else:
-    _WIN_HIDE: dict = {}
+# Ensure Qt plugin paths are set before importing Qt
+setup_qt_paths()
 
-_USE_PYSIDE6 = False
-try:
-    import PySide6
-    _USE_PYSIDE6 = True
-except ImportError:
-    pass
-
-if _USE_PYSIDE6:
-    from PySide6.QtCore import (  # type: ignore[import-not-found]
-        QEasingCurve, QMimeData, QObject, QPointF, QRectF, QSize, Qt,
-        QTimer, QUrl, Signal as pyqtSignal,
-    )
-    from PySide6.QtGui import (  # type: ignore[import-not-found]
-        QBrush, QColor, QConicalGradient, QDragEnterEvent, QDropEvent, QFont,
-        QFontDatabase, QKeySequence, QLinearGradient, QPainter, QPainterPath,
-        QPen, QPixmap, QRadialGradient, QShortcut,
-    )
-    from PySide6.QtWidgets import (  # type: ignore[import-not-found]
-        QApplication, QFileDialog, QFrame, QHBoxLayout, QLabel, QLineEdit,
-        QMainWindow, QPushButton, QScrollArea, QSizePolicy, QSplitter,
-        QStackedWidget, QTextEdit, QVBoxLayout, QWidget, QProgressBar,
-    )
-else:
-    from PyQt6.QtCore import (  # type: ignore[import-not-found]
-        QEasingCurve, QMimeData, QObject, QPointF, QRectF, QSize, Qt,
-        QTimer, QUrl, pyqtSignal,
-    )
-    from PyQt6.QtGui import (  # type: ignore[import-not-found]
-        QBrush, QColor, QConicalGradient, QDragEnterEvent, QDropEvent, QFont,
-        QFontDatabase, QKeySequence, QLinearGradient, QPainter, QPainterPath,
-        QPen, QPixmap, QRadialGradient, QShortcut,
-    )
-    from PyQt6.QtWidgets import (  # type: ignore[import-not-found]
-        QApplication, QFileDialog, QFrame, QHBoxLayout, QLabel, QLineEdit,
-        QMainWindow, QPushButton, QScrollArea, QSizePolicy, QSplitter,
-        QStackedWidget, QTextEdit, QVBoxLayout, QWidget, QProgressBar,
-    )
-
-def _base_dir() -> Path:
-    if getattr(sys, "frozen", False):
-        return Path(sys.executable).parent
-    return Path(__file__).resolve().parent
-
-BASE_DIR   = _base_dir()
-CONFIG_DIR = BASE_DIR / "config"
-API_FILE   = CONFIG_DIR / "api_keys.json"
-
-
-def _read_full_config() -> dict:
-    """Read api_keys.json config dict. Returns {} on any error."""
-    try:
-        return json.loads(API_FILE.read_text(encoding="utf-8"))
-    except Exception:
-        return {}
-
-
-_DEFAULT_W, _DEFAULT_H = 980, 700
-_MIN_W,     _MIN_H     = 820, 580
-_LEFT_W  = 148
-_RIGHT_W = 340
+from ui._qt import QApplication, QColor  # noqa: E402
 
 _OS = platform.system()  # "Windows" | "Darwin" | "Linux"
 
 
-
-
+# ── Cyberpunk Color Palette ───────────────────────────────────────────────────
 class C:
-    BG        = "#00060a"
-    PANEL     = "#010d14"
-    PANEL2    = "#010f18"
+    BG        = "#04070d"
+    PANEL     = "#080d19"
+    PANEL2    = "#0a101c"
     BORDER    = "#0d3347"
     BORDER_B  = "#1a5c7a"
     BORDER_A  = "#0f4060"
-    PRI       = "#00d4ff"
+    PRI       = "#00f2fe"
     PRI_DIM   = "#007a99"
     PRI_GHO   = "#001f2e"
-    ACC       = "#ff6b00"
+    ACC       = "#7928ca"
     ACC2      = "#ffcc00"
-    GREEN     = "#00ff88"
+    GREEN     = "#00dfa2"
     GREEN_D   = "#00aa55"
-    RED       = "#ff3355"
-    MUTED_C   = "#ff3366"
-    TEXT      = "#8ffcff"
-    TEXT_DIM  = "#3a8a9a"
-    TEXT_MED  = "#5ab8cc"
-    WHITE     = "#d8f8ff"
-    DARK      = "#000d14"
-    BAR_BG    = "#011520"
+    RED       = "#f31260"
+    MUTED_C   = "#f31260"
+    TEXT      = "#f8fafc"
+    TEXT_DIM  = "#64748b"
+    TEXT_MED  = "#94a3b8"
+    WHITE     = "#ffffff"
+    DARK      = "#04070d"
+    BAR_BG    = "#080d19"
 
 
 # Ana renge (accent) bağlı anahtarlar — durum renkleri (ACC, GREEN, RED…) sabit kalır
@@ -210,7 +130,10 @@ def retheme_all_widgets(old: dict[str, str], new: dict[str, str]) -> None:
 
 
 def qcol(h: str, a: int = 255) -> QColor:
-    c = QColor(h); c.setAlpha(a); return c
+    """Convenience factory: create a QColor from a hex string with optional alpha."""
+    c = QColor(h)
+    c.setAlpha(a)
+    return c
 
 
 # ── Windows GPU via NVML DLL (no subprocess, no console window) ──────────────
@@ -255,5 +178,3 @@ def _nvml_gpu_windows() -> float:
     except Exception:
         _nvml_ok = False
         return -1.0
-
-

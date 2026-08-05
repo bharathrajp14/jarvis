@@ -50,13 +50,28 @@ def build_assistant_runtime(*, use_vector_memory: bool = True) -> AssistantRunti
         router = AgentRouter(backends)
         orchestrator = JarvisOrchestrator(router, use_vector_memory=use_vector_memory)
 
-        # Register components in container
+        # Register components in DI container
         core_runtime.container.register_instance(AgentRouter, router)
         core_runtime.container.register_instance(JarvisOrchestrator, orchestrator)
         core_runtime.container.register_instance(EventBus, event_bus)
 
-        # Publish system startup event
-        event_bus.publish(SystemEvent(topic="system.startup", state="RUNNING", payload={"backends_count": len(backends)}))
+        # FIXED: Register orchestrator shutdown hook so memory is consolidated
+        # on graceful shutdown, not abandoned silently.
+        async def _orchestrator_shutdown():
+            try:
+                orchestrator.shutdown()
+            except Exception:
+                pass
+
+        core_runtime.lifecycle.add_shutdown_hook(_orchestrator_shutdown)
+
+        # FIXED: Publish startup event AFTER all DI registrations are complete
+        # so any subscriber that gets added during registration sees this event.
+        event_bus.publish(SystemEvent(
+            topic="system.startup",
+            state="RUNNING",
+            payload={"backends_count": len(backends)}
+        ))
 
         _runtime_instance = AssistantRuntime(
             backends=backends,
@@ -66,3 +81,10 @@ def build_assistant_runtime(*, use_vector_memory: bool = True) -> AssistantRunti
             event_bus=event_bus,
         )
         return _runtime_instance
+
+
+def reset_assistant_runtime() -> None:
+    """Reset the singleton (for testing only)."""
+    global _runtime_instance
+    with _runtime_lock:
+        _runtime_instance = None

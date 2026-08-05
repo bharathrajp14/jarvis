@@ -6,6 +6,7 @@ and executes them deterministically via native OS commands in 0ms with ZERO LLM 
 """
 from __future__ import annotations
 
+import logging
 import os
 import re
 import shutil
@@ -13,6 +14,8 @@ import subprocess
 import sys
 import webbrowser
 from pathlib import Path
+
+logger = logging.getLogger("JARVIS.IntentEngine")
 
 
 class DeterministicIntentEngine:
@@ -165,11 +168,10 @@ class DeterministicIntentEngine:
     @classmethod
     def parse_and_execute(cls, text: str) -> dict | None:
         """
-        Attempt to deterministically parse and execute the request.
-        Returns dict with result details if executed, or None if LLM reasoning is required.
+        0-token deterministic shortcut execution disabled.
+        Returns None to ensure all user requests route through the AI ReAct Orchestrator loop.
         """
-        clean = text.lower().strip().rstrip(".!;")
-        lines = [line.strip().lower() for line in text.splitlines() if line.strip()]
+        return None
 
         # 00a. Match Online Productivity Suite Intent (e.g. "open excel sheets in online", "excel online", "word online", "google sheets")
         clean_no_punct = clean.replace(".", " ").replace(",", " ")
@@ -1640,6 +1642,25 @@ class DeterministicIntentEngine:
             }
 
         # 9b. Standalone Email / Gmail Intents
+        email_prefix_match = re.search(rf"^(?:in|on|via|through)\s+{MAIL_KW}\s+(?:send|mail|write|draft)\s+(.+?)\s+to\s+(.+)$", clean)
+        if email_prefix_match:
+            msg_text = email_prefix_match.group(1).strip()
+            recipient = email_prefix_match.group(2).strip()
+            try:
+                from actions.smart_email_sender import SmartEmailSender
+                es = SmartEmailSender()
+                subj = msg_text.title() if len(msg_text) < 30 else "Leave Letter / Communication"
+                em_res = es.send_email(recipient=recipient, subject=subj, body=msg_text)
+                return {
+                    "executed": True,
+                    "intent": "email_send",
+                    "target": recipient,
+                    "result": f"{em_res} (0-Token Instant Execution)",
+                    "tokens_saved": 2500,
+                }
+            except Exception:
+                pass
+
         email_say_match = re.search(rf"^(?:say|send|tell|mail)\s+(.+?)\s+(?:to\s+)?(.+?)\s+(?:in|on|via|through)\s+{MAIL_KW}\b", clean)
         if email_say_match:
             msg_text = email_say_match.group(1).strip()

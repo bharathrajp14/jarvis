@@ -76,7 +76,7 @@ Open your terminal or Command Prompt and run:
 ```bash
 git clone https://github.com/bharthraj1412/BrJarvis.git
 cd BrJarvis
-pip install -r requirements_mk37.txt
+pip install -r requirements.txt
 ```
 
 ### Step 2: Set Your Free Gemini API Key
@@ -94,7 +94,7 @@ JARVIS uses Google's Gemini AI engine. Get a free API key from [Google AI Studio
 ### Step 3: Launch JARVIS!
 Start your AI assistant:
 ```bash
-python main.py
+python start.py
 ```
 
 ---

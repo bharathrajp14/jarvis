@@ -1,8 +1,11 @@
 import json
+import logging
 import subprocess
 import sys
 import time
 from pathlib import Path
+
+logger = logging.getLogger("JARVIS.Actions.SendMessage")
 
 try:
     import pyautogui
@@ -110,7 +113,7 @@ def _open_app(app_name: str) -> bool:
             return launched
 
     except Exception as e:
-        print(f"[SendMessage] ⚠️ Could not open {app_name}: {e}")
+        logger.warning("Could not open %s: %s", app_name, e)
         return False
 
 
@@ -121,7 +124,7 @@ def _open_browser_url(url: str) -> bool:
         time.sleep(4.0) 
         return True
     except Exception as e:
-        print(f"[SendMessage] ⚠️ Could not open browser: {e}")
+        logger.warning("Could not open browser: %s", e)
         return False
 
 def _search_in_app(query: str) -> None:
@@ -259,7 +262,7 @@ def send_message(
     except Exception as e:
         result = f"Could not send message: {e}"
 
-    print(f"[SendMessage] {'✅' if 'sent' in result.lower() else '❌'} {result}")
+    logger.info("Result: %s", result)
     if player:
         player.write_log(f"[msg] {result}")
 

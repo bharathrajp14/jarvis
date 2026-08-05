@@ -2,14 +2,22 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
+import threading
 from pathlib import Path
-from typing import Any, Dict, Optional
-from pydantic import BaseModel, Field
+from typing import Any, Dict, Literal, Optional
+
+from pydantic import BaseModel, Field, field_validator
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 CONFIG_DIR = BASE_DIR / "config"
 MODELS_JSON = CONFIG_DIR / "models.json"
+
+_logger = logging.getLogger("JARVIS.Config")
+
+# Valid log levels
+_LOG_LEVELS = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
 
 
 class AssistantConfig(BaseModel):
@@ -23,26 +31,38 @@ class AssistantConfig(BaseModel):
 
 class ModelConfig(BaseModel):
     default_backend: str = Field(default="gemini", description="Default primary LLM backend")
-    gemini: str = Field(default="gemini-3.6-flash-high", description="Gemini model ID")
-    gemini_code: str = Field(default="gemini-3.1-pro-high", description="Gemini Code model ID")
-    gemini_reasoning: str = Field(default="gemini-3.1-pro-high", description="Gemini Reasoning model ID")
+    gemini: str = Field(default="gemini-2.5-flash", description="Gemini model ID")
+    gemini_code: str = Field(default="gemini-2.5-pro", description="Gemini Code model ID")
+    gemini_reasoning: str = Field(default="gemini-2.5-pro", description="Gemini Reasoning model ID")
     claude: str = Field(default="claude-sonnet-4-6", description="Claude model ID")
-    gpt: str = Field(default="gemini-3.6-flash-high", description="GPT model ID")
+    gpt: str = Field(default="gpt-4o-mini", description="GPT model ID")  # FIXED: was 'gemini-3.6-flash-high'
     ollama: str = Field(default="llama3.3", description="Ollama local model ID")
     nvidia: str = Field(default="meta/llama-3.1-70b-instruct", description="NVIDIA NIM model ID")
     mistral: str = Field(default="mistral-large-latest", description="Mistral model ID")
-    planner_model: str = Field(default="gemini-3.6-flash-high", description="Planning model ID")
-    fast_model: str = Field(default="gemini-3-flash", description="Fast inference model ID")
-    voice_live: str = Field(default="models/gemini-3.1-flash-live-preview", description="Voice Live model ID")
+    planner_model: str = Field(default="gemini-2.5-flash", description="Planning model ID")
+    fast_model: str = Field(default="gemini-2.0-flash", description="Fast inference model ID")
+    voice_live: str = Field(default="models/gemini-2.0-flash-live-001", description="Voice Live model ID")
 
 
 class SystemConfig(BaseModel):
     environment: str = Field(default="development", description="Execution environment")
     debug: bool = Field(default=False, description="Debug mode flag")
-    log_level: str = Field(default="INFO", description="Logging verbosity (DEBUG, INFO, WARNING, ERROR)")
+    log_level: str = Field(default="INFO", description="Logging verbosity (DEBUG, INFO, WARNING, ERROR, CRITICAL)")
     log_format: str = Field(default="json", description="Log output format (console, json)")
     workspace_dir: str = Field(default=str(BASE_DIR / "workspace"), description="Workspace root path")
     max_workers: int = Field(default=3, description="Maximum parallel task workers")
+
+    @field_validator("log_level", mode="before")
+    @classmethod
+    def validate_log_level(cls, v: Any) -> str:
+        """Normalize and validate the log level string."""
+        normalized = str(v).upper().strip()
+        if normalized not in _LOG_LEVELS:
+            _logger.warning(
+                f"Invalid log_level '{v}'. Must be one of {_LOG_LEVELS}. Defaulting to INFO."
+            )
+            return "INFO"
+        return normalized
 
 
 class HardwareConfig(BaseModel):
@@ -58,7 +78,7 @@ class JarvisConfig(BaseModel):
     hardware: HardwareConfig = Field(default_factory=HardwareConfig)
 
     @classmethod
-    def load(cls) -> JarvisConfig:
+    def load(cls) -> "JarvisConfig":
         """Load configuration merging defaults, models.json, and environment variables."""
         cfg = cls()
 
@@ -69,8 +89,10 @@ class JarvisConfig(BaseModel):
                 for k, v in data.items():
                     if not k.startswith("_") and hasattr(cfg.models, k) and isinstance(v, str) and v.strip():
                         setattr(cfg.models, k, v.strip())
-            except Exception:
-                pass
+            except json.JSONDecodeError as exc:
+                _logger.warning(f"[Config] Failed to parse models.json: {exc}")
+            except OSError as exc:
+                _logger.warning(f"[Config] Failed to read models.json: {exc}")
 
         # 2. Load Environment Variable Overrides
         env = os.environ
@@ -85,16 +107,29 @@ class JarvisConfig(BaseModel):
         if env.get("JARVIS_DEFAULT_BACKEND"):
             cfg.models.default_backend = env["JARVIS_DEFAULT_BACKEND"]
         if env.get("JARVIS_LOG_LEVEL"):
+            # Re-validate through the field_validator
             cfg.system.log_level = env["JARVIS_LOG_LEVEL"].upper()
+        if env.get("JARVIS_DEBUG"):
+            cfg.system.debug = env["JARVIS_DEBUG"].lower() in ("true", "1", "yes")
 
         return cfg
 
 
+# ── Thread-safe singleton ─────────────────────────────────────────────────────
 _global_config: Optional[JarvisConfig] = None
+_config_lock = threading.Lock()
 
 
 def get_config(force_reload: bool = False) -> JarvisConfig:
+    """Return the global singleton JarvisConfig (thread-safe)."""
     global _global_config
-    if _global_config is None or force_reload:
-        _global_config = JarvisConfig.load()
+
+    # Fast path (no lock needed for read of immutable reference)
+    if _global_config is not None and not force_reload:
+        return _global_config
+
+    with _config_lock:
+        # Double-checked locking pattern
+        if _global_config is None or force_reload:
+            _global_config = JarvisConfig.load()
     return _global_config

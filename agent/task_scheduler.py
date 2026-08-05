@@ -9,7 +9,7 @@ import asyncio
 import logging
 import time
 from typing import Any, Callable, Dict, List, Optional
-from workflow.task_dag import DAGNodeState, PersistentTaskDAG
+from workflow.task_dag import DAGNode, DAGNodeState, PersistentTaskDAG
 
 logger = logging.getLogger("JARVIS.TaskScheduler")
 
@@ -23,7 +23,7 @@ class TaskScheduler:
         self.dag_store = dag_store or PersistentTaskDAG()
         self.running_tasks: Dict[str, asyncio.Task] = {}
 
-    def schedule_dag(self, task_id: str, goal: str, nodes: List[DAGNodeState]) -> None:
+    def schedule_dag(self, task_id: str, goal: str, nodes: List[DAGNode]) -> None:
         """
         Schedule a set of DAG nodes for execution and persist initial checkpoint.
         """
@@ -31,8 +31,8 @@ class TaskScheduler:
         logger.info(f"📅 TaskScheduler: Scheduled DAG '{task_id}' with {len(nodes)} tasks")
 
     async def execute_next_pending_node(
-        self, task_id: str, executor_func: Callable[[DAGNodeState], Any]
-    ) -> Optional[DAGNodeState]:
+        self, task_id: str, executor_func: Callable[[DAGNode], Any]
+    ) -> Optional[DAGNode]:
         """
         Fetch the next pending node in the DAG, execute it via executor_func, and update checkpoint.
         """
@@ -40,7 +40,7 @@ class TaskScheduler:
         if not checkpoint_data:
             return None
 
-        nodes: List[DAGNodeState] = checkpoint_data["nodes"]
+        nodes: List[DAGNode] = checkpoint_data["nodes"]
         pending_node = next((n for n in nodes if n.status == "PENDING"), None)
 
         if not pending_node:

@@ -8,15 +8,17 @@ from __future__ import annotations
 import asyncio
 import os
 import sys
+import threading
 import time
 from pathlib import Path
 from typing import Any, Optional
+
 
 from tools.registry import register_tool, _run_async
 
 _PLAYWRIGHT_AVAILABLE = False
 try:
-    from playwright.async_api import async_playwright, BrowserContext, Page, ElementHandle
+    from playwright.async_api import async_playwright, BrowserContext, Page, ElementHandle  # type: ignore[import-not-found]
     _PLAYWRIGHT_AVAILABLE = True
 except ImportError:
     _PLAYWRIGHT_AVAILABLE = False
@@ -27,6 +29,9 @@ _active_page: Optional[Any] = None
 _playwright_instance: Optional[Any] = None
 _last_page_console_logs: list[str] = []
 _last_page_errors: list[str] = []
+# Thread-safe lock protecting all browser global state mutations
+_BROWSER_LOCK = threading.Lock()
+
 
 
 def get_browser_trace_logs() -> dict:
@@ -53,32 +58,42 @@ def _attach_trace_listeners(page: Any):
 
 
 async def _get_or_create_page(headless: bool = False) -> Page:
-    """Ensure a persistent browser context and active page exist."""
+    """Ensure a persistent browser context and active page exist (thread-safe)."""
     global _active_browser_context, _active_page, _playwright_instance
 
     if not _PLAYWRIGHT_AVAILABLE:
         raise RuntimeError("Playwright is not installed. Install with: pip install playwright && playwright install chromium")
 
-    if _active_page and not _active_page.is_closed():
+    with _BROWSER_LOCK:
+        if _active_page and not _active_page.is_closed():
+            return _active_page
+
+        _USER_DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+        # Clean stale Chromium lock files that block re-launch after crash
+        _lock_file = _USER_DATA_DIR / "SingletonLock"
+        if _lock_file.exists():
+            try:
+                _lock_file.unlink()
+            except OSError:
+                pass
+
+        if not _playwright_instance:
+            _playwright_instance = await async_playwright().start()
+
+        if not _active_browser_context:
+            _active_browser_context = await _playwright_instance.chromium.launch_persistent_context(
+                user_data_dir=str(_USER_DATA_DIR),
+                headless=headless,
+                viewport={"width": 1280, "height": 800},
+                args=["--disable-blink-features=AutomationControlled"]
+            )
+
+        pages = _active_browser_context.pages
+        _active_page = pages[0] if pages else await _active_browser_context.new_page()
+        _attach_trace_listeners(_active_page)
         return _active_page
 
-    _USER_DATA_DIR.mkdir(parents=True, exist_ok=True)
-
-    if not _playwright_instance:
-        _playwright_instance = await async_playwright().start()
-
-    if not _active_browser_context:
-        _active_browser_context = await _playwright_instance.chromium.launch_persistent_context(
-            user_data_dir=str(_USER_DATA_DIR),
-            headless=headless,
-            viewport={"width": 1280, "height": 800},
-            args=["--disable-blink-features=AutomationControlled"]
-        )
-
-    pages = _active_browser_context.pages
-    _active_page = pages[0] if pages else await _active_browser_context.new_page()
-    _attach_trace_listeners(_active_page)
-    return _active_page
 
 
 async def _close_browser():
@@ -156,7 +171,7 @@ def browser_click(args: dict) -> str:
 
     async def _click():
         page = await _get_or_create_page()
-        # Try text selector first, then CSS selector
+        # Try text selector first, then CSS selector — reduced timeout to 1500ms per selector
         selectors = [
             f"text='{target}'",
             f"text={target}",
@@ -171,18 +186,19 @@ def browser_click(args: dict) -> str:
         for sel in selectors:
             try:
                 elem = page.locator(sel).first
-                if await elem.is_visible(timeout=2000):
+                if await elem.is_visible(timeout=1500):
                     await elem.click()
                     clicked = True
                     break
-            except Exception as e:
-                last_err = e
+            except Exception as exc:
+                last_err = exc
 
         if clicked:
-            await page.wait_for_timeout(1000)
+            await page.wait_for_timeout(800)
             return f"⚡ Clicked '{target}' on page {page.url}"
         else:
             return f"Click Error: Could not find clickable element for '{target}'. (Error: {last_err})"
+
 
     try:
         return _run_async(_click())
@@ -391,7 +407,10 @@ def browser_scroll(args: dict) -> str:
 )
 def browser_eval_js(args: dict) -> str:
     """Evaluate JavaScript inside the active page."""
-    script = args["script"].strip()
+    # FIXED: Use .get() to avoid KeyError if LLM omits the 'script' key
+    script = (args.get("script") or args.get("code") or args.get("js") or "").strip()
+    if not script:
+        return "Browser JS Error: 'script' parameter is required."
 
     async def _eval():
         page = await _get_or_create_page()
@@ -400,8 +419,9 @@ def browser_eval_js(args: dict) -> str:
 
     try:
         return _run_async(_eval())
-    except Exception as e:
-        return f"Browser JS Evaluation Error: {e}"
+    except Exception as exc:
+        return f"Browser JS Evaluation Error: {exc}"
+
 
 
 @register_tool(

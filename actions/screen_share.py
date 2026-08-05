@@ -14,10 +14,14 @@ from __future__ import annotations
 
 import asyncio
 import io
+import json
+import logging
 import platform
 import threading
 import time
 from typing import Any, Optional, Set
+
+logger = logging.getLogger("JARVIS.Actions.ScreenShare")
 
 _OS = platform.system()
 
@@ -195,7 +199,7 @@ class ScreenShareServer:
             self._handler, self.host, self.port,
             max_size=None, ping_interval=20, ping_timeout=10
         )
-        print(f"[ScreenShare] Server listening on ws://{self.host}:{self.port}")
+        logger.info("Server listening on ws://%s:%s", self.host, self.port)
 
     async def stop(self) -> None:
         if self._srv:
@@ -248,7 +252,7 @@ def _capture_loop(
             try:
                 _, w, h = _capture_frame(monitor, quality)
             except Exception as e:
-                print(f"[ScreenShare] Capture init failed: {e}")
+                logger.warning("Capture init failed: %s", e)
                 return
 
             server.meta = {"type": "meta", "width": w, "height": h, "fps": fps}
@@ -284,7 +288,7 @@ def _capture_loop(
                     _status["viewer_count"] = server.viewer_count
 
                 except Exception as e:
-                    print(f"[ScreenShare] Frame error: {e}")
+                    logger.warning("Frame error: %s", e)
                     await _aio.sleep(frame_interval)
                     continue
 
@@ -306,7 +310,7 @@ def _capture_loop(
     try:
         loop.run_until_complete(_run())
     except Exception as e:
-        print(f"[ScreenShare] Server error: {e}")
+        logger.error("Server error: %s", e)
     finally:
         loop.close()
 

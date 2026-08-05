@@ -7,11 +7,16 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import traceback
 import sys
 import importlib
+import re
+import threading
 from pathlib import Path
 from typing import Callable, Any
+
+logger = logging.getLogger("JARVIS.ToolRegistry")
 
 # Ensure project root in path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -20,22 +25,43 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 TOOL_SCHEMAS: list[dict] = []
 TOOL_REGISTRY: dict[str, Callable[[dict], Any]] = {}
 
+# Thread-safe lock protecting TOOL_SCHEMAS and TOOL_REGISTRY mutations
+_REGISTRY_LOCK = threading.RLock()
+
 # Cache references
 _orchestrator_ref: Any = None
 
 
+_TOOL_CALL_CODEBLOCK_RE = re.compile(r'```tool_call\s*\n\s*(\{.*?\})\s*\n\s*```', re.DOTALL)
+_TOOL_CALL_JSON_RE = re.compile(r'(\{\s*"tool"\s*:\s*"[^"]+"\s*,\s*"args"\s*:\s*\{.*?\}\s*\})', re.DOTALL)
+_CODE_JSON_RE = re.compile(r'(\{\s*"code"\s*:\s*"[^"]+"\s*,\s*"lang"\s*:\s*"[^"]+"\s*\})', re.DOTALL)
+_OSS_MESSAGE_RE = re.compile(r'<\|message\|>\s*(\{.*?\})', re.DOTALL)
+_OSS_TOOL_HINT_RE = re.compile(r'(?:to|call)=?([\w\.\-]+)')
+
+
 def register_tool(name: str, description: str, parameters: dict | None = None) -> Callable:
-    """Decorator to register a tool function in the JARVIS registry."""
+    """Decorator to register a tool function in the JARVIS registry (thread-safe).
+
+    Logs a WARNING if an existing tool is overwritten, so silent clobbering is
+    visible during debugging.
+    """
     def decorator(func: Callable[[dict], Any]) -> Callable[[dict], Any]:
         schema = {
             "name": name,
             "description": description,
             "parameters": parameters or {}
         }
-        # Avoid duplicate schemas
-        if not any(s["name"] == name for s in TOOL_SCHEMAS):
-            TOOL_SCHEMAS.append(schema)
-        TOOL_REGISTRY[name] = func
+        with _REGISTRY_LOCK:
+            # Warn if overwriting an existing tool registration
+            if name in TOOL_REGISTRY and TOOL_REGISTRY[name] is not func:
+                logger.warning(
+                    f"[ToolRegistry] Tool '{name}' is being re-registered by "
+                    f"{func.__module__}.{func.__qualname__} (was {TOOL_REGISTRY[name].__qualname__})"
+                )
+            # Avoid duplicate schemas
+            if not any(s["name"] == name for s in TOOL_SCHEMAS):
+                TOOL_SCHEMAS.append(schema)
+            TOOL_REGISTRY[name] = func
 
         # Also register in the unified ToolRuntimeEngine
         try:
@@ -46,8 +72,8 @@ def register_tool(name: str, description: str, parameters: dict | None = None) -
                 handler=func,
                 parameters=parameters
             )
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("[ToolRegistry] ToolRuntimeEngine registration fallback: %s", exc)
 
         return func
     return decorator
@@ -82,9 +108,27 @@ def _run_async(coro):
 
 
 def get_tool_prompt_block() -> str:
-    """Generate the system prompt block defining all available tools."""
+    """Generate the system prompt block defining all available tools and skill templates."""
     _import_plugins()
     schema_text = json.dumps(TOOL_SCHEMAS, indent=2)
+
+    # Load available skills catalog dynamically to avoid circular import cycles
+    skills_block = ""
+    try:
+        from skills import load_skills
+        skills = [s for s in load_skills() if getattr(s, "user_invocable", True)]
+        if skills:
+            skills_lines = [
+                "\n### Available Skill Templates",
+                "You can execute any of these templates using the `run_skill` tool:",
+            ]
+            for s in skills:
+                triggers_str = ", ".join(s.triggers)
+                skills_lines.append(f"- **{s.name}** (triggers: {triggers_str}): {s.description}")
+            skills_block = "\n".join(skills_lines) + "\n"
+    except Exception:
+        pass
+
     return f"""
 ## Available Tools
 
@@ -100,8 +144,8 @@ You will then receive the tool result and can continue.
 If you do NOT need a tool, just respond normally with text.
 NEVER fabricate tool results. Always call the tool if you need real data.
 
-**AUTO-ALLOW MODE**: All tools execute immediately without confirmation.
-
+**POLICY MODE**: Tool execution is enforced by the active permissions policy.
+{skills_block}
 ### Tool Definitions
 {schema_text}
 """
@@ -169,7 +213,7 @@ To use a tool, output EXACTLY this JSON block on its own line:
 After you output a tool_call block, execution pauses while the tool runs.
 You will then receive the tool result and can continue.
 
-**AUTO-ALLOW MODE**: Selected tools execute immediately without confirmation.
+**POLICY MODE**: Selected tools are still enforced by the active permissions policy.
 
 ### Tool Definitions
 {schema_text}
@@ -273,8 +317,8 @@ try:
             "required": ["action"],
         }
     )(reminder_tool_action)
-except Exception as e:
-    print(f"[Tools] Failed to register reminder tool: {e}")
+except Exception as exc:
+    logger.debug(f"[Tools] Failed to register reminder tool: {exc}")
 
 try:
     from actions.fast_file_search import fast_file_search_action
@@ -292,8 +336,8 @@ try:
             "required": ["action", "query"],
         }
     )(fast_file_search_action)
-except Exception as e:
-    print(f"[Tools] Failed to register fast_file_search tool: {e}")
+except Exception as exc:
+    logger.debug(f"[Tools] Failed to register fast_file_search tool: {exc}")
 
 try:
     from actions.longform_builder import longform_builder_action
@@ -311,8 +355,8 @@ try:
             "required": ["title", "description"],
         }
     )(longform_builder_action)
-except Exception as e:
-    print(f"[Tools] Failed to register longform_builder tool: {e}")
+except Exception as exc:
+    logger.debug(f"[Tools] Failed to register longform_builder tool: {exc}")
 
 try:
     from actions.system_optimizer import system_optimizer_action
@@ -326,8 +370,8 @@ try:
             }
         }
     )(system_optimizer_action)
-except Exception as e:
-    print(f"[Tools] Failed to register system_optimizer tool: {e}")
+except Exception as exc:
+    logger.debug(f"[Tools] Failed to register system_optimizer tool: {exc}")
 
 try:
     from tools.window_manager import window_manager_action
@@ -343,8 +387,8 @@ try:
             "required": ["action"]
         }
     )(window_manager_action)
-except Exception as e:
-    print(f"[Tools] Failed to register window_manager tool: {e}")
+except Exception as exc:
+    logger.debug(f"[Tools] Failed to register window_manager tool: {exc}")
 
 try:
     from tools.web_extractor import web_extractor_action
@@ -394,11 +438,10 @@ except Exception:
 
 def parse_tool_call(text: str) -> tuple[str | None, dict | None]:
     """Parse a tool_call JSON block from LLM output."""
-    import re
-    
+
     # 0. XML/Token-based agent protocol parser (e.g. for gpt-oss-120b-medium)
     if "<|channel|>" in text or "<|message|>" in text:
-        msg_match = re.search(r'<\|message\|>\s*(\{.*?\})', text, re.DOTALL)
+        msg_match = _OSS_MESSAGE_RE.search(text)
         if msg_match:
             try:
                 cleaned_json = re.sub(r'//.*', '', msg_match.group(1))
@@ -417,7 +460,7 @@ def parse_tool_call(text: str) -> tuple[str | None, dict | None]:
                 
                 if not tool_name:
                     preceding = text[:msg_match.start()]
-                    tool_match = re.search(r'(?:to|call)=?([\w\.\-]+)', preceding)
+                    tool_match = _OSS_TOOL_HINT_RE.search(preceding)
                     if tool_match:
                         matched_name = tool_match.group(1).split('.')[-1]
                         if matched_name != "tool_call":
@@ -436,8 +479,7 @@ def parse_tool_call(text: str) -> tuple[str | None, dict | None]:
                 pass
 
     # 1. Look for ```tool_call ... ``` format
-    pattern = r'```tool_call\s*\n\s*(\{.*?\})\s*\n\s*```'
-    match = re.search(pattern, text, re.DOTALL)
+    match = _TOOL_CALL_CODEBLOCK_RE.search(text)
     if match:
         try:
             # Clean comments or trailing commas if any
@@ -452,8 +494,7 @@ def parse_tool_call(text: str) -> tuple[str | None, dict | None]:
             pass
 
     # 2. Relaxed match for any {"tool": "...", "args": ...} block
-    pattern2 = r'(\{\s*"tool"\s*:\s*"[^"]+"\s*,\s*"args"\s*:\s*\{.*?\}\s*\})'
-    match2 = re.search(pattern2, text, re.DOTALL)
+    match2 = _TOOL_CALL_JSON_RE.search(text)
     if match2:
         try:
             data = json.loads(match2.group(1))
@@ -462,8 +503,7 @@ def parse_tool_call(text: str) -> tuple[str | None, dict | None]:
             pass
 
     # 3. Relaxed match for direct code block
-    pattern3 = r'(\{\s*"code"\s*:\s*"[^"]+"\s*,\s*"lang"\s*:\s*"[^"]+"\s*\})'
-    match3 = re.search(pattern3, text, re.DOTALL)
+    match3 = _CODE_JSON_RE.search(text)
     if match3:
         try:
             data = json.loads(match3.group(1))
@@ -475,12 +515,15 @@ def parse_tool_call(text: str) -> tuple[str | None, dict | None]:
 
 
 # Dynamic import list to populate TOOL_REGISTRY
-_plugins_loaded = False
+_plugins_stage = 0  # 0=none, 1=core, 2=full
+_plugins_lock = threading.Lock()
 
-def _import_plugins():
+
+def _import_plugins(*, full: bool = True):
     """Import tool plugin files to register their decorators."""
-    global _plugins_loaded
-    if _plugins_loaded:
+    global _plugins_stage
+    target_stage = 2 if full else 1
+    if _plugins_stage >= target_stage:
         return
 
     # Core essential tools needed immediately
@@ -536,19 +579,32 @@ def _import_plugins():
         "tools.web_app_tools",
     ]
 
-    for p in core_plugins + extended_plugins:
-        try:
-            importlib.import_module(p)
-        except Exception as e:
-            # Suppress non-critical optional tool import failures
-            pass
+    with _plugins_lock:
+        if _plugins_stage >= target_stage:
+            return
 
-    # Load custom plugins
-    try:
-        from plugins import load_custom_plugins
-        load_custom_plugins()
-    except Exception:
-        pass
+        if _plugins_stage < 1:
+            for p in core_plugins:
+                try:
+                    importlib.import_module(p)
+                except Exception as exc:
+                    logger.debug("[ToolRegistry] Core plugin '%s' import notice: %s", p, exc)
+            _plugins_stage = 1
 
-    _plugins_loaded = True
+        if full and _plugins_stage < 2:
+            for p in extended_plugins:
+                try:
+                    importlib.import_module(p)
+                except Exception as exc:
+                    # Suppress non-critical optional tool import failures
+                    logger.debug("[ToolRegistry] Extended plugin '%s' import notice: %s", p, exc)
+
+            # Load custom plugins
+            try:
+                from plugins import load_custom_plugins
+                load_custom_plugins()
+            except Exception as exc:
+                logger.debug("[ToolRegistry] Custom plugins load notice: %s", exc)
+
+            _plugins_stage = 2
 

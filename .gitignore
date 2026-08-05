@@ -64,4 +64,5 @@ workspace/snapshots/
 .jarvis/
 BR_WORKSPACE/
 *.txt
+!requirements_mk37.txt
 ~$*

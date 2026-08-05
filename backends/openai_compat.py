@@ -5,11 +5,14 @@ Supports custom base_url for local proxies (e.g., localhost:8045).
 """
 from __future__ import annotations
 
+import logging
 import os
 import traceback
 from typing import Generator
 
 from backends.base import BaseBackend
+
+logger = logging.getLogger("JARVIS.OpenAI")
 
 
 class OpenAIBackend(BaseBackend):
@@ -37,11 +40,11 @@ class OpenAIBackend(BaseBackend):
                     client_kwargs["base_url"] = _base_url
                 self.client = OpenAI(**client_kwargs)
                 suffix = f" via {_base_url}" if _base_url else ""
-                print(f"[OpenAI] [OK] Auto model routing active (default: {self.model}){suffix}")
+                logger.info("Auto model routing active (default: %s)%s", self.model, suffix)
             except ImportError:
-                print("[OpenAI] Warning: openai package is not installed.")
+                logger.warning("openai package is not installed.")
         else:
-            print("[OpenAI] No API key configured — backend disabled.")
+            logger.info("No API key configured — backend disabled.")
 
     @property
     def name(self) -> str:
@@ -102,13 +105,13 @@ class OpenAIBackend(BaseBackend):
             response = self.client.chat.completions.create(**kwargs)
             return response.choices[0].message.content or ""
         except Exception as e:
-            print(f"[OpenAI] Primary request failed ({e}) — attempting Gemini fallback...")
+            logger.warning("Primary request failed (%s) — attempting Gemini fallback...", e)
             try:
                 from backends.gemini import GeminiBackend
                 fallback_backend = GeminiBackend()
                 return fallback_backend.complete(messages=messages, system=system, tools=tools)
             except Exception as ex_fb:
-                print(f"[OpenAI Fallback Error]: {ex_fb}")
+                logger.error("OpenAI Fallback Error: %s", ex_fb)
                 raise e
 
     def stream(self, messages: list, system: str = "") -> Generator[str, None, None]:
@@ -175,7 +178,7 @@ class OpenAIBackend(BaseBackend):
                 except Exception:
                     return ""
         except Exception as e:
-            print(f"[OpenAIBackend] Transcription error: {e}")
+            logger.warning("OpenAIBackend Transcription error: %s", e)
             return ""
 
     def ping(self, timeout: float = 3.0) -> bool:

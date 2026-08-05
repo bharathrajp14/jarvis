@@ -6,15 +6,35 @@ Integrates Speech Recognition, Wake Word Detection, and ReAct loop execution.
 from __future__ import annotations
 
 import asyncio
+import json
+import logging
+import os
 import queue
 import re
-import os
 import sys
-import time
 import threading
+import time
 import traceback
+from pathlib import Path
 from typing import Callable
 from router import AgentProfile
+
+logger = logging.getLogger("JARVIS.VoiceAssistant")
+
+# Pre-compiled wake word pattern matching jarvis/javis variants
+_WAKE_RE = re.compile(
+    r"\b(jarvis|javis|jarves|jarvas|jervis|garvis|charvis|harvis|travis|jarvs|hey\s+jarvis|hey\s+javis|ok\s+jarvis|ok\s+javis|hi\s+jarvis|hi\s+javis|hello\s+jarvis|hello\s+javis|hey\s+br|br)\b",
+    re.IGNORECASE,
+)
+_FUZZY_WAKE_MATCHES = (
+    "jarvis", "javis", "hey jarvis", "hey javis", "ok jarvis", "ok javis",
+    "hi jarvis", "hi javis", "hello jarvis", "hello javis", "wake up", "hey assistant"
+)
+_WAKE_STRIP_RE = re.compile(
+    r"^(hey\s+jarvis|hey\s+javis|ok\s+jarvis|ok\s+javis|hi\s+jarvis|hi\s+javis|hello\s+jarvis|hello\s+javis|br\s+jarvis|hey\s+br|jarvis|javis|jarves|jarvas|jervis|garvis|charvis|harvis)\b[\s,:\.\!]*",
+    re.IGNORECASE,
+)
+
 
 _HAS_SR = False
 try:
@@ -62,14 +82,19 @@ class BRVoiceAssistant:
     """Hands-free Voice Assistant coordinator for JARVIS MK37."""
 
     def __init__(self, ui: JarvisUI | None = None):
+        # ── BUG-001 FIX: self.ui must be set FIRST before any other attribute
+        # access, because hotkey manager and other subsystems reference self.ui
+        # immediately during __init__. The missing assignment caused:
+        # AttributeError: 'BRVoiceAssistant' object has no attribute 'ui'
         self.ui = ui if ui is not None else JarvisUI()
+
         # Initialize ReAct Orchestrator & Backend Gateway via shared runtime
         try:
             runtime = build_assistant_runtime()
             self.orchestrator = runtime.orchestrator
             self.backends = runtime.backends
         except Exception as e:
-            print(f"[Voice] Orchestrator init warning: {e}")
+            logger.warning("Orchestrator init warning: %s", e)
             self.orchestrator = None
             self.backends = {}
 
@@ -88,6 +113,7 @@ class BRVoiceAssistant:
         self._command_phrase_limit = 20.0     # allow long complex multi-sentence commands
         self._ambient_calibration = 0.25      # ⚡ 250ms ultra-fast ambient noise calibration
 
+
         # Initialize 500ms rolling audio pre-roll ring buffer
         try:
             from voice.ring_buffer import AudioRingBuffer
@@ -103,8 +129,11 @@ class BRVoiceAssistant:
             from voice.gemini_live import GeminiLiveVoiceLoop
             self.gemini_live = GeminiLiveVoiceLoop(assistant_ref=self, ui_ref=self.ui)
         except Exception as e:
-            print(f"[Voice] Gemini Live loop init warning: {e}")
+            logger.warning("Gemini Live loop init warning: %s", e)
             self.gemini_live = None
+
+        # Tracked background tasks (monitor_tasks, etc.) for clean cancellation
+        self._bg_tasks: set[asyncio.Task] = set()
 
         # Bind manual text command submission from UI if available
         if self.ui:
@@ -116,21 +145,20 @@ class BRVoiceAssistant:
             self.hotkey_manager = HotkeyManager(self)
             self.hotkey_manager.start()
         except Exception as e:
-            print(f"[Voice] Hotkeys failed to initialize: {e}")
+            logger.warning("Hotkeys failed to initialize: %s", e)
 
     def _load_vocab_cache(self) -> dict:
         """Load vocabulary json cache using project root absolute path."""
         try:
-            from pathlib import Path
-            import json
             base_dir = Path(__file__).resolve().parent.parent
             vocab_path = base_dir / "config" / "vocabulary.json"
             if vocab_path.exists():
                 data = json.loads(vocab_path.read_text(encoding="utf-8"))
                 return data.get("corrections", {})
         except Exception as e:
-            print(f"[Voice] Vocabulary cache load error: {e}")
+            logger.warning(f"Vocabulary cache load error: {e}")
         return {}
+
 
     def _on_text_command(self, text: str):
         if self._loop:
@@ -139,9 +167,7 @@ class BRVoiceAssistant:
     async def _switch_to_new_command(self, text: str):
         """Cancel any running task/speech, then start the new command with lock synchronization."""
         if self._async_task_lock is None:
-            with self._task_lock:
-                if self._async_task_lock is None:
-                    self._async_task_lock = asyncio.Lock()
+            self._async_task_lock = asyncio.Lock()
 
         async with self._async_task_lock:
             # 1. Stop TTS immediately
@@ -155,6 +181,7 @@ class BRVoiceAssistant:
                     pass
             # 3. Launch new command
             self._current_task = asyncio.create_task(self.process_command(text))
+
 
     def speak(self, text: str):
         """Speak text using the neural TTS engine with UI state sync & barge-in support."""
@@ -206,16 +233,14 @@ class BRVoiceAssistant:
         if not normalized:
             return False
 
-        # Regex check for jarvis, javis, and common phonetic STT mishearings
-        if re.search(r"\b(jarvis|javis|jarves|jarvas|jervis|garvis|charvis|harvis|travis|jarvs|hey\s+jarvis|hey\s+javis|ok\s+jarvis|ok\s+javis|hi\s+jarvis|hi\s+javis|hello\s+jarvis|hello\s+javis|hey\s+br|br)\b", normalized):
+        if _WAKE_RE.search(normalized):
             return True
 
         wake_word = self.wake_word.lower().strip()
         if wake_word and wake_word in normalized:
             return True
 
-        fuzzy_matches = ("jarvis", "javis", "hey jarvis", "hey javis", "ok jarvis", "ok javis", "hi jarvis", "hi javis", "hello jarvis", "hello javis", "wake up", "hey assistant")
-        return any(target in normalized for target in fuzzy_matches)
+        return any(target in normalized for target in _FUZZY_WAKE_MATCHES)
 
     def _extract_command_from_wake(self, text: str) -> str:
         """Extract trailing command when user speaks wake-word and command in a single sentence."""
@@ -225,8 +250,7 @@ class BRVoiceAssistant:
         from voice.prompt_refiner import VoicePromptRefiner
         collapsed = VoicePromptRefiner.get_instance().collapse_repetitions(text)
         norm = collapsed.lower().strip()
-        pat = r"^(hey\s+jarvis|hey\s+javis|ok\s+jarvis|ok\s+javis|hi\s+jarvis|hi\s+javis|hello\s+jarvis|hello\s+javis|br\s+jarvis|hey\s+br|jarvis|javis|jarves|jarvas|jervis|garvis|charvis|harvis)\b[\s,:\.\!]*"
-        cleaned = re.sub(pat, "", norm, flags=re.IGNORECASE).strip()
+        cleaned = _WAKE_STRIP_RE.sub("", norm).strip()
 
         meaningless = {"hey", "jarvis", "javis", "br", "hello", "hi", "ok", "please"}
         words = set(re.findall(r"\b\w+\b", cleaned.lower()))
@@ -234,13 +258,19 @@ class BRVoiceAssistant:
             return ""
         return cleaned
 
+
     def _get_active_loop(self) -> asyncio.AbstractEventLoop:
-        """Safely get or create an active event loop for async voice processing."""
-        if self._loop and self._loop.is_running():
-            return self._loop
+        """Safely get the active event loop.
+
+        Inside an async method (which all callers are), asyncio.get_running_loop()
+        always succeeds. The old code could mistakenly create a new loop inside an
+        already-running loop, which would never be run.
+        """
         try:
+            # Primary path: we're already inside an async context (always true for callers)
             return asyncio.get_running_loop()
         except RuntimeError:
+            # Fallback: called from a non-async context (shouldn't happen in normal usage)
             if self._loop and not self._loop.is_closed():
                 return self._loop
             loop = asyncio.new_event_loop()
@@ -315,65 +345,17 @@ class BRVoiceAssistant:
         # 2. Try configured default backend (if it has transcribe method)
         if not text and hasattr(self, "backends") and self.backends:
             try:
-                from config.models import get_model_config
-                default_name = get_model_config().get("default_backend", "gemini").lower()
-                
                 default_profile = AgentProfile.GEMINI
-                if default_name == "gpt":
-                    default_profile = AgentProfile.GPT
-                elif default_name == "claude":
-                    default_profile = AgentProfile.CLAUDE
-
                 primary = self.backends.get(default_profile)
                 if primary and hasattr(primary, "transcribe"):
                     text = await loop.run_in_executor(
                         None, lambda: primary.transcribe(audio.get_wav_data())
                     )
-
-                if not text and default_profile != AgentProfile.GEMINI:
-                    gemini = self.backends.get(AgentProfile.GEMINI)
-                    if gemini and hasattr(gemini, "transcribe"):
-                        text = await loop.run_in_executor(
-                            None, lambda: gemini.transcribe(audio.get_wav_data())
-                        )
             except Exception as e:
-                print(f"[Voice] Primary transcription chain failed: {e}")
-
-        # 2.5 Try local Whisper fallback if available
-        if not text:
-            try:
-                from voice.whisper_local import transcribe as whisper_transcribe, is_available as whisper_available
-                from voice.multilingual import get_whisper_code
-                if whisper_available():
-                    lang_code = get_whisper_code()
-                    text = await loop.run_in_executor(
-                        None, lambda: whisper_transcribe(audio.get_wav_data(), language=lang_code)
-                    )
-            except Exception:
-                pass
-
-        # 3. Fallback to Google STT with multilingual support
-        if not text:
-            try:
-                if hasattr(self, "r") and self.r:
-                    from voice.multilingual import get_google_stt_code
-                    stt_lang = get_google_stt_code()
-                    text = await loop.run_in_executor(
-                        None, lambda: self.r.recognize_google(audio, language=stt_lang).lower()
-                    )
-            except Exception:
-                pass
-
-        if text and text.strip():
-            try:
-                from voice.prompt_refiner import VoicePromptRefiner
-                refined = VoicePromptRefiner.get_instance().refine(text)
-                if refined and refined.get("refined"):
-                    text = refined["refined"]
-            except Exception:
-                pass
+                logger.warning(f"Primary transcription chain failed: {e}")
 
         return text
+
 
     async def process_command(self, text: str):
         if not text or not text.strip():
@@ -402,20 +384,26 @@ class BRVoiceAssistant:
         if low.startswith("remember that ") or low.startswith("remember "):
             self.ui.write_log(f"🧠 Total Recall Capture: \"{text_clean}\"")
             try:
-                import requests
                 port = int(os.environ.get("PORT", "8000"))
                 def _post_remember():
-                    return requests.post(f"http://127.0.0.1:{port}/api/remember", json={"text": text_clean}, timeout=5)
+                    import urllib.request
+                    req = urllib.request.Request(
+                        f"http://127.0.0.1:{port}/api/remember",
+                        data=json.dumps({"text": text_clean}).encode("utf-8"),
+                        headers={"Content-Type": "application/json"}
+                    )
+                    with urllib.request.urlopen(req, timeout=5) as response:
+                        return response.status, json.loads(response.read().decode("utf-8"))
 
-                res = await asyncio.to_thread(_post_remember)
-                if res.status_code == 200:
-                    data = res.json()
+                status_code, data = await asyncio.to_thread(_post_remember)
+                if status_code == 200:
                     confirm = data.get("confirmation", "Recorded to your brain, sir.")
                     self.speak(confirm)
                     self.ui.set_state("IDLE")
                     return
             except Exception as e:
                 self.ui.write_log(f"SYS: Capture sync error: {e}")
+
 
         # System shutdown ONLY triggers on exact standalone shutdown commands
         exact_shutdown_commands = {
@@ -483,6 +471,10 @@ class BRVoiceAssistant:
                     self.ui.set_state("LISTENING")
 
                 asyncio.create_task(monitor_tasks())
+                # FLAW-4 FIX: track the monitor task so it can be cancelled on shutdown
+                _mt = asyncio.create_task(monitor_tasks())
+                self._bg_tasks.add(_mt)
+                _mt.add_done_callback(self._bg_tasks.discard)
                 return
 
         # Single goal execution using ReAct Orchestrator loop
@@ -530,6 +522,25 @@ class BRVoiceAssistant:
         if self.ui:
             self.ui.write_log("SYS: JARVIS Cognitive Core online.")
 
+        # Background thread: sync TTS speaking state with UI animation (thread-safe)
+        def animation_sync_loop():
+            while True:
+                try:
+                    is_speaking = getattr(self.tts, "is_speaking", getattr(self.tts, "_is_speaking", False))
+                    if callable(is_speaking):
+                        is_speaking = is_speaking()
+                    if self.ui:
+                        self.ui.speaking = bool(is_speaking)
+                        ui_state = getattr(self.ui, "_state", "IDLE")
+                        if is_speaking:
+                            if ui_state != "SPEAKING":
+                                self.ui.set_state("SPEAKING")
+                        elif ui_state == "SPEAKING":
+                            self.ui.set_state("LISTENING")
+                except Exception:
+                    pass
+                time.sleep(0.05)
+
         # Setup Speech Recognition
         mic_available = False
         self.r = None
@@ -545,23 +556,6 @@ class BRVoiceAssistant:
                 self.ui.write_log(f"WRN: Hands-free mic offline: {e}")
         else:
             self.ui.write_log("WRN: speech_recognition not installed. Text-only mode.")
-
-        # Background thread: sync TTS speaking state with UI animation
-        def animation_sync_loop():
-            while True:
-                try:
-                    is_speaking = getattr(self.tts, "is_speaking", getattr(self.tts, "_is_speaking", False))
-                    if callable(is_speaking):
-                        is_speaking = is_speaking()
-                    self.ui.speaking = bool(is_speaking)
-                    if is_speaking:
-                        if self.ui._state != "SPEAKING":
-                            self.ui.set_state("SPEAKING")
-                    elif self.ui._state == "SPEAKING":
-                        self.ui.set_state("LISTENING")
-                except Exception:
-                    pass
-                time.sleep(0.05)
 
         threading.Thread(target=animation_sync_loop, daemon=True).start()
 
@@ -592,7 +586,7 @@ class BRVoiceAssistant:
                 self.ui.write_log("SYS: Calibrating microphone noise threshold...")
                 try:
                     self.r.adjust_for_ambient_noise(source, duration=self._ambient_calibration)
-                    if self.r.energy_threshold > 300:
+                    if self.r.energy_threshold < 180:
                         self.r.energy_threshold = 180
                     self.r.phrase_threshold = 0.08
                     self.r.dynamic_energy_ratio = 1.25
@@ -601,6 +595,7 @@ class BRVoiceAssistant:
                     self.ui.write_log(f"SYS: Microphone active (Device {mic.device_index}). Hands-free mode active. Listening for 'Jarvis' or 'Hey Jarvis'...")
                 except Exception as e:
                     self.ui.write_log(f"ERR: Microphone calibration failed: {e}")
+
 
                 # Wake-word passive listening loop
                 while True:

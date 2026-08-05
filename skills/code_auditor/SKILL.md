@@ -1,6 +1,6 @@
 ---
 name: code_auditor
-description: Automated codebase security vulnerability and code quality audit skill.
+description: Automated codebase quality, structure, and coding standards verification skill.
 ---
 
 # 🛡️ Skill: Codebase Security & Quality Auditor

@@ -144,9 +144,16 @@ class WhatsAppAutomation:
                         except Exception:
                             webbrowser.open(whatsapp_url)
                     return f"✅ Opened WhatsApp to send message to {display_name} ({clean_num})."
-                except Exception as e:
+                    logger.info("Opening WhatsApp Web to message %s (%s).", display_name, clean_num)
                     webbrowser.open(whatsapp_url)
-                    return f"✅ Opened WhatsApp Web to send message to {display_name} ({clean_num})."
+                    return (
+                        f"✅ Opened WhatsApp Web to message {display_name} ({clean_num}).\n"
+                        f"Message text pre-filled: \"{message_text}\"\n"
+                        f"Press ENTER in WhatsApp Web to send."
+                    )
+                except Exception as e:
+                    logger.error("Failed to open WhatsApp Web URL: %s", e)
+                    return f"❌ Failed to open WhatsApp Web: {e}"
 
         # 2. Desktop GUI Fallback to search contact name in WhatsApp app
         try:
@@ -160,30 +167,27 @@ class WhatsAppAutomation:
         except Exception as e:
             return f"Failed to send WhatsApp message to {recipient}: {e}"
 
-    def schedule_message(self, recipient: str, message_text: str, send_at: str) -> str:
-        """
-        Schedule a WhatsApp message for a future timestamp (e.g. '2026-08-01 09:00:00' or '14:30').
-        """
-        target_ts = self._parse_scheduled_time(send_at)
-        if not target_ts:
-            return f"Error: Could not parse scheduled time '{send_at}'. Use format 'YYYY-MM-DD HH:MM:SS' or 'HH:MM'."
+    def schedule_message(self, recipient: str, message_text: str, send_time_str: str) -> str:
+        """Schedule a WhatsApp message for a future time."""
+        ts = self._parse_scheduled_time(send_time_str)
+        if not ts:
+            return "❌ Invalid date format. Use 'YYYY-MM-DD HH:MM' or 'HH:MM:SS'."
 
-        entry = {
-            "id": int(time.time() * 1000),
+        item = {
+            "id": f"wa_sched_{int(time.time())}",
             "recipient": recipient,
-            "message_text": message_text,
-            "send_at_str": send_at,
-            "target_ts": target_ts,
-            "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            "message": message_text,
+            "send_time": send_time_str,
+            "target_ts": ts,
+            "created_at": datetime.now().isoformat(),
+            "status": "pending"
         }
-        self._scheduled_queue.append(entry)
+        self._scheduled_queue.append(item)
         self._save_scheduled()
-        return f"⏰ Scheduled WhatsApp message to '{recipient}' for {send_at}."
+        return f"⏰ Scheduled WhatsApp message to '{recipient}' for {send_time_str}."
 
     def _parse_scheduled_time(self, time_str: str) -> Optional[float]:
         now = datetime.now()
-        ts_val = None
-
         # Try full datetime format
         for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M", "%Y/%m/%d %H:%M:%S", "%Y/%m/%d %H:%M"):
             try:

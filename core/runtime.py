@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import threading
 from typing import Optional
 
 from core.config import JarvisConfig, get_config
@@ -27,29 +28,59 @@ class CoreRuntime:
         self.supervisor: ProcessSupervisor = ProcessSupervisor()
         self.health: HealthMonitor = HealthMonitor()
 
-        # Register self in container
+        # Register self and core components in the DI container
         self.container.register_instance(CoreRuntime, self)
         self.container.register_instance(JarvisConfig, self.config)
         self.container.register_instance(LifecycleManager, self.lifecycle)
         self.container.register_instance(ProcessSupervisor, self.supervisor)
         self.container.register_instance(HealthMonitor, self.health)
 
-        self.logger.info(f"🧠 CoreRuntime Initialized for '{self.config.assistant.name}' (Env: {self.config.system.environment})")
+        self.logger.info(
+            f"🧠 CoreRuntime Initialized for '{self.config.assistant.name}' "
+            f"(Env: {self.config.system.environment})"
+        )
 
     async def boot(self) -> None:
-        """Boot the Core Runtime and all registered startup tasks."""
+        """Boot the Core Runtime and all registered startup tasks.
+
+        Must be called from within a running asyncio event loop.
+        """
         await self.lifecycle.startup()
 
     async def shutdown(self) -> None:
-        """Shutdown the Core Runtime cleanly."""
+        """Shutdown the Core Runtime cleanly.
+
+        Must be called from within a running asyncio event loop.
+        """
         await self.lifecycle.shutdown()
 
 
+# ── Thread-safe singleton ─────────────────────────────────────────────────────
 _global_runtime: Optional[CoreRuntime] = None
+_runtime_lock = threading.Lock()
 
 
 def get_runtime() -> CoreRuntime:
+    """Return the global CoreRuntime singleton (thread-safe).
+
+    Uses double-checked locking to prevent duplicate initialization when called
+    simultaneously from multiple threads (e.g., voice thread + server lifespan).
+    """
     global _global_runtime
-    if _global_runtime is None:
-        _global_runtime = CoreRuntime()
+
+    # Fast path — no lock needed for reading an immutable reference
+    if _global_runtime is not None:
+        return _global_runtime
+
+    with _runtime_lock:
+        # Double-checked locking: verify again inside the lock
+        if _global_runtime is None:
+            _global_runtime = CoreRuntime()
     return _global_runtime
+
+
+def reset_runtime() -> None:
+    """Reset the global runtime singleton (for testing only)."""
+    global _global_runtime
+    with _runtime_lock:
+        _global_runtime = None
