@@ -1,6 +1,6 @@
-# JARVIS MK37 — Developer Walkthrough
+# JARVIS MK38 — Developer Walkthrough
 
-A complete guide to setting up, configuring, and developing with the JARVIS MK37 AI assistant platform.
+A complete guide to setting up, configuring, and developing with the JARVIS MK38 AI assistant platform.
 
 ---
 

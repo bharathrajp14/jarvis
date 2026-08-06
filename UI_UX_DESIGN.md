@@ -1,4 +1,4 @@
-# B.R. JARVIS MK37 — UI & UX Master Design Specification (v6.0)
+# B.R. JARVIS MK38 — UI & UX Master Design Specification (v6.0)
 
 > **Next-Gen AI OS Control Center — Colorful Glossy Glassmorphic Interface & AI OS Architecture**  
 > *Architectural Blueprint for User Interface (UI), User Experience (UX), Design System Tokens, Four Operating States, and Implementation Roadmap.*

@@ -1,12 +1,12 @@
-# JARVIS MK37 — Full Project Summary & Architecture Guide
+# JARVIS MK38 — Full Project Summary & Architecture Guide
 
-Welcome to the comprehensive documentation for **JARVIS MK37**, a next-generation, local-first, multi-modal cognitive assistant. It combines direct desktop/OS integration, advanced multi-backend routing, multi-agent task execution, and offline capabilities.
+Welcome to the comprehensive documentation for **JARVIS MK38**, a next-generation, local-first, multi-modal cognitive assistant. It combines direct desktop/OS integration, advanced multi-backend routing, multi-agent task execution, and offline capabilities.
 
 ---
 
 ## 1. System Architecture Overview
 
-JARVIS MK37 operates using a decoupled, modular design divided into distinct operational layers:
+JARVIS MK38 operates using a decoupled, modular design divided into distinct operational layers:
 
 ```mermaid
 graph TD
