@@ -4,25 +4,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description"
-        content="BR JARVIS — AI Operating System: Master Product, UI, UX, Performance, and Voice Interface.">
+    <meta name="description" content="BR JARVIS — Next-Generation AI Operating System: Voice, Skills, RAG Memory & App Connectors.">
     <link rel="manifest" href="/web/manifest.json">
-    <!-- theme-color: supported by Chrome, Edge, Safari (PWA toolbar colour) -->
-    <meta name="theme-color" content="#0a0e1a">
-    <!-- color-scheme: the cross-browser standard supported by Firefox, Opera, Chrome -->
+    <meta name="theme-color" content="#03070d">
     <meta name="color-scheme" content="dark">
 
-    <title>BR JARVIS — AI Operating System</title>
-    <link rel="icon"
-        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧠</text></svg>">
-    <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧠</text></svg>">
-    <link rel="stylesheet" href="/web/style.css?v=38.3.0">
-
-    <link
-        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap"
-        rel="stylesheet">
+    <title>BR JARVIS — AI Operating System v38.5</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+    <link rel="stylesheet" href="/web/style.css?v=38.5.0">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 </head>
-
 
 <body>
     <!-- Visual background layers -->
@@ -37,35 +28,33 @@
                     <span class="status-pulse"></span>
                     <span class="brand-title">BR JARVIS</span>
                 </div>
-                <span class="os-badge">AIOS v38.3</span>
+                <span class="os-badge">AIOS v38.5</span>
                 <span class="guardian-badge" id="guardianBadge">GUARDIAN ACTIVE 🛡️</span>
                 <a href="/web/galaxy.html" target="_blank" class="galaxy-btn">🌌 3D GALAXY</a>
             </div>
 
             <div class="header-controls">
-                <!-- Role Switcher -->
+                <!-- Role Persona Switcher -->
                 <div class="ctrl-group">
                     <span class="ctrl-lbl">ROLE</span>
-                    <select id="roleSelector" class="os-select" aria-label="Switch Persona Role" title="Switch Persona Role">
+                    <select id="roleSelector" class="os-select" title="Switch Persona Role">
                         <option value="general">⚡ GENERAL</option>
                         <option value="coder">💻 CODER</option>
                         <option value="architect">🏗️ ARCHITECT</option>
                         <option value="recon">🔎 RECON</option>
                         <option value="exploit">🛡️ EXPLOIT</option>
                         <option value="analyst">📊 ANALYST</option>
-                        <option value="report">📝 REPORT</option>
-                        <option value="planner">📋 PLANNER</option>
                     </select>
                 </div>
 
                 <!-- Backend Model Switcher -->
                 <div class="ctrl-group">
                     <span class="ctrl-lbl">MODEL</span>
-                    <select id="backendSelector" class="os-select" title="Active Model Provider">
-                        <option value="gemini">Gemini 3.5 Flash Low</option>
-                        <option value="claude">Claude 4.6 Opus (Thinking)</option>
-                        <option value="gpt">GPT-OSS 120B (Medium)</option>
-                        <option value="ollama">Ollama Llama3 (Offline)</option>
+                    <select id="backendSelector" class="os-select" title="Active AI Model Backend">
+                        <option value="gemini">Gemini 3.5 Flash</option>
+                        <option value="claude">Claude 3.5 Sonnet</option>
+                        <option value="gpt">GPT-4o (Reasoning)</option>
+                        <option value="ollama">Ollama Llama 3.3</option>
                     </select>
                 </div>
 
@@ -92,7 +81,6 @@
 
         <!-- ── OS MAIN 3-PANEL LAYOUT ── -->
         <main class="os-body">
-
             <!-- LEFT PANEL: Navigation Sidebar -->
             <aside class="left-panel">
                 <div class="nav-section">
@@ -116,252 +104,234 @@
                         <button class="nav-item" data-view="skillsView">
                             <span class="icon">⚡</span> Skills Library
                         </button>
+                        <button class="nav-item" data-view="knowledgeView">
+                            <span class="icon">🧠</span> Knowledge RAG
+                        </button>
                     </nav>
                 </div>
             </aside>
 
-            <!-- CENTER PANEL: Workspaces -->
+            <!-- CENTER PANEL: Core View Containers -->
             <section class="center-panel">
-
-                <!-- WORKSPACE 1: DASHBOARD VIEW -->
-                <div class="view-container active" id="dashboardView">
+                <!-- 1. DASHBOARD VIEW -->
+                <div id="dashboardView" class="view-container active">
                     <div class="view-header">
-                        <h2>🏠 System Telemetry & Control Dashboard</h2>
+                        <div>
+                            <h1 class="view-title">System Dashboard</h1>
+                            <p class="view-subtitle">Real-time system telemetry, active connectors, and sub-agent task monitor.</p>
+                        </div>
                     </div>
 
-                    <div class="telemetry-grid">
+                    <!-- Gauges Grid -->
+                    <div class="gauges-grid">
                         <div class="gauge-card">
-                            <svg class="gauge-svg" viewBox="0 0 100 100">
-                                <circle class="gauge-bg" cx="50" cy="50" r="40"></circle>
-                                <circle class="gauge-fill" id="cpu-ring" cx="50" cy="50" r="40"></circle>
-                            </svg>
-                            <span class="gauge-val" id="cpu-value">12%</span>
-                            <span class="gauge-title">CPU UTILIZATION</span>
-                        </div>
-
-                        <div class="gauge-card">
-                            <svg class="gauge-svg" viewBox="0 0 100 100">
-                                <circle class="gauge-bg" cx="50" cy="50" r="40"></circle>
-                                <circle class="gauge-fill" id="ram-ring" cx="50" cy="50" r="40"></circle>
-                            </svg>
-                            <span class="gauge-val" id="ram-value">35%</span>
-                            <span class="gauge-title">MEMORY (RAM)</span>
-                        </div>
-
-                        <div class="gauge-card">
-                            <svg class="gauge-svg" viewBox="0 0 100 100">
-                                <circle class="gauge-bg" cx="50" cy="50" r="40"></circle>
-                                <circle class="gauge-fill" id="disk-ring" cx="50" cy="50" r="40"></circle>
-                            </svg>
-                            <span class="gauge-val" id="disk-value">42%</span>
-                            <span class="gauge-title">DISK STORAGE</span>
-                        </div>
-                    </div>
-
-                    <div class="rapid-shortcuts-card">
-                        <h3 class="rapid-shortcuts-title">⚡ Rapid Action Shortcuts</h3>
-                        <div class="flex-wrap-gap-12">
-                            <button class="btn btn-secondary" onclick="switchView('chatView')">💬 Open Dialogue Hub</button>
-                            <button class="btn btn-secondary" onclick="switchView('contactsView')">📱 Open Contacts Manager</button>
-                            <button class="btn btn-secondary" onclick="switchView('connectorsView')">🔗 Cloud Connectors</button>
-                            <button class="btn btn-secondary" onclick="switchView('skillsView')">⚡ Skills Library</button>
-                            <a href="/web/galaxy.html" target="_blank" class="btn btn-primary no-underline">🌌 Launch 3D Galaxy</a>
-                        </div>
-                    </div>
-
-                    <!-- Connector Hub Live Status Panel -->
-                    <div class="rapid-shortcuts-card" style="margin-top:16px;">
-                        <h3 class="rapid-shortcuts-title">🔌 Connector Hub Status</h3>
-                        <div id="connectorPanel" class="connector-panel">
-                            <span style="opacity:0.4;font-size:0.85rem;">Loading connectors...</span>
-                        </div>
-                    </div>
-                </div>
-
-
-                <!-- WORKSPACE 2: CHAT DIALOGUE HUB -->
-                <div class="view-container" id="chatView">
-                    <div class="chat-wrapper">
-                        <div class="chat-header">
-                            <span class="role-chip" id="activeRoleBadge">ROLE: GENERAL</span>
-                            <div class="view-actions">
-                                <button class="btn btn-secondary" onclick="triggerFileImport('knowledge')">📄 Attach Document</button>
+                            <div class="gauge-ring">
+                                <svg><circle class="ring-bg" cx="30" cy="30" r="24"/><circle class="ring-fill" id="cpu-ring" cx="30" cy="30" r="24"/></svg>
+                                <span class="gauge-value" id="cpu-value">0%</span>
+                            </div>
+                            <div class="gauge-info">
+                                <span class="gauge-label">CPU LOAD</span>
+                                <span class="gauge-title">Processor</span>
                             </div>
                         </div>
 
-                        <div class="chat-window" id="chatWindow">
-                            <div class="msg-bubble system">
-                                <div class="msg-author">JARVIS</div>
-                                <div class="msg-body">
-                                    Greetings, sir. All core subsystems and AI models are operational. How may I assist you today?
-                                </div>
+                        <div class="gauge-card">
+                            <div class="gauge-ring">
+                                <svg><circle class="ring-bg" cx="30" cy="30" r="24"/><circle class="ring-fill" id="ram-ring" cx="30" cy="30" r="24"/></svg>
+                                <span class="gauge-value" id="ram-value">0%</span>
+                            </div>
+                            <div class="gauge-info">
+                                <span class="gauge-label">RAM USAGE</span>
+                                <span class="gauge-title">Memory</span>
                             </div>
                         </div>
 
-                        <div class="chat-input-area">
-                            <span class="role-chip" id="inputRoleChip">ROLE: GENERAL</span>
-                            <input type="text" id="chatInput" placeholder="Ask JARVIS a question, request code, or type a command..." class="os-input">
-                            <button class="btn btn-primary" id="sendChatBtn">SEND 🚀</button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- WORKSPACE 3: HANDS-FREE VOICE HUD -->
-                <div class="view-container" id="voiceView">
-                    <div class="view-header">
-                        <h2>🎙️ Hands-Free Voice Assistant</h2>
-                        <div class="view-actions">
-                            <span class="status-badge connected" id="voiceStatusBadge">STATUS: IDLE</span>
-                            <button class="btn btn-primary" onclick="triggerVoiceDictation()">🎙️ Start / Stop Dictation</button>
+                        <div class="gauge-card">
+                            <div class="gauge-ring">
+                                <svg><circle class="ring-bg" cx="30" cy="30" r="24"/><circle class="ring-fill" id="disk-ring" cx="30" cy="30" r="24"/></svg>
+                                <span class="gauge-value" id="disk-value">0%</span>
+                            </div>
+                            <div class="gauge-info">
+                                <span class="gauge-label">STORAGE</span>
+                                <span class="gauge-title">SSD / Disk</span>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="voice-mode-card">
-                        <div class="voice-mode-icon">🗣️</div>
-                        <h3 class="voice-mode-title">Voice Listening Mode Active</h3>
-                        <p class="voice-mode-sub">Speak into your microphone or say "JARVIS" for hands-free command execution.</p>
-                        <div id="liveVoiceTranscript" class="voice-live-transcript">"Listening for speech..."</div>
-                        <canvas id="voiceCanvas" class="voice-canvas-hud"></canvas>
-                    </div>
+                    <!-- Connector Hub Top Bar -->
+                    <div id="connectorPanel" class="connector-panel"></div>
                 </div>
 
-
-                <!-- WORKSPACE 4: APP CONNECTORS HUB -->
-                <div class="view-container" id="connectorsView">
+                <!-- 2. CHAT / DIALOGUE WORKSPACE -->
+                <div id="chatView" class="view-container">
                     <div class="view-header">
-                        <h2>🔗 App Connectors & Cloud Integrations</h2>
-                    </div>
-                    <div class="connectors-grid" id="connectorsGrid"></div>
-                </div>
-
-                <!-- WORKSPACE 5: CONTACTS & PEOPLE HUB -->
-                <div class="view-container" id="contactsView">
-                    <div class="view-header">
-                        <h2>📱 Mobile Contacts & People Hub</h2>
-                        <div class="view-actions">
-                            <button class="btn btn-secondary" onclick="openContactImportModal()">📥 Import .VCF / .CSV</button>
-                            <button class="btn btn-primary" onclick="openAddContactModal()">+ Add Contact</button>
+                        <div>
+                            <h1 class="view-title">Dialogue Workspace</h1>
+                            <p class="view-subtitle">Interactive AI streaming prompt workspace with code synthesis & multi-backend intelligence.</p>
                         </div>
                     </div>
-                    <div class="mb-20">
-                        <input type="text" id="contactSearchInput" placeholder="Search contacts by name, alias ('Mom'), phone, or email..." class="os-input">
+
+                    <div id="chatWindow" class="chat-window">
+                        <div class="msg-bubble system">
+                            <span class="msg-author">JARVIS AI CORE</span>
+                            <div class="msg-body">JARVIS Cognitive Core online. How may I assist you today?</div>
+                        </div>
                     </div>
-                    <div class="contacts-grid" id="contactsGrid"></div>
+
+                    <div class="chat-input-area">
+                        <input type="text" id="chatInput" class="chat-input" placeholder="Ask JARVIS a question or type a command... (e.g. /browser, /gmail, /python)">
+                        <button id="sendChatBtn" class="send-btn">SEND ▸</button>
+                    </div>
                 </div>
 
-                <!-- WORKSPACE 6: SKILLS LIBRARY -->
-                <div class="view-container" id="skillsView">
+                <!-- 3. HANDS-FREE VOICE VIEW -->
+                <div id="voiceView" class="view-container">
                     <div class="view-header">
-                        <h2>⚡ Specialized Skills Library</h2>
+                        <div>
+                            <h1 class="view-title">Hands-Free Voice Assistant</h1>
+                            <p class="view-subtitle">Real-time Web Speech STT dictation & frequency wave visualizer.</p>
+                        </div>
                     </div>
-                    <div class="mb-20">
-                        <input type="text" id="skillSearchInput" placeholder="Search 362 skills by name, domain, or trigger..." class="os-input w-full">
+
+                    <div class="voice-stage">
+                        <span id="voiceStatusBadge" class="os-badge" style="font-size: 0.9rem; padding: 6px 14px;">STATUS: IDLE</span>
+                        <div class="voice-canvas-container">
+                            <canvas id="voiceCanvas" style="width: 100%; height: 140px;"></canvas>
+                        </div>
+                        <p id="liveVoiceTranscript" style="font-family: var(--font-code); color: var(--accent-cyan); font-size: 1rem; min-height: 24px;">"Listening for speech..."</p>
+                        <button class="btn btn-secondary" onclick="triggerVoiceDictation()">🎙️ Toggle Voice Listening</button>
                     </div>
-                    <div class="skills-grid" id="skillsGrid"></div>
                 </div>
 
+                <!-- 4. APP CONNECTORS VIEW -->
+                <div id="connectorsView" class="view-container">
+                    <div class="view-header">
+                        <div>
+                            <h1 class="view-title">App Connectors Hub</h1>
+                            <p class="view-subtitle">Integrate Google, Contacts, Notion, GitHub, Calendar & WhatsApp.</p>
+                        </div>
+                    </div>
+                    <div id="connectorsGrid" class="cards-grid"></div>
+                </div>
 
+                <!-- 5. CONTACTS & PEOPLE VIEW -->
+                <div id="contactsView" class="view-container">
+                    <div class="view-header">
+                        <div>
+                            <h1 class="view-title">Contacts Store</h1>
+                            <p class="view-subtitle">Manage phone numbers, emails, and nicknames for automated dispatch.</p>
+                        </div>
+                        <button class="btn btn-secondary" onclick="openAddContactModal()">+ Add Contact</button>
+                    </div>
+                    <input type="text" id="contactSearchInput" class="cmd-input" placeholder="🔍 Search contacts by name, phone, or alias...">
+                    <div id="contactsGrid" class="cards-grid"></div>
+                </div>
+
+                <!-- 6. SKILLS LIBRARY VIEW -->
+                <div id="skillsView" class="view-container">
+                    <div class="view-header">
+                        <div>
+                            <h1 class="view-title">Skills Library</h1>
+                            <p class="view-subtitle">Built-in automation capabilities and slash command scripts.</p>
+                        </div>
+                    </div>
+                    <input type="text" id="skillSearchInput" class="cmd-input" placeholder="🔍 Search skills (e.g. /browser, /python, /github)...">
+                    <div id="skillsGrid" class="cards-grid"></div>
+                </div>
+
+                <!-- 7. KNOWLEDGE RAG VIEW -->
+                <div id="knowledgeView" class="view-container">
+                    <div class="view-header">
+                        <div>
+                            <h1 class="view-title">Knowledge Base & RAG Memory</h1>
+                            <p class="view-subtitle">Ingest documents and inspect vector memory stores.</p>
+                        </div>
+                    </div>
+                    <div class="connector-card" style="text-align: center; padding: 40px; cursor: pointer;" onclick="triggerFileImport('knowledge')">
+                        <span style="font-size: 48px;">📄</span>
+                        <h3>Drop Files or Click to Ingest</h3>
+                        <p style="color: var(--text-secondary); font-size: 0.85rem;">Supports PDF, TXT, CSV, Python, and Markdown files</p>
+                        <input type="file" id="fileImportInput" style="display: none;" onchange="uploadKnowledgeFiles(this.files)" multiple>
+                    </div>
+                </div>
             </section>
         </main>
     </div>
 
-    <!-- ── ADD CONTACT MODAL ── -->
-    <div class="modal" id="addContactModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>👤 ADD NEW CONTACT</h3>
-                <button class="close-modal-btn" onclick="closeAddContactModal()">&times;</button>
-            </div>
-            <div class="modal-body flex-col-gap-12">
-                <div>
-                    <label class="field-label-sm">FULL NAME</label>
-                    <input type="text" id="addContactName" class="os-input os-input-mt-4" placeholder="John Doe">
-                </div>
-                <div>
-                    <label class="field-label-sm">PHONE NUMBER</label>
-                    <input type="text" id="addContactPhone" class="os-input os-input-mt-4" placeholder="+1234567890">
-                </div>
-                <div>
-                    <label class="field-label-sm">EMAIL ADDRESS</label>
-                    <input type="email" id="addContactEmail" class="os-input os-input-mt-4" placeholder="john@example.com">
-                </div>
-                <div>
-                    <label class="field-label-sm">NICKNAME / ALIAS</label>
-                    <input type="text" id="addContactAlias" class="os-input os-input-mt-4" placeholder="Johnny">
-                </div>
-            </div>
-            <div class="modal-footer modal-footer-end">
-                <button class="btn btn-secondary" onclick="closeAddContactModal()">Cancel</button>
-                <button class="btn btn-primary" onclick="submitNewContactFromForm()">SAVE CONTACT</button>
-            </div>
+    <!-- ── TOAST NOTIFICATIONS CONTAINER ── -->
+    <div id="toastContainer" style="position: fixed; bottom: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 8px;"></div>
 
+    <!-- ── COMMAND PALETTE MODAL (Ctrl+K) ── -->
+    <div id="cmdPaletteModal" class="modal-overlay">
+        <div class="modal-box">
+            <h3 style="color: var(--accent-cyan); font-family: var(--font-heading);">🔍 Quick Command Palette</h3>
+            <input type="text" id="cmdPaletteInput" class="cmd-input" placeholder="Search views, skills, connectors, or type a command..." autofocus>
+            <div id="cmdPaletteResults" class="cmd-results"></div>
         </div>
     </div>
 
-    <!-- ── CONTACT IMPORT MODAL ── -->
-    <div class="modal" id="contactImportModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>📥 IMPORT MOBILE CONTACTS (.VCF / .CSV)</h3>
-                <button class="close-modal-btn" onclick="closeContactImportModal()">&times;</button>
+    <!-- ── MODAL: GOOGLE AUTH ── -->
+    <div id="googleAuthModal" class="modal-overlay">
+        <div class="modal-box">
+            <h3 style="color: var(--accent-cyan);">🔑 Google Account Authentication</h3>
+            <p style="font-size: 0.8rem; color: var(--text-secondary);">Connect your Gmail / Google account for inbox management and email sending.</p>
+            <select id="googleAuthMode" class="os-select" title="Google Authentication Method" onchange="toggleGoogleAuthMode()">
+                <option value="credentials">Gmail App Password (Recommended)</option>
+                <option value="browser">OAuth Browser Login</option>
+            </select>
+            <div id="googleAppPasswordGroup">
+                <input type="text" id="googleEmail" class="cmd-input" placeholder="Gmail address (e.g. user@gmail.com)">
+                <input type="password" id="googleAppPassword" class="cmd-input" placeholder="16-character App Password" style="margin-top: 8px;">
             </div>
-            <div class="modal-body">
-                <div class="rag-dropzone mb-15" id="contactDropzone" onclick="triggerFileImport('contact')">
-                    <input type="file" id="contactFileInput" class="hidden-file-input" title="Import Mobile Contacts" aria-label="Import Mobile Contacts" accept=".vcf,.csv,.txt" multiple onclick="event.stopPropagation()" onchange="uploadContactFile(this.files[0])">
-                    <div class="drop-icon drop-icon-lg">📱</div>
-                    <span class="drop-text drop-text-center">Click or Drag & Drop .VCF / .CSV file here</span>
-                </div>
-
-                <div class="mt-16">
-                    <label class="field-label-sm">OR ENTER FILE PATH ON COMPUTER</label>
-                    <input type="text" id="contactFilePathInput" class="os-input w-full-mt-6" placeholder="C:\Users\username\Downloads\contacts.vcf">
-                </div>
-            </div>
-            <div class="modal-footer modal-footer-end">
-                <button class="btn btn-secondary" onclick="closeContactImportModal()">Cancel</button>
-                <button class="btn btn-primary" onclick="submitContactImportByPath()">IMPORT FROM PATH</button>
-            </div>
-
-        </div>
-    </div>
-
-    <!-- ── GOOGLE AUTH MODAL ── -->
-    <div class="modal" id="googleAuthModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>🔑 GOOGLE ACCOUNT AUTHENTICATION</h3>
-                <button class="close-modal-btn" onclick="closeGoogleAuthModal()">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="mb-12">
-                    <label class="field-label-sm">LOGIN MODE</label>
-                    <select id="googleAuthMode" class="os-select w-full-mt-6" title="Google Authentication Mode" aria-label="Google Authentication Mode" onchange="toggleGoogleAuthMode()">
-                        <option value="browser">Official Google Sign-In (OAuth Browser)</option>
-                        <option value="credentials">Gmail Email + App Password (Automated)</option>
-                    </select>
-                </div>
-                <div id="googleAppPasswordGroup" class="hidden-element mt-12">
-                    <input type="text" id="googleEmail" class="os-input w-full mb-8" placeholder="your.name@gmail.com">
-                    <input type="password" id="googleAppPassword" class="os-input w-full" placeholder="16-character App Password">
-                </div>
-            </div>
-            <div class="modal-footer modal-footer-end">
+            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 10px;">
                 <button class="btn btn-secondary" onclick="closeGoogleAuthModal()">Cancel</button>
-                <button class="btn btn-primary" id="submitGoogleAuthBtn" onclick="submitGoogleAuth()">INITIATE LOGIN</button>
+                <button id="submitGoogleAuthBtn" class="btn" style="background: var(--accent-cyan); color: #000;" onclick="submitGoogleAuth()">SAVE CREDENTIALS</button>
             </div>
         </div>
     </div>
 
-    <!-- Hidden file inputs -->
-    <input type="file" id="fileImportInput" class="hidden-element" title="Upload Knowledge File" aria-label="Upload Knowledge File" onchange="uploadKnowledgeFiles(this.files)">
-    <input type="file" id="universalFileInput" class="hidden-element" title="Upload Universal File" aria-label="Upload Universal File" onchange="uploadKnowledgeFiles(this.files)">
+    <!-- ── MODAL: CONTACT IMPORT ── -->
+    <div id="contactImportModal" class="modal-overlay">
+        <div class="modal-box">
+            <h3 style="color: var(--accent-cyan);">📥 Import Contacts (.vcf / .csv)</h3>
+            <input type="text" id="contactFilePathInput" class="cmd-input" placeholder="Full file path on system (e.g. C:\contacts.vcf)">
+            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 10px;">
+                <button class="btn btn-secondary" onclick="closeContactImportModal()">Cancel</button>
+                <button class="btn" style="background: var(--accent-cyan); color: #000;" onclick="submitContactImportByPath()">IMPORT PATH</button>
+            </div>
+        </div>
+    </div>
 
+    <!-- ── MODAL: ADD CONTACT ── -->
+    <div id="addContactModal" class="modal-overlay">
+        <div class="modal-box">
+            <h3 style="color: var(--accent-cyan);">👤 Add New Contact</h3>
+            <input type="text" id="addContactName" class="cmd-input" placeholder="Full Name *">
+            <input type="text" id="addContactPhone" class="cmd-input" placeholder="Phone Number (e.g. +1234567890)">
+            <input type="text" id="addContactEmail" class="cmd-input" placeholder="Email Address">
+            <input type="text" id="addContactAlias" class="cmd-input" placeholder="Nickname / Alias (e.g. Mom)">
+            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 10px;">
+                <button class="btn btn-secondary" onclick="closeAddContactModal()">Cancel</button>
+                <button class="btn" style="background: var(--accent-cyan); color: #000;" onclick="submitNewContactFromForm()">SAVE CONTACT</button>
+            </div>
+        </div>
+    </div>
 
+    <!-- ── MODAL: CONNECTOR CONFIG KEY ── -->
+    <div id="connectorConfigModal" class="modal-overlay">
+        <div class="modal-box">
+            <h3 style="color: var(--accent-cyan);" id="configModalTitle">🔑 Configure Connector Key</h3>
+            <p style="font-size: 0.8rem; color: var(--text-secondary);" id="configModalDesc">Provide API token or access key to activate integration.</p>
+            <input type="hidden" id="configConnectorName">
+            <input type="password" id="configApiKeyInput" class="cmd-input" placeholder="Paste API Key / Token here...">
+            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 10px;">
+                <button class="btn btn-secondary" onclick="closeConnectorConfigModal()">Cancel</button>
+                <button class="btn" style="background: var(--accent-cyan); color: #000;" onclick="submitConnectorConfig()">SAVE KEY</button>
+            </div>
+        </div>
+    </div>
 
-    <!-- Toast stack -->
-    <div class="toast-container" id="toastContainer"></div>
-
-    <script src="/web/app.js?v=38.3.0"></script>
+    <script src="/web/app.js?v=38.5.0"></script>
 </body>
 
 </html>

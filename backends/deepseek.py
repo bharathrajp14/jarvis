@@ -43,6 +43,13 @@ class DeepSeekBackend(BaseBackend):
     def model_name(self) -> str:
         return self.model
 
+    @property
+    def available(self) -> bool:
+        if os.environ.get("JARVIS_DISABLE_DEEPSEEK", "").strip().lower() in {"1", "true", "yes", "on"}:
+            return False
+        has_key = bool(os.environ.get("DEEPSEEK_API_KEY", "").strip() or os.environ.get("OPENROUTER_API_KEY", "").strip())
+        return self.client is not None and has_key
+
     def _ensure_client(self):
         if not self.client:
             raise ValueError(

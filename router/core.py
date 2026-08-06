@@ -105,7 +105,7 @@ def load_available_backends(*, force_refresh: bool = False) -> dict:
                 os.environ.get("DEEPSEEK_API_KEY", "").strip()
                 or os.environ.get("OPENROUTER_API_KEY", "").strip()
             )
-            if DeepSeekBackend and has_deepseek:
+            if DeepSeekBackend and has_deepseek and not _truthy_env("JARVIS_DISABLE_DEEPSEEK"):
                 d = DeepSeekBackend()
                 if d.available:
                     backends[AgentProfile.DEEPSEEK] = d

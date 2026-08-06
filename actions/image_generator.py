@@ -13,7 +13,9 @@ import os
 import time
 import traceback
 from datetime import datetime
-from pathlib import Path
+import logging
+
+logger = logging.getLogger("JARVIS.ImageGen")
 
 
 def _output_dir() -> Path:
@@ -95,25 +97,31 @@ def _generate_gemini(prompt: str, size: str, num_images: int) -> dict:
         raise ValueError("GEMINI_API_KEY not set")
 
     client = genai.Client(api_key=api_key)
-    response = client.models.generate_images(
-        model="imagen-3.0-generate-002",
-        prompt=prompt,
-        config=types.GenerateImagesConfig(
-            number_of_images=min(num_images, 4),
-            aspect_ratio="1:1" if "1024x1024" in size else "16:9",
-        ),
-    )
-
-    paths = []
-    for i, image in enumerate(response.generated_images):
-        filename = _make_filename(prompt, "png")
-        if i > 0:
-            filename = filename.replace(".png", f"_{i}.png")
-        filepath = _output_dir() / filename
-        image.image.save(str(filepath))
-        paths.append(str(filepath))
-
-    return {"paths": paths}
+    imagen_models = ["imagen-3.0-fast-generate-001", "imagen-3.0-generate-001", "imagen-3.0-generate-002"]
+    last_err = None
+    for model_name in imagen_models:
+        try:
+            response = client.models.generate_images(
+                model=model_name,
+                prompt=prompt,
+                config=types.GenerateImagesConfig(
+                    number_of_images=min(num_images, 4),
+                    aspect_ratio="1:1" if "1024x1024" in size else "16:9",
+                ),
+            )
+            paths = []
+            for i, image in enumerate(response.generated_images):
+                filename = _make_filename(prompt, "png")
+                if i > 0:
+                    filename = filename.replace(".png", f"_{i}.png")
+                filepath = _output_dir() / filename
+                image.image.save(str(filepath))
+                paths.append(str(filepath))
+            return {"paths": paths}
+        except Exception as e:
+            last_err = e
+            continue
+    raise last_err or ValueError("Failed to generate image with Gemini Imagen models")
 
 
 def _generate_openai(prompt: str, size: str, style: str, num_images: int) -> dict:
@@ -126,14 +134,24 @@ def _generate_openai(prompt: str, size: str, style: str, num_images: int) -> dic
         raise ValueError("OPENAI_API_KEY not set")
 
     client = OpenAI(api_key=api_key, base_url=base_url if base_url else None)
-    response = client.images.generate(
-        model="dall-e-3",
-        prompt=prompt,
-        size=size,
-        style=style,
-        n=min(num_images, 1),  # DALL-E 3 supports 1 at a time
-        response_format="b64_json",
-    )
+    img_model = os.environ.get("OPENAI_IMAGE_MODEL", "gemini-3-pro-image")
+    try:
+        response = client.images.generate(
+            model=img_model,
+            prompt=prompt,
+            n=min(num_images, 1),
+            response_format="b64_json",
+        )
+    except Exception as e:
+        if "dall-e-3" not in img_model:
+            response = client.images.generate(
+                model="dall-e-3",
+                prompt=prompt,
+                n=min(num_images, 1),
+                response_format="b64_json",
+            )
+        else:
+            raise e
 
     paths = []
     for i, img_data in enumerate(response.data):

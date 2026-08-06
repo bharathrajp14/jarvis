@@ -605,11 +605,28 @@ class DashboardServer:
             from fastapi.responses import RedirectResponse
             return RedirectResponse(_CRYPTOJS_CDN)
 
+        from starlette.exceptions import HTTPException as StarletteHTTPException
+
+        @app.exception_handler(StarletteHTTPException)
+        async def dash_http_exception_handler(request: Request, exc: StarletteHTTPException):
+            if exc.status_code == 404:
+                accept = request.headers.get("accept", "")
+                if "text/html" in accept and not request.url.path.startswith(("/api", "/ws")):
+                    html = (self._app_html
+                            .replace("__IP__", self._ip)
+                            .replace("__PORT__", str(PORT)))
+                    return HTMLResponse(html)
+                return JSONResponse({"ok": False, "error": exc.detail}, status_code=404)
+            return JSONResponse({"ok": False, "error": exc.detail}, status_code=exc.status_code)
+
         @app.get("/login", response_class=HTMLResponse)
         async def login_page():
             return HTMLResponse(self._login_html)
 
         @app.get("/", response_class=HTMLResponse)
+        @app.get("/index.html", response_class=HTMLResponse)
+        @app.get("/dashboard", response_class=HTMLResponse)
+        @app.get("/app", response_class=HTMLResponse)
         async def index():
             # Auth is handled client-side via sessionStorage bearer token.
             # Server-side header auth can't work here because browser navigations
@@ -618,6 +635,7 @@ class DashboardServer:
                     .replace("__IP__", self._ip)
                     .replace("__PORT__", str(PORT)))
             return HTMLResponse(html)
+
 
         @app.post("/login")
         async def login(req: Request):

@@ -447,9 +447,13 @@ if _HAS_QT:
                     if self._orchestrator:
                         resp = self._orchestrator.chat(text)
                     else:
-                        import requests
-                        r = requests.post("http://127.0.0.1:8000/api/chat",
-                                         json={"message": text}, timeout=30)
+                        import os, requests
+                        p = os.environ.get("BR_SERVER_PORT", os.environ.get("PORT", "8000"))
+                        hdrs = {}
+                        key = os.environ.get("JARVIS_SERVER_API_KEY")
+                        if key: hdrs["X-API-Key"] = key; hdrs["Authorization"] = f"Bearer {key}"
+                        r = requests.post(f"http://127.0.0.1:{p}/api/chat",
+                                         json={"message": text}, headers=hdrs, timeout=30)
                         resp = r.json().get("response", "")
                     self.log_signal.emit(f"< {str(resp)[:120]}")
                     self.state_signal.emit("LISTENING")
@@ -465,8 +469,12 @@ if _HAS_QT:
         def _refresh_connectors(self):
             def _fetch():
                 try:
-                    import requests
-                    r = requests.get("http://127.0.0.1:8000/api/connector/status", timeout=3)
+                    import os, requests
+                    p = os.environ.get("BR_SERVER_PORT", os.environ.get("PORT", "8000"))
+                    hdrs = {}
+                    key = os.environ.get("JARVIS_SERVER_API_KEY")
+                    if key: hdrs["X-API-Key"] = key; hdrs["Authorization"] = f"Bearer {key}"
+                    r = requests.get(f"http://127.0.0.1:{p}/api/connector/status", headers=hdrs, timeout=3)
                     if r.status_code == 200:
                         self.connector_signal.emit(r.json().get("connectors", []))
                 except Exception:

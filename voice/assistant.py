@@ -767,6 +767,7 @@ class BRVoiceAssistant:
 
                         # Drain microphone buffer so old frames recorded while speaking/thinking/executing are flushed
                         try:
+                            await asyncio.sleep(0.15)
                             mic.drain()
                         except Exception:
                             pass

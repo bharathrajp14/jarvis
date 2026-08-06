@@ -6,6 +6,7 @@ from __future__ import annotations
 import json
 import logging
 import math
+import os
 import platform
 import random
 import subprocess
@@ -279,6 +280,7 @@ class MainWindow(QMainWindow):
             if not cap.isOpened():
                 cap = cv2.VideoCapture(0)
             if not cap.isOpened():
+                self._log_sig.emit("ERR: Camera capture device unavailable. Check hardware connection.")
                 return
             # warm-up frames
             for _ in range(5):
@@ -290,11 +292,12 @@ class MainWindow(QMainWindow):
                     self._cam_frame_sig.emit(buf.tobytes())
             cap.release()
         except Exception as e:
+            self._log_sig.emit(f"ERR: Camera stream error — {e}")
             if 'logger' in globals() or 'logger' in locals():
-                logger.warning(f"{ f"[Camera] Stream error: {e}" }" if isinstance(f"[Camera] Stream error: {e}", str) else f"[Camera] Stream error: {e}")
+                logger.warning(f"[Camera] Stream error: {e}")
             else:
                 import logging
-                logging.getLogger(__name__).warning(f"{ f"[Camera] Stream error: {e}" }" if isinstance(f"[Camera] Stream error: {e}", str) else f"[Camera] Stream error: {e}")
+                logging.getLogger(__name__).warning(f"[Camera] Stream error: {e}")
         finally:
             self._cam_stream_sig.emit(False)
 
@@ -659,26 +662,27 @@ class MainWindow(QMainWindow):
     def resizeEvent(self, event):
         super().resizeEvent(event)
         cw = self.centralWidget()
+        cw_w, cw_h = max(100, cw.width()), max(100, cw.height())
         if self._overlay and self._overlay.isVisible():
-            ow, oh = 460, 390
+            ow, oh = min(460, cw_w - 20), min(390, cw_h - 20)
             self._overlay.setGeometry(
-                (cw.width()  - ow) // 2,
-                (cw.height() - oh) // 2,
-                ow, oh,
+                max(10, (cw_w - ow) // 2),
+                max(10, (cw_h - oh) // 2),
+                max(100, ow), max(100, oh),
             )
         if self._remote_overlay and self._remote_overlay.isVisible():
-            ow, oh = RemoteKeyOverlay._OW, RemoteKeyOverlay._OH
+            ow, oh = min(RemoteKeyOverlay._OW, cw_w - 20), min(RemoteKeyOverlay._OH, cw_h - 20)
             self._remote_overlay.setGeometry(
-                (cw.width()  - ow) // 2,
-                (cw.height() - oh) // 2,
-                ow, oh,
+                max(10, (cw_w - ow) // 2),
+                max(10, (cw_h - oh) // 2),
+                max(100, ow), max(100, oh),
             )
         if self._customize_overlay and self._customize_overlay.isVisible():
-            ow, oh = CustomizeOverlay._OW, CustomizeOverlay._OH
+            ow, oh = min(CustomizeOverlay._OW, cw_w - 20), min(CustomizeOverlay._OH, cw_h - 20)
             self._customize_overlay.setGeometry(
-                (cw.width()  - ow) // 2,
-                (cw.height() - oh) // 2,
-                ow, oh,
+                max(10, (cw_w - ow) // 2),
+                max(10, (cw_h - oh) // 2),
+                max(100, ow), max(100, oh),
             )
         # Camera preview — bottom-right corner of the center/HUD area
         pw = _CameraPreview._W
@@ -794,7 +798,10 @@ class MainWindow(QMainWindow):
             }}
             QPushButton:hover {{ background: {C.PRI_GHO}; border-color: {C.PRI}; }}
         """)
-        web_btn.clicked.connect(lambda: subprocess.Popen([sys.executable, "-c", "import webbrowser; webbrowser.open('http://127.0.0.1:8000')"]))
+        def _open_dashboard():
+            p = os.environ.get("BR_SERVER_PORT", os.environ.get("PORT", "8000"))
+            subprocess.Popen([sys.executable, "-c", f"import webbrowser; webbrowser.open('http://127.0.0.1:{p}')"])
+        web_btn.clicked.connect(_open_dashboard)
         lay.addWidget(web_btn)
         lay.addStretch()
 
@@ -1555,10 +1562,10 @@ class MainWindow(QMainWindow):
         txt = self._input.text().strip()
         if not txt: return
         self._input.clear()
-        self._log.append_log(f"You: {txt}")
         if self.on_text_command:
             threading.Thread(target=self.on_text_command, args=(txt,), daemon=True).start()
         else:
+            self._log.append_log(f"You: {txt}")
             def _standalone_cmd(cmd_text: str):
                 try:
                     self._state_sig.emit("THINKING")
@@ -1616,5 +1623,9 @@ class MainWindow(QMainWindow):
         event.accept()
 
 _GLOBAL_UI_INSTANCE: JarvisUI | None = None
+
+# Backward compatibility alias
+JARVISMainWindow = MainWindow
+
 
 

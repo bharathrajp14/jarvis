@@ -115,6 +115,23 @@ class TestVoicePipeline(unittest.TestCase):
         res3 = refine_voice_prompt("hey javis hey javis um please open chrome browser")
         self.assertEqual(res3["refined"], "Open chrome browser")
 
+    def test_ui_send_no_duplicate_log(self):
+        from ui.main_window import MainWindow
+        logs = []
+        win = MainWindow.__new__(MainWindow)
+        class DummyInput:
+            def text(self): return "open youtube latest anime in tamil voice over"
+            def clear(self): pass
+        class DummyLog:
+            def append_log(self, msg): logs.append(msg)
+        win._input = DummyInput()
+        win._log = DummyLog()
+        win.on_text_command = lambda cmd: logs.append(f"ON_TEXT:{cmd}")
+        win._send()
+        # Ensure 'You: ...' is NOT logged directly in _send when on_text_command handler is bound
+        self.assertNotIn("You: open youtube latest anime in tamil voice over", logs)
+
+
 
 if __name__ == "__main__":
     unittest.main()

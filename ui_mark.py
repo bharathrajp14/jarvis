@@ -121,9 +121,41 @@ from ui.app import (  # noqa: E402
 _DEFAULT_PORT = 8000
 
 
+def _is_jarvis_running(port: int) -> bool:
+    """Check if an active JARVIS backend server is responding on the given port."""
+    import urllib.request
+    try:
+        req = urllib.request.Request(f"http://127.0.0.1:{port}/api/health", headers={"User-Agent": "JARVIS-Ping"})
+        with urllib.request.urlopen(req, timeout=0.8) as resp:
+            if resp.status == 200:
+                data = json.loads(resp.read().decode("utf-8"))
+                return data.get("status") in ("online", "ok", "degraded")
+    except Exception:
+        pass
+    return False
+
+
+def _find_available_jarvis_port(preferred_port: int = 8000) -> int:
+    """Return preferred_port if free or running JARVIS, otherwise find a free fallback port."""
+    if _is_jarvis_running(preferred_port) or _port_free(preferred_port):
+        return preferred_port
+    
+    for p in (8080, 8088, 8888, 5000, 8001, 8002):
+        if _is_jarvis_running(p) or _port_free(p):
+            return p
+    return preferred_port
+
+
 def _server_port() -> int:
-    """Read backend port from environment, fall back to 8000."""
-    return int(os.environ.get("PORT", os.environ.get("BR_SERVER_PORT", str(_DEFAULT_PORT))))
+    """Read backend port from environment or auto-detect available port."""
+    env_p = os.environ.get("BR_SERVER_PORT") or os.environ.get("PORT")
+    if env_p and env_p.isdigit():
+        p = int(env_p)
+        if _is_jarvis_running(p) or _port_free(p):
+            return p
+    p = _find_available_jarvis_port(_DEFAULT_PORT)
+    os.environ["BR_SERVER_PORT"] = str(p)
+    return p
 
 
 def _port_free(port: int) -> bool:
@@ -140,25 +172,32 @@ def _start_backend_server() -> threading.Thread:
     """
     Launch the FastAPI/Uvicorn backend server in a daemon thread.
 
-    - Skips launch if the port is already occupied (prevents duplicate server
-      when start.py already started one).
-    - Logs a friendly note instead of crashing if uvicorn / server.py is
-      unavailable.
+    - Verifies whether port is running JARVIS or occupied by a foreign process.
+    - Uses fallback port (e.g. 8080) if preferred port is occupied by another app.
     """
     port = _server_port()
 
     def _worker() -> None:
-        if not _port_free(port):
-            print(f"[Server] Port {port} already in use — skipping embedded server.")
+        if _is_jarvis_running(port):
+            print(f"[Server] ⚡ Embedded JARVIS backend active on http://127.0.0.1:{port}")
             return
+
+        if not _port_free(port):
+            print(f"[Server] Port {port} occupied by foreign application. Switching to fallback port...")
+            alt_port = _find_available_jarvis_port(port + 1)
+            os.environ["BR_SERVER_PORT"] = str(alt_port)
+            port_to_use = alt_port
+        else:
+            port_to_use = port
+
         try:
             import uvicorn  # type: ignore[import-not-found]
             from server import app as _fastapi_app  # type: ignore[import-not-found]
-            print(f"[Server] ⚙ Starting embedded JARVIS backend on http://127.0.0.1:{port}")
+            print(f"[Server] ⚙ Starting embedded JARVIS backend on http://127.0.0.1:{port_to_use}")
             uvicorn.run(
                 _fastapi_app,
                 host="127.0.0.1",
-                port=port,
+                port=port_to_use,
                 log_level="warning",
                 access_log=False,
             )

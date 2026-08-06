@@ -75,8 +75,21 @@ from router import AgentRouter, AgentProfile
 
 # ── Setup static files & folder ──────────────────────────────────────────────
 BASE_DIR = Path(__file__).resolve().parent
+CONFIG_DIR = BASE_DIR / "config"
+API_FILE = CONFIG_DIR / "api_keys.json"
 WEB_DIR = BASE_DIR / "web"
 WEB_DIR.mkdir(exist_ok=True)
+
+
+def _read_full_config() -> dict:
+    """Read api_keys.json config dict. Returns {} on any error."""
+    try:
+        if API_FILE.exists():
+            return json.loads(API_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        pass
+    return {}
+
 
 # Singletons
 ORCHESTRATOR: JarvisOrchestrator | None = None
@@ -241,6 +254,93 @@ async def global_exception_handler(request: Request, exc: Exception):
         status_code=500,
         content={"detail": "Internal Server Error", "error": str(exc)}
     )
+
+
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    if exc.status_code == 404:
+        accept = request.headers.get("accept", "")
+        if "text/html" in accept and not request.url.path.startswith(("/api", "/v1", "/ws")):
+            # Serve main app if available, or a rich glassmorphic 404 page
+            index_file = WEB_DIR / "index.html"
+            if index_file.exists() and request.url.path not in ("/404", "/404.html"):
+                return FileResponse(index_file)
+            html_404 = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>404 — URL Not Found | BR JARVIS</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+        body {{
+            background: #07090f;
+            color: #dde3ed;
+            font-family: 'Inter', sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            text-align: center;
+            padding: 20px;
+        }}
+        .card {{
+            background: rgba(15, 23, 42, 0.85);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            backdrop-filter: blur(20px);
+            border-radius: 16px;
+            padding: 40px 32px;
+            max-width: 460px;
+            width: 100%;
+            box-shadow: 0 0 50px rgba(0, 212, 255, 0.15);
+        }}
+        .icon {{ font-size: 54px; margin-bottom: 16px; display: inline-block; }}
+        h1 {{ font-family: 'Outfit', sans-serif; font-size: 26px; color: #00d4ff; margin-bottom: 10px; font-weight: 700; }}
+        p {{ color: #8a99ad; font-size: 14px; margin-bottom: 20px; line-height: 1.6; }}
+        .url-box {{
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 100, 100, 0.3);
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-family: monospace;
+            font-size: 13px;
+            color: #ff6b6b;
+            margin-bottom: 24px;
+            word-break: break-all;
+        }}
+        .btn {{
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: linear-gradient(135deg, #00d4ff, #0066ff);
+            color: #fff;
+            padding: 12px 24px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.2s ease;
+            box-shadow: 0 0 20px rgba(0, 212, 255, 0.4);
+        }}
+        .btn:hover {{ transform: translateY(-2px); box-shadow: 0 0 30px rgba(0, 212, 255, 0.6); }}
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="icon">🔍</div>
+        <h1>404 — URL NOT FOUND</h1>
+        <p>The requested address was not found on the JARVIS server. Please verify your URL or return to the main dashboard.</p>
+        <div class="url-box">{request.url.path}</div>
+        <a href="/" class="btn">⚡ Return to JARVIS Dashboard</a>
+    </div>
+</body>
+</html>"""
+            return HTMLResponse(content=html_404, status_code=404)
+    return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+
 
 
 
@@ -466,6 +566,12 @@ async def connector_list():
         raise HTTPException(status_code=500, detail=str(e))
 
 
+class ConnectorConfigRequest(BaseModel):
+    connector: str
+    api_key: Optional[str] = None
+    settings: Optional[dict] = None
+
+
 @app.post("/api/connector/call")
 async def connector_call(req: ConnectorCallRequest):
     """Call a specific connector tool by connector name and tool name."""
@@ -475,6 +581,36 @@ async def connector_call(req: ConnectorCallRequest):
         result = await asyncio.to_thread(hub.call, req.connector, req.tool, req.params)
         return {"status": "ok", "result": result}
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/connector/config")
+async def save_connector_config(req: ConnectorConfigRequest):
+    """Save API key or configuration settings for a specific connector."""
+    try:
+        data = _read_full_config()
+        conn_name = req.connector.lower().strip()
+        key_name = f"{conn_name}_api_key"
+        if req.api_key:
+            val = req.api_key.strip()
+            data[key_name] = val
+            os.environ[key_name.upper()] = val
+            if "github" in conn_name:
+                os.environ["GITHUB_TOKEN"] = val
+            elif "notion" in conn_name:
+                os.environ["NOTION_API_KEY"] = val
+            elif "weather" in conn_name:
+                os.environ["OPENWEATHER_API_KEY"] = val
+                os.environ["WEATHER_API_KEY"] = val
+        if req.settings:
+            data[f"{conn_name}_settings"] = req.settings
+        
+        CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+        API_FILE.write_text(json.dumps(data, indent=4), encoding="utf-8")
+        logger.info(f"[ConnectorConfig] Saved configuration for '{req.connector}'")
+        return {"status": "ok", "message": f"Saved configuration for '{req.connector}'"}
+    except Exception as e:
+        logger.error(f"[ConnectorConfig] Error saving config: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -645,7 +781,9 @@ async def get_connectors_list():
     from tools.registry import TOOL_REGISTRY, _import_plugins
     _import_plugins()
 
-    def _check_tools(tool_names: list[str]) -> str:
+    def _check_tools(tool_names: list[str], env_vars: list[str] | None = None) -> str:
+        if env_vars and any(os.environ.get(v, "").strip() for v in env_vars):
+            return "CONNECTED"
         return "CONNECTED" if any(t in TOOL_REGISTRY for t in tool_names) else "NOT_CONFIGURED"
 
     # Check Google Auth status
@@ -658,9 +796,9 @@ async def get_connectors_list():
             gmail_status = "CONNECTED"
             gmail_desc = f"Connected as {g_st.get('email')} ({g_st.get('auth_method')})"
         else:
-            gmail_status = _check_tools(["gmail_login", "send_email"])
+            gmail_status = _check_tools(["gmail_login", "send_email"], ["GMAIL_APP_PASSWORD", "GOOGLE_CLIENT_ID"])
     except Exception:
-        gmail_status = _check_tools(["gmail_login", "send_email"])
+        gmail_status = _check_tools(["gmail_login", "send_email"], ["GMAIL_APP_PASSWORD", "GOOGLE_CLIENT_ID"])
 
     # Check Contacts count
     contacts_count = 0
@@ -673,10 +811,16 @@ async def get_connectors_list():
     connectors = [
         {"name": "Gmail / Google Account", "icon": "✉️", "status": gmail_status, "tools": ["gmail_login", "send_email"], "desc": gmail_desc},
         {"name": "Mobile Contacts Store", "icon": "📱", "status": "CONNECTED" if contacts_count > 0 else "NOT_CONFIGURED", "tools": ["import_contacts", "manage_contacts", "resolve_contact"], "desc": f"{contacts_count} saved contacts (.vcf/.csv import supported)"},
-        {"name": "Notion", "icon": "📝", "status": _check_tools(["notion_search_pages", "notion_create_page"]), "tools": ["notion_search_pages", "notion_create_page"], "desc": "Search workspaces, create pages and notes"},
-        {"name": "GitHub", "icon": "🐙", "status": _check_tools(["github_list_prs", "github_create_issue"]), "tools": ["github_list_prs", "github_create_issue"], "desc": "List pull requests, open issues and review code"},
-        {"name": "Google Calendar", "icon": "📅", "status": _check_tools(["create_calendar_event", "list_calendar_events"]), "tools": ["create_calendar_event", "list_calendar_events"], "desc": "Schedule meetings, inspect agenda and events"},
-        {"name": "WhatsApp Automation", "icon": "💬", "status": _check_tools(["send_whatsapp", "manage_whatsapp_contacts"]), "tools": ["send_whatsapp", "manage_whatsapp_contacts"], "desc": "Send instant & scheduled messages by contact name"},
+        {"name": "Notion Workspace", "icon": "📝", "status": _check_tools(["notion_search_pages", "notion_create_page"], ["NOTION_API_KEY", "NOTION_TOKEN"]), "tools": ["notion_search_pages", "notion_create_page"], "desc": "Search workspaces, create pages and notes"},
+        {"name": "GitHub Developer", "icon": "🐙", "status": _check_tools(["github_list_prs", "github_create_issue"], ["GITHUB_TOKEN", "GH_TOKEN"]), "tools": ["github_list_prs", "github_create_issue"], "desc": "List pull requests, open issues and review code"},
+        {"name": "Google Calendar", "icon": "📅", "status": _check_tools(["create_calendar_event", "list_calendar_events"], ["GOOGLE_CALENDAR_CREDENTIALS", "GOOGLE_CLIENT_ID"]), "tools": ["create_calendar_event", "list_calendar_events"], "desc": "Schedule meetings, inspect agenda and events"},
+        {"name": "WhatsApp Automation", "icon": "💬", "status": _check_tools(["send_whatsapp", "manage_whatsapp_contacts"], ["WHATSAPP_TOKEN", "TWILIO_ACCOUNT_SID"]), "tools": ["send_whatsapp", "manage_whatsapp_contacts"], "desc": "Send instant & scheduled messages by contact name"},
+        {"name": "Wikipedia Search", "icon": "🌐", "status": "CONNECTED", "tools": ["wikipedia_search"], "desc": "Live article summary & encyclopedia lookups"},
+        {"name": "YouTube Search", "icon": "🎥", "status": "CONNECTED", "tools": ["youtube_search"], "desc": "Search videos, fetch transcripts & metadata"},
+        {"name": "Weather Forecast", "icon": "🌤️", "status": _check_tools(["get_weather"], ["WEATHER_API_KEY", "OPENWEATHER_API_KEY"]), "tools": ["get_weather"], "desc": "Live temperature, humidity & multi-day forecast"},
+        {"name": "RSS News Reader", "icon": "📰", "status": "CONNECTED", "tools": ["fetch_rss_news"], "desc": "Fetch top tech & global news headlines"},
+        {"name": "Filesystem Explorer", "icon": "📂", "status": "CONNECTED", "tools": ["list_dir", "view_file"], "desc": "Inspect local directories & workspace files"},
+        {"name": "MCP Proxy Connector", "icon": "🔌", "status": _check_tools(["mcp_call"], ["MCP_SERVER_URL"]), "tools": ["mcp_call"], "desc": "Model Context Protocol external server proxy"},
     ]
     payload = {"connectors": connectors}
     _CONNECTORS_CACHE = payload
@@ -989,8 +1133,12 @@ async def websocket_endpoint(websocket: WebSocket):
 
 
 
-# ── Serve Web Client files ───────────────────────────────────────────────────
+# ── Serve Web Client files & SPA Fallback ────────────────────────────────────
 @app.get("/")
+@app.get("/index.html")
+@app.get("/web")
+@app.get("/web/")
+@app.get("/web/index.html")
 async def get_index():
     index_file = WEB_DIR / "index.html"
     if index_file.exists():
@@ -998,7 +1146,39 @@ async def get_index():
     return HTMLResponse("<h1>JARVIS Web Dashboard</h1><p>Add index.html to /web directory</p>")
 
 
-app.mount("/web", StaticFiles(directory=str(WEB_DIR)), name="web")
+@app.get("/galaxy")
+@app.get("/galaxy.html")
+@app.get("/3d")
+@app.get("/web/galaxy")
+@app.get("/web/galaxy.html")
+async def get_galaxy():
+    galaxy_file = WEB_DIR / "galaxy.html"
+    if galaxy_file.exists():
+        return FileResponse(galaxy_file)
+    return HTMLResponse("<h1>3D Knowledge Galaxy</h1><p>galaxy.html not found in /web</p>")
+
+
+app.mount("/web", StaticFiles(directory=str(WEB_DIR), html=True), name="web")
+
+
+@app.get("/{file_name:path}")
+async def serve_root_static_or_fallback(file_name: str, request: Request):
+    """Serve root-level static files or fallback to index.html for client-side routes."""
+    if file_name.startswith(("api/", "v1/", "ws", "health")):
+        raise HTTPException(status_code=404, detail=f"API endpoint '/{file_name}' not found.")
+
+    target_file = WEB_DIR / file_name
+    if target_file.exists() and target_file.is_file():
+        return FileResponse(target_file)
+
+    accept = request.headers.get("accept", "")
+    if "text/html" in accept or not Path(file_name).suffix:
+        index_file = WEB_DIR / "index.html"
+        if index_file.exists():
+            return FileResponse(index_file)
+
+    raise HTTPException(status_code=404, detail=f"Requested URL '/{file_name}' not found on server.")
+
 
 
 def main():
