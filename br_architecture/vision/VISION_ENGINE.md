@@ -3,7 +3,7 @@
 > **Document Status**: Production Architecture Specification  
 > **Subsystem**: Screen Capture, PyTesseract OCR, DOM Bridge, Accessibility API & Visual Grounding  
 > **Module Path**: `vision/` & `actions/live_os_control.py`  
-> **Version**: MK37.31.0  
+> **Version**: 38.0.0 (MK38 Architecture)  
 
 ---
 

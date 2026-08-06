@@ -2,7 +2,7 @@
 
 > **Document Status**: Production Architecture Specification  
 > **Subsystems**: Maximum Control Center (`ui.py`), Multi-Tasks Dashboard & Floating Voice Overlay (`floating_voice_ui.py`)  
-> **Version**: MK37.30.0  
+> **Version**: 38.0.0 (MK38 Architecture)  
 
 ---
 

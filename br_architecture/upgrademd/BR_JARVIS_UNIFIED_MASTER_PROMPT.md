@@ -2,7 +2,7 @@
 ## Full Build, Upgrade & Governance Specification — Project BR
 
 > **Document Status**: Master System Specification  
-> **System**: BR JARVIS (MK37.30.0) — Antigravity Agent Subsystem & Adaptive Step Architecture  
+> **System**: BR JARVIS (MK38 / v38.0.0) — Antigravity Agent Subsystem & Adaptive Step Architecture  
 > **Replaces**: Legacy prompts & un-synchronized specs  
 > **Core Subsystems**: Core Runtime · Guardian Core · Self-Upgrade Engine · ReAct Orchestrator · Step Planner · Voice Prompt Refiner · Antigravity Scratchpad · 7-Tier Hybrid Vision Engine · 5-Tier Memory Subsystem · Multi-Backend Router  
 

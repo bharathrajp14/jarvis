@@ -3,7 +3,7 @@
 > **Document Status**: Master System Architecture Specification  
 > **Subsystem**: 7-Tier Hybrid Vision Engine, Accessibility Bridge, CDP DOM Bridge & Semantic Graph  
 > **Module Path**: `vision/` & `actions/live_os_control.py`  
-> **Version**: MK37.30.0  
+> **Version**: 38.0.0 (MK38 Architecture)  
 
 ---
 

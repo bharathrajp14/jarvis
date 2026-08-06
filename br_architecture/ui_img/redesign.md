@@ -2,7 +2,7 @@
 
 > **Document Status**: Production Architecture Specification  
 > **Subsystem**: GUI Modernization & Desktop/Web Frontend Parity  
-> **Version**: MK37.30.0  
+> **Version**: 38.0.0 (MK38 Architecture)  
 
 ---
 

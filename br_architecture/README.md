@@ -1,6 +1,6 @@
 # 🧠 BR JARVIS — Engineering Knowledge Base Index
 
-Welcome to the **BR JARVIS (Project BR / JARVIS MK37 & MK38)** Engineering Knowledge Base. This directory serves as the persistent architectural brain, technical documentation, and long-term design memory for the BR JARVIS AI Operating System (Version 38.2.5 / v37.5.0).
+Welcome to the **BR JARVIS (Project BR / JARVIS MK38)** Engineering Knowledge Base. This directory serves as the persistent architectural brain, technical documentation, and long-term design memory for the BR JARVIS AI Operating System (Version 38.0.0 / 227 unit tests 100% passing).
 
 ---
 
