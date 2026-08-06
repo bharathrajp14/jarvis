@@ -1,1 +1,3 @@
-# desktop_ui/__init__.py
+"""BR JARVIS Desktop UI Components Package."""
+__all__ = ["widgets", "tabs"]
+

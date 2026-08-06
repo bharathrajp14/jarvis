@@ -1,1 +1,3 @@
-# evolution/__init__.py
+"""BR JARVIS Autonomous Evolution Subsystem Package (Experimental Stub)."""
+__all__ = []
+
