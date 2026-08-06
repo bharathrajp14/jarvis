@@ -461,6 +461,97 @@ window.GRAPH = {
       "group": "captures",
       "path": "captures\\20260805_194313_prompt_packs_make_excellent_free.md",
       "excerpt": "# prompt packs make excellent free gifts...\n\nCaptured: 2026-08-05 19:43:13\n\nprompt packs make excellent free gifts\n"
+    },
+    {
+      "id": 66,
+      "label": "20260806 123054 Prompt Packs Make Excellent Free",
+      "group": "captures",
+      "path": "captures\\20260806_123054_prompt_packs_make_excellent_free.md",
+      "excerpt": "# prompt packs make excellent free gifts...\n\nCaptured: 2026-08-06 12:30:54\n\nprompt packs make excellent free gifts\n"
+    },
+    {
+      "id": 67,
+      "label": "20260806 123247 Prompt Packs Make Excellent Free",
+      "group": "captures",
+      "path": "captures\\20260806_123247_prompt_packs_make_excellent_free.md",
+      "excerpt": "# prompt packs make excellent free gifts...\n\nCaptured: 2026-08-06 12:32:47\n\nprompt packs make excellent free gifts\n"
+    },
+    {
+      "id": 68,
+      "label": "20260806 123404 Prompt Packs Make Excellent Free",
+      "group": "captures",
+      "path": "captures\\20260806_123404_prompt_packs_make_excellent_free.md",
+      "excerpt": "# prompt packs make excellent free gifts...\n\nCaptured: 2026-08-06 12:34:04\n\nprompt packs make excellent free gifts\n"
+    },
+    {
+      "id": 69,
+      "label": "20260806 123544 Prompt Packs Make Excellent Free",
+      "group": "captures",
+      "path": "captures\\20260806_123544_prompt_packs_make_excellent_free.md",
+      "excerpt": "# prompt packs make excellent free gifts...\n\nCaptured: 2026-08-06 12:35:44\n\nprompt packs make excellent free gifts\n"
+    },
+    {
+      "id": 70,
+      "label": "20260806 123754 Prompt Packs Make Excellent Free",
+      "group": "captures",
+      "path": "captures\\20260806_123754_prompt_packs_make_excellent_free.md",
+      "excerpt": "# prompt packs make excellent free gifts...\n\nCaptured: 2026-08-06 12:37:54\n\nprompt packs make excellent free gifts\n"
+    },
+    {
+      "id": 71,
+      "label": "20260806 123921 Prompt Packs Make Excellent Free",
+      "group": "captures",
+      "path": "captures\\20260806_123921_prompt_packs_make_excellent_free.md",
+      "excerpt": "# prompt packs make excellent free gifts...\n\nCaptured: 2026-08-06 12:39:21\n\nprompt packs make excellent free gifts\n"
+    },
+    {
+      "id": 72,
+      "label": "20260806 124452 Prompt Packs Make Excellent Free",
+      "group": "captures",
+      "path": "captures\\20260806_124452_prompt_packs_make_excellent_free.md",
+      "excerpt": "# prompt packs make excellent free gifts...\n\nCaptured: 2026-08-06 12:44:52\n\nprompt packs make excellent free gifts\n"
+    },
+    {
+      "id": 73,
+      "label": "20260806 124634 Prompt Packs Make Excellent Free",
+      "group": "captures",
+      "path": "captures\\20260806_124634_prompt_packs_make_excellent_free.md",
+      "excerpt": "# prompt packs make excellent free gifts...\n\nCaptured: 2026-08-06 12:46:34\n\nprompt packs make excellent free gifts\n"
+    },
+    {
+      "id": 74,
+      "label": "20260806 124910 Prompt Packs Make Excellent Free",
+      "group": "captures",
+      "path": "captures\\20260806_124910_prompt_packs_make_excellent_free.md",
+      "excerpt": "# prompt packs make excellent free gifts...\n\nCaptured: 2026-08-06 12:49:10\n\nprompt packs make excellent free gifts\n"
+    },
+    {
+      "id": 75,
+      "label": "20260806 125204 Prompt Packs Make Excellent Free",
+      "group": "captures",
+      "path": "captures\\20260806_125204_prompt_packs_make_excellent_free.md",
+      "excerpt": "# prompt packs make excellent free gifts...\n\nCaptured: 2026-08-06 12:52:04\n\nprompt packs make excellent free gifts\n"
+    },
+    {
+      "id": 76,
+      "label": "20260806 130405 Prompt Packs Make Excellent Free",
+      "group": "captures",
+      "path": "captures\\20260806_130405_prompt_packs_make_excellent_free.md",
+      "excerpt": "# prompt packs make excellent free gifts...\n\nCaptured: 2026-08-06 13:04:05\n\nprompt packs make excellent free gifts\n"
+    },
+    {
+      "id": 77,
+      "label": "20260806 131606 Prompt Packs Make Excellent Free",
+      "group": "captures",
+      "path": "captures\\20260806_131606_prompt_packs_make_excellent_free.md",
+      "excerpt": "# prompt packs make excellent free gifts...\n\nCaptured: 2026-08-06 13:16:06\n\nprompt packs make excellent free gifts\n"
+    },
+    {
+      "id": 78,
+      "label": "20260806 131849 Prompt Packs Make Excellent Free",
+      "group": "captures",
+      "path": "captures\\20260806_131849_prompt_packs_make_excellent_free.md",
+      "excerpt": "# prompt packs make excellent free gifts...\n\nCaptured: 2026-08-06 13:18:49\n\nprompt packs make excellent free gifts\n"
     }
   ],
   "links": [

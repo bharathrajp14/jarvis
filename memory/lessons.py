@@ -56,16 +56,21 @@ class LessonStore:
         self, topic: str, correction: str, source: str = "explicit", weight: float = 1.0
     ) -> int:
         """Add a correction lesson to the database."""
-        conn = self._get_conn()
-        cur = conn.execute(
-            """
-            INSERT INTO lessons (topic, correction, source, weight, created_at)
-            VALUES (?, ?, ?, ?, ?)
-            """,
-            (topic, correction, source, weight, time.time()),
-        )
-        conn.commit()
-        return cur.lastrowid or 0
+        def _do_write():
+            conn = self._get_conn()
+            cur = conn.execute(
+                """
+                INSERT INTO lessons (topic, correction, source, weight, created_at)
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (topic, correction, source, weight, time.time()),
+            )
+            conn.commit()
+            return cur.lastrowid or 0
+
+        from memory.sqlite_lock import run_sqlite_write
+        return run_sqlite_write(_do_write)
+
 
     def get_relevant_lessons(self, query: str, limit: int = 5) -> list[dict]:
         """Retrieve relevant lessons matching query keywords."""

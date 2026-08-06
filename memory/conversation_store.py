@@ -86,27 +86,32 @@ class ConversationStore:
         FIXED: All writes serialized through self._write_lock to prevent
         concurrent WAL corruption. Logs a WARNING if all retries fail.
         """
-        with self._write_lock:
-            for attempt in range(5):
-                try:
-                    conn = self._get_conn()
-                    conn.execute(sql, params)
-                    conn.commit()
-                    return
-                except sqlite3.OperationalError as exc:
-                    if "locked" in str(exc).lower() or "busy" in str(exc).lower():
-                        time.sleep(0.1 * (attempt + 1))
-                    else:
-                        logger.error(f"[ConversationStore] SQL error: {exc}")
+        def _do_write():
+            with self._write_lock:
+                for attempt in range(5):
+                    try:
+                        conn = self._get_conn()
+                        conn.execute(sql, params)
+                        conn.commit()
                         return
-                except Exception as exc:
-                    logger.error(f"[ConversationStore] Write error: {exc}")
-                    return
-            # All 5 retries exhausted
-            logger.warning(
-                f"[ConversationStore] Write failed after 5 retries (DB likely locked). "
-                f"SQL: {sql[:80]}"
-            )
+                    except sqlite3.OperationalError as exc:
+                        if "locked" in str(exc).lower() or "busy" in str(exc).lower():
+                            time.sleep(0.1 * (attempt + 1))
+                        else:
+                            logger.error(f"[ConversationStore] SQL error: {exc}")
+                            return
+                    except Exception as exc:
+                        logger.error(f"[ConversationStore] Write error: {exc}")
+                        return
+                # All 5 retries exhausted
+                logger.warning(
+                    f"[ConversationStore] Write failed after 5 retries (DB likely locked). "
+                    f"SQL: {sql[:80]}"
+                )
+
+        from memory.sqlite_lock import run_sqlite_write
+        run_sqlite_write(_do_write)
+
 
     def start_session(self, session_id: str, mode: str = "general", backend: str = "gemini") -> None:
         """Start recording a new session."""

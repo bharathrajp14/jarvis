@@ -33,8 +33,11 @@ def search_files_by_name(query: str, root_dir: str = "", max_results: int = 20) 
                     if len(results) >= max_results:
                         return results
     except Exception as e:
-        print(f"[FastFileSearch] Walk error: {e}")
-
+        if 'logger' in globals() or 'logger' in locals():
+            logger.debug('Suppressed exception: %s', e)
+        else:
+            import logging
+            logging.getLogger(__name__).debug('Suppressed exception: %s', e)
     return results[:max_results]
 
 
@@ -70,11 +73,18 @@ def search_file_contents(query: str, search_path: str = "", extension: str = "",
                         "name": p.name,
                         "snippet": f"...{snippet}...",
                     })
-            except Exception:
-                pass
+            except Exception as e:
+                if 'logger' in globals() or 'logger' in locals():
+                    logger.debug('Suppressed exception: %s', e)
+                else:
+                    import logging
+                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
     except Exception as e:
-        print(f"[FastFileSearch] Error: {e}")
-
+        if 'logger' in globals() or 'logger' in locals():
+            logger.debug('Suppressed exception: %s', e)
+        else:
+            import logging
+            logging.getLogger(__name__).debug('Suppressed exception: %s', e)
     return matches[:max_results]
 
 

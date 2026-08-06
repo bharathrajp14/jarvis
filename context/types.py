@@ -65,9 +65,12 @@ class TokenBudget(BaseModel):
             from core.config import get_config
             cfg = get_config()
             # Future: config could expose per-model context windows
-        except Exception:
-            pass
-
+        except Exception as e:
+            if 'logger' in globals() or 'logger' in locals():
+                logger.debug('Suppressed exception: %s', e)
+            else:
+                import logging
+                logging.getLogger(__name__).debug('Suppressed exception: %s', e)
         if "gemini" in low_p:
             return cls(max_tokens=1_000_000, reserve_response_tokens=8192)
         elif any(k in low_p for k in ["claude", "gpt", "deepseek"]):

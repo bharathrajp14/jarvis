@@ -76,9 +76,12 @@ def _get_gpu_usage() -> float:
         pynvml.nvmlInit()
         h = pynvml.nvmlDeviceGetHandleByIndex(0)
         return float(pynvml.nvmlDeviceGetUtilizationRates(h).gpu)
-    except Exception:
-        pass
-
+    except Exception as e:
+        if 'logger' in globals() or 'logger' in locals():
+            logger.debug('Suppressed exception: %s', e)
+        else:
+            import logging
+            logging.getLogger(__name__).debug('Suppressed exception: %s', e)
     return _nvml_gpu()
 
 
@@ -93,9 +96,12 @@ def _get_cpu_temp() -> float:
         for entries in temps.values():
             if entries:
                 return entries[0].current
-    except Exception:
-        pass
-
+    except Exception as e:
+        if 'logger' in globals() or 'logger' in locals():
+            logger.debug('Suppressed exception: %s', e)
+        else:
+            import logging
+            logging.getLogger(__name__).debug('Suppressed exception: %s', e)
     # Windows: wmi module (pure Python COM, zero subprocess)
     if _OS == "Windows":
         try:
@@ -104,9 +110,12 @@ def _get_cpu_temp() -> float:
             tz = w.MSAcpi_ThermalZoneTemperature()
             if tz:
                 return (tz[0].CurrentTemperature / 10.0) - 273.15
-        except Exception:
-            pass
-
+        except Exception as e:
+            if 'logger' in globals() or 'logger' in locals():
+                logger.debug('Suppressed exception: %s', e)
+            else:
+                import logging
+                logging.getLogger(__name__).debug('Suppressed exception: %s', e)
     return -1.0
 
 

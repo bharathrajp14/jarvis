@@ -55,7 +55,11 @@ def reformat_skill_file(path: Path) -> bool:
     try:
         text = path.read_text(encoding="utf-8", errors="replace")
     except Exception as e:
-        print(f"[ERROR] Reading {path}: {e}")
+        if 'logger' in globals() or 'logger' in locals():
+            logger.warning(f"{ f"[ERROR] Reading {path}: {e}" }" if isinstance(f"[ERROR] Reading {path}: {e}", str) else f"[ERROR] Reading {path}: {e}")
+        else:
+            import logging
+            logging.getLogger(__name__).warning(f"{ f"[ERROR] Reading {path}: {e}" }" if isinstance(f"[ERROR] Reading {path}: {e}", str) else f"[ERROR] Reading {path}: {e}")
         return False
 
     parts = text.split("---", 2) if text.startswith("---") else ["", "", text]
@@ -69,9 +73,12 @@ def reformat_skill_file(path: Path) -> bool:
             parsed = yaml.safe_load(frontmatter_raw)
             if isinstance(parsed, dict):
                 fm = parsed
-        except Exception:
-            pass
-
+        except Exception as e:
+            if 'logger' in globals() or 'logger' in locals():
+                logger.debug('Suppressed exception: %s', e)
+            else:
+                import logging
+                logging.getLogger(__name__).debug('Suppressed exception: %s', e)
     skill_name = fm.get("name") or clean_skill_name(path)
     description = fm.get("description") or f"BR JARVIS {skill_name} specialized domain skill."
     
@@ -115,7 +122,11 @@ def reformat_skill_file(path: Path) -> bool:
         path.write_text(new_content, encoding="utf-8")
         return True
     except Exception as e:
-        print(f"[ERROR] Writing {path}: {e}")
+        if 'logger' in globals() or 'logger' in locals():
+            logger.warning(f"{ f"[ERROR] Writing {path}: {e}" }" if isinstance(f"[ERROR] Writing {path}: {e}", str) else f"[ERROR] Writing {path}: {e}")
+        else:
+            import logging
+            logging.getLogger(__name__).warning(f"{ f"[ERROR] Writing {path}: {e}" }" if isinstance(f"[ERROR] Writing {path}: {e}", str) else f"[ERROR] Writing {path}: {e}")
         return False
 
 def main():
@@ -129,9 +140,21 @@ def main():
                 if reformat_skill_file(p):
                     success += 1
 
-    print(f"Skill library reformatting complete.")
-    print(f"Processed: {count} skill files")
-    print(f"Successfully updated: {success} skill files")
+    if 'logger' in globals() or 'logger' in locals():
+        logger.info(f"{ f"Skill library reformatting complete." }" if isinstance(f"Skill library reformatting complete.", str) else f"Skill library reformatting complete.")
+    else:
+        import logging
+        logging.getLogger(__name__).info(f"{ f"Skill library reformatting complete." }" if isinstance(f"Skill library reformatting complete.", str) else f"Skill library reformatting complete.")
+    if 'logger' in globals() or 'logger' in locals():
+        logger.info(f"{ f"Processed: {count} skill files" }" if isinstance(f"Processed: {count} skill files", str) else f"Processed: {count} skill files")
+    else:
+        import logging
+        logging.getLogger(__name__).info(f"{ f"Processed: {count} skill files" }" if isinstance(f"Processed: {count} skill files", str) else f"Processed: {count} skill files")
+    if 'logger' in globals() or 'logger' in locals():
+        logger.info(f"{ f"Successfully updated: {success} skill files" }" if isinstance(f"Successfully updated: {success} skill files", str) else f"Successfully updated: {success} skill files")
+    else:
+        import logging
+        logging.getLogger(__name__).info(f"{ f"Successfully updated: {success} skill files" }" if isinstance(f"Successfully updated: {success} skill files", str) else f"Successfully updated: {success} skill files")
 
 if __name__ == "__main__":
     main()

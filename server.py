@@ -31,12 +31,16 @@ if __name__ == "__main__" and sys.version_info >= (3, 14) and sys.platform == "w
         for _ver in ("-3.12", "-3.13", "-3.11"):
             _chk = subprocess.run([_py_cmd, _ver, "--version"], capture_output=True)
             if _chk.returncode == 0:
-                print(f"[server] -> Auto-rerouting from Python 3.14 alpha to stable Python {_ver[1:]}...")
+                if 'logger' in globals() or 'logger' in locals():
+                    logger.info(f"{ f"[server] -> Auto-rerouting from Python 3.14 alpha to stable Python {_ver[1:]}..." }" if isinstance(f"[server] -> Auto-rerouting from Python 3.14 alpha to stable Python {_ver[1:]}...", str) else f"[server] -> Auto-rerouting from Python 3.14 alpha to stable Python {_ver[1:]}...")
+                else:
+                    import logging
+                    logging.getLogger(__name__).info(f"{ f"[server] -> Auto-rerouting from Python 3.14 alpha to stable Python {_ver[1:]}..." }" if isinstance(f"[server] -> Auto-rerouting from Python 3.14 alpha to stable Python {_ver[1:]}...", str) else f"[server] -> Auto-rerouting from Python 3.14 alpha to stable Python {_ver[1:]}...")
                 os.environ["JARVIS_IGNORE_PY314"] = "1"
                 _res = subprocess.run([_py_cmd, _ver] + sys.argv)
                 sys.exit(_res.returncode)
 from contextlib import asynccontextmanager
-from typing import Set, Generator, AsyncGenerator
+from typing import Set, Generator, AsyncGenerator, Optional
 
 import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Query, UploadFile, File, Form
@@ -128,16 +132,16 @@ class WSBroadcastStream:
             self.original.write(text)
         except UnicodeEncodeError:
             try:
-                self.original.write(text.encode('ascii', errors='replace').decode('ascii'))
+                # BUG-19 FIX: Use UTF-8 fallback instead of ASCII to preserve emoji/Unicode
+                self.original.write(text.encode('utf-8', errors='replace').decode('utf-8'))
             except Exception:
                 pass
         if self._active and self._loop and self._loop.is_running() and text.strip():
             clean = _strip_rich(text.strip())
             if clean:
-                # FIXED: use call_soon_threadsafe — safe from any thread
-                self._loop.call_soon_threadsafe(
-                    lambda c=clean: asyncio.ensure_future(broadcast_log(c), loop=self._loop)
-                )
+                # BUG-4 FIX: asyncio.ensure_future(loop=...) was removed in Python 3.10.
+                # Use run_coroutine_threadsafe() which is the correct cross-thread API.
+                asyncio.run_coroutine_threadsafe(broadcast_log(clean), self._loop)
 
     def flush(self):
         self.original.flush()
@@ -228,6 +232,15 @@ app.add_middleware(
 
 from fastapi import Request
 from fastapi.responses import JSONResponse
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.exception("Unhandled server exception on %s %s: %s", request.method, request.url.path, exc)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal Server Error", "error": str(exc)}
+    )
 
 
 
@@ -364,12 +377,10 @@ async def openai_chat_completions(req: OpenAIChatRequest):
         return StreamingResponse(sse_streamer(), media_type="text/event-stream")
     else:
         try:
-            # Thread-safe: serialize concurrent API requests through a lock
-            def _run_chat():
-                with _CHAT_LOCK:
-                    return ORCHESTRATOR.chat(last_user_prompt)
-
-            response_text = await asyncio.to_thread(_run_chat)
+            # BUG-1 FIX: _CHAT_LOCK was never defined — NameError on every non-streaming call.
+            # Use the existing asyncio lock via _get_chat_lock() properly.
+            async with _get_chat_lock():
+                response_text = await asyncio.to_thread(ORCHESTRATOR.chat, last_user_prompt)
             return {
                 "id": f"chatcmpl-{uuid.uuid4().hex}",
                 "object": "chat.completion",
@@ -409,6 +420,62 @@ async def list_openai_models():
             "owned_by": "jarvis"
         })
     return {"object": "list", "data": models_list}
+
+
+
+# ── Connector Hub API ─────────────────────────────────────────────────────────
+
+class ConnectorCallRequest(BaseModel):
+    connector: str      # e.g. "Wikipedia"
+    tool: str           # e.g. "summary"
+    params: dict = {}   # tool parameters
+
+
+@app.get("/api/connector/status")
+async def connector_status():
+    """Return status of all registered connectors in the Connector Hub."""
+    try:
+        from connectors.hub import get_hub
+        hub = get_hub()
+        connectors = hub.list_connectors()
+        return {
+            "status": "ok",
+            "count": len(connectors),
+            "connectors": connectors,
+        }
+    except Exception as e:
+        return {"status": "error", "error": str(e), "connectors": []}
+
+
+@app.get("/api/connector/list")
+async def connector_list():
+    """Return all connectors and their available tools."""
+    try:
+        from connectors.hub import get_hub
+        hub = get_hub()
+        result = {}
+        for c in hub.list_connectors():
+            result[c["name"]] = {
+                "icon": c.get("icon", "🔌"),
+                "configured": c.get("configured", False),
+                "tools": c.get("tools", []),
+                "description": c.get("description", ""),
+            }
+        return {"status": "ok", "connectors": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/connector/call")
+async def connector_call(req: ConnectorCallRequest):
+    """Call a specific connector tool by connector name and tool name."""
+    try:
+        from connectors.hub import get_hub
+        hub = get_hub()
+        result = await asyncio.to_thread(hub.call, req.connector, req.tool, req.params)
+        return {"status": "ok", "result": result}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # ── REST Endpoints ────────────────────────────────────────────────────────────
@@ -665,6 +732,32 @@ async def get_contacts_endpoint(query: str = Query("", description="Search filte
     return {"total": len(results), "contacts": results}
 
 
+class AddContactRequest(BaseModel):
+    name: str
+    phone_number: str = ""
+    email: str = ""
+    aliases: list[str] = []
+
+
+@app.post("/api/contacts")
+async def add_contact_endpoint(req: AddContactRequest):
+    """Add a new contact directly to the UnifiedContactStore (BUG-11 FIX).
+    Previously the UI sent raw tool commands to /api/chat which was non-deterministic.
+    """
+    from memory.contact_manager import get_contact_store
+    store = get_contact_store()
+    try:
+        result = store.add_contact(
+            name=req.name,
+            phone_number=req.phone_number,
+            email=req.email,
+            aliases=req.aliases,
+        )
+        return {"status": "success", "message": f"Contact '{req.name}' added.", "result": str(result)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to add contact: {e}")
+
+
 @app.post("/api/import/file")
 async def import_file_endpoint(
     file: UploadFile = File(None),
@@ -847,8 +940,9 @@ async def websocket_endpoint(websocket: WebSocket):
             return
 
     await websocket.accept()
-    async with WEBSOCKETS_LOCK:
+    async with _get_ws_lock():
         ACTIVE_WEBSOCKETS.add(websocket)
+
     try:
         while True:
             data = await websocket.receive_text()
@@ -890,8 +984,9 @@ async def websocket_endpoint(websocket: WebSocket):
     except Exception:
         pass
     finally:
-        async with WEBSOCKETS_LOCK:
+        async with _get_ws_lock():
             ACTIVE_WEBSOCKETS.discard(websocket)
+
 
 
 # ── Serve Web Client files ───────────────────────────────────────────────────
@@ -928,7 +1023,11 @@ def main():
                         if pid.isdigit() and int(pid) != os.getpid():
                             subprocess.run(["taskkill", "/F", "/PID", pid],
                                            capture_output=True, timeout=5)
-                            print(f"[Server] Killed stale process PID {pid} on port {port}")
+                            if 'logger' in globals() or 'logger' in locals():
+                                logger.info(f"{ f"[Server] Killed stale process PID {pid} on port {port}" }" if isinstance(f"[Server] Killed stale process PID {pid} on port {port}", str) else f"[Server] Killed stale process PID {pid} on port {port}")
+                            else:
+                                import logging
+                                logging.getLogger(__name__).info(f"{ f"[Server] Killed stale process PID {pid} on port {port}" }" if isinstance(f"[Server] Killed stale process PID {pid} on port {port}", str) else f"[Server] Killed stale process PID {pid} on port {port}")
             else:
                 cleaned = False
                 try:
@@ -941,7 +1040,11 @@ def main():
                                 if conn.laddr and conn.laddr.port == port:
                                     proc.kill()
                                     cleaned = True
-                                    print(f"[Server] Killed stale process {proc.name()} (PID {proc.pid}) on port {port}")
+                                    if 'logger' in globals() or 'logger' in locals():
+                                        logger.info(f"{ f"[Server] Killed stale process {proc.name()} (PID {proc.pid}) on port {port}" }" if isinstance(f"[Server] Killed stale process {proc.name()} (PID {proc.pid}) on port {port}", str) else f"[Server] Killed stale process {proc.name()} (PID {proc.pid}) on port {port}")
+                                    else:
+                                        import logging
+                                        logging.getLogger(__name__).info(f"{ f"[Server] Killed stale process {proc.name()} (PID {proc.pid}) on port {port}" }" if isinstance(f"[Server] Killed stale process {proc.name()} (PID {proc.pid}) on port {port}", str) else f"[Server] Killed stale process {proc.name()} (PID {proc.pid}) on port {port}")
                         except (psutil.NoSuchProcess, psutil.AccessDenied):
                             pass
                 except Exception:
@@ -962,7 +1065,11 @@ def main():
         except Exception:
             pass
 
-    print(f"[Server] Exposing JARVIS AI Core on http://{host}:{port}")
+    if 'logger' in globals() or 'logger' in locals():
+        logger.info(f"{ f"[Server] Exposing JARVIS AI Core on http://{host}:{port}" }" if isinstance(f"[Server] Exposing JARVIS AI Core on http://{host}:{port}", str) else f"[Server] Exposing JARVIS AI Core on http://{host}:{port}")
+    else:
+        import logging
+        logging.getLogger(__name__).info(f"{ f"[Server] Exposing JARVIS AI Core on http://{host}:{port}" }" if isinstance(f"[Server] Exposing JARVIS AI Core on http://{host}:{port}", str) else f"[Server] Exposing JARVIS AI Core on http://{host}:{port}")
     uvicorn.run(app, host=host, port=port)
 
 

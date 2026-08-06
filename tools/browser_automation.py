@@ -58,42 +58,67 @@ def _attach_trace_listeners(page: Any):
 
 
 async def _get_or_create_page(headless: bool = False) -> Page:
-    """Ensure a persistent browser context and active page exist (thread-safe)."""
+    """Ensure a persistent browser context and active page exist.
+
+    BUG-8 FIX: The original code held _BROWSER_LOCK (a threading.Lock) across
+    async await calls. threading.Lock is NOT async-aware and cannot be released
+    during suspension — this caused a permanent deadlock when two concurrent tool
+    calls both tried to get the browser page. Fix: only use the lock for the
+    fast-path check and the state mutation; do all async work outside the lock.
+    """
     global _active_browser_context, _active_page, _playwright_instance
 
     if not _PLAYWRIGHT_AVAILABLE:
         raise RuntimeError("Playwright is not installed. Install with: pip install playwright && playwright install chromium")
 
-    with _BROWSER_LOCK:
-        if _active_page and not _active_page.is_closed():
-            return _active_page
-
-        _USER_DATA_DIR.mkdir(parents=True, exist_ok=True)
-
-        # Clean stale Chromium lock files that block re-launch after crash
-        _lock_file = _USER_DATA_DIR / "SingletonLock"
-        if _lock_file.exists():
-            try:
-                _lock_file.unlink()
-            except OSError:
-                pass
-
-        if not _playwright_instance:
-            _playwright_instance = await async_playwright().start()
-
-        if not _active_browser_context:
-            _active_browser_context = await _playwright_instance.chromium.launch_persistent_context(
-                user_data_dir=str(_USER_DATA_DIR),
-                headless=headless,
-                viewport={"width": 1280, "height": 800},
-                args=["--disable-blink-features=AutomationControlled"]
-            )
-
-        pages = _active_browser_context.pages
-        _active_page = pages[0] if pages else await _active_browser_context.new_page()
-        _attach_trace_listeners(_active_page)
+    # Fast-path: page already exists and is open — no lock needed for read
+    if _active_page and not _active_page.is_closed():
         return _active_page
 
+    _USER_DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Clean stale Chromium lock files that block re-launch after crash
+    _lock_file = _USER_DATA_DIR / "SingletonLock"
+    if _lock_file.exists():
+        try:
+            _lock_file.unlink()
+        except OSError:
+            pass
+
+    # Do async work OUTSIDE the threading lock to avoid holding it across await
+    playwright_inst = None
+    browser_ctx = None
+
+    with _BROWSER_LOCK:
+        # Re-check inside lock (another thread may have created it)
+        if _active_page and not _active_page.is_closed():
+            return _active_page
+        playwright_inst = _playwright_instance
+        browser_ctx = _active_browser_context
+
+    # Perform async Playwright initialization outside the threading lock
+    if not playwright_inst:
+        playwright_inst = await async_playwright().start()
+
+    if not browser_ctx:
+        browser_ctx = await playwright_inst.chromium.launch_persistent_context(
+            user_data_dir=str(_USER_DATA_DIR),
+            headless=headless,
+            viewport={"width": 1280, "height": 800},
+            args=["--disable-blink-features=AutomationControlled"]
+        )
+
+    pages = browser_ctx.pages
+    new_page = pages[0] if pages else await browser_ctx.new_page()
+    _attach_trace_listeners(new_page)
+
+    # Now update shared state under the lock
+    with _BROWSER_LOCK:
+        _playwright_instance = playwright_inst
+        _active_browser_context = browser_ctx
+        _active_page = new_page
+
+    return new_page
 
 
 async def _close_browser():

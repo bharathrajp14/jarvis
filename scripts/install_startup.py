@@ -71,9 +71,12 @@ WantedBy=default.target
     try:
         subprocess.run(["systemctl", "--user", "daemon-reload"], capture_output=True)
         subprocess.run(["systemctl", "--user", "enable", "br-jarvis.service"], capture_output=True)
-    except Exception:
-        pass
-
+    except Exception as e:
+        if 'logger' in globals() or 'logger' in locals():
+            logger.debug('Suppressed exception: %s', e)
+        else:
+            import logging
+            logging.getLogger(__name__).debug('Suppressed exception: %s', e)
     print("=" * 55)
     print("  BR — Auto-Startup Installed (Linux)")
     print("=" * 55)
@@ -122,9 +125,12 @@ def install_mac():
     try:
         subprocess.run(["launchctl", "unload", str(plist_file)], capture_output=True)
         subprocess.run(["launchctl", "load", str(plist_file)], capture_output=True)
-    except Exception:
-        pass
-
+    except Exception as e:
+        if 'logger' in globals() or 'logger' in locals():
+            logger.debug('Suppressed exception: %s', e)
+        else:
+            import logging
+            logging.getLogger(__name__).debug('Suppressed exception: %s', e)
     print("=" * 55)
     print("  BR — Auto-Startup Installed (macOS)")
     print("=" * 55)
@@ -155,9 +161,12 @@ def install_windows():
         if legacy_file.exists():
             try:
                 legacy_file.unlink()
-            except Exception:
-                pass
-
+            except Exception as e:
+                if 'logger' in globals() or 'logger' in locals():
+                    logger.debug('Suppressed exception: %s', e)
+                else:
+                    import logging
+                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
     vbs_file.write_text(vbs_content, encoding="utf-8")
 
     print("=" * 55)
@@ -187,16 +196,24 @@ def remove():
             service_file.unlink()
         try:
             subprocess.run(["systemctl", "--user", "disable", "br-jarvis.service"], capture_output=True)
-        except Exception:
-            pass
+        except Exception as e:
+            if 'logger' in globals() or 'logger' in locals():
+                logger.debug('Suppressed exception: %s', e)
+            else:
+                import logging
+                logging.getLogger(__name__).debug('Suppressed exception: %s', e)
         print("[OK] BR Linux auto-startup removed.")
     elif _OS == "Darwin":
         plist_file = Path.home() / "Library" / "LaunchAgents" / "com.br.jarvis.plist"
         if plist_file.exists():
             try:
                 subprocess.run(["launchctl", "unload", str(plist_file)], capture_output=True)
-            except Exception:
-                pass
+            except Exception as e:
+                if 'logger' in globals() or 'logger' in locals():
+                    logger.debug('Suppressed exception: %s', e)
+                else:
+                    import logging
+                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
             plist_file.unlink()
         print("[OK] BR macOS auto-startup removed.")
     else:

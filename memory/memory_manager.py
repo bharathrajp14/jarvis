@@ -58,7 +58,11 @@ def load_memory() -> dict:
                 return data
             return _empty_memory()
         except Exception as e:
-            print(f"[Memory] ⚠️ Load error: {e}")
+            if 'logger' in globals() or 'logger' in locals():
+                logger.warning(f"{ f"[Memory] ⚠️ Load error: {e}" }" if isinstance(f"[Memory] ⚠️ Load error: {e}", str) else f"[Memory] ⚠️ Load error: {e}")
+            else:
+                import logging
+                logging.getLogger(__name__).warning(f"{ f"[Memory] ⚠️ Load error: {e}" }" if isinstance(f"[Memory] ⚠️ Load error: {e}", str) else f"[Memory] ⚠️ Load error: {e}")
             return _empty_memory()
 
 
@@ -91,7 +95,11 @@ def _trim_to_limit(memory: dict) -> dict:
             break
         try:
             del memory[cat][key]
-            print(f"[Memory] 🗑️  Trimmed {cat}/{key}")
+            if 'logger' in globals() or 'logger' in locals():
+                logger.info(f"{ f"[Memory] 🗑️  Trimmed {cat}/{key}" }" if isinstance(f"[Memory] 🗑️  Trimmed {cat}/{key}", str) else f"[Memory] 🗑️  Trimmed {cat}/{key}")
+            else:
+                import logging
+                logging.getLogger(__name__).info(f"{ f"[Memory] 🗑️  Trimmed {cat}/{key}" }" if isinstance(f"[Memory] 🗑️  Trimmed {cat}/{key}", str) else f"[Memory] 🗑️  Trimmed {cat}/{key}")
         except KeyError:
             pass
 
@@ -145,7 +153,11 @@ def update_memory(memory_update: dict) -> dict:
     memory = load_memory()
     if _recursive_update(memory, memory_update):
         save_memory(memory)
-        print(f"[Memory] 💾 Saved: {list(memory_update.keys())}")
+        if 'logger' in globals() or 'logger' in locals():
+            logger.info(f"{ f"[Memory] 💾 Saved: {list(memory_update.keys())}" }" if isinstance(f"[Memory] 💾 Saved: {list(memory_update.keys())}", str) else f"[Memory] 💾 Saved: {list(memory_update.keys())}")
+        else:
+            import logging
+            logging.getLogger(__name__).info(f"{ f"[Memory] 💾 Saved: {list(memory_update.keys())}" }" if isinstance(f"[Memory] 💾 Saved: {list(memory_update.keys())}", str) else f"[Memory] 💾 Saved: {list(memory_update.keys())}")
     return memory
 
 
@@ -276,7 +288,11 @@ def save_session_summary(summary: str, language: str = "") -> None:
             json.dumps(memory, indent=2, ensure_ascii=False),
             encoding="utf-8",
         )
-    print(f"[Memory] 📝 Session saved ({entry['date']}): {summary[:60]}…")
+    if 'logger' in globals() or 'logger' in locals():
+        logger.info(f"{ f"[Memory] 📝 Session saved ({entry['date']}): {summary[:60]}…" }" if isinstance(f"[Memory] 📝 Session saved ({entry['date']}): {summary[:60]}…", str) else f"[Memory] 📝 Session saved ({entry['date']}): {summary[:60]}…")
+    else:
+        import logging
+        logging.getLogger(__name__).info(f"{ f"[Memory] 📝 Session saved ({entry['date']}): {summary[:60]}…" }" if isinstance(f"[Memory] 📝 Session saved ({entry['date']}): {summary[:60]}…", str) else f"[Memory] 📝 Session saved ({entry['date']}): {summary[:60]}…")
 
 
 def pop_last_session() -> dict | None:
@@ -300,5 +316,9 @@ def pop_last_session() -> dict | None:
             )
             return entry
         except Exception as e:
-            print(f"[Memory] ⚠️ pop_last_session error: {e}")
+            if 'logger' in globals() or 'logger' in locals():
+                logger.warning(f"{ f"[Memory] ⚠️ pop_last_session error: {e}" }" if isinstance(f"[Memory] ⚠️ pop_last_session error: {e}", str) else f"[Memory] ⚠️ pop_last_session error: {e}")
+            else:
+                import logging
+                logging.getLogger(__name__).warning(f"{ f"[Memory] ⚠️ pop_last_session error: {e}" }" if isinstance(f"[Memory] ⚠️ pop_last_session error: {e}", str) else f"[Memory] ⚠️ pop_last_session error: {e}")
             return None

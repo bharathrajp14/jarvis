@@ -327,30 +327,98 @@ if __name__ == "__main__":
     args = sys.argv[1:]
 
     if not args:
-        print("JARVIS MK37 Skill Installer")
-        print()
-        print("Commands:")
-        print("  install <pack_name|git_url>  Install a skill pack")
-        print("  list                         List installed skills")
-        print("  remove <skill_name>          Remove a skill")
-        print("  remove-pack <pack_name>      Remove entire pack")
-        print("  update                       Update all packs")
-        print()
-        print(f"Known packs: {', '.join(KNOWN_PACKS.keys())}")
+        if 'logger' in globals() or 'logger' in locals():
+            logger.info("JARVIS MK37 Skill Installer")
+        else:
+            import logging
+            logging.getLogger(__name__).info("JARVIS MK37 Skill Installer")
+        if 'logger' in globals() or 'logger' in locals():
+            logger.info('')
+        else:
+            import logging
+            logging.getLogger(__name__).info('')
+        if 'logger' in globals() or 'logger' in locals():
+            logger.info("Commands:")
+        else:
+            import logging
+            logging.getLogger(__name__).info("Commands:")
+        if 'logger' in globals() or 'logger' in locals():
+            logger.info("  install <pack_name|git_url>  Install a skill pack")
+        else:
+            import logging
+            logging.getLogger(__name__).info("  install <pack_name|git_url>  Install a skill pack")
+        if 'logger' in globals() or 'logger' in locals():
+            logger.info("  list                         List installed skills")
+        else:
+            import logging
+            logging.getLogger(__name__).info("  list                         List installed skills")
+        if 'logger' in globals() or 'logger' in locals():
+            logger.info("  remove <skill_name>          Remove a skill")
+        else:
+            import logging
+            logging.getLogger(__name__).info("  remove <skill_name>          Remove a skill")
+        if 'logger' in globals() or 'logger' in locals():
+            logger.info("  remove-pack <pack_name>      Remove entire pack")
+        else:
+            import logging
+            logging.getLogger(__name__).info("  remove-pack <pack_name>      Remove entire pack")
+        if 'logger' in globals() or 'logger' in locals():
+            logger.info("  update                       Update all packs")
+        else:
+            import logging
+            logging.getLogger(__name__).info("  update                       Update all packs")
+        if 'logger' in globals() or 'logger' in locals():
+            logger.info('')
+        else:
+            import logging
+            logging.getLogger(__name__).info('')
+        if 'logger' in globals() or 'logger' in locals():
+            logger.info(f"{ f"Known packs: {', '.join(KNOWN_PACKS.keys())}" }" if isinstance(f"Known packs: {', '.join(KNOWN_PACKS.keys())}", str) else f"Known packs: {', '.join(KNOWN_PACKS.keys())}")
+        else:
+            import logging
+            logging.getLogger(__name__).info(f"{ f"Known packs: {', '.join(KNOWN_PACKS.keys())}" }" if isinstance(f"Known packs: {', '.join(KNOWN_PACKS.keys())}", str) else f"Known packs: {', '.join(KNOWN_PACKS.keys())}")
         sys.exit(0)
 
     cmd = args[0]
 
     if cmd == "install" and len(args) > 1:
-        print(install_skill_pack(args[1]))
+        if 'logger' in globals() or 'logger' in locals():
+            logger.info(f"{ install_skill_pack(args[1]) }" if isinstance(install_skill_pack(args[1]), str) else install_skill_pack(args[1]))
+        else:
+            import logging
+            logging.getLogger(__name__).info(f"{ install_skill_pack(args[1]) }" if isinstance(install_skill_pack(args[1]), str) else install_skill_pack(args[1]))
     elif cmd == "list":
-        print(list_installed())
+        if 'logger' in globals() or 'logger' in locals():
+            logger.info(f"{ list_installed() }" if isinstance(list_installed(), str) else list_installed())
+        else:
+            import logging
+            logging.getLogger(__name__).info(f"{ list_installed() }" if isinstance(list_installed(), str) else list_installed())
     elif cmd == "remove" and len(args) > 1:
-        print(remove_skill(args[1]))
+        if 'logger' in globals() or 'logger' in locals():
+            logger.info(f"{ remove_skill(args[1]) }" if isinstance(remove_skill(args[1]), str) else remove_skill(args[1]))
+        else:
+            import logging
+            logging.getLogger(__name__).info(f"{ remove_skill(args[1]) }" if isinstance(remove_skill(args[1]), str) else remove_skill(args[1]))
     elif cmd == "remove-pack" and len(args) > 1:
-        print(remove_pack(args[1]))
+        if 'logger' in globals() or 'logger' in locals():
+            logger.info(f"{ remove_pack(args[1]) }" if isinstance(remove_pack(args[1]), str) else remove_pack(args[1]))
+        else:
+            import logging
+            logging.getLogger(__name__).info(f"{ remove_pack(args[1]) }" if isinstance(remove_pack(args[1]), str) else remove_pack(args[1]))
     elif cmd == "update":
-        print(update_all())
+        if 'logger' in globals() or 'logger' in locals():
+            logger.info(f"{ update_all() }" if isinstance(update_all(), str) else update_all())
+        else:
+            import logging
+            logging.getLogger(__name__).info(f"{ update_all() }" if isinstance(update_all(), str) else update_all())
     else:
-        print(f"Unknown command: {cmd}")
-        print("Use: install, list, remove, remove-pack, update")
+        if 'logger' in globals() or 'logger' in locals():
+            logger.info(f"{ f"Unknown command: {cmd}" }" if isinstance(f"Unknown command: {cmd}", str) else f"Unknown command: {cmd}")
+        else:
+            import logging
+            logging.getLogger(__name__).info(f"{ f"Unknown command: {cmd}" }" if isinstance(f"Unknown command: {cmd}", str) else f"Unknown command: {cmd}")
+        if 'logger' in globals() or 'logger' in locals():
+            logger.info("Use: install, list, remove, remove-pack, update")
+        else:
+            import logging
+            logging.getLogger(__name__).info("Use: install, list, remove, remove-pack, update")

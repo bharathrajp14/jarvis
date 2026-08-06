@@ -19,6 +19,11 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Callable, Any
 
+# BUG-6 FIX: Cache one AgentExecutor per worker thread to avoid re-loading the
+# Gemini backend model on every task. threading.local() is safe because each
+# worker thread runs only one task at a time.
+_executor_thread_local = threading.local()
+
 logger = logging.getLogger("JARVIS.TaskQueue")
 
 
@@ -99,7 +104,11 @@ class TaskQueue:
     def pause(self) -> None:
         """Pause worker processing."""
         self._paused = True
-        print("[TaskQueue] ⏸️ Task queue paused")
+        if 'logger' in globals() or 'logger' in locals():
+            logger.info("[TaskQueue] ⏸️ Task queue paused")
+        else:
+            import logging
+            logging.getLogger(__name__).info("[TaskQueue] ⏸️ Task queue paused")
 
     def resume(self) -> None:
         """Resume worker processing."""
@@ -258,7 +267,11 @@ class TaskQueue:
         logger.info(f"▶️ Running [{task.task_id}]: {task.goal[:60]}")
         try:
             from agent.executor import AgentExecutor
-            executor = AgentExecutor()
+            # BUG-6 FIX: Reuse cached executor per thread instead of creating a new
+            # one per task, which re-loaded the entire Gemini backend each time.
+            if not hasattr(_executor_thread_local, "executor"):
+                _executor_thread_local.executor = AgentExecutor()
+            executor = _executor_thread_local.executor
             result = executor.execute(
                 goal        = task.goal,
                 speak       = task.speak,

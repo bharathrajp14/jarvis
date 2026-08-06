@@ -98,6 +98,69 @@ def is_available() -> bool:
 DEFAULT_INITIAL_PROMPT = "This is a speech command for Jarvis AI assistant to open applications, manage tasks, search, send emails, or run commands."
 
 
+# ── Hallucination Detection ───────────────────────────────────────────────────
+
+import re as _re
+
+_WHISPER_ARTIFACT_TAGS = _re.compile(
+    r"\[(BLANK_AUDIO|Music|Applause|Laughter|Silence|noise|inaudible|crosstalk"
+    r"|background noise|sound effects|music playing|ambient|static)\]",
+    _re.IGNORECASE
+)
+
+_KNOWN_HALLUCINATIONS = frozenset({
+    "thank you", "thank you very much", "thanks for watching", "bye", "you",
+    "thank you thank you", "i know that", "yeah", "uh", "um", "hmm", "hm",
+    "subtitles by", "translated by", "subscribe", "like and subscribe",
+    "i love you", "lets go for it", "what are you doing",
+    "what is going on", "what are you talking about", "mostly", "sms",
+})
+
+_REPETITION_PATTERN = _re.compile(r"\b(\w{3,})\b(?:\s+\1){3,}", _re.IGNORECASE)
+_PUNCT_ONLY = _re.compile(r"^[\s\W]+$")
+
+
+def _is_hallucination(text: str) -> bool:
+    """
+    Return True if the transcription is a known Whisper hallucination artifact.
+
+    Checks (in order):
+      1. Empty or pure-punctuation / symbols only
+      2. Too short (< 2 alphanumeric characters)
+      3. Whisper artifact tag like [BLANK_AUDIO], [Music]
+      4. Known spurious phrase (from empirical Whisper hallucination list)
+      5. Repetition loop: same word repeated 4+ times
+    """
+    if not text or not text.strip():
+        return True
+
+    # 1. Pure punctuation / symbols
+    if _PUNCT_ONLY.match(text):
+        return True
+
+    # 2. Less than 2 real characters
+    alphanums = [c for c in text if c.isalnum()]
+    if len(alphanums) < 2:
+        return True
+
+    # 3. Whisper artifact tags
+    if _WHISPER_ARTIFACT_TAGS.search(text):
+        return True
+
+    # 4. Known hallucination phrases (normalized)
+    normalized = " ".join(text.lower().split())
+    normalized_clean = "".join(c for c in normalized if c.isalnum() or c == " ").strip()
+    if normalized_clean in _KNOWN_HALLUCINATIONS:
+        return True
+
+    # 5. Repetition loop (word repeated 4+ times)
+    if _REPETITION_PATTERN.search(text):
+        return True
+
+    return False
+
+
+
 def transcribe(audio_bytes: bytes, language: str = "en", detect_language: bool = False, initial_prompt: str = "") -> str:
     """
     Transcribe audio bytes using local Whisper (or Groq cloud fast-path).
@@ -147,7 +210,11 @@ def transcribe(audio_bytes: bytes, language: str = "en", detect_language: bool =
             if rms < min_rms:
                 return ""
     except Exception as e:
-        print(f"[WhisperLocal] Silence gate check failed: {e}")
+        if 'logger' in globals() or 'logger' in locals():
+            logger.warning(f"{ f"[WhisperLocal] Silence gate check failed: {e}" }" if isinstance(f"[WhisperLocal] Silence gate check failed: {e}", str) else f"[WhisperLocal] Silence gate check failed: {e}")
+        else:
+            import logging
+            logging.getLogger(__name__).warning(f"{ f"[WhisperLocal] Silence gate check failed: {e}" }" if isinstance(f"[WhisperLocal] Silence gate check failed: {e}", str) else f"[WhisperLocal] Silence gate check failed: {e}")
         float_samples = None
 
     engine, engine_type = _get_engine()
@@ -181,27 +248,21 @@ def transcribe(audio_bytes: bytes, language: str = "en", detect_language: bool =
         if not text_clean:
             return ""
 
-        # ── Hallucination Pattern Filter ──────────────────────────────────────
-        normalized = ''.join(c for c in text_clean.lower() if c.isalnum() or c.isspace()).strip()
-        hallucinations = {
-            "thank you", "thank you very much", "thanks for watching", "bye", "you", 
-            "thank you thank you", "i know that", "i know that i know that", 
-            "people in kabul shouting watching flowers", "and pedals know nothing",
-            "보 but", "babe", "its definitely runche", "thats just the third place",
-            "were that close", "and we could speak well", "i love you", "i love you i love you",
-            "the full gym", "i dont know who that was right now", "i dont know if theyre not here",
-            "they claim to be a lot more damucana bird", "perfect that kind candidates",
-            "aw the time here baron", "what are you talking about", "what is going on",
-            "what are you doing", "mostly", "lets go for it", "yeah", "sms",
-            "subtitles by", "translated by", "subscribe", "like and subscribe"
-        }
-        if normalized in hallucinations:
+        # ── Enhanced Hallucination Filter (MK38) ─────────────────────────────
+        # Catches pure-punctuation, single chars, Whisper artifact tags,
+        # repetition loops, and known spurious outputs.
+        if _is_hallucination(text_clean):
+            logger.debug("WhisperLocal: hallucination rejected: %r", text_clean[:60])
             return ""
 
         return text_clean
 
     except Exception as e:
-        print(f"[WhisperLocal] Transcription error: {e}")
+        if 'logger' in globals() or 'logger' in locals():
+            logger.warning(f"{ f"[WhisperLocal] Transcription error: {e}" }" if isinstance(f"[WhisperLocal] Transcription error: {e}", str) else f"[WhisperLocal] Transcription error: {e}")
+        else:
+            import logging
+            logging.getLogger(__name__).warning(f"{ f"[WhisperLocal] Transcription error: {e}" }" if isinstance(f"[WhisperLocal] Transcription error: {e}", str) else f"[WhisperLocal] Transcription error: {e}")
         traceback.print_exc()
         return ""
 

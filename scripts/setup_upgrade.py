@@ -26,9 +26,12 @@ if sys.platform == "win32":
             sys.stdout.reconfigure(encoding="utf-8", errors="replace")
         if hasattr(sys.stderr, "reconfigure"):
             sys.stderr.reconfigure(encoding="utf-8", errors="replace")
-    except Exception:
-        pass
-
+    except Exception as e:
+        if 'logger' in globals() or 'logger' in locals():
+            logger.debug('Suppressed exception: %s', e)
+        else:
+            import logging
+            logging.getLogger(__name__).debug('Suppressed exception: %s', e)
 # ── The upgraded files to copy ─────────────────────────────────────────────
 UPGRADE_DIR = Path(__file__).parent
 TARGET_DIR = None
@@ -184,9 +187,12 @@ def main():
                 data["gemini_api_key"] = ""
                 api_keys_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
                 print_ok("Added gemini_api_key slot to config/api_keys.json")
-        except Exception:
-            pass
-
+        except Exception as e:
+            if 'logger' in globals() or 'logger' in locals():
+                logger.debug('Suppressed exception: %s', e)
+            else:
+                import logging
+                logging.getLogger(__name__).debug('Suppressed exception: %s', e)
     # 4. Install required packages
     print_step("Installing required packages...")
     for pkg in REQUIRED_PACKAGES:

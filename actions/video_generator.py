@@ -71,7 +71,11 @@ def generate_video(
                 result["prompt"] = prompt
                 return result
         except Exception as e:
-            print(f"[VideoGen] {prov} failed: {e}")
+            if 'logger' in globals() or 'logger' in locals():
+                logger.warning(f"{ f"[VideoGen] {prov} failed: {e}" }" if isinstance(f"[VideoGen] {prov} failed: {e}", str) else f"[VideoGen] {prov} failed: {e}")
+            else:
+                import logging
+                logging.getLogger(__name__).warning(f"{ f"[VideoGen] {prov} failed: {e}" }" if isinstance(f"[VideoGen] {prov} failed: {e}", str) else f"[VideoGen] {prov} failed: {e}")
             traceback.print_exc()
             continue
 

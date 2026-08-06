@@ -29,10 +29,12 @@ def test_scenario_10_file_operations():
         file_to_del = WORKSPACE_DIR / test_path
         if file_to_del.exists():
             file_to_del.unlink()
-    except Exception:
-        pass
-
-
+    except Exception as e:
+        if 'logger' in globals() or 'logger' in locals():
+            logger.debug('Suppressed exception: %s', e)
+        else:
+            import logging
+            logging.getLogger(__name__).debug('Suppressed exception: %s', e)
 def test_scenario_11_12_terminal_and_git():
     """Scenarios 11 & 12: Run terminal shell command and check output."""
     # Test simple echo via cli_controller

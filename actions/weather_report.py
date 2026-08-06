@@ -43,7 +43,11 @@ def weather_action(
 
 
 def _log(message: str, player=None) -> None:
-    print(f"[Weather] {message}")
+    if 'logger' in globals() or 'logger' in locals():
+        logger.info(f"{ f"[Weather] {message}" }" if isinstance(f"[Weather] {message}", str) else f"[Weather] {message}")
+    else:
+        import logging
+        logging.getLogger(__name__).info(f"{ f"[Weather] {message}" }" if isinstance(f"[Weather] {message}", str) else f"[Weather] {message}")
     if player:
         try:
             player.write_log(f"JARVIS: {message}")

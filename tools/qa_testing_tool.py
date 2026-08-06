@@ -138,9 +138,12 @@ def qa_run_browser_test(args: dict) -> str:
         try:
             await page.screenshot(path=str(ss_path), full_page=True)
             results["screenshot_path"] = str(ss_path)
-        except Exception:
-            pass
-
+        except Exception as e:
+            if 'logger' in globals() or 'logger' in locals():
+                logger.debug('Suppressed exception: %s', e)
+            else:
+                import logging
+                logging.getLogger(__name__).debug('Suppressed exception: %s', e)
         trace = get_browser_trace_logs()
         results["console_logs"] = trace["console_logs"]
         results["page_errors"] = trace["page_errors"]

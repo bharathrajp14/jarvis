@@ -69,7 +69,11 @@ class DeepSeekBackend(BaseBackend):
             )
             return response.choices[0].message.content or ""
         except Exception as e:
-            print(f"[DeepSeek] Error during completion: {e}")
+            if 'logger' in globals() or 'logger' in locals():
+                logger.warning(f"{ f"[DeepSeek] Error during completion: {e}" }" if isinstance(f"[DeepSeek] Error during completion: {e}", str) else f"[DeepSeek] Error during completion: {e}")
+            else:
+                import logging
+                logging.getLogger(__name__).warning(f"{ f"[DeepSeek] Error during completion: {e}" }" if isinstance(f"[DeepSeek] Error during completion: {e}", str) else f"[DeepSeek] Error during completion: {e}")
             raise
 
     def stream(self, messages: List[Dict[str, Any]], system: str = "") -> Generator[str, None, None]:

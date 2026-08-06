@@ -5,8 +5,17 @@ def run_integration_tests():
     sys.path.insert(0, '.')
     os.environ['JARVIS_PERMISSION_MODE'] = 'allow_all'
 
-    print('=== JARVIS MK37 Integration Test ===')
-    print()
+    if 'logger' in globals() or 'logger' in locals():
+        logger.info('=== JARVIS MK37 Integration Test ===')
+    else:
+        import logging
+        logging.getLogger(__name__).info('=== JARVIS MK37 Integration Test ===')
+    if 'logger' in globals() or 'logger' in locals():
+        logger.info('')
+    else:
+        import logging
+        logging.getLogger(__name__).info('')
+
 
     # 1. Permissions
     from permissions import PERMISSIONS, PermissionMode
@@ -14,7 +23,11 @@ def run_integration_tests():
     assert PERMISSIONS.check('keyboard_type') == True
     assert PERMISSIONS.check('cursor_click') == True
     assert PERMISSIONS.check('run_code') == True
-    print('[PASS] 1. Permissions: auto-allow mode working')
+    if 'logger' in globals() or 'logger' in locals():
+        logger.info('[PASS] 1. Permissions: auto-allow mode working')
+    else:
+        import logging
+        logging.getLogger(__name__).info('[PASS] 1. Permissions: auto-allow mode working')
 
     # 2. Skills
     from skills import load_skills, find_skill, SkillDef
@@ -30,13 +43,21 @@ def run_integration_tests():
     assert pc_skill is not None
     editor_skill = find_skill('/editor-open')
     assert editor_skill is not None
-    print(f'[PASS] 2. Skills: {len(skills)} skills loaded, triggers work')
+    if 'logger' in globals() or 'logger' in locals():
+        logger.info(f"{ f'[PASS] 2. Skills: {len(skills)} skills loaded, triggers work' }" if isinstance(f'[PASS] 2. Skills: {len(skills)} skills loaded, triggers work', str) else f'[PASS] 2. Skills: {len(skills)} skills loaded, triggers work')
+    else:
+        import logging
+        logging.getLogger(__name__).info(f"{ f'[PASS] 2. Skills: {len(skills)} skills loaded, triggers work' }" if isinstance(f'[PASS] 2. Skills: {len(skills)} skills loaded, triggers work', str) else f'[PASS] 2. Skills: {len(skills)} skills loaded, triggers work')
 
     # 3. Skill argument substitution
     from skills.loader import substitute_arguments
     result = substitute_arguments('Hello $ARGUMENTS world', 'test_arg', [])
     assert 'test_arg' in result
-    print('[PASS] 3. Skill argument substitution works')
+    if 'logger' in globals() or 'logger' in locals():
+        logger.info('[PASS] 3. Skill argument substitution works')
+    else:
+        import logging
+        logging.getLogger(__name__).info('[PASS] 3. Skill argument substitution works')
 
     # 4. Multi-Agent
     from multi_agent import (
@@ -51,7 +72,11 @@ def run_integration_tests():
     code_engineer = get_agent_definition('code_engineer')
     assert code_engineer is not None
     assert code_engineer.role == 'code_engineer'
-    print(f'[PASS] 4. Multi-Agent: {len(defs)} agent types (code_engineer, security_auditor, etc)')
+    if 'logger' in globals() or 'logger' in locals():
+        logger.info(f"{ f'[PASS] 4. Multi-Agent: {len(defs)} agent types (code_engineer, security_auditor, etc)' }" if isinstance(f'[PASS] 4. Multi-Agent: {len(defs)} agent types (code_engineer, security_auditor, etc)', str) else f'[PASS] 4. Multi-Agent: {len(defs)} agent types (code_engineer, security_auditor, etc)')
+    else:
+        import logging
+        logging.getLogger(__name__).info(f"{ f'[PASS] 4. Multi-Agent: {len(defs)} agent types (code_engineer, security_auditor, etc)' }" if isinstance(f'[PASS] 4. Multi-Agent: {len(defs)} agent types (code_engineer, security_auditor, etc)', str) else f'[PASS] 4. Multi-Agent: {len(defs)} agent types (code_engineer, security_auditor, etc)')
 
     # 5. Persistent Memory
     from memory.persistent_store import (
@@ -71,18 +96,30 @@ def run_integration_tests():
     delete_memory('test_integration', scope='user')
     results2 = search_memory('integration test')
     assert 'test_integration' not in [e.name for e in results2]
-    print('[PASS] 5. Persistent Memory: save/search/delete cycle works')
+    if 'logger' in globals() or 'logger' in locals():
+        logger.info('[PASS] 5. Persistent Memory: save/search/delete cycle works')
+    else:
+        import logging
+        logging.getLogger(__name__).info('[PASS] 5. Persistent Memory: save/search/delete cycle works')
 
     # 6. Memory Scan
     from memory.memory_scan import scan_all_memories, memory_age_str, memory_freshness_text
     age = memory_age_str(0)
     assert 'days' in age or 'today' in age
-    print('[PASS] 6. Memory Scan: age/freshness functions work')
+    if 'logger' in globals() or 'logger' in locals():
+        logger.info('[PASS] 6. Memory Scan: age/freshness functions work')
+    else:
+        import logging
+        logging.getLogger(__name__).info('[PASS] 6. Memory Scan: age/freshness functions work')
 
     # 7. Memory Context
     from memory.memory_context import get_memory_context, truncate_index_content
     ctx = get_memory_context()  # may be empty, that's OK
-    print('[PASS] 7. Memory Context: builds without error')
+    if 'logger' in globals() or 'logger' in locals():
+        logger.warning('[PASS] 7. Memory Context: builds without error')
+    else:
+        import logging
+        logging.getLogger(__name__).warning('[PASS] 7. Memory Context: builds without error')
 
     # 8. Tool Registry
     from tools.registry import TOOL_SCHEMAS, get_tool_prompt_block, parse_tool_call, _import_plugins
@@ -101,26 +138,55 @@ def run_integration_tests():
     assert args['query'] == 'test'
     name2, args2 = parse_tool_call('No tool call here')
     assert name2 is None
-    print(f'[PASS] 8. Tool Registry: {len(TOOL_SCHEMAS)} tools, prompt block, parser all OK')
+    if 'logger' in globals() or 'logger' in locals():
+        logger.info(f"{ f'[PASS] 8. Tool Registry: {len(TOOL_SCHEMAS)} tools, prompt block, parser all OK' }" if isinstance(f'[PASS] 8. Tool Registry: {len(TOOL_SCHEMAS)} tools, prompt block, parser all OK', str) else f'[PASS] 8. Tool Registry: {len(TOOL_SCHEMAS)} tools, prompt block, parser all OK')
+    else:
+        import logging
+        logging.getLogger(__name__).info(f"{ f'[PASS] 8. Tool Registry: {len(TOOL_SCHEMAS)} tools, prompt block, parser all OK' }" if isinstance(f'[PASS] 8. Tool Registry: {len(TOOL_SCHEMAS)} tools, prompt block, parser all OK', str) else f'[PASS] 8. Tool Registry: {len(TOOL_SCHEMAS)} tools, prompt block, parser all OK')
 
     # 9. Orchestrator
     from orchestrator.core import JarvisOrchestrator, MAX_REACT_STEPS
     assert MAX_REACT_STEPS == 20
-    print('[PASS] 9. Orchestrator: MAX_REACT_STEPS=20, imports clean')
+    if 'logger' in globals() or 'logger' in locals():
+        logger.info('[PASS] 9. Orchestrator: MAX_REACT_STEPS=20, imports clean')
+    else:
+        import logging
+        logging.getLogger(__name__).info('[PASS] 9. Orchestrator: MAX_REACT_STEPS=20, imports clean')
 
     # 10. Memory Types
     from memory.memory_types import MEMORY_SYSTEM_PROMPT, MEMORY_TYPES
     assert len(MEMORY_TYPES) == 4
-    print('[PASS] 10. Memory Types: 4 types defined')
+    if 'logger' in globals() or 'logger' in locals():
+        logger.info('[PASS] 10. Memory Types: 4 types defined')
+    else:
+        import logging
+        logging.getLogger(__name__).info('[PASS] 10. Memory Types: 4 types defined')
 
     # 11. Consolidator
     from memory.consolidator import consolidate_session, MIN_MESSAGES_TO_CONSOLIDATE
     assert MIN_MESSAGES_TO_CONSOLIDATE == 8
-    print('[PASS] 11. Consolidator: ready (min 8 messages)')
+    if 'logger' in globals() or 'logger' in locals():
+        logger.info('[PASS] 11. Consolidator: ready (min 8 messages)')
+    else:
+        import logging
+        logging.getLogger(__name__).info('[PASS] 11. Consolidator: ready (min 8 messages)')
 
-    print()
-    print('=== ALL 11 TESTS PASSED ===')
-    print(f'Summary: 37 tools | 10 skills | {len(defs)} agent types | auto-allow permissions')
+    if 'logger' in globals() or 'logger' in locals():
+        logger.info('')
+    else:
+        import logging
+        logging.getLogger(__name__).info('')
+
+    if 'logger' in globals() or 'logger' in locals():
+        logger.info('=== ALL 11 TESTS PASSED ===')
+    else:
+        import logging
+        logging.getLogger(__name__).info('=== ALL 11 TESTS PASSED ===')
+    if 'logger' in globals() or 'logger' in locals():
+        logger.info(f"{ f'Summary: 37 tools | 10 skills | {len(defs)} agent types | auto-allow permissions' }" if isinstance(f'Summary: 37 tools | 10 skills | {len(defs)} agent types | auto-allow permissions', str) else f'Summary: 37 tools | 10 skills | {len(defs)} agent types | auto-allow permissions')
+    else:
+        import logging
+        logging.getLogger(__name__).info(f"{ f'Summary: 37 tools | 10 skills | {len(defs)} agent types | auto-allow permissions' }" if isinstance(f'Summary: 37 tools | 10 skills | {len(defs)} agent types | auto-allow permissions', str) else f'Summary: 37 tools | 10 skills | {len(defs)} agent types | auto-allow permissions')
 
 if __name__ == '__main__':
     run_integration_tests()

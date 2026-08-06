@@ -84,11 +84,19 @@ def test_self_healing_engine_init():
 
 
 if __name__ == "__main__":
-    print("Running test_semantic_vision.py...")
+    if 'logger' in globals() or 'logger' in locals():
+        logger.info("Running test_semantic_vision.py...")
+    else:
+        import logging
+        logging.getLogger(__name__).info("Running test_semantic_vision.py...")
     test_semantic_types()
     test_accessibility_bridge()
     test_ocr_engine_lru_cache()
     test_hybrid_vision_pipeline()
     test_semantic_operator_resolution()
     test_self_healing_engine_init()
-    print("All Semantic Vision OS tests passed successfully!")
+    if 'logger' in globals() or 'logger' in locals():
+        logger.info("All Semantic Vision OS tests passed successfully!")
+    else:
+        import logging
+        logging.getLogger(__name__).info("All Semantic Vision OS tests passed successfully!")

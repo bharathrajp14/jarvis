@@ -56,10 +56,12 @@ def _rotate_if_needed(file_path: Path) -> None:
         if target.exists():
             target.unlink()
         file_path.rename(target)
-    except Exception:
-        pass
-
-
+    except Exception as e:
+        if 'logger' in globals() or 'logger' in locals():
+            logger.debug('Suppressed exception: %s', e)
+        else:
+            import logging
+            logging.getLogger(__name__).debug('Suppressed exception: %s', e)
 def _truncate_args(args: Any, max_len: int = 500) -> Any:
     """Safely truncate arguments for audit storage without JSON syntax errors."""
     if args is None:
@@ -144,5 +146,9 @@ def write_audit(
             _PLAINTEXT_PATH.parent.mkdir(parents=True, exist_ok=True)
             with open(_PLAINTEXT_PATH, "a", encoding="utf-8") as f:
                 f.write(plain_line)
-        except Exception:
-            pass
+        except Exception as e:
+            if 'logger' in globals() or 'logger' in locals():
+                logger.debug('Suppressed exception: %s', e)
+            else:
+                import logging
+                logging.getLogger(__name__).debug('Suppressed exception: %s', e)

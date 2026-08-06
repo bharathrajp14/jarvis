@@ -70,9 +70,12 @@ class CodeSandbox:
         finally:
             try:
                 os.unlink(fname)
-            except Exception:
-                pass
-
+            except Exception as e:
+                if 'logger' in globals() or 'logger' in locals():
+                    logger.debug('Suppressed exception: %s', e)
+                else:
+                    import logging
+                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
     def _ext(self, lang):
         return {
             "python": ".py",

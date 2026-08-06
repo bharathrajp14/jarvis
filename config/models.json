@@ -17,6 +17,7 @@
     "planner_model": "gemini-3.6-flash-medium",
     "fast_model": "gemini-3.5-flash",
     "openai_base_url": "http://127.0.0.1:8045/v1",
-    "openai_api_key": "sk-aae07922d4a64fc29e6d9f54542a564f",
+    "openai_api_key": "none",
     "openai_model": "gemini-3.5-flash"
 }
+

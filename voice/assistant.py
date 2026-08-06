@@ -65,7 +65,11 @@ except ImportError:
                 self.mic_energy_level = 0.0
 
             def write_log(self, msg: str) -> None:
-                print(f"[UI] {msg}")
+                if 'logger' in globals() or 'logger' in locals():
+                    logger.info(f"{ f"[UI] {msg}" }" if isinstance(f"[UI] {msg}", str) else f"[UI] {msg}")
+                else:
+                    import logging
+                    logging.getLogger(__name__).info(f"{ f"[UI] {msg}" }" if isinstance(f"[UI] {msg}", str) else f"[UI] {msg}")
 
             def set_state(self, state: str) -> None:
                 self._state = state
@@ -79,7 +83,28 @@ from voice.stt import SounddeviceMicrophone
 
 
 class BRVoiceAssistant:
-    """Hands-free Voice Assistant coordinator for JARVIS MK37."""
+    """Hands-free Voice Assistant coordinator for JARVIS MK38."""
+
+    # Class-level barge-in VAD singleton (shared across all instances)
+    # Lazy-initialized on first speak() to avoid startup overhead
+    _barge_vad = None
+    _barge_vad_lock = None
+
+    @classmethod
+    def _get_barge_vad(cls):
+        """Lazy-load the barge-in SileroVAD singleton (thread-safe)."""
+        import threading
+        if cls._barge_vad_lock is None:
+            cls._barge_vad_lock = threading.Lock()
+        with cls._barge_vad_lock:
+            if cls._barge_vad is None:
+                try:
+                    from voice.silero_vad import SileroVAD
+                    cls._barge_vad = SileroVAD()
+                    logger.info("[BargeIn] SileroVAD singleton loaded")
+                except Exception as e:
+                    logger.warning("[BargeIn] SileroVAD load failed: %s", e)
+        return cls._barge_vad
 
     def __init__(self, ui: JarvisUI | None = None):
         # ── BUG-001 FIX: self.ui must be set FIRST before any other attribute
@@ -135,6 +160,15 @@ class BRVoiceAssistant:
         # Tracked background tasks (monitor_tasks, etc.) for clean cancellation
         self._bg_tasks: set[asyncio.Task] = set()
 
+        # Initialize Persistent Barge-In Input Stream
+        self._persistent_barge_stream = None
+        self._persistent_barge_queue = None
+        self._barge_in_running = False
+        
+        barge_in_enabled = os.environ.get("JARVIS_ENABLE_BARGE_IN", "true").lower() in ("1", "true", "yes")
+        if barge_in_enabled:
+            self._start_persistent_barge_in()
+
         # Bind manual text command submission from UI if available
         if self.ui:
             self.ui.on_text_command = self._on_text_command
@@ -183,13 +217,72 @@ class BRVoiceAssistant:
             self._current_task = asyncio.create_task(self.process_command(text))
 
 
+    def _start_persistent_barge_in(self):
+        """Starts a persistent background RawInputStream to monitor barge-in interuptions."""
+        import queue as _q
+        self._persistent_barge_queue = _q.Queue()
+        self._barge_in_running = True
+
+        def _cb(indata, frames, t, status):
+            if self._persistent_barge_queue:
+                self._persistent_barge_queue.put(bytes(indata))
+
+        def _run_stream():
+            import sounddevice as sd_barge
+            import time
+            barge_chunk = 512
+            while self._barge_in_running:
+                try:
+                    with sd_barge.RawInputStream(
+                        samplerate=16000, channels=1, dtype='int16',
+                        blocksize=barge_chunk, callback=_cb
+                    ):
+                        while self._barge_in_running:
+                            # If not speaking, keep queue empty to prevent lag or memory leak
+                            if not getattr(self.ui, "speaking", False):
+                                try:
+                                    while not self._persistent_barge_queue.empty():
+                                        self._persistent_barge_queue.get_nowait()
+                                except Exception:
+                                    pass
+                                time.sleep(0.1)
+
+                                continue
+
+                            # We are speaking! Monitor queue for barge-in speech
+                            try:
+                                pcm = self._persistent_barge_queue.get(timeout=0.08)
+                                _barge_vad = self.__class__._get_barge_vad()
+                                if _barge_vad:
+                                    is_speech, prob, snr_db = _barge_vad.is_speech(pcm)
+                                    if is_speech and snr_db > 8.0:
+                                        logger.info("[BRG-IN] Barge-in SNR=%.1fdB — stopping TTS", snr_db)
+                                        self.tts.stop()
+                                        self.ui.speaking = False
+                                        self.ui.set_state("LISTENING")
+                                        # Clear queue
+                                        while not self._persistent_barge_queue.empty():
+                                            self._persistent_barge_queue.get_nowait()
+                                        time.sleep(0.5)  # Cooldown
+                            except Exception:
+                                pass
+                except Exception as e:
+                    logger.debug("Barge-in input stream exception: %s. Retrying...", e)
+                    time.sleep(2.0)
+
+
+        threading.Thread(target=_run_stream, daemon=True, name="PersistentBargeIn").start()
+
     def speak(self, text: str):
         """Speak text using the neural TTS engine with UI state sync & barge-in support."""
-        # Log clean version for readability
         from voice.tts import clean_for_speech
         log_text = clean_for_speech(text)
         if log_text:
-            print(f"[JARVIS] 🗣 Speak: {log_text[:200]}")
+            if 'logger' in globals() or 'logger' in locals():
+                logger.info(f"{ f"[JARVIS] 🗣 Speak: {log_text[:200]}" }" if isinstance(f"[JARVIS] 🗣 Speak: {log_text[:200]}", str) else f"[JARVIS] 🗣 Speak: {log_text[:200]}")
+            else:
+                import logging
+                logging.getLogger(__name__).info(f"{ f"[JARVIS] 🗣 Speak: {log_text[:200]}" }" if isinstance(f"[JARVIS] 🗣 Speak: {log_text[:200]}", str) else f"[JARVIS] 🗣 Speak: {log_text[:200]}")
 
         def on_start():
             self.ui.speaking = True
@@ -201,6 +294,16 @@ class BRVoiceAssistant:
                 self.ui.set_state("LISTENING")
 
         self.tts.speak_async(text, on_start=on_start, on_finish=on_finish)
+
+        # ── Barge-In Detection ────────────────────────────────────────────────
+        # Clear persistent queue to avoid pre-existing audio triggers
+        if getattr(self, "_persistent_barge_queue", None):
+            try:
+                while not self._persistent_barge_queue.empty():
+                    self._persistent_barge_queue.get_nowait()
+            except Exception:
+                pass
+
 
     def stop_speech(self):
         """Halt active neural TTS speech playback immediately for barge-in interruption."""
@@ -340,7 +443,11 @@ class BRVoiceAssistant:
                         )
                     )
             except Exception as e:
-                print(f"[Voice] Local Whisper transcription failed: {e}")
+                if 'logger' in globals() or 'logger' in locals():
+                    logger.warning(f"{ f"[Voice] Local Whisper transcription failed: {e}" }" if isinstance(f"[Voice] Local Whisper transcription failed: {e}", str) else f"[Voice] Local Whisper transcription failed: {e}")
+                else:
+                    import logging
+                    logging.getLogger(__name__).warning(f"{ f"[Voice] Local Whisper transcription failed: {e}" }" if isinstance(f"[Voice] Local Whisper transcription failed: {e}", str) else f"[Voice] Local Whisper transcription failed: {e}")
 
         # 2. Try configured default backend (if it has transcribe method)
         if not text and hasattr(self, "backends") and self.backends:
@@ -541,6 +648,7 @@ class BRVoiceAssistant:
                     pass
                 time.sleep(0.05)
 
+
         # Setup Speech Recognition
         mic_available = False
         self.r = None
@@ -573,7 +681,11 @@ class BRVoiceAssistant:
                         lambda c=startup_cmd: custom_command_engine.execute({"actions": [c]}, {}, speak_callback=self.speak)
                     )
         except Exception as e:
-            print(f"[Voice] Startup commands error: {e}")
+            if 'logger' in globals() or 'logger' in locals():
+                logger.warning(f"{ f"[Voice] Startup commands error: {e}" }" if isinstance(f"[Voice] Startup commands error: {e}", str) else f"[Voice] Startup commands error: {e}")
+            else:
+                import logging
+                logging.getLogger(__name__).warning(f"{ f"[Voice] Startup commands error: {e}" }" if isinstance(f"[Voice] Startup commands error: {e}", str) else f"[Voice] Startup commands error: {e}")
 
         if not mic_available or not self.r or not mic:
             self.ui.write_log("SYS: Keyboard text control operational.")
@@ -591,8 +703,52 @@ class BRVoiceAssistant:
                     self.r.phrase_threshold = 0.08
                     self.r.dynamic_energy_ratio = 1.25
                     mic.drain()  # ⚡ instant flush instead of sleep + manual loop
+
+                    # ── AdaptiveNoiseCalibrator: tune VAD threshold to environment ──
+                    try:
+                        from voice.noise_calibrator import get_calibrator
+                        _nc = get_calibrator()
+                        if not _nc.is_calibrated:
+                            _nc.start_background_calibration(
+                                chunk_size=512, sample_rate=16000
+                            )
+                        # Feed noise floor into STT energy pre-filter
+                        if hasattr(mic, 'set_noise_floor') and _nc.is_calibrated:
+                            mic.set_noise_floor(_nc.baseline_rms)
+                        logger.info("[Voice] NoiseCalibrator: %r", _nc)
+                    except Exception as _nc_err:
+                        logger.debug("NoiseCalibrator boot error: %s", _nc_err)
+
                     self.ui.set_state("LISTENING")
                     self.ui.write_log(f"SYS: Microphone active (Device {mic.device_index}). Hands-free mode active. Listening for 'Jarvis' or 'Hey Jarvis'...")
+
+                    # ── Mic Health Watchdog ────────────────────────────────────────
+                    def _mic_watchdog():
+                        while True:
+                            time.sleep(5.0)
+
+                            try:
+                                if not mic.is_alive():
+                                    logger.warning("[Watchdog] Mic stale — attempting hot-plug recovery")
+                                    self.ui.write_log("WRN: Mic disconnect detected. Reconnecting...")
+                                    if mic.try_reconnect():
+                                        # Feed updated noise floor after recovery
+                                        try:
+                                            from voice.noise_calibrator import get_calibrator
+                                            _nc2 = get_calibrator()
+                                            if hasattr(mic, 'set_noise_floor'):
+                                                mic.set_noise_floor(_nc2.baseline_rms)
+                                        except Exception:
+                                            pass
+                                        self.ui.write_log("SYS: Mic recovered successfully.")
+                                    else:
+                                        self.ui.write_log("ERR: Mic recovery failed. Using text input only.")
+                            except Exception:
+                                pass
+
+                    threading.Thread(target=_mic_watchdog, daemon=True, name="MicWatchdog").start()
+
+
                 except Exception as e:
                     self.ui.write_log(f"ERR: Microphone calibration failed: {e}")
 
@@ -649,8 +805,18 @@ class BRVoiceAssistant:
                                 pass
 
                             # Restore full command listening thresholds for active command capture
-                            self.r.pause_threshold = 0.70
-                            self.r.non_speaking_duration = 0.30
+                            # ── Dynamic Pause Threshold ──────────────────────────────────────────
+                            # Use adaptive pause based on environment noise level.
+                            # QUIET env → tighter 0.55s, NOISY env → looser 0.90s
+                            try:
+                                from voice.noise_calibrator import get_calibrator
+                                _env = get_calibrator().environment_label
+                                _pause = {"QUIET": 0.55, "MODERATE": 0.70, "NOISY": 0.90}.get(_env, 0.70)
+                            except Exception:
+                                _pause = 0.70
+                            self.r.pause_threshold = _pause
+                            self.r.non_speaking_duration = max(0.20, _pause * 0.40)
+
 
                             # Listen for follow-up command if user spoke only the wake word
                             try:
@@ -690,10 +856,18 @@ class BRVoiceAssistant:
                     except RuntimeError as e:
                         if "shutdown" in str(e).lower() or "closed" in str(e).lower():
                             break
-                        print(f"[Voice Loop Error]: {e}")
+                        if 'logger' in globals() or 'logger' in locals():
+                            logger.warning(f"{ f"[Voice Loop Error]: {e}" }" if isinstance(f"[Voice Loop Error]: {e}", str) else f"[Voice Loop Error]: {e}")
+                        else:
+                            import logging
+                            logging.getLogger(__name__).warning(f"{ f"[Voice Loop Error]: {e}" }" if isinstance(f"[Voice Loop Error]: {e}", str) else f"[Voice Loop Error]: {e}")
                         await asyncio.sleep(0.3)
                     except Exception as e:
-                        print(f"[Voice Loop Error]: {e}")
+                        if 'logger' in globals() or 'logger' in locals():
+                            logger.warning(f"{ f"[Voice Loop Error]: {e}" }" if isinstance(f"[Voice Loop Error]: {e}", str) else f"[Voice Loop Error]: {e}")
+                        else:
+                            import logging
+                            logging.getLogger(__name__).warning(f"{ f"[Voice Loop Error]: {e}" }" if isinstance(f"[Voice Loop Error]: {e}", str) else f"[Voice Loop Error]: {e}")
                         await asyncio.sleep(0.3)
 
         except Exception as e:

@@ -20,9 +20,21 @@ def run_master_suite() -> int:
     project_root = Path(__file__).resolve().parent.parent
     test_dir = project_root / "tests"
     
-    print("=" * 60)
-    print("BR JARVIS -- MASTER SYSTEM TEST SUITE RUNNER")
-    print("=" * 60)
+    if 'logger' in globals() or 'logger' in locals():
+        logger.info(f"{ "=" * 60 }" if isinstance("=" * 60, str) else "=" * 60)
+    else:
+        import logging
+        logging.getLogger(__name__).info(f"{ "=" * 60 }" if isinstance("=" * 60, str) else "=" * 60)
+    if 'logger' in globals() or 'logger' in locals():
+        logger.info("BR JARVIS -- MASTER SYSTEM TEST SUITE RUNNER")
+    else:
+        import logging
+        logging.getLogger(__name__).info("BR JARVIS -- MASTER SYSTEM TEST SUITE RUNNER")
+    if 'logger' in globals() or 'logger' in locals():
+        logger.info(f"{ "=" * 60 }" if isinstance("=" * 60, str) else "=" * 60)
+    else:
+        import logging
+        logging.getLogger(__name__).info(f"{ "=" * 60 }" if isinstance("=" * 60, str) else "=" * 60)
 
     exit_code = pytest.main([
         str(test_dir),

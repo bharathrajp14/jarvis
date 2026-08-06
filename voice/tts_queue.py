@@ -82,21 +82,30 @@ class TTSQueueManager:
             if item.on_start:
                 try:
                     item.on_start()
-                except Exception:
-                    pass
-
+                except Exception as e:
+                    if 'logger' in globals() or 'logger' in locals():
+                        logger.debug('Suppressed exception: %s', e)
+                    else:
+                        import logging
+                        logging.getLogger(__name__).debug('Suppressed exception: %s', e)
             if self._speak_handler:
                 try:
                     self._speak_handler(item.text)
                 except Exception as e:
-                    print(f"[TTSQueue] Speak error: {e}")
-
+                    if 'logger' in globals() or 'logger' in locals():
+                        logger.debug('Suppressed exception: %s', e)
+                    else:
+                        import logging
+                        logging.getLogger(__name__).debug('Suppressed exception: %s', e)
             if item.on_finish:
                 try:
                     item.on_finish()
-                except Exception:
-                    pass
-
+                except Exception as e:
+                    if 'logger' in globals() or 'logger' in locals():
+                        logger.debug('Suppressed exception: %s', e)
+                    else:
+                        import logging
+                        logging.getLogger(__name__).debug('Suppressed exception: %s', e)
             self._current_item = None
             self._queue.task_done()
 

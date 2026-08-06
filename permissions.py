@@ -130,7 +130,11 @@ def _build_global_policy() -> PermissionPolicy:
     scope_mode = _normalize_mode(scope_raw) if scope_raw else None
     
     mode = env_mode or scope_mode or PermissionMode.CONFIRM_DESTRUCTIVE
-    print(f"[Permissions] Active permission policy mode: {mode.value.upper()}")
+    if 'logger' in globals() or 'logger' in locals():
+        logger.info(f"{ f"[Permissions] Active permission policy mode: {mode.value.upper()}" }" if isinstance(f"[Permissions] Active permission policy mode: {mode.value.upper()}", str) else f"[Permissions] Active permission policy mode: {mode.value.upper()}")
+    else:
+        import logging
+        logging.getLogger(__name__).info(f"{ f"[Permissions] Active permission policy mode: {mode.value.upper()}" }" if isinstance(f"[Permissions] Active permission policy mode: {mode.value.upper()}", str) else f"[Permissions] Active permission policy mode: {mode.value.upper()}")
 
     deny_tools = scope_defaults.get("deny_tools", [])
     if not isinstance(deny_tools, list):

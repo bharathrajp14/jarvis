@@ -1,0 +1,14 @@
+﻿{
+  "pythonVersion": "3.12",
+  "pythonPlatform": "Windows",
+  "venvPath": ".",
+  "venv": ".venv",
+  "include": ["."],
+  "exclude": [".venv", "__pycache__", "node_modules", "*.egg-info"],
+  "typeCheckingMode": "basic",
+  "reportMissingModuleSource": "warning",
+  "reportMissingImports": "warning",
+  "reportMissingTypeStubs": "none",
+  "reportUnusedImport": "none",
+  "reportUnusedVariable": "none"
+}

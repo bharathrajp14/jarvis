@@ -36,9 +36,12 @@ class SkillHotReloader:
                             candidate_files.append(fp)
                             try:
                                 current_max_mtime = max(current_max_mtime, fp.stat().st_mtime)
-                            except Exception:
-                                pass
-
+                            except Exception as e:
+                                if 'logger' in globals() or 'logger' in locals():
+                                    logger.debug('Suppressed exception: %s', e)
+                                else:
+                                    import logging
+                                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
         if current_max_mtime > self._last_scan_mtime or not self._active_skills_cache:
             self._last_scan_mtime = current_max_mtime
             self._active_skills_cache = self._parse_skills(candidate_files)
@@ -57,6 +60,10 @@ class SkillHotReloader:
                     "path": str(fp),
                     "size_bytes": len(content),
                 })
-            except Exception:
-                pass
+            except Exception as e:
+                if 'logger' in globals() or 'logger' in locals():
+                    logger.debug('Suppressed exception: %s', e)
+                else:
+                    import logging
+                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
         return skills

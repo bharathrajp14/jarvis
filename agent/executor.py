@@ -160,7 +160,11 @@ class AgentExecutor:
 
             if not ready:
                 # Deadlock — some dependency never completed
-                print("[Executor] ⚠️ Dependency deadlock — breaking remaining steps")
+                if 'logger' in globals() or 'logger' in locals():
+                    logger.info("[Executor] ⚠️ Dependency deadlock — breaking remaining steps")
+                else:
+                    import logging
+                    logging.getLogger(__name__).info("[Executor] ⚠️ Dependency deadlock — breaking remaining steps")
                 break
 
             # Separate parallel-capable from sequential
@@ -290,7 +294,11 @@ class AgentExecutor:
                                 result.duration = time.time() - t_start
                                 return result
                             except Exception as fix_err:
-                                print(f"[Executor] Fix also failed: {fix_err}")
+                                if 'logger' in globals() or 'logger' in locals():
+                                    logger.warning(f"{ f"[Executor] Fix also failed: {fix_err}" }" if isinstance(f"[Executor] Fix also failed: {fix_err}", str) else f"[Executor] Fix also failed: {fix_err}")
+                                else:
+                                    import logging
+                                    logging.getLogger(__name__).warning(f"{ f"[Executor] Fix also failed: {fix_err}" }" if isinstance(f"[Executor] Fix also failed: {fix_err}", str) else f"[Executor] Fix also failed: {fix_err}")
                         break
                     else:  # ABORT
                         break
@@ -332,7 +340,11 @@ class AgentExecutor:
                 ]
                 if all_results:
                     params["content"] = "\n\n---\n\n".join(all_results[:3])
-                    print(f"[Executor] 💉 Injected {len(params['content'])} chars of context")
+                    if 'logger' in globals() or 'logger' in locals():
+                        logger.info(f"{ f"[Executor] 💉 Injected {len(params['content'])} chars of context" }" if isinstance(f"[Executor] 💉 Injected {len(params['content'])} chars of context", str) else f"[Executor] 💉 Injected {len(params['content'])} chars of context")
+                    else:
+                        import logging
+                        logging.getLogger(__name__).info(f"{ f"[Executor] 💉 Injected {len(params['content'])} chars of context" }" if isinstance(f"[Executor] 💉 Injected {len(params['content'])} chars of context", str) else f"[Executor] 💉 Injected {len(params['content'])} chars of context")
 
         return params
 
@@ -400,7 +412,11 @@ class ParallelGoalExecutor:
         """
         Run multiple goals in parallel. Returns {goal: result} mapping.
         """
-        print(f"\n[ParallelExecutor] 🚀 Running {len(goals)} goals simultaneously")
+        if 'logger' in globals() or 'logger' in locals():
+            logger.info(f"{ f"\n[ParallelExecutor] 🚀 Running {len(goals)} goals simultaneously" }" if isinstance(f"\n[ParallelExecutor] 🚀 Running {len(goals)} goals simultaneously", str) else f"\n[ParallelExecutor] 🚀 Running {len(goals)} goals simultaneously")
+        else:
+            import logging
+            logging.getLogger(__name__).info(f"{ f"\n[ParallelExecutor] 🚀 Running {len(goals)} goals simultaneously" }" if isinstance(f"\n[ParallelExecutor] 🚀 Running {len(goals)} goals simultaneously", str) else f"\n[ParallelExecutor] 🚀 Running {len(goals)} goals simultaneously")
 
         results = {}
 
@@ -415,7 +431,11 @@ class ParallelGoalExecutor:
                     results[goal] = future.result(timeout=300)
                 except Exception as e:
                     results[goal] = f"Failed: {e}"
-                    print(f"[ParallelExecutor] ❌ Goal '{goal[:40]}': {e}")
+                    if 'logger' in globals() or 'logger' in locals():
+                        logger.info(f"{ f"[ParallelExecutor] ❌ Goal '{goal[:40]}': {e}" }" if isinstance(f"[ParallelExecutor] ❌ Goal '{goal[:40]}': {e}", str) else f"[ParallelExecutor] ❌ Goal '{goal[:40]}': {e}")
+                    else:
+                        import logging
+                        logging.getLogger(__name__).info(f"{ f"[ParallelExecutor] ❌ Goal '{goal[:40]}': {e}" }" if isinstance(f"[ParallelExecutor] ❌ Goal '{goal[:40]}': {e}", str) else f"[ParallelExecutor] ❌ Goal '{goal[:40]}': {e}")
 
         return results
 

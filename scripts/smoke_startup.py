@@ -26,10 +26,18 @@ def _repo_root() -> Path:
 def _check(name: str, fn):
     try:
         fn()
-        print(f"[PASS] {name}")
+        if 'logger' in globals() or 'logger' in locals():
+            logger.info(f"{ f"[PASS] {name}" }" if isinstance(f"[PASS] {name}", str) else f"[PASS] {name}")
+        else:
+            import logging
+            logging.getLogger(__name__).info(f"{ f"[PASS] {name}" }" if isinstance(f"[PASS] {name}", str) else f"[PASS] {name}")
         return True
     except Exception as exc:
-        print(f"[FAIL] {name}: {exc}")
+        if 'logger' in globals() or 'logger' in locals():
+            logger.info(f"{ f"[FAIL] {name}: {exc}" }" if isinstance(f"[FAIL] {name}: {exc}", str) else f"[FAIL] {name}: {exc}")
+        else:
+            import logging
+            logging.getLogger(__name__).info(f"{ f"[FAIL] {name}: {exc}" }" if isinstance(f"[FAIL] {name}: {exc}", str) else f"[FAIL] {name}: {exc}")
         return False
 
 
@@ -124,7 +132,11 @@ def main() -> int:
 
     passed = sum(1 for ok in results if ok)
     total = len(results)
-    print(f"\nSmoke summary: {passed}/{total} checks passed")
+    if 'logger' in globals() or 'logger' in locals():
+        logger.info(f"{ f"\nSmoke summary: {passed}/{total} checks passed" }" if isinstance(f"\nSmoke summary: {passed}/{total} checks passed", str) else f"\nSmoke summary: {passed}/{total} checks passed")
+    else:
+        import logging
+        logging.getLogger(__name__).info(f"{ f"\nSmoke summary: {passed}/{total} checks passed" }" if isinstance(f"\nSmoke summary: {passed}/{total} checks passed", str) else f"\nSmoke summary: {passed}/{total} checks passed")
     return 0 if passed == total else 1
 
 

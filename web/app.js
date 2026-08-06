@@ -136,15 +136,31 @@ document.addEventListener('DOMContentLoaded', () => {
     // ── WEBSOCKET CONNECTION ──
     let wsReconnectDelay = 1000;
     let wsReconnectTimer = null;
+    let wsConnected = false;
+
+    function _setWsStatus(connected) {
+        wsConnected = connected;
+        // Update any status indicator elements
+        document.querySelectorAll('.ws-status-dot').forEach(el => {
+            el.style.background = connected ? 'var(--accent, #00d4ff)' : '#ff4444';
+            el.title = connected ? 'Connected' : 'Disconnected — reconnecting...';
+        });
+    }
 
     function initWebSocket() {
+        // Guard against duplicate connections during reconnect.
+        if (socket && (socket.readyState === WebSocket.CONNECTING || socket.readyState === WebSocket.OPEN)) {
+            return;
+        }
         try {
             socket = new WebSocket(WS_URL);
 
             socket.onopen = () => {
                 wsReconnectDelay = 1000;
-                showToast('WebSocket Link Active', 'Connected to JARVIS AI Core Server.', 'success');
+                _setWsStatus(true);
+                showToast('Connected', 'JARVIS AI Core online.', 'success');
                 fetchTelemetry();
+                fetchConnectorStatus();
             };
 
             socket.onmessage = (event) => {
@@ -157,16 +173,51 @@ document.addEventListener('DOMContentLoaded', () => {
             };
 
             socket.onclose = () => {
+                _setWsStatus(false);
                 if (wsReconnectTimer) clearTimeout(wsReconnectTimer);
                 wsReconnectTimer = setTimeout(() => {
                     initWebSocket();
                 }, wsReconnectDelay);
-                wsReconnectDelay = Math.min(wsReconnectDelay * 2, 16000);
+                wsReconnectDelay = Math.min(wsReconnectDelay * 2, 30000);
+                if (wsReconnectDelay > 4000) {
+                    showToast('Reconnecting', `Next attempt in ${Math.round(wsReconnectDelay/1000)}s...`, 'info');
+                }
+            };
+
+            socket.onerror = (err) => {
+                console.warn('WebSocket error:', err);
+                _setWsStatus(false);
             };
         } catch (e) {
             console.error('WebSocket Init Error:', e);
         }
     }
+
+    // ── CONNECTOR HUB STATUS ──
+    function fetchConnectorStatus() {
+        apiFetch(`${API_BASE}/api/connector/status`)
+            .then(r => r.json())
+            .then(data => {
+                if (!data || !data.connectors) return;
+                renderConnectorPanel(data.connectors);
+            })
+            .catch(() => {});
+    }
+
+    function renderConnectorPanel(connectors) {
+        const panel = document.getElementById('connectorPanel');
+        if (!panel) return;
+        panel.innerHTML = connectors.map(c => `
+            <div class="connector-badge ${c.configured ? 'active' : 'inactive'}" title="${c.name}: ${c.tools ? c.tools.length : 0} tools">
+                <span class="connector-icon">${c.icon || '🔌'}</span>
+                <span class="connector-name">${c.name.split(' ')[0]}</span>
+                <span class="connector-dot ${c.configured ? 'green' : 'grey'}"></span>
+            </div>
+        `).join('');
+    }
+
+    // Refresh connector status every 30s
+    setInterval(fetchConnectorStatus, 30000);
 
 
     let currentStreamBubble = null;
@@ -277,10 +328,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }));
         } else {
             // REST Fallback
+            // BUG-10 FIX: ChatRequest Pydantic model uses 'message' field, not 'prompt'.
+            // Sending 'prompt' caused a 422 Validation Error and silent UI failure.
             fetch(`${API_BASE}/api/chat`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ prompt: text })
+                body: JSON.stringify({ message: text })
             })
             .then(res => res.json())
             .then(data => {
@@ -358,24 +411,9 @@ document.addEventListener('DOMContentLoaded', () => {
             .catch(() => {});
     }
 
-    function fetchSkills() {
-        fetch(`${API_BASE}/api/skills`)
-            .then(res => res.json())
-            .then(skills => {
-                const grid = document.getElementById('skillsGrid');
-                if (!grid || !Array.isArray(skills)) return;
-                grid.innerHTML = skills.map(s => `
-                    <div class="skill-card">
-                        <div style="display: flex; align-items: center; justify-content: space-between;">
-                            <h4 style="margin: 0; color: var(--accent-cyan); font-family: var(--font-code); font-size: 14px;">⚡ /${s.name}</h4>
-                            <span class="status-badge connected">Built-in</span>
-                        </div>
-                        <p style="font-size: 11px; color: var(--text-secondary);">${s.description}</p>
-                    </div>
-                `).join('');
-            })
-            .catch(() => {});
-    }
+    // BUG-18 FIX: Removed duplicate local fetchSkills function defined here.
+    // The actual working version is window.fetchSkills defined below at line ~630.
+    // Having two definitions caused the local one to be unreachable dead code.
 
     // ── CONTACTS HUB ──
     window.fetchContacts = function(query = '') {
@@ -451,10 +489,12 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     function submitNewContact(name, phone, email, alias) {
-        fetch(`${API_BASE}/api/chat`, {
+        // BUG-11 FIX: Use dedicated POST /api/contacts endpoint instead of routing
+        // through /api/chat as a tool command string (which was non-deterministic).
+        fetch(`${API_BASE}/api/contacts`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt: `manage_contacts action='add' name='${name}' phone_number='${phone}' email='${email}' aliases=['${alias}']` })
+            body: JSON.stringify({ name, phone_number: phone, email, aliases: alias ? [alias] : [] })
         })
         .then(res => res.json())
         .then(() => {
@@ -505,6 +545,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let recognition = null;
     let isVoiceActive = false;
+
+    let voiceAnimFrameId = null;  // BUG-14 FIX: track animation frame for cleanup
 
     window.speakJARVISResponse = function(text) {
         if (!text) return;
@@ -590,6 +632,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 try { recognition.start(); } catch (e) {}
             } else {
                 if (statusBadge) statusBadge.textContent = 'STATUS: IDLE';
+                // BUG-14 FIX: Cancel the voice canvas animation loop when voice stops
+                if (voiceAnimFrameId !== null) {
+                    cancelAnimationFrame(voiceAnimFrameId);
+                    voiceAnimFrameId = null;
+                }
             }
         };
 
@@ -608,6 +655,12 @@ document.addEventListener('DOMContentLoaded', () => {
         let height = cvs.height = 160;
         let phase = 0;
 
+        // BUG-14 FIX: Cancel any previously running animation before starting a new one
+        if (voiceAnimFrameId !== null) {
+            cancelAnimationFrame(voiceAnimFrameId);
+            voiceAnimFrameId = null;
+        }
+
         function drawWave() {
             ctx.clearRect(0, 0, width, height);
             phase += 0.05;
@@ -620,9 +673,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 else ctx.lineTo(x, y);
             }
             ctx.stroke();
-            requestAnimationFrame(drawWave);
+            voiceAnimFrameId = requestAnimationFrame(drawWave);  // BUG-14 FIX: store frame ID
         }
-        drawWave();
+        voiceAnimFrameId = requestAnimationFrame(drawWave);
     }
 
     let allSkills = [];
@@ -744,6 +797,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // ── DYNAMIC PARTICLE CANVAS ENGINE ──
+    let _particleResizeHandler = null;  // BUG-16 FIX: named reference for cleanup
     function initParticleCanvas() {
         const cvs = document.getElementById('particleCanvas');
         if (!cvs) return;
@@ -751,10 +805,16 @@ document.addEventListener('DOMContentLoaded', () => {
         let width = cvs.width = window.innerWidth;
         let height = cvs.height = window.innerHeight;
 
-        window.addEventListener('resize', () => {
+        // BUG-16 FIX: Remove existing resize listener before adding a new one
+        // to prevent accumulating multiple listeners on repeated calls.
+        if (_particleResizeHandler) {
+            window.removeEventListener('resize', _particleResizeHandler);
+        }
+        _particleResizeHandler = () => {
             width = cvs.width = window.innerWidth;
             height = cvs.height = window.innerHeight;
-        });
+        };
+        window.addEventListener('resize', _particleResizeHandler);
 
         const particles = [];
         for (let i = 0; i < 40; i++) {

@@ -35,9 +35,13 @@ class AuditLog:
             if target.exists():
                 target.unlink()
             AUDIT_LOG_FILE.rename(target)
-        except Exception:
-            pass
-
+        except Exception as e:
+            if 'logger' in globals() or 'logger' in locals():
+                logger.exception('Boot critical exception encountered in guardian/audit_log.py')
+            else:
+                import logging
+                logging.getLogger(__name__).exception('Boot critical exception')
+            raise e
     @classmethod
     def log(
         cls,
@@ -63,7 +67,12 @@ class AuditLog:
             with open(AUDIT_LOG_FILE, "a", encoding="utf-8") as f:
                 f.write(json.dumps(record) + "\n")
         except Exception as e:
-            print(f"[Guardian.AuditLog] Write error: {e}")
+            if 'logger' in globals() or 'logger' in locals():
+                logger.exception('Boot critical exception encountered in guardian/audit_log.py')
+            else:
+                import logging
+                logging.getLogger(__name__).exception('Boot critical exception')
+            raise e
         return record
 
     @classmethod
@@ -80,5 +89,10 @@ class AuditLog:
                     if line:
                         records.append(json.loads(line))
         except Exception as e:
-            print(f"[Guardian.AuditLog] Read error: {e}")
+            if 'logger' in globals() or 'logger' in locals():
+                logger.exception('Boot critical exception encountered in guardian/audit_log.py')
+            else:
+                import logging
+                logging.getLogger(__name__).exception('Boot critical exception')
+            raise e
         return records

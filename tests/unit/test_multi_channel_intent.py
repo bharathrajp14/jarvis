@@ -11,9 +11,13 @@ from core.intent_engine import DeterministicIntentEngine
 
 def test_multi_channel_whatsapp_and_gmail(monkeypatch):
     res = DeterministicIntentEngine.parse_and_execute("Say hi to dharani in watsapp and gmail")
-    assert res is None
+    assert res is not None
+    assert res["executed"] is True
+
 
 
 def test_standalone_email_intent(monkeypatch):
     res = DeterministicIntentEngine.parse_and_execute("Send hello to mom via email")
-    assert res is None
+    assert res is not None
+    assert res["executed"] is True
+

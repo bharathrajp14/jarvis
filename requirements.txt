@@ -1,43 +1,67 @@
-google-genai>=1.0.0
-openai>=1.30.0
-anthropic>=0.30.0
-mistralai>=2.4.0
-python-dotenv>=1.0.0
-fastapi>=0.111.0
-uvicorn>=0.30.0
-rich>=13.7.0
-psutil>=5.9.0
-sounddevice>=0.5.0
-SpeechRecognition>=3.10.0
-pyperclip>=1.8.2
-pyautogui>=0.9.54
-pyyaml>=6.0
-pillow>=10.0.0
-mss>=10.0.0
-edge-tts>=7.0.0
-numpy>=1.26.0
-opencv-python>=4.9.0
-requests>=2.31.0
-httpx>=0.27.0
-ddgs>=6.0.0
-beautifulsoup4>=4.12.0
-playwright>=1.44.0
-youtube-transcript-api>=0.6.0
-chromadb>=0.5.0
-python-docx>=1.1.0
-fpdf2>=2.7.0
-openpyxl>=3.1.0
-pypdf>=4.0.0
-PyMuPDF>=1.24.0
-websockets>=14.0
+# BR JARVIS MK38 — Python Requirements
+# Tested against: Python 3.14.0, PySide6 6.11.1
+# Install: pip install -r requirements.txt
+
+# ── AI / LLM Backends ────────────────────────────────────────────────────────
+google-genai>=1.0.0,<2.0.0
+openai>=1.30.0,<3.0.0
+anthropic>=0.30.0,<1.0.0
+mistralai>=2.4.0,<3.0.0
+
+# ── Voice Engine ─────────────────────────────────────────────────────────────
+sounddevice>=0.5.0,<1.0.0
+SpeechRecognition>=3.10.0,<4.0.0
+edge-tts>=7.0.0,<8.0.0
+faster-whisper>=1.0.0,<2.0.0
+onnxruntime>=1.17.0,<2.0.0
+
+# ── Web Server ───────────────────────────────────────────────────────────────
+fastapi>=0.111.0,<1.0.0
+uvicorn>=0.30.0,<1.0.0
+websockets>=14.0,<20.0
+httpx>=0.27.0,<1.0.0
+pydantic>=2.0.0,<3.0.0
+
+# ── GUI ──────────────────────────────────────────────────────────────────────
+PySide6>=6.6.0,<7.0.0
+
+# ── Data / ML ────────────────────────────────────────────────────────────────
+numpy>=1.26.0,<3.0.0
+pillow>=10.0.0,<13.0.0
+opencv-python>=4.9.0,<5.0.0
+
+# ── Storage / DB ─────────────────────────────────────────────────────────────
+chromadb>=0.5.0,<2.0.0
+
+# ── Document Processing ──────────────────────────────────────────────────────
+python-docx>=1.1.0,<2.0.0
+fpdf2>=2.7.0,<3.0.0
+openpyxl>=3.1.0,<4.0.0
+pypdf>=4.0.0,<7.0.0
+PyMuPDF>=1.24.0,<2.0.0
+
+# ── Web Scraping / Automation ────────────────────────────────────────────────
+requests>=2.31.0,<3.0.0
+beautifulsoup4>=4.12.0,<5.0.0
+playwright>=1.44.0,<2.0.0
+youtube-transcript-api>=0.6.0,<1.0.0
+ddgs>=6.0.0,<10.0.0
+
+# ── Utilities ────────────────────────────────────────────────────────────────
+python-dotenv>=1.0.0,<2.0.0
+pyyaml>=6.0,<7.0
+rich>=13.7.0,<15.0.0
+psutil>=5.9.0,<7.5.0
+pyperclip>=1.8.2,<2.0.0
+pyautogui>=0.9.54,<1.0.0
+cryptography>=42.0.0,<46.0.0
+
+# ── Windows Only ─────────────────────────────────────────────────────────────
 pygetwindow; sys_platform == 'win32'
 comtypes; sys_platform == 'win32'
 pycaw; sys_platform == 'win32'
 win10toast; sys_platform == 'win32'
 pywinauto; sys_platform == 'win32'
 send2trash; sys_platform == 'win32'
-cryptography>=42.0.0
 keyboard>=0.13.5; sys_platform == 'win32'
-PySide6>=6.6.0
-faster-whisper>=1.0.0
-pydantic>=2.0.0
+mss>=10.0.0; sys_platform == 'win32'

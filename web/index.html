@@ -7,7 +7,11 @@
     <meta name="description"
         content="BR JARVIS — AI Operating System: Master Product, UI, UX, Performance, and Voice Interface.">
     <link rel="manifest" href="/web/manifest.json">
+    <!-- theme-color: supported by Chrome, Edge, Safari (PWA toolbar colour) -->
     <meta name="theme-color" content="#0a0e1a">
+    <!-- color-scheme: the cross-browser standard supported by Firefox, Opera, Chrome -->
+    <meta name="color-scheme" content="dark">
+
     <title>BR JARVIS — AI Operating System</title>
     <link rel="icon"
         href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧠</text></svg>">
@@ -76,6 +80,10 @@
                     <div class="metric-item">
                         <span class="lbl">LATENCY</span>
                         <span class="val green" id="network-latency">12ms</span>
+                    </div>
+                    <div class="metric-item" title="WebSocket connection status">
+                        <span class="lbl">WS</span>
+                        <span class="ws-status-dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#ff4444;vertical-align:middle;"></span>
                     </div>
                     <div class="system-time" id="system-time">00:00:00</div>
                 </div>
@@ -158,6 +166,14 @@
                             <button class="btn btn-secondary" onclick="switchView('connectorsView')">🔗 Cloud Connectors</button>
                             <button class="btn btn-secondary" onclick="switchView('skillsView')">⚡ Skills Library</button>
                             <a href="/web/galaxy.html" target="_blank" class="btn btn-primary no-underline">🌌 Launch 3D Galaxy</a>
+                        </div>
+                    </div>
+
+                    <!-- Connector Hub Live Status Panel -->
+                    <div class="rapid-shortcuts-card" style="margin-top:16px;">
+                        <h3 class="rapid-shortcuts-title">🔌 Connector Hub Status</h3>
+                        <div id="connectorPanel" class="connector-panel">
+                            <span style="opacity:0.4;font-size:0.85rem;">Loading connectors...</span>
                         </div>
                     </div>
                 </div>

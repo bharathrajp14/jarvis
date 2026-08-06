@@ -30,9 +30,17 @@ class MistralBackend(BaseBackend):
             try:
                 from openai import OpenAI
                 self.client = OpenAI(api_key=_api_key, base_url="https://api.mistral.ai/v1")
-                print(f"[Mistral] [OK] Using model: {self.model}")
+                if 'logger' in globals() or 'logger' in locals():
+                    logger.info(f"{ f"[Mistral] [OK] Using model: {self.model}" }" if isinstance(f"[Mistral] [OK] Using model: {self.model}", str) else f"[Mistral] [OK] Using model: {self.model}")
+                else:
+                    import logging
+                    logging.getLogger(__name__).info(f"{ f"[Mistral] [OK] Using model: {self.model}" }" if isinstance(f"[Mistral] [OK] Using model: {self.model}", str) else f"[Mistral] [OK] Using model: {self.model}")
             except ImportError:
-                print("[Mistral] Warning: openai package is not installed.")
+                if 'logger' in globals() or 'logger' in locals():
+                    logger.info("[Mistral] Warning: openai package is not installed.")
+                else:
+                    import logging
+                    logging.getLogger(__name__).info("[Mistral] Warning: openai package is not installed.")
 
     @property
     def name(self) -> str:
@@ -69,7 +77,11 @@ class MistralBackend(BaseBackend):
             response = self.client.chat.completions.create(**kwargs)
             return response.choices[0].message.content
         except Exception as e:
-            print(f"[Mistral] Error: {e}")
+            if 'logger' in globals() or 'logger' in locals():
+                logger.warning(f"{ f"[Mistral] Error: {e}" }" if isinstance(f"[Mistral] Error: {e}", str) else f"[Mistral] Error: {e}")
+            else:
+                import logging
+                logging.getLogger(__name__).warning(f"{ f"[Mistral] Error: {e}" }" if isinstance(f"[Mistral] Error: {e}", str) else f"[Mistral] Error: {e}")
             raise
 
     def stream(self, messages: list, system: str = "") -> Generator[str, None, None]:

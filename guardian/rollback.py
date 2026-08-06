@@ -42,9 +42,13 @@ class RollbackEngine:
                 )
                 if res.returncode == 0:
                     git_restored = True
-            except Exception:
-                pass
-
+            except Exception as e:
+                if 'logger' in globals() or 'logger' in locals():
+                    logger.exception('Boot critical exception encountered in guardian/rollback.py')
+                else:
+                    import logging
+                    logging.getLogger(__name__).exception('Boot critical exception')
+                raise e
         # 2. Restore Database files
         restored_dbs = []
         for db_name in ["workflows.db", "conversation_history.db"]:

@@ -206,5 +206,9 @@ def _export_pdf(history: list[dict], path: Path):
         try:
             import shutil
             shutil.copy(str(html_path), str(path))
-        except Exception:
-            pass
+        except Exception as e:
+            if 'logger' in globals() or 'logger' in locals():
+                logger.debug('Suppressed exception: %s', e)
+            else:
+                import logging
+                logging.getLogger(__name__).debug('Suppressed exception: %s', e)

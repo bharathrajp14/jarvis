@@ -331,7 +331,11 @@ def _register_builtins() -> None:
         for c_skill in load_builtin_connector_skills():
             register_builtin_skill(c_skill)
     except Exception as ex:
-        print(f"[Skills] Warning loading connector skills: {ex}")
+        if 'logger' in globals() or 'logger' in locals():
+            logger.info(f"{ f"[Skills] Warning loading connector skills: {ex}" }" if isinstance(f"[Skills] Warning loading connector skills: {ex}", str) else f"[Skills] Warning loading connector skills: {ex}")
+        else:
+            import logging
+            logging.getLogger(__name__).info(f"{ f"[Skills] Warning loading connector skills: {ex}" }" if isinstance(f"[Skills] Warning loading connector skills: {ex}", str) else f"[Skills] Warning loading connector skills: {ex}")
 
 
 _register_builtins()

@@ -63,7 +63,78 @@ def _build_sandbox() -> dict:
     }
 
     if _PYAUTOGUI:
-        sandbox["pyautogui"] = pyautogui
+        class PyAutoGUIWrapper:
+            def __init__(self, original):
+                self._original = original
+                try:
+                    self._screen_width, self._screen_height = original.size()
+                except Exception:
+                    self._screen_width, self._screen_height = 1920, 1080
+                self._ref_width = 1920
+                self._ref_height = 1080
+
+            def _scale(self, x, y):
+                if x is None or y is None:
+                    return x, y
+                scaled_x = int((x / self._ref_width) * self._screen_width)
+                scaled_y = int((y / self._ref_height) * self._screen_height)
+                return scaled_x, scaled_y
+
+            def click(self, x=None, y=None, *args, **kwargs):
+                if x is not None and y is not None and not isinstance(x, str):
+                    x, y = self._scale(x, y)
+                return self._original.click(x, y, *args, **kwargs)
+
+            def moveTo(self, x=None, y=None, *args, **kwargs):
+                if x is not None and y is not None:
+                    x, y = self._scale(x, y)
+                return self._original.moveTo(x, y, *args, **kwargs)
+
+            def dragTo(self, x=None, y=None, *args, **kwargs):
+                if x is not None and y is not None:
+                    x, y = self._scale(x, y)
+                return self._original.dragTo(x, y, *args, **kwargs)
+
+            def mouseDown(self, x=None, y=None, *args, **kwargs):
+                if x is not None and y is not None:
+                    x, y = self._scale(x, y)
+                return self._original.mouseDown(x, y, *args, **kwargs)
+
+            def mouseUp(self, x=None, y=None, *args, **kwargs):
+                if x is not None and y is not None:
+                    x, y = self._scale(x, y)
+                return self._original.mouseUp(x, y, *args, **kwargs)
+
+            def doubleClick(self, x=None, y=None, *args, **kwargs):
+                if x is not None and y is not None:
+                    x, y = self._scale(x, y)
+                return self._original.doubleClick(x, y, *args, **kwargs)
+
+            def rightClick(self, x=None, y=None, *args, **kwargs):
+                if x is not None and y is not None:
+                    x, y = self._scale(x, y)
+                return self._original.rightClick(x, y, *args, **kwargs)
+
+            def __getattr__(self, name):
+                return getattr(self._original, name)
+
+        sandbox["pyautogui"] = PyAutoGUIWrapper(pyautogui)
+
+        def wait_for_element(image_path: str, timeout: float = 5.0):
+            import time
+            start = time.monotonic()
+            while time.monotonic() - start < timeout:
+                try:
+                    pos = pyautogui.locateOnScreen(image_path, confidence=0.8)
+                    if pos is not None:
+                        return pos
+                except Exception:
+                    pass
+                time.sleep(0.2)
+            raise TimeoutError(f"Element '{image_path}' not found on screen within {timeout}s")
+
+        sandbox["wait_for_element"] = wait_for_element
+
 
     if _OS == "Windows":
         try:
@@ -114,7 +185,14 @@ def _execute_generated_code(code: str, player=None) -> str:
 
     try:
         scope: dict = _build_sandbox()
-        exec(code, scope)
+        compiled_code = compile(code, "<desktop_action>", "exec")
+        # Ensure builtins in scope are strictly restricted
+        scope["__builtins__"] = {
+            "range": range, "len": len, "str": str, "int": int, "float": float,
+            "bool": bool, "list": list, "dict": dict, "tuple": tuple, "set": set,
+            "print": print, "min": min, "max": max, "sum": sum, "abs": abs
+        }
+        exec(compiled_code, scope)
         fn = scope.get("run_desktop_task")
         if callable(fn):
             fn()

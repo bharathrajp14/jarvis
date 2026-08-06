@@ -38,11 +38,18 @@ def optimize_system_resources() -> dict:
                     reclaimed_bytes += f.stat().st_size
                     f.unlink(missing_ok=True)
                     pruned_files += 1
-                except Exception:
-                    pass
-    except Exception:
-        pass
-
+                except Exception as e:
+                    if 'logger' in globals() or 'logger' in locals():
+                        logger.debug('Suppressed exception: %s', e)
+                    else:
+                        import logging
+                        logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+    except Exception as e:
+        if 'logger' in globals() or 'logger' in locals():
+            logger.debug('Suppressed exception: %s', e)
+        else:
+            import logging
+            logging.getLogger(__name__).debug('Suppressed exception: %s', e)
     mem_after_mb = process.memory_info().rss / (1024 * 1024)
     freed_mb = max(0.0, mem_before_mb - mem_after_mb)
 

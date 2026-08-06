@@ -18,10 +18,12 @@ def _sync_auth():
     try:
         from actions.gmail_auth import get_gmail_auth_manager
         get_gmail_auth_manager()
-    except Exception:
-        pass
-
-
+    except Exception as e:
+        if 'logger' in globals() or 'logger' in locals():
+            logger.debug('Suppressed exception: %s', e)
+        else:
+            import logging
+            logging.getLogger(__name__).debug('Suppressed exception: %s', e)
 def _send_email(to_email: str, subject: str, body: str) -> str:
     _sync_auth()
     smtp_server = os.environ.get("SMTP_SERVER", "smtp.gmail.com")

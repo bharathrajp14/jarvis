@@ -11,14 +11,30 @@ client = OpenAI(
     api_key=API_KEY
 )
 
-print("--- Step 1: Checking client.models.list() ---")
+if 'logger' in globals() or 'logger' in locals():
+    logger.info("--- Step 1: Checking client.models.list() ---")
+else:
+    import logging
+    logging.getLogger(__name__).info("--- Step 1: Checking client.models.list() ---")
 try:
     models_list = client.models.list()
-    print("Available models in proxy list:")
+    if 'logger' in globals() or 'logger' in locals():
+        logger.info("Available models in proxy list:")
+    else:
+        import logging
+        logging.getLogger(__name__).info("Available models in proxy list:")
     for m in models_list.data:
-        print(f"  - {m.id}")
+        if 'logger' in globals() or 'logger' in locals():
+            logger.info(f"{ f"  - {m.id}" }" if isinstance(f"  - {m.id}", str) else f"  - {m.id}")
+        else:
+            import logging
+            logging.getLogger(__name__).info(f"{ f"  - {m.id}" }" if isinstance(f"  - {m.id}", str) else f"  - {m.id}")
 except Exception as e:
-    print(f"client.models.list() failed: {e}")
+    if 'logger' in globals() or 'logger' in locals():
+        logger.warning(f"{ f"client.models.list() failed: {e}" }" if isinstance(f"client.models.list() failed: {e}", str) else f"client.models.list() failed: {e}")
+    else:
+        import logging
+        logging.getLogger(__name__).warning(f"{ f"client.models.list() failed: {e}" }" if isinstance(f"client.models.list() failed: {e}", str) else f"client.models.list() failed: {e}")
 
 models_to_test = [
     "claude-opus-4-6",
@@ -45,9 +61,17 @@ models_to_test = [
 
 results = {}
 
-print("\n--- Step 2: Testing individual model completions ---")
+if 'logger' in globals() or 'logger' in locals():
+    logger.info("\n--- Step 2: Testing individual model completions ---")
+else:
+    import logging
+    logging.getLogger(__name__).info("\n--- Step 2: Testing individual model completions ---")
 for model_id in models_to_test:
-    print(f"\nTesting model: {model_id}...")
+    if 'logger' in globals() or 'logger' in locals():
+        logger.info(f"{ f"\nTesting model: {model_id}..." }" if isinstance(f"\nTesting model: {model_id}...", str) else f"\nTesting model: {model_id}...")
+    else:
+        import logging
+        logging.getLogger(__name__).info(f"{ f"\nTesting model: {model_id}..." }" if isinstance(f"\nTesting model: {model_id}...", str) else f"\nTesting model: {model_id}...")
     start_time = time.time()
     try:
         response = client.chat.completions.create(
@@ -58,13 +82,29 @@ for model_id in models_to_test:
         )
         elapsed = round(time.time() - start_time, 2)
         content = response.choices[0].message.content.strip()
-        print(f"  [SUCCESS] ({elapsed}s) Response: {content[:100]}")
+        if 'logger' in globals() or 'logger' in locals():
+            logger.info(f"{ f"  [SUCCESS] ({elapsed}s) Response: {content[:100]}" }" if isinstance(f"  [SUCCESS] ({elapsed}s) Response: {content[:100]}", str) else f"  [SUCCESS] ({elapsed}s) Response: {content[:100]}")
+        else:
+            import logging
+            logging.getLogger(__name__).info(f"{ f"  [SUCCESS] ({elapsed}s) Response: {content[:100]}" }" if isinstance(f"  [SUCCESS] ({elapsed}s) Response: {content[:100]}", str) else f"  [SUCCESS] ({elapsed}s) Response: {content[:100]}")
         results[model_id] = {"status": "SUCCESS", "latency": elapsed, "response": content}
     except Exception as e:
         elapsed = round(time.time() - start_time, 2)
         err_msg = str(e)
-        print(f"  [FAILED] ({elapsed}s) Error: {err_msg[:150]}")
+        if 'logger' in globals() or 'logger' in locals():
+            logger.warning(f"{ f"  [FAILED] ({elapsed}s) Error: {err_msg[:150]}" }" if isinstance(f"  [FAILED] ({elapsed}s) Error: {err_msg[:150]}", str) else f"  [FAILED] ({elapsed}s) Error: {err_msg[:150]}")
+        else:
+            import logging
+            logging.getLogger(__name__).warning(f"{ f"  [FAILED] ({elapsed}s) Error: {err_msg[:150]}" }" if isinstance(f"  [FAILED] ({elapsed}s) Error: {err_msg[:150]}", str) else f"  [FAILED] ({elapsed}s) Error: {err_msg[:150]}")
         results[model_id] = {"status": "FAILED", "latency": elapsed, "error": err_msg}
 
-print("\n=== SUMMARY RESULTS ===")
-print(json.dumps(results, indent=2))
+if 'logger' in globals() or 'logger' in locals():
+    logger.info("\n=== SUMMARY RESULTS ===")
+else:
+    import logging
+    logging.getLogger(__name__).info("\n=== SUMMARY RESULTS ===")
+if 'logger' in globals() or 'logger' in locals():
+    logger.info(f"{ json.dumps(results, indent=2) }" if isinstance(json.dumps(results, indent=2), str) else json.dumps(results, indent=2))
+else:
+    import logging
+    logging.getLogger(__name__).info(f"{ json.dumps(results, indent=2) }" if isinstance(json.dumps(results, indent=2), str) else json.dumps(results, indent=2))

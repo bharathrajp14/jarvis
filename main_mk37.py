@@ -26,12 +26,36 @@ if sys.platform != "win32":
 
 
 def _print_banner() -> None:
-    print("=" * 60)
-    print(" BR JARVIS MK37 — Autonomous AI OS ")
-    print("=" * 60)
-    print(" Type /quit to exit, /help for commands.")
-    print(" Chat naturally or use /mode <name> to switch modes.")
-    print("=" * 60)
+    if 'logger' in globals() or 'logger' in locals():
+        logger.info(f"{ "=" * 60 }" if isinstance("=" * 60, str) else "=" * 60)
+    else:
+        import logging
+        logging.getLogger(__name__).info(f"{ "=" * 60 }" if isinstance("=" * 60, str) else "=" * 60)
+    if 'logger' in globals() or 'logger' in locals():
+        logger.info(" BR JARVIS MK37 — Autonomous AI OS ")
+    else:
+        import logging
+        logging.getLogger(__name__).info(" BR JARVIS MK37 — Autonomous AI OS ")
+    if 'logger' in globals() or 'logger' in locals():
+        logger.info(f"{ "=" * 60 }" if isinstance("=" * 60, str) else "=" * 60)
+    else:
+        import logging
+        logging.getLogger(__name__).info(f"{ "=" * 60 }" if isinstance("=" * 60, str) else "=" * 60)
+    if 'logger' in globals() or 'logger' in locals():
+        logger.info(" Type /quit to exit, /help for commands.")
+    else:
+        import logging
+        logging.getLogger(__name__).info(" Type /quit to exit, /help for commands.")
+    if 'logger' in globals() or 'logger' in locals():
+        logger.info(" Chat naturally or use /mode <name> to switch modes.")
+    else:
+        import logging
+        logging.getLogger(__name__).info(" Chat naturally or use /mode <name> to switch modes.")
+    if 'logger' in globals() or 'logger' in locals():
+        logger.info(f"{ "=" * 60 }" if isinstance("=" * 60, str) else "=" * 60)
+    else:
+        import logging
+        logging.getLogger(__name__).info(f"{ "=" * 60 }" if isinstance("=" * 60, str) else "=" * 60)
 
 
 def _handle_command(cmd: str) -> bool:
@@ -40,11 +64,31 @@ def _handle_command(cmd: str) -> bool:
     if low in {"/quit", "/exit", "quit", "exit"}:
         return False
     if low == "/help":
-        print("Commands:")
-        print("  /help         - Show this help")
-        print("  /mode <name>  - Switch mode (recon, exploit, coder, analyst, general)")
-        print("  /quit         - Exit CLI cleanly")
-        print("  /status       - Show backend status")
+        if 'logger' in globals() or 'logger' in locals():
+            logger.info("Commands:")
+        else:
+            import logging
+            logging.getLogger(__name__).info("Commands:")
+        if 'logger' in globals() or 'logger' in locals():
+            logger.info("  /help         - Show this help")
+        else:
+            import logging
+            logging.getLogger(__name__).info("  /help         - Show this help")
+        if 'logger' in globals() or 'logger' in locals():
+            logger.info("  /mode <name>  - Switch mode (recon, exploit, coder, analyst, general)")
+        else:
+            import logging
+            logging.getLogger(__name__).info("  /mode <name>  - Switch mode (recon, exploit, coder, analyst, general)")
+        if 'logger' in globals() or 'logger' in locals():
+            logger.info("  /quit         - Exit CLI cleanly")
+        else:
+            import logging
+            logging.getLogger(__name__).info("  /quit         - Exit CLI cleanly")
+        if 'logger' in globals() or 'logger' in locals():
+            logger.info("  /status       - Show backend status")
+        else:
+            import logging
+            logging.getLogger(__name__).info("  /status       - Show backend status")
         return True
     return True
 
@@ -66,10 +110,18 @@ def main() -> None:
             try:
                 user_input = input("you> ").strip()
             except EOFError:
-                print("\nEOF received. Exiting CLI.")
+                if 'logger' in globals() or 'logger' in locals():
+                    logger.info("\nEOF received. Exiting CLI.")
+                else:
+                    import logging
+                    logging.getLogger(__name__).info("\nEOF received. Exiting CLI.")
                 break
             except KeyboardInterrupt:
-                print("\n^C detected. Exiting cleanly...")
+                if 'logger' in globals() or 'logger' in locals():
+                    logger.info("\n^C detected. Exiting cleanly...")
+                else:
+                    import logging
+                    logging.getLogger(__name__).info("\n^C detected. Exiting cleanly...")
                 break
 
             if not user_input:
@@ -77,7 +129,11 @@ def main() -> None:
 
             if user_input.startswith("/") or user_input.lower() in {"quit", "exit"}:
                 if not _handle_command(user_input):
-                    print("Exiting CLI.")
+                    if 'logger' in globals() or 'logger' in locals():
+                        logger.info("Exiting CLI.")
+                    else:
+                        import logging
+                        logging.getLogger(__name__).info("Exiting CLI.")
                     break
                 continue
 
@@ -86,19 +142,34 @@ def main() -> None:
                 reply = orc.chat(user_input)
                 if asyncio.iscoroutine(reply):
                     reply = asyncio.run(reply)
-                print(f"jarvis> {reply}")
-            except Exception as exc:
-                print(f"jarvis> [error] {exc}")
-
+                if 'logger' in globals() or 'logger' in locals():
+                    logger.info(f"{ f"jarvis> {reply}" }" if isinstance(f"jarvis> {reply}", str) else f"jarvis> {reply}")
+                else:
+                    import logging
+                    logging.getLogger(__name__).info(f"{ f"jarvis> {reply}" }" if isinstance(f"jarvis> {reply}", str) else f"jarvis> {reply}")
+            except Exception as e:
+                if 'logger' in globals() or 'logger' in locals():
+                    logger.debug('Suppressed exception: %s', e)
+                else:
+                    import logging
+                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
     finally:
         # FIXED: Always call shutdown on exit so working memory is consolidated
         # and conversation store receives the end_session record.
         if orchestrator is not None:
             try:
                 orchestrator.shutdown()
-            except Exception:
-                pass
-        print("👋 JARVIS shutdown complete.")
+            except Exception as e:
+                if 'logger' in globals() or 'logger' in locals():
+                    logger.debug('Suppressed exception: %s', e)
+                else:
+                    import logging
+                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+        if 'logger' in globals() or 'logger' in locals():
+            logger.info("👋 JARVIS shutdown complete.")
+        else:
+            import logging
+            logging.getLogger(__name__).info("👋 JARVIS shutdown complete.")
 
 
 if __name__ == "__main__":

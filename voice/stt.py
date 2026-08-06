@@ -11,8 +11,12 @@ v2: Optimized for low-latency wake-word detection.
 """
 from __future__ import annotations
 
+import logging
 import os
 import queue
+import threading
+import time
+
 _HAS_SR = False
 try:
     import speech_recognition as sr  # type: ignore[import-not-found]
@@ -29,6 +33,7 @@ try:
 except ImportError:
     pass
 
+logger = logging.getLogger("JARVIS.Voice.STT")
 
 
 class SounddeviceMicrophone(_BaseAudioSource):
@@ -102,7 +107,11 @@ class SounddeviceMicrophone(_BaseAudioSource):
                                 self.device_index = idx
                                 break
             except Exception as e:
-                print(f"[SounddeviceMicrophone] Device query error: {e}")
+                if 'logger' in globals() or 'logger' in locals():
+                    logger.warning(f"{ f"[SounddeviceMicrophone] Device query error: {e}" }" if isinstance(f"[SounddeviceMicrophone] Device query error: {e}", str) else f"[SounddeviceMicrophone] Device query error: {e}")
+                else:
+                    import logging
+                    logging.getLogger(__name__).warning(f"{ f"[SounddeviceMicrophone] Device query error: {e}" }" if isinstance(f"[SounddeviceMicrophone] Device query error: {e}", str) else f"[SounddeviceMicrophone] Device query error: {e}")
                 self.device_index = None
 
         self.SAMPLE_RATE = sample_rate
@@ -112,8 +121,17 @@ class SounddeviceMicrophone(_BaseAudioSource):
         self.stream = None
         self.sd_stream = None
 
-        # Query native sample rate of device
-        self.device_sample_rate = self.SAMPLE_RATE
+        # Hot-plug recovery state
+        self._recovery_enabled = os.environ.get("JARVIS_MIC_RECOVERY", "true").lower() in ("1", "true", "yes")
+        self._is_alive = True
+        self._reconnect_lock = threading.Lock()
+        self._last_audio_time = time.monotonic()
+        self._stale_threshold = float(os.environ.get("JARVIS_MIC_STALE_SECONDS", "5"))
+
+        # Adaptive energy pre-filter (filters mic noise below calibrated floor)
+        self._energy_filter_enabled = True
+        self._noise_floor_rms = 0.0  # set by SileroVAD after calibration
+
         if _HAS_SD and self.device_index is not None:
             try:
                 device_info = sd.query_devices(self.device_index, 'input')
@@ -207,12 +225,28 @@ class SounddeviceMicrophone(_BaseAudioSource):
             return struct.pack(f"<{len(out_samples)}h", *out_samples)
 
     def _callback(self, indata, frames, time_info, status):
+        """Audio stream callback with hot-plug detection and energy pre-filter."""
+        self._last_audio_time = time.monotonic()
         raw_bytes = bytes(indata)
         if self.device_sample_rate != self.SAMPLE_RATE:
             try:
                 raw_bytes = self._resample(raw_bytes)
             except Exception:
                 pass
+
+        # Energy pre-filter: discard frames that are clearly just mic noise
+        # This saves Whisper and VAD from processing silence
+        if self._energy_filter_enabled and self._noise_floor_rms > 0:
+            try:
+                import numpy as _np
+                samples = _np.frombuffer(raw_bytes, dtype=_np.int16).astype(_np.float32) / 32768.0
+                rms = float(_np.sqrt(_np.mean(samples ** 2)))
+                # Drop frame if RMS is below half the noise floor
+                if rms < self._noise_floor_rms * 0.5:
+                    return
+            except Exception:
+                pass
+
         self.q.put(raw_bytes)
 
     def read(self, size):
@@ -237,3 +271,76 @@ class SounddeviceMicrophone(_BaseAudioSource):
             except queue.Empty:
                 break
         return dropped
+
+    def is_alive(self) -> bool:
+        """Return True if the mic stream is actively delivering audio."""
+        if self.sd_stream is None or not getattr(self.sd_stream, 'active', False):
+            return False
+        elapsed = time.monotonic() - self._last_audio_time
+        return elapsed < self._stale_threshold
+
+    def try_reconnect(self) -> bool:
+        """
+        Attempt hot-plug mic recovery after disconnect.
+        Re-probes devices and reopens the audio stream.
+        Returns True if reconnection succeeded.
+        """
+        if not self._recovery_enabled:
+            return False
+        with self._reconnect_lock:
+            logger.warning("[STT] Mic stale/disconnected. Attempting hot-plug recovery...")
+            # Close dead stream
+            if self.sd_stream:
+                try:
+                    self.sd_stream.stop()
+                    self.sd_stream.close()
+                except Exception:
+                    pass
+                self.sd_stream = None
+
+            # Re-probe: USB mics may get new index after replug
+            self.device_index = None
+            if _HAS_SD:
+                try:
+                    devices = sd.query_devices()
+                    virtual_keywords = ["virtual", "audiorelay", "cable", "mapper", "stereo mix"]
+                    for idx, dev in enumerate(devices):
+                        if dev.get("max_input_channels", 0) > 0:
+                            d_name = dev.get("name", "").lower()
+                            if not any(vk in d_name for vk in virtual_keywords):
+                                self.device_index = idx
+                                break
+                except Exception:
+                    pass
+
+            # Try reopening stream
+            for rate in [self.device_sample_rate, 16000, 44100, 48000]:
+                try:
+                    if not _HAS_SD:
+                        break
+                    self.sd_stream = sd.RawInputStream(
+                        samplerate=rate,
+                        blocksize=self.CHUNK,
+                        device=self.device_index,
+                        channels=1,
+                        dtype='int16',
+                        callback=self._callback,
+                    )
+                    self.device_sample_rate = rate
+                    self.sd_stream.start()
+                    self._last_audio_time = time.monotonic()
+                    logger.info(
+                        "[STT] Hot-plug recovery OK — device=%s rate=%d",
+                        self.device_index, rate
+                    )
+                    return True
+                except Exception as e:
+                    logger.debug("[STT] Recovery attempt at %dHz failed: %s", rate, e)
+                    self.sd_stream = None
+
+            logger.error("[STT] Hot-plug recovery FAILED — no input device available")
+            return False
+
+    def set_noise_floor(self, rms: float) -> None:
+        """Update the energy pre-filter noise floor from the NoiseCalibrator."""
+        self._noise_floor_rms = max(0.0, float(rms))

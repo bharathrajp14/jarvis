@@ -36,7 +36,11 @@ class TestGmailAuth(unittest.TestCase):
         self.assertEqual(status["email"], "user.test@gmail.com")
         self.assertEqual(status["auth_method"], "app_password")
         self.assertEqual(os.environ.get("GMAIL_ADDRESS"), "user.test@gmail.com")
-        print(f"\n[Test] Gmail credentials configuration status: {status}")
+        if 'logger' in globals() or 'logger' in locals():
+            logger.info(f"{ f"\n[Test] Gmail credentials configuration status: {status}" }" if isinstance(f"\n[Test] Gmail credentials configuration status: {status}", str) else f"\n[Test] Gmail credentials configuration status: {status}")
+        else:
+            import logging
+            logging.getLogger(__name__).info(f"{ f"\n[Test] Gmail credentials configuration status: {status}" }" if isinstance(f"\n[Test] Gmail credentials configuration status: {status}", str) else f"\n[Test] Gmail credentials configuration status: {status}")
 
     def test_02_gmail_auth_logout(self):
         """Test logging out and clearing saved credentials."""
@@ -47,7 +51,11 @@ class TestGmailAuth(unittest.TestCase):
         status = self.mgr.get_status()
         self.assertFalse(status["logged_in"])
         self.assertIsNone(os.environ.get("GMAIL_ADDRESS"))
-        print(f"[Test] Gmail logout output: {logout_res}")
+        if 'logger' in globals() or 'logger' in locals():
+            logger.info(f"{ f"[Test] Gmail logout output: {logout_res}" }" if isinstance(f"[Test] Gmail logout output: {logout_res}", str) else f"[Test] Gmail logout output: {logout_res}")
+        else:
+            import logging
+            logging.getLogger(__name__).info(f"{ f"[Test] Gmail logout output: {logout_res}" }" if isinstance(f"[Test] Gmail logout output: {logout_res}", str) else f"[Test] Gmail logout output: {logout_res}")
 
     def test_03_gmail_tools_registry(self):
         """Test Gmail authentication tools via registry."""
@@ -58,7 +66,11 @@ class TestGmailAuth(unittest.TestCase):
         # Test initial status tool call
         out1 = execute_tool("get_gmail_auth_status", {})
         self.assertIn("Gmail Status:", out1)
-        print(f"[Test] Tool 'get_gmail_auth_status' output:\n{out1}")
+        if 'logger' in globals() or 'logger' in locals():
+            logger.info(f"{ f"[Test] Tool 'get_gmail_auth_status' output:\n{out1}" }" if isinstance(f"[Test] Tool 'get_gmail_auth_status' output:\n{out1}", str) else f"[Test] Tool 'get_gmail_auth_status' output:\n{out1}")
+        else:
+            import logging
+            logging.getLogger(__name__).info(f"{ f"[Test] Tool 'get_gmail_auth_status' output:\n{out1}" }" if isinstance(f"[Test] Tool 'get_gmail_auth_status' output:\n{out1}", str) else f"[Test] Tool 'get_gmail_auth_status' output:\n{out1}")
 
         # Test credentials login tool call
         out2 = execute_tool("gmail_login", {
@@ -71,7 +83,11 @@ class TestGmailAuth(unittest.TestCase):
         out3 = execute_tool("get_gmail_auth_status", {})
         self.assertIn("LOGGED IN", out3)
         self.assertIn("demo.jarvis@gmail.com", out3)
-        print(f"[Test] Tool status after login:\n{out3}")
+        if 'logger' in globals() or 'logger' in locals():
+            logger.info(f"{ f"[Test] Tool status after login:\n{out3}" }" if isinstance(f"[Test] Tool status after login:\n{out3}", str) else f"[Test] Tool status after login:\n{out3}")
+        else:
+            import logging
+            logging.getLogger(__name__).info(f"{ f"[Test] Tool status after login:\n{out3}" }" if isinstance(f"[Test] Tool status after login:\n{out3}", str) else f"[Test] Tool status after login:\n{out3}")
 
         # Test logout tool call
         out4 = execute_tool("gmail_logout", {})

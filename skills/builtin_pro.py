@@ -357,7 +357,11 @@ $ARGUMENTS
    test_cases = [...]
    for test in test_cases:
        match = re.search(pattern, test)
-       print(f'{test!r} → {match.group() if match else "NO MATCH"}')
+       if 'logger' in globals() or 'logger' in locals():
+           logger.info(f"{ f'{test!r} → {match.group() if match else "NO MATCH"}' }" if isinstance(f'{test!r} → {match.group() if match else "NO MATCH"}', str) else f'{test!r} → {match.group() if match else "NO MATCH"}')
+       else:
+           import logging
+           logging.getLogger(__name__).info(f"{ f'{test!r} → {match.group() if match else "NO MATCH"}' }" if isinstance(f'{test!r} → {match.group() if match else "NO MATCH"}', str) else f'{test!r} → {match.group() if match else "NO MATCH"}')
    ```
 4. Provide the regex with explanation of each part.
 5. Show common variations and edge cases.
@@ -641,10 +645,26 @@ $ARGUMENTS
 1. Collect system info with run_code:
    ```python
    import platform, psutil, os
-   print(f"OS: {platform.system()} {platform.release()}")
-   print(f"CPU: {psutil.cpu_count()} cores, {psutil.cpu_percent()}% used")
-   print(f"RAM: {psutil.virtual_memory().percent}% used")
-   print(f"Disk: {psutil.disk_usage('/').percent}% used")
+   if 'logger' in globals() or 'logger' in locals():
+       logger.info(f"{ f"OS: {platform.system()} {platform.release()}" }" if isinstance(f"OS: {platform.system()} {platform.release()}", str) else f"OS: {platform.system()} {platform.release()}")
+   else:
+       import logging
+       logging.getLogger(__name__).info(f"{ f"OS: {platform.system()} {platform.release()}" }" if isinstance(f"OS: {platform.system()} {platform.release()}", str) else f"OS: {platform.system()} {platform.release()}")
+   if 'logger' in globals() or 'logger' in locals():
+       logger.info(f"{ f"CPU: {psutil.cpu_count()} cores, {psutil.cpu_percent()}% used" }" if isinstance(f"CPU: {psutil.cpu_count()} cores, {psutil.cpu_percent()}% used", str) else f"CPU: {psutil.cpu_count()} cores, {psutil.cpu_percent()}% used")
+   else:
+       import logging
+       logging.getLogger(__name__).info(f"{ f"CPU: {psutil.cpu_count()} cores, {psutil.cpu_percent()}% used" }" if isinstance(f"CPU: {psutil.cpu_count()} cores, {psutil.cpu_percent()}% used", str) else f"CPU: {psutil.cpu_count()} cores, {psutil.cpu_percent()}% used")
+   if 'logger' in globals() or 'logger' in locals():
+       logger.info(f"{ f"RAM: {psutil.virtual_memory().percent}% used" }" if isinstance(f"RAM: {psutil.virtual_memory().percent}% used", str) else f"RAM: {psutil.virtual_memory().percent}% used")
+   else:
+       import logging
+       logging.getLogger(__name__).info(f"{ f"RAM: {psutil.virtual_memory().percent}% used" }" if isinstance(f"RAM: {psutil.virtual_memory().percent}% used", str) else f"RAM: {psutil.virtual_memory().percent}% used")
+   if 'logger' in globals() or 'logger' in locals():
+       logger.info(f"{ f"Disk: {psutil.disk_usage('/').percent}% used" }" if isinstance(f"Disk: {psutil.disk_usage('/').percent}% used", str) else f"Disk: {psutil.disk_usage('/').percent}% used")
+   else:
+       import logging
+       logging.getLogger(__name__).info(f"{ f"Disk: {psutil.disk_usage('/').percent}% used" }" if isinstance(f"Disk: {psutil.disk_usage('/').percent}% used", str) else f"Disk: {psutil.disk_usage('/').percent}% used")
    ```
 2. Check network: interfaces, connections, DNS.
 3. List top processes by CPU/memory.

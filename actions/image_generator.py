@@ -74,7 +74,11 @@ def generate_image(
                 result["prompt"] = prompt
                 return result
         except Exception as e:
-            print(f"[ImageGen] {prov} failed: {e}")
+            if 'logger' in globals() or 'logger' in locals():
+                logger.warning(f"{ f"[ImageGen] {prov} failed: {e}" }" if isinstance(f"[ImageGen] {prov} failed: {e}", str) else f"[ImageGen] {prov} failed: {e}")
+            else:
+                import logging
+                logging.getLogger(__name__).warning(f"{ f"[ImageGen] {prov} failed: {e}" }" if isinstance(f"[ImageGen] {prov} failed: {e}", str) else f"[ImageGen] {prov} failed: {e}")
             traceback.print_exc()
             continue
 

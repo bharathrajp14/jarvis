@@ -84,9 +84,12 @@ def get_memory_context(include_guidance: bool = False) -> str:
         if top_lessons:
             lesson_lines = [f"- {l['topic']}: {l['correction']}" for l in top_lessons]
             parts.append("[Learned Lessons & User Corrections]\n" + "\n".join(lesson_lines))
-    except Exception:
-        pass
-
+    except Exception as e:
+        if 'logger' in globals() or 'logger' in locals():
+            logger.debug('Suppressed exception: %s', e)
+        else:
+            import logging
+            logging.getLogger(__name__).debug('Suppressed exception: %s', e)
     if not parts:
         return ""
 

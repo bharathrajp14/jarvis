@@ -49,6 +49,13 @@ try:
 except ImportError:
     pass
 
+# Validate presence of primary API keys
+_primary_keys = ["GEMINI_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY", "DEEPSEEK_API_KEY"]
+_found_keys = [k for k in _primary_keys if os.environ.get(k) and not os.environ.get(k).startswith("your_")]
+if not _found_keys:
+    print("[WARNING] JARVIS MK38 Security Alert: No active API keys found in environment or .env!")
+    print("           Please configure your key in .env or environment variables (GEMINI_API_KEY, OPENAI_API_KEY, etc.)")
+
 
 # Fix terminal encoding & Qt DLL plugin paths on Windows
 if sys.platform == "win32":

@@ -69,8 +69,12 @@ def focus_window_by_title(title_query: str) -> str:
             win32gui.ShowWindow(target_hwnd, win32con.SW_RESTORE)
             try:
                 win32gui.SetForegroundWindow(target_hwnd)
-            except Exception:
-                pass
+            except Exception as e:
+                if 'logger' in globals() or 'logger' in locals():
+                    logger.debug('Suppressed exception: %s', e)
+                else:
+                    import logging
+                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
             return f"Focused window: '{target_title}' (HWND: {target_hwnd})"
         return f"No visible window matching '{title_query}' was found."
     except Exception as e:

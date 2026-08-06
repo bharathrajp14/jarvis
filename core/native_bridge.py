@@ -48,9 +48,12 @@ def _init_native():
             try:
                 from setup_native import compile_native
                 compile_native()
-            except Exception:
-                pass
-
+            except Exception as e:
+                if 'logger' in globals() or 'logger' in locals():
+                    logger.debug('Suppressed exception: %s', e)
+                else:
+                    import logging
+                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
     if LIB_PATH.exists():
         try:
             _c_lib = ctypes.CDLL(str(LIB_PATH))
@@ -84,9 +87,17 @@ def _init_native():
 
             _native_loaded  = True
             _native_version = _c_lib.jarvis_native_version().decode("utf-8")
-            print(f"[NativeBridge] ⚡ Loaded C Native Library v{_native_version}")
+            if 'logger' in globals() or 'logger' in locals():
+                logger.info(f"{ f"[NativeBridge] ⚡ Loaded C Native Library v{_native_version}" }" if isinstance(f"[NativeBridge] ⚡ Loaded C Native Library v{_native_version}", str) else f"[NativeBridge] ⚡ Loaded C Native Library v{_native_version}")
+            else:
+                import logging
+                logging.getLogger(__name__).info(f"{ f"[NativeBridge] ⚡ Loaded C Native Library v{_native_version}" }" if isinstance(f"[NativeBridge] ⚡ Loaded C Native Library v{_native_version}", str) else f"[NativeBridge] ⚡ Loaded C Native Library v{_native_version}")
         except Exception as e:
-            print(f"[NativeBridge] ⚠️ Failed to load C native library: {e}")
+            if 'logger' in globals() or 'logger' in locals():
+                logger.warning(f"{ f"[NativeBridge] ⚠️ Failed to load C native library: {e}" }" if isinstance(f"[NativeBridge] ⚠️ Failed to load C native library: {e}", str) else f"[NativeBridge] ⚠️ Failed to load C native library: {e}")
+            else:
+                import logging
+                logging.getLogger(__name__).warning(f"{ f"[NativeBridge] ⚠️ Failed to load C native library: {e}" }" if isinstance(f"[NativeBridge] ⚠️ Failed to load C native library: {e}", str) else f"[NativeBridge] ⚠️ Failed to load C native library: {e}")
             _c_lib = None
             _native_loaded = False
 
@@ -115,8 +126,12 @@ def fast_hash(data: bytes) -> int:
         try:
             buf = (ctypes.c_uint8 * len(data)).from_buffer_copy(data)
             return _c_lib.jarvis_fast_hash(buf, len(data))
-        except Exception:
-            pass
+        except Exception as e:
+            if 'logger' in globals() or 'logger' in locals():
+                logger.debug('Suppressed exception: %s', e)
+            else:
+                import logging
+                logging.getLogger(__name__).debug('Suppressed exception: %s', e)
     return int(hashlib.md5(data).hexdigest()[:16], 16)
 
 
@@ -130,8 +145,12 @@ def fast_cosine_distance(v1: list[float], v2: list[float]) -> float:
             arr1 = (ctypes.c_float * dim)(*v1)
             arr2 = (ctypes.c_float * dim)(*v2)
             return float(_c_lib.jarvis_fast_cosine_distance(arr1, arr2, dim))
-        except Exception:
-            pass
+        except Exception as e:
+            if 'logger' in globals() or 'logger' in locals():
+                logger.debug('Suppressed exception: %s', e)
+            else:
+                import logging
+                logging.getLogger(__name__).debug('Suppressed exception: %s', e)
     # Pure Python fallback
     dot = sum(a * b for a, b in zip(v1, v2))
     norm1 = math.sqrt(sum(a * a for a in v1))
@@ -150,8 +169,12 @@ def audio_energy(samples: list[float] | tuple[float, ...]) -> float:
         try:
             c_arr = (ctypes.c_float * len(samples))(*samples)
             return float(_c_lib.jarvis_audio_energy(c_arr, len(samples)))
-        except Exception:
-            pass
+        except Exception as e:
+            if 'logger' in globals() or 'logger' in locals():
+                logger.debug('Suppressed exception: %s', e)
+            else:
+                import logging
+                logging.getLogger(__name__).debug('Suppressed exception: %s', e)
     try:
         sum_sq = sum(s * s for s in samples)
         return math.sqrt(sum_sq / len(samples))
@@ -172,9 +195,12 @@ def grid_transform(x_norm: int, y_norm: int, screen_w: int, screen_h: int) -> tu
             out_y = ctypes.c_int()
             _c_lib.jarvis_grid_transform(x_norm, y_norm, screen_w, screen_h, ctypes.byref(out_x), ctypes.byref(out_y))
             return out_x.value, out_y.value
-        except Exception:
-            pass
-
+        except Exception as e:
+            if 'logger' in globals() or 'logger' in locals():
+                logger.debug('Suppressed exception: %s', e)
+            else:
+                import logging
+                logging.getLogger(__name__).debug('Suppressed exception: %s', e)
     px = int((float(x_norm) / 1000.0) * float(screen_w))
     py = int((float(y_norm) / 1000.0) * float(screen_h))
     px = max(0, min(screen_w - 1, px)) if screen_w > 0 else 0
@@ -189,8 +215,12 @@ def get_sys_memory_avail_kb() -> int:
             val = _c_lib.jarvis_sys_memory_avail_kb()
             if val > 0:
                 return val
-        except Exception:
-            pass
+        except Exception as e:
+            if 'logger' in globals() or 'logger' in locals():
+                logger.debug('Suppressed exception: %s', e)
+            else:
+                import logging
+                logging.getLogger(__name__).debug('Suppressed exception: %s', e)
     try:
         import psutil
         return int(psutil.virtual_memory().available / 1024)

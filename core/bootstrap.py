@@ -60,9 +60,13 @@ def build_assistant_runtime(*, use_vector_memory: bool = True) -> AssistantRunti
         async def _orchestrator_shutdown():
             try:
                 orchestrator.shutdown()
-            except Exception:
-                pass
-
+            except Exception as e:
+                if 'logger' in globals() or 'logger' in locals():
+                    logger.exception('Boot critical exception encountered in core/bootstrap.py')
+                else:
+                    import logging
+                    logging.getLogger(__name__).exception('Boot critical exception')
+                raise e
         core_runtime.lifecycle.add_shutdown_hook(_orchestrator_shutdown)
 
         # FIXED: Publish startup event AFTER all DI registrations are complete

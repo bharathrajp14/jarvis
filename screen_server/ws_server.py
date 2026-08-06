@@ -98,7 +98,11 @@ class ScreenShareServer:
             **kwargs
         )
         protocol = "wss" if self.ssl_context else "ws"
-        print(f"[ScreenShare] WebSocket server listening on {protocol}://{self.host}:{self.port}")
+        if 'logger' in globals() or 'logger' in locals():
+            logger.info(f"{ f"[ScreenShare] WebSocket server listening on {protocol}://{self.host}:{self.port}" }" if isinstance(f"[ScreenShare] WebSocket server listening on {protocol}://{self.host}:{self.port}", str) else f"[ScreenShare] WebSocket server listening on {protocol}://{self.host}:{self.port}")
+        else:
+            import logging
+            logging.getLogger(__name__).info(f"{ f"[ScreenShare] WebSocket server listening on {protocol}://{self.host}:{self.port}" }" if isinstance(f"[ScreenShare] WebSocket server listening on {protocol}://{self.host}:{self.port}", str) else f"[ScreenShare] WebSocket server listening on {protocol}://{self.host}:{self.port}")
 
     async def stop(self) -> None:
         """Stop the WebSocket server and disconnect all viewers."""
@@ -117,7 +121,11 @@ class ScreenShareServer:
             except Exception:
                 pass
 
-        print("[ScreenShare] WebSocket server stopped")
+        if 'logger' in globals() or 'logger' in locals():
+            logger.info("[ScreenShare] WebSocket server stopped")
+        else:
+            import logging
+            logging.getLogger(__name__).info("[ScreenShare] WebSocket server stopped")
 
     async def broadcast(self, frame_data: bytes) -> None:
         """Send a JPEG frame to all connected viewers."""

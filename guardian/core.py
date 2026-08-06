@@ -37,8 +37,13 @@ class GuardianCore:
         if self._HASH_FILE.exists():
             try:
                 return json.loads(self._HASH_FILE.read_text(encoding="utf-8"))
-            except Exception:
-                pass
+            except Exception as e:
+                if 'logger' in globals() or 'logger' in locals():
+                    logger.exception('Boot critical exception encountered in guardian/core.py')
+                else:
+                    import logging
+                    logging.getLogger(__name__).exception('Boot critical exception')
+                raise e
         hashes = self._calculate_hashes()
         self._persist_hashes(hashes)
         return hashes
@@ -50,9 +55,13 @@ class GuardianCore:
             self._HASH_FILE.write_text(
                 json.dumps(hashes, indent=2), encoding="utf-8"
             )
-        except Exception:
-            pass
-
+        except Exception as e:
+            if 'logger' in globals() or 'logger' in locals():
+                logger.exception('Boot critical exception encountered in guardian/core.py')
+            else:
+                import logging
+                logging.getLogger(__name__).exception('Boot critical exception')
+            raise e
     def _calculate_hashes(self) -> dict[str, str]:
         hashes = {}
         for path_str in PROTECTED_CORE_PATHS:
@@ -61,8 +70,13 @@ class GuardianCore:
                 try:
                     data = p.read_bytes()
                     hashes[path_str] = hashlib.sha256(data).hexdigest()
-                except Exception:
-                    pass
+                except Exception as e:
+                    if 'logger' in globals() or 'logger' in locals():
+                        logger.exception('Boot critical exception encountered in guardian/core.py')
+                    else:
+                        import logging
+                        logging.getLogger(__name__).exception('Boot critical exception')
+                    raise e
         return hashes
 
     def rehash_integrity(self) -> None:
@@ -103,6 +117,13 @@ class GuardianCore:
             return {"valid": False, "mismatches": mismatches}
 
         return {"valid": True, "mismatches": []}
+
+    def check_secrets_safety(self, text_content: str) -> tuple[bool, str]:
+        """Scan string content for exposed API keys or secret tokens."""
+        import re
+        if re.search(r"""(?:api[_-]?key|secret|password)\s*=\s*['"][a-zA-Z0-9_\-]{25,}['"]""", text_content, re.IGNORECASE):
+            return False, "Potential hardcoded API key or secret token detected in execution payload."
+        return True, ""
 
     def check_execution_safety(self) -> bool:
         """Return False if execution is paused or integrity failed."""

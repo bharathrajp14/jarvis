@@ -73,7 +73,11 @@ def _open_url(url: str) -> None:
         else:
             subprocess.Popen(["cmd", "/c", "start", "", url], shell=False)
     except Exception as e:
-        print(f"[YouTube] ⚠️ open_url failed: {e}")
+        if 'logger' in globals() or 'logger' in locals():
+            logger.warning(f"{ f"[YouTube] ⚠️ open_url failed: {e}" }" if isinstance(f"[YouTube] ⚠️ open_url failed: {e}", str) else f"[YouTube] ⚠️ open_url failed: {e}")
+        else:
+            import logging
+            logging.getLogger(__name__).warning(f"{ f"[YouTube] ⚠️ open_url failed: {e}" }" if isinstance(f"[YouTube] ⚠️ open_url failed: {e}", str) else f"[YouTube] ⚠️ open_url failed: {e}")
 
 def _scrape_first_video_url(query: str) -> str | None:
 
@@ -419,7 +423,11 @@ def youtube_video(
 
     if player:
         player.write_log(f"[YouTube] Action: {action}")
-    print(f"[YouTube] ▶️  Action: {action}  Params: {params}")
+    if 'logger' in globals() or 'logger' in locals():
+        logger.info(f"{ f"[YouTube] ▶️  Action: {action}  Params: {params}" }" if isinstance(f"[YouTube] ▶️  Action: {action}  Params: {params}", str) else f"[YouTube] ▶️  Action: {action}  Params: {params}")
+    else:
+        import logging
+        logging.getLogger(__name__).info(f"{ f"[YouTube] ▶️  Action: {action}  Params: {params}" }" if isinstance(f"[YouTube] ▶️  Action: {action}  Params: {params}", str) else f"[YouTube] ▶️  Action: {action}  Params: {params}")
 
     handler = _ACTION_MAP.get(action)
     if handler is None:
@@ -433,5 +441,9 @@ def youtube_video(
             return handler(params, player) or "Done."
         return handler(params, player, speak) or "Done."
     except Exception as e:
-        print(f"[YouTube] ❌ Error in {action}: {e}")
+        if 'logger' in globals() or 'logger' in locals():
+            logger.warning(f"{ f"[YouTube] ❌ Error in {action}: {e}" }" if isinstance(f"[YouTube] ❌ Error in {action}: {e}", str) else f"[YouTube] ❌ Error in {action}: {e}")
+        else:
+            import logging
+            logging.getLogger(__name__).warning(f"{ f"[YouTube] ❌ Error in {action}: {e}" }" if isinstance(f"[YouTube] ❌ Error in {action}: {e}", str) else f"[YouTube] ❌ Error in {action}: {e}")
         return f"YouTube {action} failed, sir: {e}"

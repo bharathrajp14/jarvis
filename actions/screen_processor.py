@@ -434,9 +434,17 @@ def screen_process(
                     logger.warning("Camera preview failed: %s", _e)
         else:
             image_bytes, mime_type = _capture_screen()
-            print(f"[Vision] 🖥️  Screen: {len(image_bytes):,} bytes")
+            if 'logger' in globals() or 'logger' in locals():
+                logger.info(f"{ f"[Vision] 🖥️  Screen: {len(image_bytes):,} bytes" }" if isinstance(f"[Vision] 🖥️  Screen: {len(image_bytes):,} bytes", str) else f"[Vision] 🖥️  Screen: {len(image_bytes):,} bytes")
+            else:
+                import logging
+                logging.getLogger(__name__).info(f"{ f"[Vision] 🖥️  Screen: {len(image_bytes):,} bytes" }" if isinstance(f"[Vision] 🖥️  Screen: {len(image_bytes):,} bytes", str) else f"[Vision] 🖥️  Screen: {len(image_bytes):,} bytes")
     except Exception as e:
-        print(f"[Vision] ❌ Capture error: {e}")
+        if 'logger' in globals() or 'logger' in locals():
+            logger.warning(f"{ f"[Vision] ❌ Capture error: {e}" }" if isinstance(f"[Vision] ❌ Capture error: {e}", str) else f"[Vision] ❌ Capture error: {e}")
+        else:
+            import logging
+            logging.getLogger(__name__).warning(f"{ f"[Vision] ❌ Capture error: {e}" }" if isinstance(f"[Vision] ❌ Capture error: {e}", str) else f"[Vision] ❌ Capture error: {e}")
         return False
 
     _session.analyze(image_bytes, mime_type, user_text)
@@ -447,20 +455,44 @@ def warmup_session(player=None) -> None:
     try:
         _ensure_session(player=player)
     except Exception as e:
-        print(f"[Vision] ⚠️  Warmup failed: {e}")
+        if 'logger' in globals() or 'logger' in locals():
+            logger.warning(f"{ f"[Vision] ⚠️  Warmup failed: {e}" }" if isinstance(f"[Vision] ⚠️  Warmup failed: {e}", str) else f"[Vision] ⚠️  Warmup failed: {e}")
+        else:
+            import logging
+            logging.getLogger(__name__).warning(f"{ f"[Vision] ⚠️  Warmup failed: {e}" }" if isinstance(f"[Vision] ⚠️  Warmup failed: {e}", str) else f"[Vision] ⚠️  Warmup failed: {e}")
 
 if __name__ == "__main__":
-    print("[TEST] screen_processor.py")
-    print("=" * 52)
+    if 'logger' in globals() or 'logger' in locals():
+        logger.info("[TEST] screen_processor.py")
+    else:
+        import logging
+        logging.getLogger(__name__).info("[TEST] screen_processor.py")
+    if 'logger' in globals() or 'logger' in locals():
+        logger.info(f"{ "=" * 52 }" if isinstance("=" * 52, str) else "=" * 52)
+    else:
+        import logging
+        logging.getLogger(__name__).info(f"{ "=" * 52 }" if isinstance("=" * 52, str) else "=" * 52)
     mode = input("angle — screen / camera (default: screen): ").strip().lower() or "screen"
     q    = input("Question (Enter = default): ").strip() or "What do you see? Be brief."
 
     t0 = time.perf_counter()
     warmup_session()
-    print(f"Session ready in {time.perf_counter()-t0:.2f}s\n")
+    if 'logger' in globals() or 'logger' in locals():
+        logger.info(f"{ f"Session ready in {time.perf_counter()-t0:.2f}s\n" }" if isinstance(f"Session ready in {time.perf_counter()-t0:.2f}s\n", str) else f"Session ready in {time.perf_counter()-t0:.2f}s\n")
+    else:
+        import logging
+        logging.getLogger(__name__).info(f"{ f"Session ready in {time.perf_counter()-t0:.2f}s\n" }" if isinstance(f"Session ready in {time.perf_counter()-t0:.2f}s\n", str) else f"Session ready in {time.perf_counter()-t0:.2f}s\n")
 
     t1 = time.perf_counter()
     ok = screen_process({"angle": mode, "text": q})
-    print(f"Queued in {time.perf_counter()-t1:.3f}s — waiting for audio...")
+    if 'logger' in globals() or 'logger' in locals():
+        logger.info(f"{ f"Queued in {time.perf_counter()-t1:.3f}s — waiting for audio..." }" if isinstance(f"Queued in {time.perf_counter()-t1:.3f}s — waiting for audio...", str) else f"Queued in {time.perf_counter()-t1:.3f}s — waiting for audio...")
+    else:
+        import logging
+        logging.getLogger(__name__).info(f"{ f"Queued in {time.perf_counter()-t1:.3f}s — waiting for audio..." }" if isinstance(f"Queued in {time.perf_counter()-t1:.3f}s — waiting for audio...", str) else f"Queued in {time.perf_counter()-t1:.3f}s — waiting for audio...")
     time.sleep(10)
-    print("Done." if ok else "Failed.")
+    if 'logger' in globals() or 'logger' in locals():
+        logger.warning("Done." if ok else "Failed.")
+    else:
+        import logging
+        logging.getLogger(__name__).warning("Done." if ok else "Failed.")

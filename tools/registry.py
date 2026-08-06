@@ -93,7 +93,8 @@ def _get_worker_pool():
 def _run_async(coro):
     """
     Helper to run asynchronous coroutines safely, even inside a running loop.
-    Handles loop thread safety to prevent deadlocks or thread attachment errors.
+    Avoids event loop deadlocks by executing on a dedicated background thread
+    with its own event loop when the current thread's event loop is active.
     """
     try:
         loop = asyncio.get_running_loop()
@@ -101,15 +102,42 @@ def _run_async(coro):
         loop = None
 
     if loop is not None and loop.is_running():
-        pool = _get_worker_pool()
-        return pool.submit(lambda: asyncio.run(coro)).result(timeout=60)
+        # Running loop is active on this thread. To prevent blocking/deadlocking it,
+        # run the coroutine in a separate background thread with its own loop.
+        import threading
+        result_holder = []
+        exception_holder = []
+
+        def worker():
+            try:
+                new_loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(new_loop)
+                res = new_loop.run_until_complete(coro)
+                result_holder.append(res)
+                new_loop.close()
+            except Exception as e:
+                exception_holder.append(e)
+
+        thread = threading.Thread(target=worker, name="jarvis_async_bridge")
+        thread.start()
+        thread.join(timeout=60.0)
+
+        if thread.is_alive():
+            raise TimeoutError("Async tool call timed out after 60 seconds")
+
+        if exception_holder:
+            raise exception_holder[0]
+
+        return result_holder[0] if result_holder else None
     else:
         return asyncio.run(coro)
 
 
+
 def get_tool_prompt_block() -> str:
     """Generate the system prompt block defining all available tools and skill templates."""
-    _import_plugins()
+    _import_plugins(full=True)
+
     schema_text = json.dumps(TOOL_SCHEMAS, indent=2)
 
     # Load available skills catalog dynamically to avoid circular import cycles
@@ -156,12 +184,32 @@ def get_pruned_tool_prompt_block(user_prompt: str = "") -> str:
     Generate a lightweight, intent-pruned tool system prompt block.
     Filters available tool definitions down to the most relevant tools, saving up to 80% prompt tokens.
     """
-    _import_plugins()
+    # ── Lazy Loading of Plugins based on query context ──
+    _import_plugins(full=False)  # always import core plugins
+
+    low = (user_prompt or "").lower()
+    if low:
+        # Map keyword patterns to their specific extended plugin modules
+        keyword_to_plugins = {
+            ("whatsapp", "watsapp", "wp"): ["tools.whatsapp_tools"],
+            ("calendar", "event", "schedule"): ["tools.calendar_tools"],
+            ("email", "gmail", "mail"): ["tools.gmail_auth_tools", "tools.smart_email_tools"],
+            ("excel", "xlsx"): ["tools.excel_tools"],
+            ("git", "repo", "github"): ["tools.git_repo_tool"],
+            ("diagnostic", "diagnostic_tool"): ["tools.system_diagnostic_tool"],
+            ("screen", "see", "look", "click", "capture"): ["tools.image_tools"],
+            ("flight", "ticket", "airline", "fly"): ["tools.legacy_actions_tools"],
+        }
+        for keywords, plugins in keyword_to_plugins.items():
+            if any(kw in low for kw in keywords):
+                for p in plugins:
+                    _import_plugins(plugin_name=p)
 
     if not user_prompt:
         return get_tool_prompt_block()
 
     low = user_prompt.lower()
+
     
     # Core high-frequency tools always available
     essential_tools = {
@@ -222,8 +270,9 @@ You will then receive the tool result and can continue.
 
 def execute_tool(name: str, args: dict) -> str:
     """Execute a registered tool by name. All errors are caught and returned as strings."""
-    # Ensure all plugins are imported/registered
-    _import_plugins()
+    # Ensure core plugins are loaded
+    _import_plugins(full=False)
+
 
     # Map aliases for ReAct loop execution
     if name in ("browser_control", "open_browser", "web_browser"):
@@ -246,8 +295,39 @@ def execute_tool(name: str, args: dict) -> str:
             name = "file_list"
             args = {"path": args.get("path", ".")}
 
+    # ── Lazy Loading Resolve ──
+    if name not in TOOL_REGISTRY:
+        tool_to_module = {
+            # WhatsApp
+            "send_whatsapp": "tools.whatsapp_tools",
+            "schedule_whatsapp_message": "tools.whatsapp_tools",
+            "manage_whatsapp_contacts": "tools.whatsapp_tools",
+            # Calendar
+            "create_calendar_event": "tools.calendar_tools",
+            "list_calendar_events": "tools.calendar_tools",
+            "search_calendar_events": "tools.calendar_tools",
+            "delete_calendar_event": "tools.calendar_tools",
+            # Email / Gmail
+            "send_email": "tools.smart_email_tools",
+            "gmail_login": "tools.gmail_auth_tools",
+            "gmail_logout": "tools.gmail_auth_tools",
+            "get_gmail_auth_status": "tools.gmail_auth_tools",
+            # Document / Excel
+            "excel_analyze": "tools.excel_tools",
+            "flight_finder": "tools.legacy_actions_tools",
+            "screen_find": "tools.image_tools",
+            "screen_click": "tools.image_tools",
+            "smart_click": "tools.image_tools",
+            "git_repo_tool": "tools.git_repo_tool",
+            "system_diagnostic": "tools.system_diagnostic_tool",
+            "mcp_connector": "tools.mcp_connector",
+        }
+        if name in tool_to_module:
+            _import_plugins(plugin_name=tool_to_module[name])
+
     if name not in TOOL_REGISTRY:
         return f"ERROR: Unknown tool '{name}'"
+
 
     # ── Permission enforcement ────────────────────────────────────────────
     try:
@@ -517,15 +597,19 @@ def parse_tool_call(text: str) -> tuple[str | None, dict | None]:
 # Dynamic import list to populate TOOL_REGISTRY
 _plugins_stage = 0  # 0=none, 1=core, 2=full
 _plugins_lock = threading.Lock()
+_loaded_plugins: set[str] = set()
 
 
-def _import_plugins(*, full: bool = True):
-    """Import tool plugin files to register their decorators."""
+def _import_plugins(*, full: bool = False, plugin_name: str | None = None):
+    """Import tool plugin files to register their decorators.
+
+    Refactored to support lazy-loading:
+      - If plugin_name is provided, dynamically imports that specific plugin.
+      - If full=False (default), imports only the 7 core essential tools immediately.
+      - If full=True, imports all extended tools (e.g. for generating complete docs).
+    """
     global _plugins_stage
-    target_stage = 2 if full else 1
-    if _plugins_stage >= target_stage:
-        return
-
+    
     # Core essential tools needed immediately
     core_plugins = [
         "tools.web_tools",
@@ -580,6 +664,19 @@ def _import_plugins(*, full: bool = True):
     ]
 
     with _plugins_lock:
+        # 1. Handle single-plugin lazy request
+        if plugin_name:
+            if plugin_name in _loaded_plugins:
+                return
+            try:
+                importlib.import_module(plugin_name)
+                _loaded_plugins.add(plugin_name)
+                logger.debug("[ToolRegistry] Lazy loaded extended plugin: %s", plugin_name)
+            except Exception as exc:
+                logger.warning("[ToolRegistry] Failed to lazy load plugin '%s': %s", plugin_name, exc)
+            return
+
+        target_stage = 2 if full else 1
         if _plugins_stage >= target_stage:
             return
 
@@ -587,17 +684,20 @@ def _import_plugins(*, full: bool = True):
             for p in core_plugins:
                 try:
                     importlib.import_module(p)
+                    _loaded_plugins.add(p)
                 except Exception as exc:
                     logger.debug("[ToolRegistry] Core plugin '%s' import notice: %s", p, exc)
             _plugins_stage = 1
 
         if full and _plugins_stage < 2:
             for p in extended_plugins:
-                try:
-                    importlib.import_module(p)
-                except Exception as exc:
-                    # Suppress non-critical optional tool import failures
-                    logger.debug("[ToolRegistry] Extended plugin '%s' import notice: %s", p, exc)
+                if p not in _loaded_plugins:
+                    try:
+                        importlib.import_module(p)
+                        _loaded_plugins.add(p)
+                    except Exception as exc:
+                        # Suppress non-critical optional tool import failures
+                        logger.debug("[ToolRegistry] Extended plugin '%s' import notice: %s", p, exc)
 
             # Load custom plugins
             try:
@@ -607,4 +707,5 @@ def _import_plugins(*, full: bool = True):
                 logger.debug("[ToolRegistry] Custom plugins load notice: %s", exc)
 
             _plugins_stage = 2
+
 

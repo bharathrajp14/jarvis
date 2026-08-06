@@ -85,7 +85,11 @@ def get_or_create_master_key() -> bytes:
             except Exception:
                 pass
     except Exception as e:
-        print(f"[ContactSecurity] ⚠️ Failed to save keyfile: {e}")
+        if 'logger' in globals() or 'logger' in locals():
+            logger.warning(f"{ f"[ContactSecurity] ⚠️ Failed to save keyfile: {e}" }" if isinstance(f"[ContactSecurity] ⚠️ Failed to save keyfile: {e}", str) else f"[ContactSecurity] ⚠️ Failed to save keyfile: {e}")
+        else:
+            import logging
+            logging.getLogger(__name__).warning(f"{ f"[ContactSecurity] ⚠️ Failed to save keyfile: {e}" }" if isinstance(f"[ContactSecurity] ⚠️ Failed to save keyfile: {e}", str) else f"[ContactSecurity] ⚠️ Failed to save keyfile: {e}")
     return key
 
 
@@ -318,7 +322,11 @@ class UnifiedContactStore:
                         self._contacts = {c.get("id", c.get("name", f"c_{i}")): c for i, c in enumerate(data)}
                     return
                 except Exception as e:
-                    print(f"[ContactStore] ⚠️ Encrypted load error ({e}). Checking legacy file.")
+                    if 'logger' in globals() or 'logger' in locals():
+                        logger.warning(f"{ f"[ContactStore] ⚠️ Encrypted load error ({e}). Checking legacy file." }" if isinstance(f"[ContactStore] ⚠️ Encrypted load error ({e}). Checking legacy file.", str) else f"[ContactStore] ⚠️ Encrypted load error ({e}). Checking legacy file.")
+                    else:
+                        import logging
+                        logging.getLogger(__name__).warning(f"{ f"[ContactStore] ⚠️ Encrypted load error ({e}). Checking legacy file." }" if isinstance(f"[ContactStore] ⚠️ Encrypted load error ({e}). Checking legacy file.", str) else f"[ContactStore] ⚠️ Encrypted load error ({e}). Checking legacy file.")
 
             if self.legacy_path.exists():
                 try:
@@ -329,11 +337,19 @@ class UnifiedContactStore:
                         self._contacts = data
                     elif isinstance(data, list):
                         self._contacts = {c.get("id", c.get("name", f"c_{i}")): c for i, c in enumerate(data)}
-                    print(f"[ContactStore] 🔒 Migrating {len(self._contacts)} contacts to encrypted storage...")
+                    if 'logger' in globals() or 'logger' in locals():
+                        logger.info(f"{ f"[ContactStore] 🔒 Migrating {len(self._contacts)} contacts to encrypted storage..." }" if isinstance(f"[ContactStore] 🔒 Migrating {len(self._contacts)} contacts to encrypted storage...", str) else f"[ContactStore] 🔒 Migrating {len(self._contacts)} contacts to encrypted storage...")
+                    else:
+                        import logging
+                        logging.getLogger(__name__).info(f"{ f"[ContactStore] 🔒 Migrating {len(self._contacts)} contacts to encrypted storage..." }" if isinstance(f"[ContactStore] 🔒 Migrating {len(self._contacts)} contacts to encrypted storage...", str) else f"[ContactStore] 🔒 Migrating {len(self._contacts)} contacts to encrypted storage...")
                     self.save()
                     return
                 except Exception as e:
-                    print(f"[ContactStore] ⚠️ Legacy load error: {e}")
+                    if 'logger' in globals() or 'logger' in locals():
+                        logger.warning(f"{ f"[ContactStore] ⚠️ Legacy load error: {e}" }" if isinstance(f"[ContactStore] ⚠️ Legacy load error: {e}", str) else f"[ContactStore] ⚠️ Legacy load error: {e}")
+                    else:
+                        import logging
+                        logging.getLogger(__name__).warning(f"{ f"[ContactStore] ⚠️ Legacy load error: {e}" }" if isinstance(f"[ContactStore] ⚠️ Legacy load error: {e}", str) else f"[ContactStore] ⚠️ Legacy load error: {e}")
 
             self._contacts = {}
 
@@ -355,7 +371,11 @@ class UnifiedContactStore:
                     except Exception:
                         pass
             except Exception as e:
-                print(f"[ContactStore] ⚠️ Encrypted save error: {e}")
+                if 'logger' in globals() or 'logger' in locals():
+                    logger.warning(f"{ f"[ContactStore] ⚠️ Encrypted save error: {e}" }" if isinstance(f"[ContactStore] ⚠️ Encrypted save error: {e}", str) else f"[ContactStore] ⚠️ Encrypted save error: {e}")
+                else:
+                    import logging
+                    logging.getLogger(__name__).warning(f"{ f"[ContactStore] ⚠️ Encrypted save error: {e}" }" if isinstance(f"[ContactStore] ⚠️ Encrypted save error: {e}", str) else f"[ContactStore] ⚠️ Encrypted save error: {e}")
 
     @staticmethod
     def normalize_phone(phone: str) -> str:

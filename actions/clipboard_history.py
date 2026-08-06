@@ -60,8 +60,12 @@ class ClipboardTracker:
                 if val and val.strip() and val != last_val:
                     last_val = val
                     self._save_entry(val)
-            except Exception:
-                pass
+            except Exception as e:
+                if 'logger' in globals() or 'logger' in locals():
+                    logger.debug('Suppressed exception: %s', e)
+                else:
+                    import logging
+                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
             time.sleep(1.0)
 
     def _save_entry(self, content: str):
@@ -72,8 +76,12 @@ class ClipboardTracker:
                 (content, len(content))
             )
             conn.commit()
-        except Exception:
-            pass
+        except Exception as e:
+            if 'logger' in globals() or 'logger' in locals():
+                logger.debug('Suppressed exception: %s', e)
+            else:
+                import logging
+                logging.getLogger(__name__).debug('Suppressed exception: %s', e)
         finally:
             conn.close()
 

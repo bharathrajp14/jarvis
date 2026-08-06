@@ -113,9 +113,12 @@ def _parse_skill_file(path: Path, source: str = "user") -> Optional[SkillDef]:
             parsed_yaml = yaml.safe_load(frontmatter_raw)
             if isinstance(parsed_yaml, dict):
                 fields = {str(k).lower(): v for k, v in parsed_yaml.items()}
-        except Exception:
-            pass
-
+        except Exception as e:
+            if 'logger' in globals() or 'logger' in locals():
+                logger.debug('Suppressed exception: %s', e)
+            else:
+                import logging
+                logging.getLogger(__name__).debug('Suppressed exception: %s', e)
     # Fallback to key-value string parsing if PyYAML fails or isn't available
     if not fields:
         for line in frontmatter_raw.splitlines():

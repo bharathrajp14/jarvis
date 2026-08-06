@@ -1,6 +1,5 @@
 # Environment variables
 .env
-.env.template
 config/api_keys.json
 config/models.json
 current_scope.json

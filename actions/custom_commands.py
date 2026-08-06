@@ -43,7 +43,11 @@ class CustomCommandEngine:
             self.commands = data.get("commands", [])
             self.startup_commands = data.get("startup_commands", [])
         except Exception as e:
-            print(f"[CustomCommands] Load error: {e}")
+            if 'logger' in globals() or 'logger' in locals():
+                logger.warning(f"{ f"[CustomCommands] Load error: {e}" }" if isinstance(f"[CustomCommands] Load error: {e}", str) else f"[CustomCommands] Load error: {e}")
+            else:
+                import logging
+                logging.getLogger(__name__).warning(f"{ f"[CustomCommands] Load error: {e}" }" if isinstance(f"[CustomCommands] Load error: {e}", str) else f"[CustomCommands] Load error: {e}")
             self.commands = []
             self.startup_commands = []
 
@@ -56,8 +60,11 @@ class CustomCommandEngine:
             }
             _CONFIG_PATH.write_text(json.dumps(data, indent=2), encoding="utf-8")
         except Exception as e:
-            print(f"[CustomCommands] Save error: {e}")
-
+            if 'logger' in globals() or 'logger' in locals():
+                logger.debug('Suppressed exception: %s', e)
+            else:
+                import logging
+                logging.getLogger(__name__).debug('Suppressed exception: %s', e)
     def match(self, text: str) -> tuple[dict, dict] | None:
         """
         Match user input text against triggers and aliases.
@@ -116,7 +123,11 @@ class CustomCommandEngine:
                     if speak_callback:
                         speak_callback(content)
                     else:
-                        print(f"[CustomCommands] Speak: {content}")
+                        if 'logger' in globals() or 'logger' in locals():
+                            logger.info(f"{ f"[CustomCommands] Speak: {content}" }" if isinstance(f"[CustomCommands] Speak: {content}", str) else f"[CustomCommands] Speak: {content}")
+                        else:
+                            import logging
+                            logging.getLogger(__name__).info(f"{ f"[CustomCommands] Speak: {content}" }" if isinstance(f"[CustomCommands] Speak: {content}", str) else f"[CustomCommands] Speak: {content}")
                     results.append(f"Spoke: {content}")
 
                 elif action_type == "open_url":

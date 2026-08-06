@@ -119,9 +119,12 @@ def load_agent_definitions() -> Dict[str, AgentDefinition]:
             try:
                 d = _parse_agent_md(p, source="user")
                 defs[d.name] = d
-            except Exception:
-                pass
-
+            except Exception as e:
+                if 'logger' in globals() or 'logger' in locals():
+                    logger.debug('Suppressed exception: %s', e)
+                else:
+                    import logging
+                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
     # Project-level (overrides user)
     proj_dir = Path.cwd() / ".jarvis" / "agents"
     if proj_dir.is_dir():
@@ -129,9 +132,12 @@ def load_agent_definitions() -> Dict[str, AgentDefinition]:
             try:
                 d = _parse_agent_md(p, source="project")
                 defs[d.name] = d
-            except Exception:
-                pass
-
+            except Exception as e:
+                if 'logger' in globals() or 'logger' in locals():
+                    logger.debug('Suppressed exception: %s', e)
+                else:
+                    import logging
+                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
     return defs
 
 
@@ -351,8 +357,12 @@ class SubAgentManager:
         if task._future is not None:
             try:
                 task._future.result(timeout=timeout)
-            except Exception:
-                pass
+            except Exception as e:
+                if 'logger' in globals() or 'logger' in locals():
+                    logger.debug('Suppressed exception: %s', e)
+                else:
+                    import logging
+                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
         return task
 
     def get_result(self, task_id: str) -> Optional[str]:

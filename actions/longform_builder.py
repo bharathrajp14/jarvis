@@ -143,9 +143,12 @@ def build_longform_publication(
                 docx_path = volumes_dir / vol["filename"].replace(".md", ".docx")
                 doc.save(str(docx_path))
                 generated_files.append(str(docx_path))
-            except Exception:
-                pass
-
+            except Exception as e:
+                if 'logger' in globals() or 'logger' in locals():
+                    logger.debug('Suppressed exception: %s', e)
+                else:
+                    import logging
+                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
     # Save Unified Master Edition Markdown
     master_md_path = project_dir / f"{folder_name}_Master_Edition.md"
     master_md_path.write_text("\n".join(master_md_lines), encoding="utf-8")
@@ -167,9 +170,12 @@ def build_longform_publication(
             master_docx_path = project_dir / f"{folder_name}_Master_Edition.docx"
             master_doc.save(str(master_docx_path))
             generated_files.append(str(master_docx_path))
-        except Exception:
-            pass
-
+        except Exception as e:
+            if 'logger' in globals() or 'logger' in locals():
+                logger.debug('Suppressed exception: %s', e)
+            else:
+                import logging
+                logging.getLogger(__name__).debug('Suppressed exception: %s', e)
     # 2. Generate Toolkits (CSV Files)
     if include_csv_toolkit:
         roadmap_csv = toolkits_dir / "90DayLaunchRoadmap.csv"

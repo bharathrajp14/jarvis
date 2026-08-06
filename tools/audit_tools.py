@@ -65,9 +65,12 @@ def audit_codebase(args: dict) -> str:
             if re.search(r"""(?:api[_-]?key|secret|password)\s*=\s*['"][a-zA-Z0-9_\-]{20,}['"]""", content, re.IGNORECASE):
                 security_findings.append(f" - {rel_str} → Possible hardcoded API key or secret token")
 
-        except Exception:
-            pass
-
+        except Exception as e:
+            if 'logger' in globals() or 'logger' in locals():
+                logger.debug('Suppressed exception: %s', e)
+            else:
+                import logging
+                logging.getLogger(__name__).debug('Suppressed exception: %s', e)
     status_str = "🟢 CLEAN" if not syntax_errors and not security_findings else "⚠️ ISSUES DETECTED"
 
     report = [

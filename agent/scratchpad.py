@@ -86,8 +86,12 @@ class ScratchpadManager:
                 try:
                     p.unlink()
                     count += 1
-                except Exception:
-                    pass
+                except Exception as e:
+                    if 'logger' in globals() or 'logger' in locals():
+                        logger.debug('Suppressed exception: %s', e)
+                    else:
+                        import logging
+                        logging.getLogger(__name__).debug('Suppressed exception: %s', e)
         return f"Scratchpad cleared: {count} files removed, notes reset."
 
     def eval_script(self, target: str, language: str = "python", timeout: int = 30) -> Dict[str, Any]:

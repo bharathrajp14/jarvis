@@ -114,19 +114,35 @@ def create_plan(goal: str, context: str = "") -> dict:
                 step["tool"] = "web_search"
                 step["parameters"] = {"query": step.get("description", goal)[:200]}
 
-        print(f"[Planner] ✅ Plan: {len(plan['steps'])} steps (parallel={plan.get('can_parallelize', False)})")
+        if 'logger' in globals() or 'logger' in locals():
+            logger.info(f"{ f"[Planner] ✅ Plan: {len(plan['steps'])} steps (parallel={plan.get('can_parallelize', False)})" }" if isinstance(f"[Planner] ✅ Plan: {len(plan['steps'])} steps (parallel={plan.get('can_parallelize', False)})", str) else f"[Planner] ✅ Plan: {len(plan['steps'])} steps (parallel={plan.get('can_parallelize', False)})")
+        else:
+            import logging
+            logging.getLogger(__name__).info(f"{ f"[Planner] ✅ Plan: {len(plan['steps'])} steps (parallel={plan.get('can_parallelize', False)})" }" if isinstance(f"[Planner] ✅ Plan: {len(plan['steps'])} steps (parallel={plan.get('can_parallelize', False)})", str) else f"[Planner] ✅ Plan: {len(plan['steps'])} steps (parallel={plan.get('can_parallelize', False)})")
         for s in plan["steps"]:
             par = " [PARALLEL]" if s.get("parallel") else ""
             dep = f" [depends: {s['depends_on']}]" if s.get("depends_on") else ""
-            print(f"  Step {s['step']}: [{s['tool']}] {s['description']}{par}{dep}")
+            if 'logger' in globals() or 'logger' in locals():
+                logger.info(f"{ f"  Step {s['step']}: [{s['tool']}] {s['description']}{par}{dep}" }" if isinstance(f"  Step {s['step']}: [{s['tool']}] {s['description']}{par}{dep}", str) else f"  Step {s['step']}: [{s['tool']}] {s['description']}{par}{dep}")
+            else:
+                import logging
+                logging.getLogger(__name__).info(f"{ f"  Step {s['step']}: [{s['tool']}] {s['description']}{par}{dep}" }" if isinstance(f"  Step {s['step']}: [{s['tool']}] {s['description']}{par}{dep}", str) else f"  Step {s['step']}: [{s['tool']}] {s['description']}{par}{dep}")
 
         return plan
 
     except json.JSONDecodeError as e:
-        print(f"[Planner] JSON parse failed: {e} — using fallback")
+        if 'logger' in globals() or 'logger' in locals():
+            logger.warning(f"{ f"[Planner] JSON parse failed: {e} — using fallback" }" if isinstance(f"[Planner] JSON parse failed: {e} — using fallback", str) else f"[Planner] JSON parse failed: {e} — using fallback")
+        else:
+            import logging
+            logging.getLogger(__name__).warning(f"{ f"[Planner] JSON parse failed: {e} — using fallback" }" if isinstance(f"[Planner] JSON parse failed: {e} — using fallback", str) else f"[Planner] JSON parse failed: {e} — using fallback")
         return _fallback_plan(goal)
     except Exception as e:
-        print(f"[Planner] Planning failed: {e} — using fallback")
+        if 'logger' in globals() or 'logger' in locals():
+            logger.warning(f"{ f"[Planner] Planning failed: {e} — using fallback" }" if isinstance(f"[Planner] Planning failed: {e} — using fallback", str) else f"[Planner] Planning failed: {e} — using fallback")
+        else:
+            import logging
+            logging.getLogger(__name__).warning(f"{ f"[Planner] Planning failed: {e} — using fallback" }" if isinstance(f"[Planner] Planning failed: {e} — using fallback", str) else f"[Planner] Planning failed: {e} — using fallback")
         return _fallback_plan(goal)
 
 
@@ -163,11 +179,19 @@ def replan(goal: str, completed_steps: list, failed_step: dict, error: str) -> d
                 step["tool"] = "web_search"
                 step["parameters"] = {"query": step.get("description", goal)[:200]}
 
-        print(f"[Planner] 🔄 Replan: {len(plan.get('steps', []))} steps")
+        if 'logger' in globals() or 'logger' in locals():
+            logger.info(f"{ f"[Planner] 🔄 Replan: {len(plan.get('steps', []))} steps" }" if isinstance(f"[Planner] 🔄 Replan: {len(plan.get('steps', []))} steps", str) else f"[Planner] 🔄 Replan: {len(plan.get('steps', []))} steps")
+        else:
+            import logging
+            logging.getLogger(__name__).info(f"{ f"[Planner] 🔄 Replan: {len(plan.get('steps', []))} steps" }" if isinstance(f"[Planner] 🔄 Replan: {len(plan.get('steps', []))} steps", str) else f"[Planner] 🔄 Replan: {len(plan.get('steps', []))} steps")
         return plan
 
     except Exception as e:
-        print(f"[Planner] Replan failed: {e}")
+        if 'logger' in globals() or 'logger' in locals():
+            logger.warning(f"{ f"[Planner] Replan failed: {e}" }" if isinstance(f"[Planner] Replan failed: {e}", str) else f"[Planner] Replan failed: {e}")
+        else:
+            import logging
+            logging.getLogger(__name__).warning(f"{ f"[Planner] Replan failed: {e}" }" if isinstance(f"[Planner] Replan failed: {e}", str) else f"[Planner] Replan failed: {e}")
         return _fallback_plan(f"Alternative approach for: {goal}")
 
 

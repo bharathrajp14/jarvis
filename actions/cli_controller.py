@@ -93,8 +93,12 @@ class ShellSession:
             except Exception:
                 try:
                     self._proc.kill()
-                except Exception:
-                    pass
+                except Exception as e:
+                    if 'logger' in globals() or 'logger' in locals():
+                        logger.debug('Suppressed exception: %s', e)
+                    else:
+                        import logging
+                        logging.getLogger(__name__).debug('Suppressed exception: %s', e)
         self._proc = None
         return "Shell session stopped."
 
@@ -299,7 +303,11 @@ def cli_controller(
     if player:
         player.write_log(f"[CLI] {action}: {cmd[:60]}")
 
-    print(f"[CLIController] ▶ {action}  '{cmd[:60]}'")
+    if 'logger' in globals() or 'logger' in locals():
+        logger.info(f"{ f"[CLIController] ▶ {action}  '{cmd[:60]}'" }" if isinstance(f"[CLIController] ▶ {action}  '{cmd[:60]}'", str) else f"[CLIController] ▶ {action}  '{cmd[:60]}'")
+    else:
+        import logging
+        logging.getLogger(__name__).info(f"{ f"[CLIController] ▶ {action}  '{cmd[:60]}'" }" if isinstance(f"[CLIController] ▶ {action}  '{cmd[:60]}'", str) else f"[CLIController] ▶ {action}  '{cmd[:60]}'")
 
     # ── Actions ───────────────────────────────────────────────────────────
 

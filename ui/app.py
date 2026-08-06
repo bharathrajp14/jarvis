@@ -72,12 +72,13 @@ def is_gui_available() -> bool:
     try:
         mod_name = "PySide6" if _USE_PYSIDE6 else "PyQt6"
         code = (
-            f"import sys; from {mod_name}.QtWidgets import QApplication, QMainWindow; "
+            "import sys; "
+            f"from {mod_name}.QtWidgets import QApplication, QMainWindow; "
             f"from {mod_name}.QtCore import QTimer; "
-            f"app = QApplication([]); win = QMainWindow(); win.show(); "
-            f"timer = QTimer(app); timer.setInterval(150); timer.setSingleShot(True); "
-            f"timer.timeout.connect(app.quit); timer.start(); "
-            f"sys.exit(app.exec() if hasattr(app, 'exec') else app.exec_())"
+            "app = QApplication([]); win = QMainWindow(); win.show(); "
+            "timer = QTimer(app); timer.setInterval(150); timer.setSingleShot(True); "
+            "timer.timeout.connect(app.quit); timer.start(); "
+            "sys.exit(app.exec() if hasattr(app, 'exec') else getattr(app, 'exec_')())"
         )
         res = subprocess.run([sys.executable, "-c", code], capture_output=True, timeout=2.5)
         return res.returncode == 0
@@ -124,6 +125,25 @@ class HeadlessJarvisUI:
     def current_file(self) -> str | None:
         return None
 
+    def is_available(self) -> bool:
+        return False
+
+    def run(self):
+        logger.info("Headless UI running.")
+
+    def set_muted(self, muted: bool):
+        self._muted = muted
+
+    def set_speaking(self, speaking: bool):
+        self._speaking = speaking
+
+    def show_alert(self, title: str, text: str):
+        logger.warning("[UI Alert] %s: %s", title, text)
+
+    def prompt_user_input(self, prompt: str) -> str | None:
+        logger.info("[UI Prompt] %s", prompt)
+        return None
+
     def notify_phone_connected(self) -> None:
         logger.info("Phone connected.")
 
@@ -135,13 +155,16 @@ class HeadlessJarvisUI:
         logger.debug("[UI Log] %s", text)
 
     def wait_for_api_key(self):
-        pass
+        key = os.environ.get("GEMINI_API_KEY") or os.environ.get("OPENAI_API_KEY")
+        if not key:
+            logger.warning("[UI] No API key detected in environment. Prompting for API key.")
+        return key
 
     def show_content(self, title: str, text: str):
         logger.info("--- %s ---\n%s", title, text)
 
     def prompt_reconfig(self):
-        pass
+        logger.info("[UI Prompt Reconfig] Reconfiguration requested.")
 
     def show_camera_frame(self, img_bytes: bytes):
         pass

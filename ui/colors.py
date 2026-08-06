@@ -125,10 +125,12 @@ def retheme_all_widgets(old: dict[str, str], new: dict[str, str]) -> None:
                 if s2 != ss:
                     w.setStyleSheet(s2)
             w.update()
-        except Exception:
-            pass
-
-
+        except Exception as e:
+            if 'logger' in globals() or 'logger' in locals():
+                logger.debug('Suppressed exception: %s', e)
+            else:
+                import logging
+                logging.getLogger(__name__).debug('Suppressed exception: %s', e)
 def qcol(h: str, a: int = 255) -> QColor:
     """Convenience factory: create a QColor from a hex string with optional alpha."""
     c = QColor(h)

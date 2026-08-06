@@ -47,9 +47,12 @@ class TokenCounter:
         if _TIKTOKEN_AVAILABLE and _encoder:
             try:
                 return len(_encoder.encode(text))
-            except Exception:
-                pass
-
+            except Exception as e:
+                if 'logger' in globals() or 'logger' in locals():
+                    logger.debug('Suppressed exception: %s', e)
+                else:
+                    import logging
+                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
         # Fallback estimation: average 3.8 characters per token for English/Code
         return max(1, int(len(text) / 3.8))
 

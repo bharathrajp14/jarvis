@@ -252,7 +252,11 @@ def send_message(
         return "PyAutoGUI is not installed — cannot control the desktop."
 
     preview = message_text[:50] + ("…" if len(message_text) > 50 else "")
-    print(f"[SendMessage] 📨 {platform} → {receiver}: {preview}")
+    if 'logger' in globals() or 'logger' in locals():
+        logger.info(f"{ f"[SendMessage] 📨 {platform} → {receiver}: {preview}" }" if isinstance(f"[SendMessage] 📨 {platform} → {receiver}: {preview}", str) else f"[SendMessage] 📨 {platform} → {receiver}: {preview}")
+    else:
+        import logging
+        logging.getLogger(__name__).info(f"{ f"[SendMessage] 📨 {platform} → {receiver}: {preview}" }" if isinstance(f"[SendMessage] 📨 {platform} → {receiver}: {preview}", str) else f"[SendMessage] 📨 {platform} → {receiver}: {preview}")
     if player:
         player.write_log(f"[msg] {platform} → {receiver}")
 

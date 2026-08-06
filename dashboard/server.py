@@ -186,7 +186,11 @@ def _ensure_network_access(port: int) -> None:
                 ["cmd.exe", "/c", bat_path], capture_output=True, timeout=8, shell=False
             )
             if r.returncode == 0:
-                print(f"[Dashboard] Firewall configured for port {port}.")
+                if 'logger' in globals() or 'logger' in locals():
+                    logger.info(f"{ f"[Dashboard] Firewall configured for port {port}." }" if isinstance(f"[Dashboard] Firewall configured for port {port}.", str) else f"[Dashboard] Firewall configured for port {port}.")
+                else:
+                    import logging
+                    logging.getLogger(__name__).info(f"{ f"[Dashboard] Firewall configured for port {port}." }" if isinstance(f"[Dashboard] Firewall configured for port {port}.", str) else f"[Dashboard] Firewall configured for port {port}.")
                 try:
                     os.unlink(bat_path)
                 except Exception:
@@ -198,8 +202,16 @@ def _ensure_network_access(port: int) -> None:
         # ── ShellExecuteW: native UAC elevation (most reliable on Windows) ────
         # ShellExecuteW with verb "runas" always shows the UAC dialog regardless
         # of UAC level settings. Non-blocking — uvicorn is already running.
-        print("[Dashboard] One-time network setup required.")
-        print("[Dashboard] >>> A Windows security dialog will appear — click 'Yes' <<<")
+        if 'logger' in globals() or 'logger' in locals():
+            logger.info("[Dashboard] One-time network setup required.")
+        else:
+            import logging
+            logging.getLogger(__name__).info("[Dashboard] One-time network setup required.")
+        if 'logger' in globals() or 'logger' in locals():
+            logger.info("[Dashboard] >>> A Windows security dialog will appear — click 'Yes' <<<")
+        else:
+            import logging
+            logging.getLogger(__name__).info("[Dashboard] >>> A Windows security dialog will appear — click 'Yes' <<<")
         try:
             ret = ctypes.windll.shell32.ShellExecuteW(
                 None,       # hwnd  (no parent window)
@@ -213,13 +225,33 @@ def _ensure_network_access(port: int) -> None:
                 # ShellExecuteW returns immediately; bat finishes in ~1 second.
                 # Sleep briefly so the rules are in place before the first retry.
                 time.sleep(2)
-                print(f"[Dashboard] Network setup complete — port {port} is open.")
-                print("[Dashboard] Refresh your phone browser to connect.")
+                if 'logger' in globals() or 'logger' in locals():
+                    logger.info(f"{ f"[Dashboard] Network setup complete — port {port} is open." }" if isinstance(f"[Dashboard] Network setup complete — port {port} is open.", str) else f"[Dashboard] Network setup complete — port {port} is open.")
+                else:
+                    import logging
+                    logging.getLogger(__name__).info(f"{ f"[Dashboard] Network setup complete — port {port} is open." }" if isinstance(f"[Dashboard] Network setup complete — port {port} is open.", str) else f"[Dashboard] Network setup complete — port {port} is open.")
+                if 'logger' in globals() or 'logger' in locals():
+                    logger.info("[Dashboard] Refresh your phone browser to connect.")
+                else:
+                    import logging
+                    logging.getLogger(__name__).info("[Dashboard] Refresh your phone browser to connect.")
             else:
-                print("[Dashboard] Setup was not allowed.")
-                print("[Dashboard] Phone connections may fail until JARVIS is run as Administrator.")
+                if 'logger' in globals() or 'logger' in locals():
+                    logger.info("[Dashboard] Setup was not allowed.")
+                else:
+                    import logging
+                    logging.getLogger(__name__).info("[Dashboard] Setup was not allowed.")
+                if 'logger' in globals() or 'logger' in locals():
+                    logger.info("[Dashboard] Phone connections may fail until JARVIS is run as Administrator.")
+                else:
+                    import logging
+                    logging.getLogger(__name__).info("[Dashboard] Phone connections may fail until JARVIS is run as Administrator.")
         except Exception as e:
-            print(f"[Dashboard] Firewall setup error: {e}")
+            if 'logger' in globals() or 'logger' in locals():
+                logger.warning(f"{ f"[Dashboard] Firewall setup error: {e}" }" if isinstance(f"[Dashboard] Firewall setup error: {e}", str) else f"[Dashboard] Firewall setup error: {e}")
+            else:
+                import logging
+                logging.getLogger(__name__).warning(f"{ f"[Dashboard] Firewall setup error: {e}" }" if isinstance(f"[Dashboard] Firewall setup error: {e}", str) else f"[Dashboard] Firewall setup error: {e}")
         finally:
             # Cleanup after the bat has had time to run
             def _cleanup(path: str) -> None:
@@ -248,7 +280,11 @@ def _ensure_network_access(port: int) -> None:
             if py in listed.stdout:
                 return  # already allowed
 
-            print("[Dashboard] One-time network setup — enter your password in the macOS dialog.")
+            if 'logger' in globals() or 'logger' in locals():
+                logger.info("[Dashboard] One-time network setup — enter your password in the macOS dialog.")
+            else:
+                import logging
+                logging.getLogger(__name__).info("[Dashboard] One-time network setup — enter your password in the macOS dialog.")
             subprocess.run(
                 ["osascript", "-e",
                  f'do shell script "{fw_ctl} --add {py} && {fw_ctl} --unblockapp {py}"'
@@ -274,9 +310,17 @@ def _ensure_network_access(port: int) -> None:
         r = subprocess.run(["ufw", "status"], capture_output=True, text=True, timeout=5)
         if "active" in r.stdout.lower():
             if _privileged(["ufw", "allow", f"{port}/tcp"]):
-                print(f"[Dashboard] ufw: port {port} allowed.")
+                if 'logger' in globals() or 'logger' in locals():
+                    logger.info(f"{ f"[Dashboard] ufw: port {port} allowed." }" if isinstance(f"[Dashboard] ufw: port {port} allowed.", str) else f"[Dashboard] ufw: port {port} allowed.")
+                else:
+                    import logging
+                    logging.getLogger(__name__).info(f"{ f"[Dashboard] ufw: port {port} allowed." }" if isinstance(f"[Dashboard] ufw: port {port} allowed.", str) else f"[Dashboard] ufw: port {port} allowed.")
             else:
-                print(f"[Dashboard] Run manually:  sudo ufw allow {port}/tcp")
+                if 'logger' in globals() or 'logger' in locals():
+                    logger.info(f"{ f"[Dashboard] Run manually:  sudo ufw allow {port}/tcp" }" if isinstance(f"[Dashboard] Run manually:  sudo ufw allow {port}/tcp", str) else f"[Dashboard] Run manually:  sudo ufw allow {port}/tcp")
+                else:
+                    import logging
+                    logging.getLogger(__name__).info(f"{ f"[Dashboard] Run manually:  sudo ufw allow {port}/tcp" }" if isinstance(f"[Dashboard] Run manually:  sudo ufw allow {port}/tcp", str) else f"[Dashboard] Run manually:  sudo ufw allow {port}/tcp")
             return
     except FileNotFoundError:
         pass
@@ -289,9 +333,17 @@ def _ensure_network_access(port: int) -> None:
             ok = (_privileged(["firewall-cmd", "--add-port", f"{port}/tcp", "--permanent"])
                   and _privileged(["firewall-cmd", "--reload"]))
             if ok:
-                print(f"[Dashboard] firewalld: port {port} allowed.")
+                if 'logger' in globals() or 'logger' in locals():
+                    logger.info(f"{ f"[Dashboard] firewalld: port {port} allowed." }" if isinstance(f"[Dashboard] firewalld: port {port} allowed.", str) else f"[Dashboard] firewalld: port {port} allowed.")
+                else:
+                    import logging
+                    logging.getLogger(__name__).info(f"{ f"[Dashboard] firewalld: port {port} allowed." }" if isinstance(f"[Dashboard] firewalld: port {port} allowed.", str) else f"[Dashboard] firewalld: port {port} allowed.")
             else:
-                print(f"[Dashboard] Run manually:  sudo firewall-cmd --add-port={port}/tcp --permanent && sudo firewall-cmd --reload")
+                if 'logger' in globals() or 'logger' in locals():
+                    logger.info(f"{ f"[Dashboard] Run manually:  sudo firewall-cmd --add-port={port}/tcp --permanent && sudo firewall-cmd --reload" }" if isinstance(f"[Dashboard] Run manually:  sudo firewall-cmd --add-port={port}/tcp --permanent && sudo firewall-cmd --reload", str) else f"[Dashboard] Run manually:  sudo firewall-cmd --add-port={port}/tcp --permanent && sudo firewall-cmd --reload")
+                else:
+                    import logging
+                    logging.getLogger(__name__).info(f"{ f"[Dashboard] Run manually:  sudo firewall-cmd --add-port={port}/tcp --permanent && sudo firewall-cmd --reload" }" if isinstance(f"[Dashboard] Run manually:  sudo firewall-cmd --add-port={port}/tcp --permanent && sudo firewall-cmd --reload", str) else f"[Dashboard] Run manually:  sudo firewall-cmd --add-port={port}/tcp --permanent && sudo firewall-cmd --reload")
             return
     except FileNotFoundError:
         pass
@@ -300,9 +352,17 @@ def _ensure_network_access(port: int) -> None:
         r = subprocess.run(["iptables", "-L", "INPUT", "-n"], capture_output=True, timeout=5)
         if r.returncode == 0:
             if _privileged(["iptables", "-A", "INPUT", "-p", "tcp", "--dport", str(port), "-j", "ACCEPT"]):
-                print(f"[Dashboard] iptables: port {port} opened.")
+                if 'logger' in globals() or 'logger' in locals():
+                    logger.info(f"{ f"[Dashboard] iptables: port {port} opened." }" if isinstance(f"[Dashboard] iptables: port {port} opened.", str) else f"[Dashboard] iptables: port {port} opened.")
+                else:
+                    import logging
+                    logging.getLogger(__name__).info(f"{ f"[Dashboard] iptables: port {port} opened." }" if isinstance(f"[Dashboard] iptables: port {port} opened.", str) else f"[Dashboard] iptables: port {port} opened.")
             else:
-                print(f"[Dashboard] Run manually:  sudo iptables -A INPUT -p tcp --dport {port} -j ACCEPT")
+                if 'logger' in globals() or 'logger' in locals():
+                    logger.info(f"{ f"[Dashboard] Run manually:  sudo iptables -A INPUT -p tcp --dport {port} -j ACCEPT" }" if isinstance(f"[Dashboard] Run manually:  sudo iptables -A INPUT -p tcp --dport {port} -j ACCEPT", str) else f"[Dashboard] Run manually:  sudo iptables -A INPUT -p tcp --dport {port} -j ACCEPT")
+                else:
+                    import logging
+                    logging.getLogger(__name__).info(f"{ f"[Dashboard] Run manually:  sudo iptables -A INPUT -p tcp --dport {port} -j ACCEPT" }" if isinstance(f"[Dashboard] Run manually:  sudo iptables -A INPUT -p tcp --dport {port} -j ACCEPT", str) else f"[Dashboard] Run manually:  sudo iptables -A INPUT -p tcp --dport {port} -j ACCEPT")
     except FileNotFoundError:
         pass  # no iptables means firewall is probably off — nothing to do
 
@@ -312,12 +372,28 @@ def _ensure_crypto_js() -> None:
         return
     try:
         import urllib.request
-        print("[Dashboard] Downloading CryptoJS (one-time setup)…")
+        if 'logger' in globals() or 'logger' in locals():
+            logger.info("[Dashboard] Downloading CryptoJS (one-time setup)…")
+        else:
+            import logging
+            logging.getLogger(__name__).info("[Dashboard] Downloading CryptoJS (one-time setup)…")
         urllib.request.urlretrieve(_CRYPTOJS_CDN, str(_CRYPTOJS_FILE))
-        print("[Dashboard] CryptoJS cached — will serve locally from now on.")
+        if 'logger' in globals() or 'logger' in locals():
+            logger.info("[Dashboard] CryptoJS cached — will serve locally from now on.")
+        else:
+            import logging
+            logging.getLogger(__name__).info("[Dashboard] CryptoJS cached — will serve locally from now on.")
     except Exception as e:
-        print(f"[Dashboard] CryptoJS download failed: {e}")
-        print(f"[Dashboard] Encryption will fall back to CDN load on client.")
+        if 'logger' in globals() or 'logger' in locals():
+            logger.warning(f"{ f"[Dashboard] CryptoJS download failed: {e}" }" if isinstance(f"[Dashboard] CryptoJS download failed: {e}", str) else f"[Dashboard] CryptoJS download failed: {e}")
+        else:
+            import logging
+            logging.getLogger(__name__).warning(f"{ f"[Dashboard] CryptoJS download failed: {e}" }" if isinstance(f"[Dashboard] CryptoJS download failed: {e}", str) else f"[Dashboard] CryptoJS download failed: {e}")
+        if 'logger' in globals() or 'logger' in locals():
+            logger.info(f"{ f"[Dashboard] Encryption will fall back to CDN load on client." }" if isinstance(f"[Dashboard] Encryption will fall back to CDN load on client.", str) else f"[Dashboard] Encryption will fall back to CDN load on client.")
+        else:
+            import logging
+            logging.getLogger(__name__).info(f"{ f"[Dashboard] Encryption will fall back to CDN load on client." }" if isinstance(f"[Dashboard] Encryption will fall back to CDN load on client.", str) else f"[Dashboard] Encryption will fall back to CDN load on client.")
 
 
 _ensure_crypto_js()
@@ -364,14 +440,61 @@ def _read(name: str) -> str:
     return (STATIC_DIR / name).read_text(encoding="utf-8")
 
 
+class PureJWT:
+    @staticmethod
+    def _base64url_encode(data: bytes) -> str:
+        return base64.urlsafe_b64encode(data).decode('utf-8').rstrip('=')
+
+    @staticmethod
+    def _base64url_decode(s: str) -> bytes:
+        padding = '=' * (4 - (len(s) % 4))
+        return base64.urlsafe_b64decode(s + padding)
+
+    @classmethod
+    def encode(cls, payload: dict, secret: str) -> str:
+        import hmac, hashlib, json
+        header = {"alg": "HS256", "typ": "JWT"}
+        header_json = json.dumps(header, separators=(',', ':')).encode('utf-8')
+        payload_json = json.dumps(payload, separators=(',', ':')).encode('utf-8')
+        header_b64 = cls._base64url_encode(header_json)
+        payload_b64 = cls._base64url_encode(payload_json)
+        signing_input = f"{header_b64}.{payload_b64}".encode('utf-8')
+        signature = hmac.new(secret.encode('utf-8'), signing_input, hashlib.sha256).digest()
+        signature_b64 = cls._base64url_encode(signature)
+        return f"{header_b64}.{payload_b64}.{signature_b64}"
+
+    @classmethod
+    def decode(cls, token: str, secret: str) -> dict | None:
+        import hmac, hashlib, json
+        try:
+            parts = token.split('.')
+            if len(parts) != 3:
+                return None
+            header_b64, payload_b64, signature_b64 = parts
+            signing_input = f"{header_b64}.{payload_b64}".encode('utf-8')
+            expected_sig = hmac.new(secret.encode('utf-8'), signing_input, hashlib.sha256).digest()
+            expected_sig_b64 = cls._base64url_encode(expected_sig)
+            if not hmac.compare_digest(signature_b64, expected_sig_b64):
+                return None
+            payload_json = cls._base64url_decode(payload_b64)
+            payload = json.loads(payload_json.decode('utf-8'))
+            if "exp" in payload and payload["exp"] < time.time():
+                return None
+            return payload
+        except Exception:
+            return None
+
+
 # ── DashboardServer ───────────────────────────────────────────────────────────
 
 class DashboardServer:
 
     def __init__(self):
         self._ip                          = _local_ip()
+        self._jwt_secret                  = secrets.token_urlsafe(32)
         self._tokens: set[str]            = set()
         self._token_keys: dict[str, str]  = {}   # auth_token → session_key
+
         self._aes_cache:  dict[str, bytes]= {}   # session_key → AES bytes
         self._clients: set[WebSocket]     = set()
         self._history: list[dict]         = []
@@ -415,14 +538,30 @@ class DashboardServer:
             self._aes_cache[session_key] = _derive_key(session_key)
         return self._aes_cache[session_key]
 
+    def _create_jwt(self, token_id: str) -> str:
+        payload = {
+            "token_id": token_id,
+            "exp": time.time() + 86400  # 24 hours expiration
+        }
+        return PureJWT.encode(payload, self._jwt_secret)
+
+    def _get_token_id(self, token: str) -> str:
+        if token and "." in token:
+            payload = PureJWT.decode(token, self._jwt_secret)
+            if payload:
+                return payload.get("token_id", "")
+        return token
+
     def _decrypt(self, token: str, enc_b64: str) -> str | None:
-        sk = self._token_keys.get(token)
+        token_id = self._get_token_id(token)
+        sk = self._token_keys.get(token_id)
         if not sk:
             return None
         try:
             return _decrypt_cbc(self._aes_key(sk), enc_b64)
         except Exception:
             return None
+
 
     # ── callbacks ────────────────────────────────────────────────────────
 
@@ -453,7 +592,9 @@ class DashboardServer:
 
         def _auth(req: Request) -> bool:
             tok = req.headers.get("authorization", "").removeprefix("Bearer ").strip()
-            return bool(tok) and tok in self._tokens
+            token_id = self._get_token_id(tok)
+            return bool(token_id) and token_id in self._tokens
+
 
         # serve CryptoJS from local cache, fallback to CDN redirect
         @app.get("/static/crypto.js")
@@ -485,10 +626,11 @@ class DashboardServer:
             now     = time.time()
             if entered in self._pending_keys and self._pending_keys[entered] > now:
                 del self._pending_keys[entered]          # one-time use
-                tok = secrets.token_urlsafe(32)
-                self._tokens.add(tok)
-                self._token_keys[tok] = entered
+                token_id = secrets.token_urlsafe(32)
+                self._tokens.add(token_id)
+                self._token_keys[token_id] = entered
                 self._aes_key(entered)                   # pre-derive & cache
+                tok = self._create_jwt(token_id)
                 if self._connect_callback:
                     self._connect_callback()
                 asyncio.create_task(self.broadcast(
@@ -498,6 +640,7 @@ class DashboardServer:
                 return JSONResponse({"ok": True, "token": tok})
             return JSONResponse({"ok": False, "error": "Invalid or expired key"},
                                 status_code=401)
+
 
         @app.get("/auto-login")
         async def auto_login(key: str = ""):
@@ -516,12 +659,14 @@ class DashboardServer:
 </div></body></html>""")
 
             del self._pending_keys[key]
-            tok     = secrets.token_urlsafe(32)
-            dev_tok = secrets.token_urlsafe(32)
-            self._tokens.add(tok)
-            self._token_keys[tok] = key
+            token_id = secrets.token_urlsafe(32)
+            dev_tok  = secrets.token_urlsafe(32)
+            self._tokens.add(token_id)
+            self._token_keys[token_id] = key
             self._aes_key(key)
+            tok = self._create_jwt(token_id)
             self._device_sessions[dev_tok] = {"session_key": key}
+
 
             if self._connect_callback:
                 self._connect_callback()
@@ -557,16 +702,18 @@ class DashboardServer:
             if not dev_tok or dev_tok not in self._device_sessions:
                 return JSONResponse({"ok": False}, status_code=401)
             session_key = self._device_sessions[dev_tok]["session_key"]
-            tok = secrets.token_urlsafe(32)
-            self._tokens.add(tok)
-            self._token_keys[tok] = session_key
+            token_id = secrets.token_urlsafe(32)
+            self._tokens.add(token_id)
+            self._token_keys[token_id] = session_key
             self._aes_key(session_key)
+            tok = self._create_jwt(token_id)
             if self._connect_callback:
                 self._connect_callback()
             asyncio.create_task(self.broadcast(
                 {"type": "sys", "text": "Known device reconnected automatically."}
             ))
             return JSONResponse({"ok": True, "token": tok, "key": session_key})
+
 
         @app.post("/api/revoke-devices")
         async def revoke_devices(req: Request):
@@ -609,9 +756,11 @@ class DashboardServer:
         @app.websocket("/ws/phone-audio")
         async def phone_audio_ws(websocket: WebSocket, token: str = ""):
             tok = token.strip()
-            if not tok or tok not in self._tokens:
+            token_id = self._get_token_id(tok)
+            if not token_id or token_id not in self._tokens:
                 await websocket.close(code=4001)
                 return
+
             await websocket.accept()
             asyncio.create_task(self.broadcast(
                 {"type": "sys", "text": "Phone microphone live."}
@@ -712,8 +861,10 @@ class DashboardServer:
         async def download_file(filename: str, token: str = ""):
             # Auth via query param — browser <a download> can't send custom headers
             tok = token.strip()
-            if not tok or tok not in self._tokens:
+            token_id = self._get_token_id(tok)
+            if not token_id or token_id not in self._tokens:
                 return JSONResponse({"error": "Unauthorized"}, status_code=401)
+
             safe = re.sub(r'[/\\]', '', filename)
             path = self._uploads_dir / safe
             if not path.exists() or not path.is_file():
@@ -723,9 +874,11 @@ class DashboardServer:
         @app.websocket("/ws")
         async def ws_ep(websocket: WebSocket, token: str = ""):
             tok = token.strip()
-            if not tok or tok not in self._tokens:
+            token_id = self._get_token_id(tok)
+            if not token_id or token_id not in self._tokens:
                 await websocket.close(code=4001)
                 return
+
             await websocket.accept()
             self._clients.add(websocket)
             for entry in self._history[-50:]:
@@ -764,13 +917,25 @@ class DashboardServer:
             self.app, host="0.0.0.0", port=PORT + 1, log_level="warning",
             ssl_keyfile=str(ssl_key), ssl_certfile=str(ssl_cert),
         )
-        print(f"[Dashboard] Manual entry:  {self._ip}:{PORT + 1}  (type in browser, accept cert once)")
+        if 'logger' in globals() or 'logger' in locals():
+            logger.info(f"{ f"[Dashboard] Manual entry:  {self._ip}:{PORT + 1}  (type in browser, accept cert once)" }" if isinstance(f"[Dashboard] Manual entry:  {self._ip}:{PORT + 1}  (type in browser, accept cert once)", str) else f"[Dashboard] Manual entry:  {self._ip}:{PORT + 1}  (type in browser, accept cert once)")
+        else:
+            import logging
+            logging.getLogger(__name__).info(f"{ f"[Dashboard] Manual entry:  {self._ip}:{PORT + 1}  (type in browser, accept cert once)" }" if isinstance(f"[Dashboard] Manual entry:  {self._ip}:{PORT + 1}  (type in browser, accept cert once)", str) else f"[Dashboard] Manual entry:  {self._ip}:{PORT + 1}  (type in browser, accept cert once)")
         await uvicorn.Server(cfg).serve()
 
     async def serve(self) -> None:
         if not _DEPS_OK:
-            print("[Dashboard] fastapi/uvicorn not installed — dashboard disabled.")
-            print("[Dashboard] Run:  pip install fastapi 'uvicorn[standard]' cryptography")
+            if 'logger' in globals() or 'logger' in locals():
+                logger.info("[Dashboard] fastapi/uvicorn not installed — dashboard disabled.")
+            else:
+                import logging
+                logging.getLogger(__name__).info("[Dashboard] fastapi/uvicorn not installed — dashboard disabled.")
+            if 'logger' in globals() or 'logger' in locals():
+                logger.info("[Dashboard] Run:  pip install fastapi 'uvicorn[standard]' cryptography")
+            else:
+                import logging
+                logging.getLogger(__name__).info("[Dashboard] Run:  pip install fastapi 'uvicorn[standard]' cryptography")
             return
 
         # Firewall setup runs in a thread — uvicorn starts immediately,
@@ -791,6 +956,14 @@ class DashboardServer:
         )
 
         proto = "https" if use_ssl else "http"
-        print(f"[Dashboard] {proto}://{self._ip}:{PORT}")
-        print("[Dashboard] Press 'Remote Control' in JARVIS UI to get the QR code.")
+        if 'logger' in globals() or 'logger' in locals():
+            logger.info(f"{ f"[Dashboard] {proto}://{self._ip}:{PORT}" }" if isinstance(f"[Dashboard] {proto}://{self._ip}:{PORT}", str) else f"[Dashboard] {proto}://{self._ip}:{PORT}")
+        else:
+            import logging
+            logging.getLogger(__name__).info(f"{ f"[Dashboard] {proto}://{self._ip}:{PORT}" }" if isinstance(f"[Dashboard] {proto}://{self._ip}:{PORT}", str) else f"[Dashboard] {proto}://{self._ip}:{PORT}")
+        if 'logger' in globals() or 'logger' in locals():
+            logger.info("[Dashboard] Press 'Remote Control' in JARVIS UI to get the QR code.")
+        else:
+            import logging
+            logging.getLogger(__name__).info("[Dashboard] Press 'Remote Control' in JARVIS UI to get the QR code.")
         await uvicorn.Server(cfg).serve()

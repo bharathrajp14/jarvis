@@ -70,8 +70,12 @@ async def search_wikipedia(query: str, max_results: int = 3) -> list[dict]:
                     "body": s or f"Wikipedia article for {t}.",
                     "source": "Wikipedia"
                 })
-    except Exception:
-        pass
+    except Exception as e:
+        if 'logger' in globals() or 'logger' in locals():
+            logger.debug('Suppressed exception: %s', e)
+        else:
+            import logging
+            logging.getLogger(__name__).debug('Suppressed exception: %s', e)
     return results
 
 
@@ -86,7 +90,11 @@ async def search_duckduckgo(query: str, max_results: int = 8) -> list[dict]:
             with DDGS() as ddgs:
                 return list(ddgs.text(query, max_results=max_results))
         except Exception as e:
-            print(f"[WebSearch] DDG error: {e}")
+            if 'logger' in globals() or 'logger' in locals():
+                logger.warning(f"{ f"[WebSearch] DDG error: {e}" }" if isinstance(f"[WebSearch] DDG error: {e}", str) else f"[WebSearch] DDG error: {e}")
+            else:
+                import logging
+                logging.getLogger(__name__).warning(f"{ f"[WebSearch] DDG error: {e}" }" if isinstance(f"[WebSearch] DDG error: {e}", str) else f"[WebSearch] DDG error: {e}")
             return []
 
     results = await loop.run_in_executor(None, _do_ddg)
@@ -134,9 +142,12 @@ async def web_search(query: str, max_results: int = 8) -> list[dict]:
                         "body": g_res[:1000],
                         "source": "Google Search Grounding"
                     })
-        except Exception:
-            pass
-
+        except Exception as e:
+            if 'logger' in globals() or 'logger' in locals():
+                logger.debug('Suppressed exception: %s', e)
+            else:
+                import logging
+                logging.getLogger(__name__).debug('Suppressed exception: %s', e)
     if not results:
         return [{"error": f"No web search results found for: '{clean_query}'"}]
 
@@ -155,8 +166,11 @@ async def fetch_page(url: str) -> str:
                 await browser.close()
                 return _clean_text(text[:10000])
         except Exception as e:
-            print(f"[WebFetch] Playwright failed: {e} — using HTTP fallback")
-
+            if 'logger' in globals() or 'logger' in locals():
+                logger.debug('Suppressed exception: %s', e)
+            else:
+                import logging
+                logging.getLogger(__name__).debug('Suppressed exception: %s', e)
     return await fetch_raw(url)
 
 

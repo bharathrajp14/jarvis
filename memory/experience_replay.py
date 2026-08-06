@@ -82,27 +82,32 @@ class ExperienceReplayStore:
 
     def record_trajectory(self, trajectory: ExperienceTrajectory) -> None:
         """Persist an execution trajectory record."""
-        conn = self._get_conn()
-        with conn:
-            conn.execute(
-                """
-                INSERT OR REPLACE INTO experience_trajectories (
-                    trajectory_id, goal_query, success_status, step_count,
-                    tool_sequence, failure_reason, execution_context, created_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    trajectory.trajectory_id,
-                    trajectory.goal_query,
-                    1 if trajectory.success_status else 0,
-                    trajectory.step_count,
-                    json.dumps(trajectory.tool_sequence),
-                    trajectory.failure_reason,
-                    json.dumps(trajectory.execution_context),
-                    trajectory.created_at,
-                ),
-            )
+        def _do_write():
+            conn = self._get_conn()
+            with conn:
+                conn.execute(
+                    """
+                    INSERT OR REPLACE INTO experience_trajectories (
+                        trajectory_id, goal_query, success_status, step_count,
+                        tool_sequence, failure_reason, execution_context, created_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        trajectory.trajectory_id,
+                        trajectory.goal_query,
+                        1 if trajectory.success_status else 0,
+                        trajectory.step_count,
+                        json.dumps(trajectory.tool_sequence),
+                        trajectory.failure_reason,
+                        json.dumps(trajectory.execution_context),
+                        trajectory.created_at,
+                    ),
+                )
+
+        from memory.sqlite_lock import run_sqlite_write
+        run_sqlite_write(_do_write)
         logger.debug(f"Recorded trajectory {trajectory.trajectory_id} (Success: {trajectory.success_status})")
+
 
     def get_similar_failures(self, query: str, limit: int = 5) -> List[Dict[str, Any]]:
         """Retrieve recent failed trajectories matching query keywords."""

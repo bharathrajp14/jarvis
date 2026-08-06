@@ -26,8 +26,15 @@ from core.intent_engine import DeterministicIntentEngine
 from events.bus import get_event_bus
 from events.types import TaskEvent
 from memory.working import WorkingMemory
+from memory.task_memory_router import get_task_memory_router, MemoryMode
 from router import AgentRouter
 from tools.registry import get_tool_prompt_block, parse_tool_call, execute_tool, set_orchestrator_ref
+
+# Auto-register connector tools into the tool registry on import
+try:
+    import tools.connector_tools  # noqa: F401 — side-effect: registers connector_* tools
+except Exception as _ct_err:
+    logging.getLogger("JARVIS.Orchestrator").debug("Connector tools not loaded: %s", _ct_err)
 
 logger = logging.getLogger("JARVIS.Orchestrator")
 
@@ -168,6 +175,17 @@ class JarvisOrchestrator:
 
         set_orchestrator_ref(self)
 
+        # ── Boot Connector Hub (lazy, background) ─────────────────────────────
+        # Importing hub triggers auto-discovery of all connector plugins.
+        # Done after DI registration so connectors can resolve runtime deps.
+        try:
+            from connectors.hub import get_hub
+            hub = get_hub()
+            hub.register_with_tool_registry()
+            logger.info("[Orchestrator] Connector Hub booted: %d connectors", len(hub._connectors))
+        except Exception as _hub_err:
+            logger.debug("[Orchestrator] Connector Hub boot skipped: %s", _hub_err)
+
         if use_vector_memory:
             try:
                 from memory.vector_store import VectorMemory
@@ -190,6 +208,7 @@ class JarvisOrchestrator:
         return None
 
     _tool_prompt_cache: str = ""  # class-level cache for tool prompt block
+    _tool_prompt_cache_ts: float = 0.0  # timestamp of last cache build (BUG-13 FIX)
 
     @staticmethod
     def _clean_response(text: str) -> str:
@@ -223,10 +242,12 @@ class JarvisOrchestrator:
             from tools.registry import get_pruned_tool_prompt_block
             if user_prompt:
                 parts.append(get_pruned_tool_prompt_block(user_prompt))
-            elif not JarvisOrchestrator._tool_prompt_cache:
-                JarvisOrchestrator._tool_prompt_cache = get_tool_prompt_block()
-                parts.append(JarvisOrchestrator._tool_prompt_cache)
             else:
+                # BUG-13 FIX: Invalidate stale cache after 60s so new plugins become visible
+                now = time.monotonic()
+                if not JarvisOrchestrator._tool_prompt_cache or (now - JarvisOrchestrator._tool_prompt_cache_ts) > 60.0:
+                    JarvisOrchestrator._tool_prompt_cache = get_tool_prompt_block()
+                    JarvisOrchestrator._tool_prompt_cache_ts = now
                 parts.append(JarvisOrchestrator._tool_prompt_cache)
         except Exception:
             parts.append(get_tool_prompt_block())
@@ -421,10 +442,12 @@ class JarvisOrchestrator:
         # Local state — NOT instance-level, so concurrent calls are safe
         prompted_continuation = False
         _consecutive_tool: dict = {"name": None, "args_str": None, "count": 0}
+        tool_call_counts: dict[str, int] = {}  # Tracks total signatures to catch cyclic loops (non-consecutive)
         tool_history: list = []
         step = 0
         final_response = ""
         success = True
+
 
         event_bus = get_event_bus()
         task_id = str(uuid.uuid4())
@@ -519,7 +542,28 @@ class JarvisOrchestrator:
                 else:
                     _consecutive_tool = {"name": tool_name, "args_str": args_str, "count": 1}
 
-                # Duplicate-call hard limit
+                # ── Cyclic loop check ──
+                call_sig = f"{tool_name}:{args_str}"
+                tool_call_counts[call_sig] = tool_call_counts.get(call_sig, 0) + 1
+                if tool_call_counts[call_sig] >= 3:
+                    msg = f"⛔ Cyclic-loop protection: Tool '{tool_name}' called {tool_call_counts[call_sig]} times during this session. Terminating execution to prevent token burn."
+                    logger.warning(f"[Orchestrator] {msg}")
+                    if stream:
+                        yield f"\n[JARVIS] {msg}\n"
+                        break
+                    else:
+                        try:
+                            summary_prompt = "Tool execution has completed. Provide a clean, direct, human-readable summary of the actions performed. Do NOT call any tools."
+                            self.working_memory.add("user", summary_prompt)
+                            sum_resp = self.router.run(profile, self.working_memory.get(), "Do NOT call any tools. Return only natural language summary.")
+                            final_response = self._clean_response(sum_resp)
+                        except Exception:
+                            pass
+                        if not final_response or final_response.startswith("[BR:"):
+                            final_response = f"I have executed the tool operations for '{tool_name}' and completed your request."
+                        break
+
+                # Duplicate-call hard limit (consecutive)
                 if _consecutive_tool["count"] >= 4:
                     msg = f"⛔ Duplicate-call limit reached (x{_consecutive_tool['count']}). Terminating loop."
                     logger.warning(f"[Orchestrator] {msg}")
@@ -537,6 +581,7 @@ class JarvisOrchestrator:
                         if not final_response or final_response.startswith("[BR:"):
                             final_response = f"I have executed the tool operations for '{tool_name}' and completed your request."
                         break
+
 
                 if stream:
                     yield f"\n[JARVIS] 🔧 Step {step + 1}: {tool_name}...\n"
@@ -682,7 +727,32 @@ class JarvisOrchestrator:
         if instant:
             return instant
 
-        memory_ctx = self._recall_context(user_input)
+        # ── Adaptive Memory Classification (TaskMemoryRouter) ─────────────────
+        # Classify task before building context to avoid injecting stale memory
+        # into fresh, independent tasks (saves tokens + prevents contamination).
+        try:
+            _mem_router = get_task_memory_router()
+            _wm_tokens = len(str(self.working_memory.get())) // 4  # rough token estimate
+            _mem_mode = _mem_router.classify(
+                user_input,
+                working_memory_tokens=_wm_tokens,
+                max_tokens=120_000,
+            )
+            logger.debug("[MemoryRouter] Mode: %s for '%s'", _mem_mode.value, user_input[:40])
+        except Exception as _mr_err:
+            _mem_mode = MemoryMode.LOAD_RELEVANT
+            logger.debug("[MemoryRouter] Classify error, defaulting to LOAD_RELEVANT: %s", _mr_err)
+
+        # Apply memory mode
+        if _mem_mode == MemoryMode.FRESH:
+            # Start clean — reset working memory (keep only system context)
+            logger.info("[MemoryRouter] FRESH task — clearing working memory")
+            self.working_memory.clear()
+            memory_ctx = ""
+        else:
+            # LOAD_RELEVANT or LOAD_FULL — use existing recall
+            memory_ctx = self._recall_context(user_input)
+
         augmented = f"{memory_ctx}{user_input}" if memory_ctx else user_input
         augmented = self._resolve_context_references(user_input, augmented)
 
@@ -743,7 +813,25 @@ class JarvisOrchestrator:
             yield instant
             return
 
-        memory_ctx = self._recall_context(user_input)
+        # ── Adaptive Memory Classification (TaskMemoryRouter) ─────────────────
+        try:
+            _mem_router = get_task_memory_router()
+            _wm_tokens = len(str(self.working_memory.get())) // 4
+            _mem_mode = _mem_router.classify(
+                user_input,
+                working_memory_tokens=_wm_tokens,
+                max_tokens=120_000,
+            )
+        except Exception as _mr_err:
+            _mem_mode = MemoryMode.LOAD_RELEVANT
+            logger.debug("[MemoryRouter] Stream classify error: %s", _mr_err)
+
+        if _mem_mode == MemoryMode.FRESH:
+            self.working_memory.clear()
+            memory_ctx = ""
+        else:
+            memory_ctx = self._recall_context(user_input)
+
         augmented = f"{memory_ctx}{user_input}" if memory_ctx else user_input
         # FLAW-2 FIX: chat_stream was missing context resolution (pronouns like 'open it in Chrome')
         augmented = self._resolve_context_references(user_input, augmented)
@@ -753,7 +841,10 @@ class JarvisOrchestrator:
 
         keywords = self._extract_keywords(user_input)
         profile = self.router.route(keywords)
-        system = self._build_system()
+        # BUG-12 FIX: chat_stream() was calling _build_system() with no arguments,
+        # always getting the full 200+ tool list instead of the intent-pruned one.
+        # This wasted ~80% of context tokens on every streaming response.
+        system = self._build_system(user_input)
 
         plan_info = StepPlanner.plan_steps(user_input)
         budget = plan_info["budget_controller"]

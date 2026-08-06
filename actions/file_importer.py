@@ -90,7 +90,11 @@ def import_file_to_knowledge(file_path: str | Path) -> Dict[str, Any]:
         )
         save_memory(entry, scope="user")
     except Exception as e:
-        print(f"[FileImporter] Warning: Persistent memory store failed: {e}")
+        if 'logger' in globals() or 'logger' in locals():
+            logger.warning(f"{ f"[FileImporter] Warning: Persistent memory store failed: {e}" }" if isinstance(f"[FileImporter] Warning: Persistent memory store failed: {e}", str) else f"[FileImporter] Warning: Persistent memory store failed: {e}")
+        else:
+            import logging
+            logging.getLogger(__name__).warning(f"{ f"[FileImporter] Warning: Persistent memory store failed: {e}" }" if isinstance(f"[FileImporter] Warning: Persistent memory store failed: {e}", str) else f"[FileImporter] Warning: Persistent memory store failed: {e}")
 
     # 2. Save to Vector Store
     try:
@@ -102,7 +106,11 @@ def import_file_to_knowledge(file_path: str | Path) -> Dict[str, Any]:
             metadata={"file_name": file_name, "path": str(p), "type": ext},
         )
     except Exception as e:
-        print(f"[FileImporter] Warning: Vector memory store failed: {e}")
+        if 'logger' in globals() or 'logger' in locals():
+            logger.warning(f"{ f"[FileImporter] Warning: Vector memory store failed: {e}" }" if isinstance(f"[FileImporter] Warning: Vector memory store failed: {e}", str) else f"[FileImporter] Warning: Vector memory store failed: {e}")
+        else:
+            import logging
+            logging.getLogger(__name__).warning(f"{ f"[FileImporter] Warning: Vector memory store failed: {e}" }" if isinstance(f"[FileImporter] Warning: Vector memory store failed: {e}", str) else f"[FileImporter] Warning: Vector memory store failed: {e}")
 
     return {
         "status": "success",

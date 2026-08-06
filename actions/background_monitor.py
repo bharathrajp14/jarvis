@@ -73,7 +73,11 @@ def add_monitor(topic: str) -> str:
         "last_hash":  "",
     }
     _save(monitors)
-    print(f"[Monitor] ➕ Added: {topic}")
+    if 'logger' in globals() or 'logger' in locals():
+        logger.info(f"{ f"[Monitor] ➕ Added: {topic}" }" if isinstance(f"[Monitor] ➕ Added: {topic}", str) else f"[Monitor] ➕ Added: {topic}")
+    else:
+        import logging
+        logging.getLogger(__name__).info(f"{ f"[Monitor] ➕ Added: {topic}" }" if isinstance(f"[Monitor] ➕ Added: {topic}", str) else f"[Monitor] ➕ Added: {topic}")
     return f"Now monitoring: {topic}"
 
 
@@ -148,10 +152,18 @@ def check_all() -> list[str]:
             if source:
                 parts.append(f"Source: {source}")
             alerts.append("\n".join(parts))
-            print(f"[Monitor] 🔔 New headline for '{topic}': {title[:60]}")
+            if 'logger' in globals() or 'logger' in locals():
+                logger.info(f"{ f"[Monitor] 🔔 New headline for '{topic}': {title[:60]}" }" if isinstance(f"[Monitor] 🔔 New headline for '{topic}': {title[:60]}", str) else f"[Monitor] 🔔 New headline for '{topic}': {title[:60]}")
+            else:
+                import logging
+                logging.getLogger(__name__).info(f"{ f"[Monitor] 🔔 New headline for '{topic}': {title[:60]}" }" if isinstance(f"[Monitor] 🔔 New headline for '{topic}': {title[:60]}", str) else f"[Monitor] 🔔 New headline for '{topic}': {title[:60]}")
 
         except Exception as e:
-            print(f"[Monitor] ⚠️ Check failed for '{topic}': {e}")
+            if 'logger' in globals() or 'logger' in locals():
+                logger.warning(f"{ f"[Monitor] ⚠️ Check failed for '{topic}': {e}" }" if isinstance(f"[Monitor] ⚠️ Check failed for '{topic}': {e}", str) else f"[Monitor] ⚠️ Check failed for '{topic}': {e}")
+            else:
+                import logging
+                logging.getLogger(__name__).warning(f"{ f"[Monitor] ⚠️ Check failed for '{topic}': {e}" }" if isinstance(f"[Monitor] ⚠️ Check failed for '{topic}': {e}", str) else f"[Monitor] ⚠️ Check failed for '{topic}': {e}")
 
     if changed:
         _save(monitors)

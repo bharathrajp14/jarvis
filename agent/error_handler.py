@@ -62,8 +62,12 @@ def _get_api_key() -> str:
         if API_CONFIG_PATH.exists():
             with open(API_CONFIG_PATH, "r", encoding="utf-8") as f:
                 return json.load(f).get("gemini_api_key", "").strip()
-    except Exception:
-        pass
+    except Exception as e:
+        if 'logger' in globals() or 'logger' in locals():
+            logger.debug('Suppressed exception: %s', e)
+        else:
+            import logging
+            logging.getLogger(__name__).debug('Suppressed exception: %s', e)
     return ""
 
 
@@ -87,11 +91,18 @@ def analyze_error(
             source="executor_error_handler",
             weight=1.5
         )
-    except Exception:
-        pass
-
+    except Exception as e:
+        if 'logger' in globals() or 'logger' in locals():
+            logger.debug('Suppressed exception: %s', e)
+        else:
+            import logging
+            logging.getLogger(__name__).debug('Suppressed exception: %s', e)
     if attempt >= max_attempts:
-        print(f"[ErrorHandler] ⚠️ Max attempts reached for step {step.get('step')} — forcing replan")
+        if 'logger' in globals() or 'logger' in locals():
+            logger.warning(f"{ f"[ErrorHandler] ⚠️ Max attempts reached for step {step.get('step')} — forcing replan" }" if isinstance(f"[ErrorHandler] ⚠️ Max attempts reached for step {step.get('step')} — forcing replan", str) else f"[ErrorHandler] ⚠️ Max attempts reached for step {step.get('step')} — forcing replan")
+        else:
+            import logging
+            logging.getLogger(__name__).warning(f"{ f"[ErrorHandler] ⚠️ Max attempts reached for step {step.get('step')} — forcing replan" }" if isinstance(f"[ErrorHandler] ⚠️ Max attempts reached for step {step.get('step')} — forcing replan", str) else f"[ErrorHandler] ⚠️ Max attempts reached for step {step.get('step')} — forcing replan")
         return {
             "decision":      ErrorDecision.REPLAN,
             "reason":        f"Failed {attempt} times: {error[:100]}",
@@ -146,11 +157,19 @@ Attempt number: {attempt}"""
             result["decision"]     = ErrorDecision.REPLAN
             result["user_message"] = "This step is critical — finding alternative approach, sir."
 
-        print(f"[ErrorHandler] Decision: {result['decision'].value} — {result.get('reason', '')}")
+        if 'logger' in globals() or 'logger' in locals():
+            logger.warning(f"{ f"[ErrorHandler] Decision: {result['decision'].value} — {result.get('reason', '')}" }" if isinstance(f"[ErrorHandler] Decision: {result['decision'].value} — {result.get('reason', '')}", str) else f"[ErrorHandler] Decision: {result['decision'].value} — {result.get('reason', '')}")
+        else:
+            import logging
+            logging.getLogger(__name__).warning(f"{ f"[ErrorHandler] Decision: {result['decision'].value} — {result.get('reason', '')}" }" if isinstance(f"[ErrorHandler] Decision: {result['decision'].value} — {result.get('reason', '')}", str) else f"[ErrorHandler] Decision: {result['decision'].value} — {result.get('reason', '')}")
         return result
 
     except Exception as e:
-        print(f"[ErrorHandler] ⚠️ Analysis failed: {e} — defaulting to replan")
+        if 'logger' in globals() or 'logger' in locals():
+            logger.warning(f"{ f"[ErrorHandler] ⚠️ Analysis failed: {e} — defaulting to replan" }" if isinstance(f"[ErrorHandler] ⚠️ Analysis failed: {e} — defaulting to replan", str) else f"[ErrorHandler] ⚠️ Analysis failed: {e} — defaulting to replan")
+        else:
+            import logging
+            logging.getLogger(__name__).warning(f"{ f"[ErrorHandler] ⚠️ Analysis failed: {e} — defaulting to replan" }" if isinstance(f"[ErrorHandler] ⚠️ Analysis failed: {e} — defaulting to replan", str) else f"[ErrorHandler] ⚠️ Analysis failed: {e} — defaulting to replan")
         return {
             "decision":       ErrorDecision.REPLAN,
             "reason":         str(e),
@@ -214,7 +233,11 @@ Return ONLY the Python code, no explanation."""
         }
 
     except Exception as e:
-        print(f"[ErrorHandler] ⚠️ Fix generation failed: {e}")
+        if 'logger' in globals() or 'logger' in locals():
+            logger.warning(f"{ f"[ErrorHandler] ⚠️ Fix generation failed: {e}" }" if isinstance(f"[ErrorHandler] ⚠️ Fix generation failed: {e}", str) else f"[ErrorHandler] ⚠️ Fix generation failed: {e}")
+        else:
+            import logging
+            logging.getLogger(__name__).warning(f"{ f"[ErrorHandler] ⚠️ Fix generation failed: {e}" }" if isinstance(f"[ErrorHandler] ⚠️ Fix generation failed: {e}", str) else f"[ErrorHandler] ⚠️ Fix generation failed: {e}")
         return {
             "step":        step.get("step"),
             "tool":        "web_search",

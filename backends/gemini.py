@@ -209,7 +209,18 @@ class GeminiBackend(BaseBackend):
                     contents=contents,
                     config=config if config else None,
                 )
-                return response.text or ""
+                try:
+                    # Safety filter guard: response.text raises ValueError if blocked
+                    text = response.text
+                    return text or ""
+                except (ValueError, AttributeError) as safety_err:
+                    err_lower = str(safety_err).lower()
+                    # Detect safety/recitation blocks
+                    if any(k in err_lower for k in ("safety", "recitation", "block", "finish_reason")):
+                        logger.warning("Gemini safety/recitation filter on %s: %s", target_model, safety_err)
+                        return "I'm unable to respond to that request due to content policy restrictions."
+                    # Unknown attribute error — try next model
+                    logger.warning("Model %s response error: %s — trying next...", target_model, safety_err)
             except Exception as e:
                 err_str = str(e).lower()
                 if "quota" in err_str or "rate" in err_str or "429" in err_str:
@@ -217,6 +228,8 @@ class GeminiBackend(BaseBackend):
                     backoff = min(60, (2 ** attempt) + random.uniform(0, 1))
                     logger.info("Rate limit on %s, backoff %.1fs...", target_model, backoff)
                     time.sleep(backoff)
+                elif "safety" in err_str or "recitation" in err_str or "block" in err_str:
+                    logger.warning("Safety block on %s — trying next model", target_model)
                 else:
                     logger.warning("Model %s failed: %s — trying next...", target_model, e)
                 time.sleep(0.5)

@@ -69,9 +69,12 @@ def browser_execute_web_task(args: dict) -> str:
                     await search_input.fill(search_terms)
                     await search_input.press("Enter")
                     await page.wait_for_load_state("domcontentloaded", timeout=15000)
-            except Exception:
-                pass
-
+            except Exception as e:
+                if 'logger' in globals() or 'logger' in locals():
+                    logger.debug('Suppressed exception: %s', e)
+                else:
+                    import logging
+                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
         # Step 3: Extract main text content from final page state
         extracted_text = await page.evaluate("""
             () => {
@@ -207,9 +210,12 @@ def browser_fill_and_submit_form(args: dict) -> str:
                 if btn:
                     await btn.click()
                     await page.wait_for_load_state("domcontentloaded", timeout=15000)
-            except Exception:
-                pass
-
+            except Exception as e:
+                if 'logger' in globals() or 'logger' in locals():
+                    logger.debug('Suppressed exception: %s', e)
+                else:
+                    import logging
+                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
         return json.dumps({
             "status": "success",
             "fields_filled": filled_count,

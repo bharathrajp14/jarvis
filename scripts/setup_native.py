@@ -20,9 +20,12 @@ if sys.platform == "win32":
             sys.stdout.reconfigure(encoding="utf-8", errors="replace")
         if hasattr(sys.stderr, "reconfigure"):
             sys.stderr.reconfigure(encoding="utf-8", errors="replace")
-    except Exception:
-        pass
-
+    except Exception as e:
+        if 'logger' in globals() or 'logger' in locals():
+            logger.debug('Suppressed exception: %s', e)
+        else:
+            import logging
+            logging.getLogger(__name__).debug('Suppressed exception: %s', e)
 BASE_DIR   = Path(__file__).resolve().parent.parent
 NATIVE_DIR = BASE_DIR / "native"
 C_SRC      = NATIVE_DIR / "jarvis_native.c"
@@ -83,8 +86,11 @@ def auto_install_compiler() -> str | None:
                     print(f"[NativeBuild] ✅ C compiler successfully installed via winget: {comp}")
                     return comp
             except Exception as e:
-                print(f"[NativeBuild]   ⚠ winget attempt: {e}")
-
+                if 'logger' in globals() or 'logger' in locals():
+                    logger.debug('Suppressed exception: %s', e)
+                else:
+                    import logging
+                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
         # Strategy 2: choco mingw install
         if shutil.which("choco"):
             print("[NativeBuild]   ▶ Strategy 2: Installing MinGW via Chocolatey...")
@@ -98,22 +104,32 @@ def auto_install_compiler() -> str | None:
                     print(f"[NativeBuild] ✅ C compiler successfully installed via choco: {comp}")
                     return comp
             except Exception as e:
-                print(f"[NativeBuild]   ⚠ choco attempt: {e}")
-
+                if 'logger' in globals() or 'logger' in locals():
+                    logger.debug('Suppressed exception: %s', e)
+                else:
+                    import logging
+                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
     elif system == "Linux":
         if shutil.which("apt-get"):
             try:
                 subprocess.run(["sudo", "apt-get", "update", "-y"], capture_output=True, timeout=60)
                 subprocess.run(["sudo", "apt-get", "install", "-y", "build-essential", "gcc"], capture_output=True, timeout=120)
-            except Exception:
-                pass
+            except Exception as e:
+                if 'logger' in globals() or 'logger' in locals():
+                    logger.debug('Suppressed exception: %s', e)
+                else:
+                    import logging
+                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
     elif system == "Darwin":
         if shutil.which("brew"):
             try:
                 subprocess.run(["brew", "install", "gcc"], capture_output=True, timeout=180)
-            except Exception:
-                pass
-
+            except Exception as e:
+                if 'logger' in globals() or 'logger' in locals():
+                    logger.debug('Suppressed exception: %s', e)
+                else:
+                    import logging
+                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
     return find_compiler()
 
 

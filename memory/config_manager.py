@@ -40,7 +40,11 @@ def load_api_keys() -> dict:
     try:
         return json.loads(CONFIG_FILE.read_text(encoding="utf-8"))
     except Exception as e:
-        print(f"❌ Failed to load api_keys.json: {e}")
+        if 'logger' in globals() or 'logger' in locals():
+            logger.warning(f"{ f"❌ Failed to load api_keys.json: {e}" }" if isinstance(f"❌ Failed to load api_keys.json: {e}", str) else f"❌ Failed to load api_keys.json: {e}")
+        else:
+            import logging
+            logging.getLogger(__name__).warning(f"{ f"❌ Failed to load api_keys.json: {e}" }" if isinstance(f"❌ Failed to load api_keys.json: {e}", str) else f"❌ Failed to load api_keys.json: {e}")
         return {}
 
 def get_gemini_key() -> str | None:

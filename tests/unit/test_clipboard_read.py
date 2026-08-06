@@ -30,15 +30,16 @@ class TestClipboardUtils(unittest.TestCase):
 
     def test_tool_clipboard_read(self):
         test_str = "TOOL_READ_CLIPBOARD_DATA"
-        set_clipboard_text(test_str)
-        result = tool_clipboard_read({})
-        self.assertEqual(result, test_str)
+        with patch("pyperclip.paste", return_value=test_str):
+            result = tool_clipboard_read({})
+            self.assertEqual(result, test_str)
 
     def test_computer_control_clipboard_get(self):
         test_str = "COMPUTER_CONTROL_GET_DATA"
-        set_clipboard_text(test_str)
-        result = computer_control(parameters={"action": "clipboard_get"})
-        self.assertEqual(result, test_str)
+        with patch("pyperclip.paste", return_value=test_str):
+            result = computer_control(parameters={"action": "clipboard_get"})
+            self.assertEqual(result, test_str)
+
 
     def test_computer_operator_clipboard(self):
         operator = get_computer_operator()

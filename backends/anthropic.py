@@ -82,7 +82,20 @@ class ClaudeBackend(BaseBackend):
                 kwargs["system"] = sys_prompt
 
             response = self.client.messages.create(**kwargs)
-            return response.content[0].text
+            # Handle multi-block responses: collect text from all TextBlock items
+            text_parts = []
+            for block in response.content:
+                if hasattr(block, "text") and isinstance(block.text, str):
+                    text_parts.append(block.text)
+                elif hasattr(block, "type") and block.type == "tool_use":
+                    # Tool-use block: serialize as JSON string for orchestrator
+                    import json as _json
+                    text_parts.append(_json.dumps({
+                        "tool_use": True,
+                        "name": getattr(block, "name", ""),
+                        "input": getattr(block, "input", {}),
+                    }))
+            return "".join(text_parts)
         except Exception as e:
             logger.error("Claude Error: %s", e)
             raise

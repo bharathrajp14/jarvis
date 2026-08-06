@@ -82,17 +82,25 @@ class HealthMonitor:
                     mem = psutil.virtual_memory()
                     mem_pct = mem.percent
                     mem_avail_mb = mem.available / (1024 * 1024)
-                except Exception:
-                    pass
-
+                except Exception as e:
+                    if 'logger' in globals() or 'logger' in locals():
+                        logger.exception('Boot critical exception encountered in core/health.py')
+                    else:
+                        import logging
+                        logging.getLogger(__name__).exception('Boot critical exception')
+                    raise e
             # Disk usage
             disk_pct = 0.0
             try:
                 total, used, _ = shutil.disk_usage(".")
                 disk_pct = (used / total) * 100.0
-            except Exception:
-                pass
-
+            except Exception as e:
+                if 'logger' in globals() or 'logger' in locals():
+                    logger.exception('Boot critical exception encountered in core/health.py')
+                else:
+                    import logging
+                    logging.getLogger(__name__).exception('Boot critical exception')
+                raise e
             metrics = HardwareMetrics(
                 cpu_percent=cpu,
                 memory_used_percent=mem_pct,

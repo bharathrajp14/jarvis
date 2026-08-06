@@ -290,7 +290,11 @@ class MainWindow(QMainWindow):
                     self._cam_frame_sig.emit(buf.tobytes())
             cap.release()
         except Exception as e:
-            print(f"[Camera] Stream error: {e}")
+            if 'logger' in globals() or 'logger' in locals():
+                logger.warning(f"{ f"[Camera] Stream error: {e}" }" if isinstance(f"[Camera] Stream error: {e}", str) else f"[Camera] Stream error: {e}")
+            else:
+                import logging
+                logging.getLogger(__name__).warning(f"{ f"[Camera] Stream error: {e}" }" if isinstance(f"[Camera] Stream error: {e}", str) else f"[Camera] Stream error: {e}")
         finally:
             self._cam_stream_sig.emit(False)
 
@@ -397,7 +401,11 @@ class MainWindow(QMainWindow):
             )
             return True
         except Exception as e:
-            print(f"[Shortcut] ⚠️  Icon generation failed: {e}")
+            if 'logger' in globals() or 'logger' in locals():
+                logger.warning(f"{ f"[Shortcut] ⚠️  Icon generation failed: {e}" }" if isinstance(f"[Shortcut] ⚠️  Icon generation failed: {e}", str) else f"[Shortcut] ⚠️  Icon generation failed: {e}")
+            else:
+                import logging
+                logging.getLogger(__name__).warning(f"{ f"[Shortcut] ⚠️  Icon generation failed: {e}" }" if isinstance(f"[Shortcut] ⚠️  Icon generation failed: {e}", str) else f"[Shortcut] ⚠️  Icon generation failed: {e}")
             return False
 
     @staticmethod

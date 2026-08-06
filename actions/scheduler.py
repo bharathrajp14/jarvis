@@ -59,7 +59,11 @@ class TaskScheduler:
             try:
                 self._check_and_run_tasks()
             except Exception as e:
-                print(f"[Scheduler] Loop warning: {e}")
+                if 'logger' in globals() or 'logger' in locals():
+                    logger.info(f"{ f"[Scheduler] Loop warning: {e}" }" if isinstance(f"[Scheduler] Loop warning: {e}", str) else f"[Scheduler] Loop warning: {e}")
+                else:
+                    import logging
+                    logging.getLogger(__name__).info(f"{ f"[Scheduler] Loop warning: {e}" }" if isinstance(f"[Scheduler] Loop warning: {e}", str) else f"[Scheduler] Loop warning: {e}")
             time.sleep(30)
 
     def _check_and_run_tasks(self):
@@ -120,7 +124,11 @@ class TaskScheduler:
         return False
 
     def _trigger_task(self, task_id: int, goal: str, now: datetime):
-        print(f"[Scheduler] ⏰ Triggering scheduled goal: {goal!r}")
+        if 'logger' in globals() or 'logger' in locals():
+            logger.info(f"{ f"[Scheduler] ⏰ Triggering scheduled goal: {goal!r}" }" if isinstance(f"[Scheduler] ⏰ Triggering scheduled goal: {goal!r}", str) else f"[Scheduler] ⏰ Triggering scheduled goal: {goal!r}")
+        else:
+            import logging
+            logging.getLogger(__name__).info(f"{ f"[Scheduler] ⏰ Triggering scheduled goal: {goal!r}" }" if isinstance(f"[Scheduler] ⏰ Triggering scheduled goal: {goal!r}", str) else f"[Scheduler] ⏰ Triggering scheduled goal: {goal!r}")
         try:
             q = get_queue()
             q.submit(goal, priority=TaskPriority.NORMAL)
@@ -134,7 +142,11 @@ class TaskScheduler:
             conn.commit()
             conn.close()
         except Exception as e:
-            print(f"[Scheduler] Failed to trigger task {task_id}: {e}")
+            if 'logger' in globals() or 'logger' in locals():
+                logger.warning(f"{ f"[Scheduler] Failed to trigger task {task_id}: {e}" }" if isinstance(f"[Scheduler] Failed to trigger task {task_id}: {e}", str) else f"[Scheduler] Failed to trigger task {task_id}: {e}")
+            else:
+                import logging
+                logging.getLogger(__name__).warning(f"{ f"[Scheduler] Failed to trigger task {task_id}: {e}" }" if isinstance(f"[Scheduler] Failed to trigger task {task_id}: {e}", str) else f"[Scheduler] Failed to trigger task {task_id}: {e}")
 
     def add(self, schedule: str, goal: str) -> int:
         conn = sqlite3.connect(str(self.db_path))

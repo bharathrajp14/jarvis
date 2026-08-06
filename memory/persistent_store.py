@@ -161,10 +161,12 @@ def _backup_version(file_path: Path):
         timestamp = dt.fromtimestamp(mtime).strftime("%Y%m%d_%H%M%S")
         history_file = history_dir / f"{file_path.stem}_{timestamp}.md"
         history_file.write_text(file_path.read_text(encoding="utf-8"), encoding="utf-8")
-    except Exception:
-        pass
-
-
+    except Exception as e:
+        if 'logger' in globals() or 'logger' in locals():
+            logger.debug('Suppressed exception: %s', e)
+        else:
+            import logging
+            logging.getLogger(__name__).debug('Suppressed exception: %s', e)
 # ── Core storage operations ────────────────────────────────────────────────
 
 def save_memory(entry: MemoryEntry, scope: str = "user") -> None:
@@ -184,36 +186,44 @@ def save_memory(entry: MemoryEntry, scope: str = "user") -> None:
     _sync_to_vector(entry)
 
     # Sync to SQLite
-    try:
+    def _do_sqlite_write():
         conn = _get_sqlite_conn(scope)
-        cursor = conn.cursor()
-        cursor.execute("SELECT content, description FROM memories WHERE name = ?", (entry.name,))
-        row = cursor.fetchone()
-        if row:
-            from datetime import datetime as dt
+        try:
+            cursor = conn.cursor()
+            cursor.execute("SELECT content, description FROM memories WHERE name = ?", (entry.name,))
+            row = cursor.fetchone()
+            if row:
+                from datetime import datetime as dt
+                conn.execute(
+                    "INSERT INTO memory_versions (name, timestamp, content, description) VALUES (?, ?, ?, ?)",
+                    (entry.name, dt.now().isoformat(), row[0], row[1])
+                )
+            
             conn.execute(
-                "INSERT INTO memory_versions (name, timestamp, content, description) VALUES (?, ?, ?, ?)",
-                (entry.name, dt.now().isoformat(), row[0], row[1])
+                """
+                INSERT OR REPLACE INTO memories 
+                (id, name, description, type, content, created, scope, confidence, source, last_used_at, conflict_group, file_path)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    slug, entry.name, entry.description, entry.type, entry.content,
+                    entry.created, scope, entry.confidence, entry.source,
+                    entry.last_used_at, entry.conflict_group, entry.file_path
+                )
             )
-        
-        conn.execute(
-            """
-            INSERT OR REPLACE INTO memories 
-            (id, name, description, type, content, created, scope, confidence, source, last_used_at, conflict_group, file_path)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                slug, entry.name, entry.description, entry.type, entry.content,
-                entry.created, scope, entry.confidence, entry.source,
-                entry.last_used_at, entry.conflict_group, entry.file_path
-            )
-        )
-        conn.commit()
-        conn.close()
+            conn.commit()
+        finally:
+            conn.close()
+
+    try:
+        from memory.sqlite_lock import run_sqlite_write
+        run_sqlite_write(_do_sqlite_write)
     except Exception as e:
-        print(f"[Memory] SQLite sync warning: {e}")
-
-
+        if 'logger' in globals() or 'logger' in locals():
+            logger.debug('Suppressed exception: %s', e)
+        else:
+            import logging
+            logging.getLogger(__name__).debug('Suppressed exception: %s', e)
 def delete_memory(name: str, scope: str = "user") -> None:
     """Remove the memory file matching name, delete from SQLite/Vector, and rebuild the index."""
     mem_dir = get_memory_dir(scope)
@@ -226,15 +236,23 @@ def delete_memory(name: str, scope: str = "user") -> None:
     _remove_from_vector(name)
 
     # Delete from SQLite
-    try:
+    def _do_sqlite_delete():
         conn = _get_sqlite_conn(scope)
-        conn.execute("DELETE FROM memories WHERE name = ?", (name,))
-        conn.commit()
-        conn.close()
+        try:
+            conn.execute("DELETE FROM memories WHERE name = ?", (name,))
+            conn.commit()
+        finally:
+            conn.close()
+
+    try:
+        from memory.sqlite_lock import run_sqlite_write
+        run_sqlite_write(_do_sqlite_delete)
     except Exception as e:
-        print(f"[Memory] SQLite delete warning: {e}")
-
-
+        if 'logger' in globals() or 'logger' in locals():
+            logger.debug('Suppressed exception: %s', e)
+        else:
+            import logging
+            logging.getLogger(__name__).debug('Suppressed exception: %s', e)
 def load_entries(scope: str = "user") -> list[MemoryEntry]:
     """Scan all .md files (except MEMORY.md) in a scope and return entries."""
     mem_dir = get_memory_dir(scope)
@@ -346,10 +364,12 @@ def _sync_to_vector(entry: MemoryEntry):
                 "confidence": str(entry.confidence),
             }]
         )
-    except Exception:
-        pass
-
-
+    except Exception as e:
+        if 'logger' in globals() or 'logger' in locals():
+            logger.debug('Suppressed exception: %s', e)
+        else:
+            import logging
+            logging.getLogger(__name__).debug('Suppressed exception: %s', e)
 def _remove_from_vector(name: str):
     """Remove a memory from the vector store."""
     coll = _get_chroma_collection()
@@ -357,10 +377,12 @@ def _remove_from_vector(name: str):
         return
     try:
         coll.delete(ids=[_slugify(name)])
-    except Exception:
-        pass
-
-
+    except Exception as e:
+        if 'logger' in globals() or 'logger' in locals():
+            logger.debug('Suppressed exception: %s', e)
+        else:
+            import logging
+            logging.getLogger(__name__).debug('Suppressed exception: %s', e)
 def _vector_search(query: str, all_entries: list[MemoryEntry], top_k: int = 10) -> list[MemoryEntry]:
     """Search using ChromaDB vector similarity."""
     coll = _get_chroma_collection()
@@ -460,5 +482,9 @@ def touch_last_used(file_path: str) -> None:
         fm_lines.append("---")
         new_text = "\n".join(fm_lines) + "\n" + body + "\n"
         fp.write_text(new_text, encoding="utf-8")
-    except Exception:
-        pass
+    except Exception as e:
+        if 'logger' in globals() or 'logger' in locals():
+            logger.debug('Suppressed exception: %s', e)
+        else:
+            import logging
+            logging.getLogger(__name__).debug('Suppressed exception: %s', e)

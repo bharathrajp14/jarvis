@@ -42,9 +42,13 @@ class CoreBootstrapper:
                     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
                 if hasattr(sys.stderr, "reconfigure"):
                     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
-            except Exception:
-                pass
-
+            except Exception as e:
+                if 'logger' in globals() or 'logger' in locals():
+                    logger.exception('Boot critical exception encountered in core/bootstrapper.py')
+                else:
+                    import logging
+                    logging.getLogger(__name__).exception('Boot critical exception')
+                raise e
         env_file = cls._base_dir / ".env"
         if env_file.exists():
             try:
@@ -73,9 +77,13 @@ class CoreBootstrapper:
                 cfg = json.loads(config_path.read_text(encoding="utf-8"))
                 if cfg.get("gemini_api_key"):
                     api_keys["Gemini"] = True
-            except Exception:
-                pass
-
+            except Exception as e:
+                if 'logger' in globals() or 'logger' in locals():
+                    logger.exception('Boot critical exception encountered in core/bootstrapper.py')
+                else:
+                    import logging
+                    logging.getLogger(__name__).exception('Boot critical exception')
+                raise e
         return {
             "initialized": cls._initialized,
             "platform": platform.system(),
