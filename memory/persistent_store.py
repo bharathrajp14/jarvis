@@ -304,15 +304,33 @@ def search_memory(query: str, scope: str = "all") -> list[MemoryEntry]:
     if vector_results:
         return vector_results
 
-    # Fallback: case-insensitive keyword match
+    # Fallback: case-insensitive keyword match with stop-word filter & exact word boundary matching
     q = query.lower()
-    q_words = [w for w in q.split() if len(w) >= 3]
-    results = []
+    stop_words = {
+        "what", "that", "this", "user", "file", "code", "with", "from", "have",
+        "make", "find", "show", "tell", "about", "your", "some", "here", "there",
+        "then", "when", "where", "which", "will", "would", "could", "should", "please"
+    }
+    q_words = [w for w in re.findall(r'\b\w+\b', q) if len(w) >= 3 and w not in stop_words]
+    if not q_words and len(q) >= 3:
+        q_words = [q.strip()]
+
+    scored_results = []
     for entry in all_entries:
         haystack = f"{entry.name} {entry.description} {entry.content}".lower()
-        if q in haystack or any(w in haystack or (len(w) >= 4 and w[:4] in haystack) for w in q_words):
-            results.append(entry)
-    return results
+        if q in haystack:
+            scored_results.append((10, entry))
+            continue
+        matches = 0
+        for w in q_words:
+            if re.search(r'\b' + re.escape(w) + r'\b', haystack):
+                matches += 1
+        if matches > 0:
+            scored_results.append((matches, entry))
+
+    # Sort by match count descending
+    scored_results.sort(key=lambda x: x[0], reverse=True)
+    return [entry for score, entry in scored_results]
 
 
 # ── Optional ChromaDB vector layer ─────────────────────────────────────────

@@ -277,7 +277,7 @@ class NeuralTTS:
         "male_us":   "en-US-GuyNeural",         # American male
     }
 
-    def __init__(self, voice_key: str = "default", rate: str = "+22%", pitch: str = "+0Hz"):
+    def __init__(self, voice_key: str = "default", rate: str = "+0%", pitch: str = "+0Hz"):
         self.voice = self.VOICES.get(voice_key, self.VOICES["default"])
         self.rate = rate
         self.pitch = pitch

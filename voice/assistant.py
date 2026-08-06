@@ -147,7 +147,7 @@ class BRVoiceAssistant:
             self.ring_buffer = None
 
         # Initialize Neural TTS Engine
-        self.tts = NeuralTTS(voice_key="default", rate="+18%", pitch="+0Hz")
+        self.tts = NeuralTTS(voice_key="default", rate="+0%", pitch="+0Hz")
         
         # Initialize Gemini Live Duplex Voice Engine
         try:

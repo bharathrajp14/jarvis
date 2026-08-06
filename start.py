@@ -683,19 +683,18 @@ def launch_voice():
         _run_script("ui_mark.py", None)
 
 def launch_floating_voice():
-    console.print("\n[bold cyan]▶ Starting Floating Gemini Live Voice Overlay[/]")
-    console.print("[dim]Note: The frameless floating pill window will open above all windows.[/]\n")
+    console.print("\n[bold cyan]▶ Starting Floating Glassmorphic JARVIS HUD Widget[/]")
+    console.print("[dim]Note: The frameless floating pill window will open above all windows (Alt+Space to toggle).[/]\n")
     try:
-        from desktop_ui.floating import FloatingGeminiVoiceUI  # type: ignore[import-not-found]
-    except ImportError:
-        try:
-            from floating_voice_ui import FloatingGeminiVoiceUI  # type: ignore[import-not-found]
-        except ImportError:
-            from ui_mark import JarvisUI as FloatingGeminiVoiceUI  # type: ignore[assignment]
-
-    app = FloatingGeminiVoiceUI()
-    if hasattr(app, "run"):
-        app.run()
+        from float_widget import create_float_widget, QApplication
+        import sys
+        app = QApplication.instance() or QApplication(sys.argv)
+        widget = create_float_widget()
+        if widget and hasattr(widget, "show"):
+            widget.show()
+            sys.exit(app.exec())
+    except Exception as e:
+        console.print(f"[bold red]❌ Failed to launch floating HUD: {e}[/]")
 
 def launch_cli():
     console.print("\n[bold cyan]▶ Starting CLI Orchestrator[/]")

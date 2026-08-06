@@ -50,7 +50,7 @@ class GeminiLiveVoiceLoop:
         self.assistant = assistant_ref
         self.ui = ui_ref
         self.processor = AudioProcessor(sample_rate=16000)
-        self.tts = self.assistant.tts if (self.assistant and hasattr(self.assistant, 'tts') and self.assistant.tts) else NeuralTTS(voice_key="default", rate="+18%")
+        self.tts = self.assistant.tts if (self.assistant and hasattr(self.assistant, 'tts') and self.assistant.tts) else NeuralTTS(voice_key="default", rate="+0%")
         
         self.recognizer = sr.Recognizer() if _HAS_SR else None
         if self.recognizer:

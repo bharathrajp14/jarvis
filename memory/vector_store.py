@@ -259,7 +259,13 @@ class VectorMemory:
                     n_results=min(n, count),
                 )
                 if results and "documents" in results and results["documents"] and results["documents"][0]:
-                    return results["documents"][0]
+                    docs = results["documents"][0]
+                    distances = results.get("distances", [[]])[0] if results.get("distances") else []
+                    if distances:
+                        # Only return items with cosine distance <= 0.38 (relevant similarity)
+                        filtered = [d for d, dist in zip(docs, distances) if dist <= 0.38]
+                        return filtered
+                    return docs
                 return []
             except Exception as exc:
                 logger.warning(f"[VectorMemory] recall() failed: {exc}")

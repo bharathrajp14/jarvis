@@ -569,10 +569,10 @@ def create_float_widget(orchestrator=None):
         return widget
     except Exception as e:
         if 'logger' in globals() or 'logger' in locals():
-            logger.warning(f"{ f"[FloatWidget] Qt init error: {e}" }" if isinstance(f"[FloatWidget] Qt init error: {e}", str) else f"[FloatWidget] Qt init error: {e}")
+            logger.warning("[FloatWidget] Qt init error: %s", e)
         else:
             import logging
-            logging.getLogger(__name__).warning(f"{ f"[FloatWidget] Qt init error: {e}" }" if isinstance(f"[FloatWidget] Qt init error: {e}", str) else f"[FloatWidget] Qt init error: {e}")
+            logging.getLogger(__name__).warning("[FloatWidget] Qt init error: %s", e)
         return HeadlessFloat()
 
 
@@ -605,13 +605,8 @@ if __name__ == "__main__":
     if args.with_jarvis:
         try:
             from core.bootstrap import build_assistant_runtime
-            if 'logger' in globals() or 'logger' in locals():
-                logger.info("[Float] Starting JARVIS Core...")
-            else:
-                import logging
-                logging.getLogger(__name__).info("[Float] Starting JARVIS Core...")
-            runtime = build_assistant_runtime()
-            orchestrator = runtime.orchestrator
+            rt = build_assistant_runtime()
+            orchestrator = rt.orchestrator
             if 'logger' in globals() or 'logger' in locals():
                 logger.info("[Float] JARVIS Core ready")
             else:
@@ -619,10 +614,10 @@ if __name__ == "__main__":
                 logging.getLogger(__name__).info("[Float] JARVIS Core ready")
         except Exception as e:
             if 'logger' in globals() or 'logger' in locals():
-                logger.warning(f"{ f"[Float] Core failed ({e}) -- API-only mode" }" if isinstance(f"[Float] Core failed ({e}) -- API-only mode", str) else f"[Float] Core failed ({e}) -- API-only mode")
+                logger.warning("[Float] Core failed (%s) -- API-only mode", e)
             else:
                 import logging
-                logging.getLogger(__name__).warning(f"{ f"[Float] Core failed ({e}) -- API-only mode" }" if isinstance(f"[Float] Core failed ({e}) -- API-only mode", str) else f"[Float] Core failed ({e}) -- API-only mode")
+                logging.getLogger(__name__).warning("[Float] Core failed (%s) -- API-only mode", e)
 
     widget = JarvisFloat(orchestrator=orchestrator)
     widget.write_log("JARVIS MK38 Float Widget online")
