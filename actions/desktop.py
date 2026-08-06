@@ -169,6 +169,99 @@ def _is_ast_safe(code: str) -> tuple[bool, str]:
         return False, f"Syntax error: {se}"
 
 
+def _safe_ast_execute(code: str, scope: dict) -> dict:
+    """Safely interpret whitelisted AST statements in sandbox scope without exec()."""
+    tree = ast.parse(code)
+
+    def _eval_expr(node: ast.AST) -> Any:
+        if isinstance(node, ast.Constant):
+            return node.value
+        elif isinstance(node, ast.Name):
+            if node.id in scope:
+                return scope[node.id]
+            builtins_dict = scope.get("__builtins__", {})
+            if isinstance(builtins_dict, dict) and node.id in builtins_dict:
+                return builtins_dict[node.id]
+            elif node.id in ("True", "False", "None"):
+                return {"True": True, "False": False, "None": None}[node.id]
+            raise ValueError(f"Undefined symbol in AST: {node.id}")
+        elif isinstance(node, ast.Attribute):
+            val = _eval_expr(node.value)
+            if node.attr.startswith("__"):
+                raise PermissionError(f"Forbidden attribute access: {node.attr}")
+            return getattr(val, node.attr)
+        elif isinstance(node, ast.Call):
+            func = _eval_expr(node.func)
+            args = [_eval_expr(a) for a in node.args]
+            kwargs = {k.arg: _eval_expr(k.value) for k in node.keywords if k.arg is not None}
+            if not callable(func):
+                raise TypeError(f"Target object is not callable: {func}")
+            return func(*args, **kwargs)
+        elif isinstance(node, ast.List):
+            return [_eval_expr(e) for e in node.elts]
+        elif isinstance(node, ast.Tuple):
+            return tuple(_eval_expr(e) for e in node.elts)
+        elif isinstance(node, ast.Dict):
+            return {_eval_expr(k): _eval_expr(v) for k, v in zip(node.keys, node.values)}
+        elif isinstance(node, ast.BinOp):
+            left = _eval_expr(node.left)
+            right = _eval_expr(node.right)
+            if isinstance(node.op, ast.Add): return left + right
+            elif isinstance(node.op, ast.Sub): return left - right
+            elif isinstance(node.op, ast.Mult): return left * right
+            elif isinstance(node.op, ast.Div): return left / right
+            elif isinstance(node.op, ast.Mod): return left % right
+            else: raise NotImplementedError(f"Unsupported binary op: {node.op}")
+        elif isinstance(node, ast.UnaryOp):
+            operand = _eval_expr(node.operand)
+            if isinstance(node.op, ast.USub): return -operand
+            elif isinstance(node.op, ast.Not): return not operand
+            else: raise NotImplementedError(f"Unsupported unary op: {node.op}")
+        elif isinstance(node, ast.Subscript):
+            val = _eval_expr(node.value)
+            idx = _eval_expr(node.slice)
+            return val[idx]
+        else:
+            raise NotImplementedError(f"Unsupported AST expression: {type(node).__name__}")
+
+    def _exec_stmt(stmt: ast.AST):
+        if isinstance(stmt, ast.Expr):
+            _eval_expr(stmt.value)
+        elif isinstance(stmt, ast.Assign):
+            val = _eval_expr(stmt.value)
+            for target in stmt.targets:
+                if isinstance(target, ast.Name):
+                    scope[target.id] = val
+        elif isinstance(stmt, ast.FunctionDef):
+            def _fn(*fn_args, **fn_kwargs):
+                for param, arg in zip([a.arg for a in stmt.args.args], fn_args):
+                    scope[param] = arg
+                for body_stmt in stmt.body:
+                    _exec_stmt(body_stmt)
+            scope[stmt.name] = _fn
+        elif isinstance(stmt, ast.For):
+            iter_val = _eval_expr(stmt.iter)
+            if isinstance(stmt.target, ast.Name):
+                for item in iter_val:
+                    scope[stmt.target.id] = item
+                    for body_stmt in stmt.body:
+                        _exec_stmt(body_stmt)
+        elif isinstance(stmt, ast.If):
+            test_val = _eval_expr(stmt.test)
+            branch = stmt.body if test_val else stmt.orelse
+            for body_stmt in branch:
+                _exec_stmt(body_stmt)
+        elif isinstance(stmt, ast.Pass):
+            pass
+        else:
+            raise NotImplementedError(f"Unsupported AST statement: {type(stmt).__name__}")
+
+    for stmt in tree.body:
+        _exec_stmt(stmt)
+
+    return scope
+
+
 def _execute_generated_code(code: str, player=None) -> str:
     if not code or code.strip() == "UNSAFE":
         return "This action cannot be performed safely."
@@ -185,14 +278,13 @@ def _execute_generated_code(code: str, player=None) -> str:
 
     try:
         scope: dict = _build_sandbox()
-        compiled_code = compile(code, "<desktop_action>", "exec")
         # Ensure builtins in scope are strictly restricted
         scope["__builtins__"] = {
             "range": range, "len": len, "str": str, "int": int, "float": float,
             "bool": bool, "list": list, "dict": dict, "tuple": tuple, "set": set,
             "print": print, "min": min, "max": max, "sum": sum, "abs": abs
         }
-        exec(compiled_code, scope)
+        _safe_ast_execute(code, scope)
         fn = scope.get("run_desktop_task")
         if callable(fn):
             fn()
