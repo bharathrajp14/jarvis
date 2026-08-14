@@ -1,6 +1,7 @@
-# router/core.py — JARVIS MK37 Agent Router (Multi-Backend Intelligence)
+# router/core.py — JARVIS Multi-Backend Router with Strict Privacy Policy Enforcement
 """
-Intelligent routing with Gemini as the primary (and only required) backend.
+Intelligent multi-backend router with privacy mode enforcement.
+Prevents silent cloud fallback when local-only execution is requested.
 """
 from __future__ import annotations
 
@@ -9,9 +10,16 @@ import os
 import threading
 import time
 from enum import Enum
-from typing import Any
+from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger("JARVIS.Router")
+
+
+class PrivacyMode(str, Enum):
+    LOCAL_ONLY      = "local_only"       # Strictly local models (Ollama). Zero cloud transmission.
+    LOCAL_PREFERRED = "local_preferred"  # Prefer local; allow cloud fallback with warning.
+    CLOUD_OPTIONAL  = "cloud_optional"   # Balance between local and cloud based on capabilities.
+    CLOUD_REQUIRED  = "cloud_required"   # Cloud models only (Gemini, Claude, GPT, etc.).
 
 
 class AgentProfile(Enum):
@@ -25,14 +33,14 @@ class AgentProfile(Enum):
 
 
 ROUTING_RULES = {
-    "code":           [AgentProfile.GEMINI, AgentProfile.CLAUDE, AgentProfile.GPT, AgentProfile.DEEPSEEK],
-    "security":       [AgentProfile.GEMINI, AgentProfile.CLAUDE],
+    "code":           [AgentProfile.GEMINI, AgentProfile.CLAUDE, AgentProfile.GPT, AgentProfile.DEEPSEEK, AgentProfile.OLLAMA],
+    "security":       [AgentProfile.GEMINI, AgentProfile.CLAUDE, AgentProfile.OLLAMA],
     "creative":       [AgentProfile.CLAUDE, AgentProfile.GEMINI, AgentProfile.GPT],
     "search":         [AgentProfile.GEMINI, AgentProfile.CLAUDE],
     "local_private":  [AgentProfile.OLLAMA],
     "long_context":   [AgentProfile.GEMINI, AgentProfile.CLAUDE],
     "gpu_inference":  [AgentProfile.NVIDIA, AgentProfile.GEMINI],
-    "fast_inference": [AgentProfile.GEMINI, AgentProfile.MISTRAL],
+    "fast_inference": [AgentProfile.GEMINI, AgentProfile.MISTRAL, AgentProfile.OLLAMA],
     "multilingual":   [AgentProfile.GEMINI, AgentProfile.MISTRAL],
     "vision":         [AgentProfile.GEMINI, AgentProfile.CLAUDE],
     "analysis":       [AgentProfile.GEMINI, AgentProfile.CLAUDE, AgentProfile.GPT],
@@ -55,12 +63,20 @@ def _get_configured_default() -> AgentProfile:
         return AgentProfile.GEMINI
 
 
+def _get_configured_privacy_mode() -> PrivacyMode:
+    mode_str = os.environ.get("JARVIS_PRIVACY_MODE", "cloud_optional").strip().lower()
+    try:
+        return PrivacyMode(mode_str)
+    except Exception:
+        return PrivacyMode.CLOUD_OPTIONAL
+
+
 def _truthy_env(name: str) -> bool:
     return os.environ.get(name, "").strip().lower() in {"1", "true", "yes", "on"}
 
 
 def load_available_backends(*, force_refresh: bool = False) -> dict:
-    """Attempt to initialize all backends. Gemini is REQUIRED. Others are optional."""
+    """Attempt to initialize all backends safely."""
     global _BACKENDS_CACHE, _BACKENDS_CACHE_TS
     ttl_seconds = float(os.environ.get("JARVIS_BACKENDS_CACHE_TTL", "180"))
 
@@ -79,7 +95,7 @@ def load_available_backends(*, force_refresh: bool = False) -> dict:
             if g.available:
                 backends[AgentProfile.GEMINI] = g
         except Exception as exc:
-            logger.warning(f"[Router] Gemini init error: {exc}")
+            logger.debug("[Router] Gemini init notice: %s", exc)
 
         try:
             from backends import ClaudeBackend
@@ -145,22 +161,31 @@ def load_available_backends(*, force_refresh: bool = False) -> dict:
 
 
 class AgentRouter:
-    """Intelligent multi-backend router with automatic fallback."""
+    """Intelligent multi-backend router with strict privacy mode enforcement and automatic fallback."""
 
-    def __init__(self, backends: dict | None = None):
+    def __init__(self, backends: dict | None = None, privacy_mode: Optional[PrivacyMode] = None):
         self.backends = backends if backends is not None else load_available_backends()
         self.default = _get_configured_default()
+        self.privacy_mode = privacy_mode or _get_configured_privacy_mode()
         self.fallback_history: list[dict] = []
 
-        if AgentProfile.GEMINI not in self.backends:
-            logger.warning("[Router] Gemini backend not available. Check GEMINI_API_KEY in .env")
+    def set_privacy_mode(self, mode: PrivacyMode) -> None:
+        """Dynamically update privacy policy mode."""
+        self.privacy_mode = mode
+        logger.info("[Router] Active privacy mode set to %s", mode.value.upper())
 
     def route(self, task_keywords: list[str]) -> AgentProfile:
-        """Select the best available backend profile based on task keywords.
+        """Select the best available backend profile based on task keywords and privacy policy."""
+        # Enforce LOCAL_ONLY mode
+        if self.privacy_mode == PrivacyMode.LOCAL_ONLY or "local_private" in task_keywords:
+            if AgentProfile.OLLAMA in self.backends and self.backends[AgentProfile.OLLAMA].available:
+                return AgentProfile.OLLAMA
+            # Check any other local backend
+            for prof, be in self.backends.items():
+                if getattr(be, "is_local", False) and be.available:
+                    return prof
+            return AgentProfile.OLLAMA
 
-        FIXED: Now correctly verifies availability before returning a profile.
-        Previously could return GEMINI even when it wasn't loaded.
-        """
         for kw in task_keywords:
             candidates = ROUTING_RULES.get(kw, [])
             for candidate in candidates:
@@ -176,16 +201,16 @@ class AgentRouter:
             if backend.available:
                 return profile
 
-        # No backend is available — return configured default and let run() handle the error
-        logger.error("[Router] No available backend found. All backends offline.")
         return self.default
 
     def run(self, profile: AgentProfile, messages: list[dict], system: str) -> str:
-        """Run completion through selected profile with health-check fallback.
-
-        FIXED: Fallback chain is deduplicated to avoid retrying the same backend twice.
-        """
+        """Run completion through selected profile with privacy-aware fallback."""
         tried: list[tuple[str, str]] = []
+
+        is_local_requested = (
+            self.privacy_mode == PrivacyMode.LOCAL_ONLY or
+            profile == AgentProfile.OLLAMA
+        )
 
         # Primary attempt
         backend = self.backends.get(profile)
@@ -196,23 +221,29 @@ class AgentRouter:
                     return res
             except Exception as exc:
                 tried.append((profile.value, str(exc)))
-                logger.warning(f"[Router] Primary backend '{profile.value}' failed: {exc}")
+                logger.warning("[Router] Primary backend '%s' failed: %s", profile.value, exc)
 
-        # Build deduplicated fallback chain: Default → Gemini → remaining
+        # Strict Privacy Check: Do NOT fall back to cloud if local-only mode is active
+        if self.privacy_mode == PrivacyMode.LOCAL_ONLY:
+            logger.error("[Router] All local backends failed. Cloud fallback blocked by LOCAL_ONLY privacy mode.")
+            return f"[BR JARVIS: Local backend(s) unavailable. Cloud fallback prohibited under active LOCAL_ONLY privacy policy. Attempted: {tried}]"
+
+        # Build deduplicated fallback chain
         raw_chain = [self.default, AgentProfile.GEMINI] + list(self.backends.keys())
-        # dict.fromkeys preserves order and deduplicates
         fallback_chain = list(dict.fromkeys(raw_chain))
 
         for f_profile in fallback_chain:
-            # Skip the profile we already tried
             if f_profile == profile:
                 continue
-            # Skip profiles that already failed
             if f_profile.value in {t[0] for t in tried}:
                 continue
 
             f_backend = self.backends.get(f_profile)
             if f_backend and f_backend.available:
+                # If local was strictly required, skip non-local backends
+                if is_local_requested and not getattr(f_backend, "is_local", False):
+                    continue
+
                 try:
                     res = f_backend.complete(messages, system)
                     if res and not res.startswith("ERROR:"):
@@ -221,17 +252,14 @@ class AgentRouter:
                             "used": f_profile.value,
                             "time": time.time(),
                         })
-                        logger.info(
-                            f"[Router] Fell back from '{profile.value}' to '{f_profile.value}'"
-                        )
+                        logger.info("[Router] Fell back from '%s' to '%s'", profile.value, f_profile.value)
                         return res
                 except Exception as exc:
                     tried.append((f_profile.value, str(exc)))
 
-        return f"[BR: All backends failed. Attempted: {tried}]"
+        return f"[BR JARVIS: All backends failed. Attempted: {tried}]"
 
     def get_status(self) -> dict[str, Any]:
-        """Return status dictionary of loaded model backends for API telemetry."""
         status = {}
         for profile, backend in self.backends.items():
             key = profile.value if hasattr(profile, "value") else str(profile)
@@ -239,37 +267,30 @@ class AgentRouter:
                 "name": getattr(backend, "name", key),
                 "model": getattr(backend, "model_name", key),
                 "available": getattr(backend, "available", False),
+                "is_local": getattr(backend, "is_local", False),
                 "is_default": (profile == self.default),
             }
-        return status
+        return {
+            "privacy_mode": self.privacy_mode.value,
+            "backends": status
+        }
 
     def switch_backend(self, backend_name: str) -> str:
-        """Switch active default backend profile.
-
-        FIXED: Now validates that the backend is actually loaded and available.
-        """
         name_lower = backend_name.lower().strip()
         for profile in self.backends.keys():
             key = profile.value if hasattr(profile, "value") else str(profile)
             if key.lower() == name_lower:
                 backend = self.backends[profile]
                 if not getattr(backend, "available", False):
-                    return (
-                        f"Backend '{key.upper()}' is registered but not currently available "
-                        f"(check API keys / connectivity)."
-                    )
+                    return f"Backend '{key.upper()}' is registered but not currently available (check API keys / connectivity)."
                 self.default = profile
-                logger.info(f"[Router] Default backend switched to '{key.upper()}'")
+                logger.info("[Router] Default backend switched to '%s'", key.upper())
                 return f"Successfully switched default backend to {key.upper()}"
 
-        available = [
-            p.value if hasattr(p, "value") else str(p)
-            for p in self.backends.keys()
-        ]
+        available = [p.value if hasattr(p, "value") else str(p) for p in self.backends.keys()]
         return f"Unknown backend profile '{backend_name}'. Available: {available}"
 
 
-# ── Thread-safe singleton ─────────────────────────────────────────────────────
 _router_instance: AgentRouter | None = None
 _router_lock = threading.Lock()
 

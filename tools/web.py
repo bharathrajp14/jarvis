@@ -121,23 +121,23 @@ async def web_search(query: str, max_results: int = 8) -> list[dict]:
                 results.append(wr)
 
     # 3. Tertiary: Gemini Grounded Search Fallback if zero results
-    if not results:
         try:
-            from backends.gemini import GeminiBackend
-            gemini = GeminiBackend()
-            if gemini.available:
-                g_res = gemini.complete_with_search(
-                    query=clean_query,
-                    system="Provide a concise factual search summary with key details and sources."
-                )
-                if g_res and not g_res.startswith("ERROR"):
-                    results.append({
-                        "title": f"Gemini Grounded Search Result: {clean_query}",
-                        "href": "https://google.com/search?q=" + urllib.parse.quote(clean_query),
-                        "body": g_res[:1000],
-                        "source": "Google Search Grounding"
-                    })
+            from gateway.model_gateway import get_model_gateway
+            gw = get_model_gateway()
+            resp = gw.complete(
+                messages=[{"role": "user", "content": f"Search and summarize: {clean_query}"}],
+                system="Provide a concise factual search summary with key details and sources."
+            )
+            if resp.text and not resp.text.startswith("ERROR"):
+                results.append({
+                    "title": f"Search Synthesis: {clean_query}",
+                    "href": "https://google.com/search?q=" + urllib.parse.quote(clean_query),
+                    "body": resp.text[:1000],
+                    "source": "AI Search Synthesis"
+                })
         except Exception as e:
+            logger.debug("[WebSearch] AI synthesis search notice: %s", e)
+
             logger.debug('Suppressed exception: %s', e)
     if not results:
         return [{"error": f"No web search results found for: '{clean_query}'"}]

@@ -1,20 +1,22 @@
 # server.py — BR JARVIS Production Server Entrypoint
 """
 FastAPI Server Entrypoint for BR JARVIS.
-Mounts the modular api/ application layer with full backwards compatibility.
+Mounts the modular api/ application layer with full backwards compatibility and PID management.
 """
 from __future__ import annotations
 
-import os
-import sys
-import platform
-import subprocess
+import atexit
 import logging
+import os
+import platform
+import socket
+import sys
 from pathlib import Path
 
 # Auto-reroute from Python 3.14 alpha to stable Python 3.12 if requested
 if __name__ == "__main__" and sys.version_info >= (3, 14) and sys.platform == "win32" and not os.environ.get("JARVIS_IGNORE_PY314"):
     import shutil
+    import subprocess
     _py_cmd = shutil.which("py")
     if _py_cmd:
         for _ver in ("-3.12", "-3.13", "-3.11"):
@@ -26,7 +28,8 @@ if __name__ == "__main__" and sys.version_info >= (3, 14) and sys.platform == "w
                 sys.exit(_res.returncode)
 
 # Ensure project root in sys.path
-sys.path.insert(0, str(Path(__file__).resolve().parent))
+BASE_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(BASE_DIR))
 
 try:
     from dotenv import load_dotenv
@@ -47,7 +50,6 @@ from api.server import create_app
 from api.state import (
     ORCHESTRATOR,
     SERVER_API_KEY,
-    BASE_DIR,
     CONFIG_DIR,
     WEB_DIR,
     ACTIVE_WEBSOCKETS,
@@ -60,27 +62,51 @@ app = create_app()
 
 logger = logging.getLogger("JARVIS.Server")
 
+PID_FILE = BASE_DIR / ".jarvis_server.pid"
+
+
+def _cleanup_pid():
+    try:
+        if PID_FILE.exists():
+            PID_FILE.unlink(missing_ok=True)
+    except Exception:
+        pass
+
+
+atexit.register(_cleanup_pid)
+
+
+def _check_port_available(host: str, port: int) -> bool:
+    """Verify if target port is available without killing arbitrary processes."""
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.settimeout(1.0)
+    try:
+        sock.bind((host, port))
+        sock.close()
+        return True
+    except OSError:
+        return False
+
 
 def main():
     port = int(os.environ.get("BR_SERVER_PORT", 8000))
     host = os.environ.get("BR_SERVER_HOST", "127.0.0.1")
 
-    # Clean up stale processes on Windows if port is occupied
-    if platform.system() == "Windows":
-        try:
-            result = subprocess.run(
-                ["netstat", "-ano"], capture_output=True, text=True,
-                encoding="utf-8", errors="replace", timeout=5
-            )
-            for line in result.stdout.splitlines():
-                if f":{port}" in line and "LISTENING" in line:
-                    parts = line.split()
-                    pid = parts[-1]
-                    if pid.isdigit() and int(pid) != os.getpid():
-                        subprocess.run(["taskkill", "/F", "/PID", pid], capture_output=True, timeout=5)
-                        logger.info("[Server] Killed stale process PID %s on port %s", pid, port)
-        except Exception:
-            pass
+    # Record PID
+    try:
+        PID_FILE.write_text(str(os.getpid()), encoding="utf-8")
+    except Exception:
+        pass
+
+    # Verify port availability safely
+    if not _check_port_available(host, port):
+        logger.error(
+            "Port %s:%s is already in use by another process. Please terminate the competing service or configure BR_SERVER_PORT.",
+            host, port
+        )
+        print(f"\n[ERROR] Port {host}:{port} is already in use by another process.")
+        print(f"        Please free port {port} or set BR_SERVER_PORT=<new_port> in your environment or .env file.\n")
+        sys.exit(1)
 
     logger.info("Exposing BR JARVIS Autonomous Control Plane on http://%s:%s", host, port)
 

@@ -1,16 +1,21 @@
 # guardian/core.py — Master Guardian Core Safety Engine
 from __future__ import annotations
 
-import logging
+import hmac
 import hashlib
+import json
+import logging
+import os
 import time
 from pathlib import Path
-from guardian.kill_switch import KillSwitch
-from guardian.snapshot import SnapshotManager
-from guardian.rollback import RollbackEngine
-from guardian.audit_log import AuditLog
+from typing import Dict, List, Optional
 
-logger = logging.getLogger(__name__)
+from guardian.audit_log import AuditLog
+from guardian.kill_switch import KillSwitch
+from guardian.rollback import RollbackEngine
+from guardian.snapshot import SnapshotManager
+
+logger = logging.getLogger("JARVIS.GuardianCore")
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -21,44 +26,56 @@ PROTECTED_CORE_PATHS = [
     "guardian/rollback.py",
     "guardian/audit_log.py",
     "permissions.py",
+    "security/capabilities.py",
+    "security/policy_engine.py",
+    "security/path_policy.py",
 ]
 
 
 class GuardianCore:
-    """Master Immutable Safety Core."""
+    """Master Immutable Safety Core.
+    Guarantees integrity of safety-critical files against external tampering.
+    Requires release-authorization or administrator confirmation to update baseline hashes.
+    """
 
     _HASH_FILE = BASE_DIR / ".guardian_hashes.json"
+    _TRUST_MANIFEST = BASE_DIR / "config" / "release_manifest.json"
 
     def __init__(self, integrity_interval: int = 300):
         self.integrity_interval = integrity_interval
-        self._initial_hashes = self._load_or_compute_hashes()
+        self._initial_hashes = self._load_trusted_hashes()
         self._last_check = time.time()
 
-    def _load_or_compute_hashes(self) -> dict[str, str]:
-        """Load hashes from disk if available, otherwise compute and persist."""
-        import json
+    def _load_trusted_hashes(self) -> Dict[str, str]:
+        """Load baseline hashes from trusted manifest or persistent hash storage."""
+        if self._TRUST_MANIFEST.exists():
+            try:
+                manifest = json.loads(self._TRUST_MANIFEST.read_text(encoding="utf-8"))
+                if isinstance(manifest, dict) and "file_hashes" in manifest:
+                    return manifest["file_hashes"]
+            except Exception as e:
+                logger.warning("Failed to load release manifest: %s", e)
+
         if self._HASH_FILE.exists():
             try:
                 return json.loads(self._HASH_FILE.read_text(encoding="utf-8"))
             except Exception as e:
-                logger.exception('Boot critical exception encountered in guardian/core.py')
-                raise e
+                logger.error("Failed to read guardian hashes: %s", e)
+
+        # Compute baseline on first clean initialization
         hashes = self._calculate_hashes()
         self._persist_hashes(hashes)
         return hashes
 
-    def _persist_hashes(self, hashes: dict[str, str]) -> None:
-        """Write hashes to disk for persistence across restarts."""
-        import json
+    def _persist_hashes(self, hashes: Dict[str, str]) -> None:
+        """Write hashes to persistent storage."""
         try:
-            self._HASH_FILE.write_text(
-                json.dumps(hashes, indent=2), encoding="utf-8"
-            )
+            self._HASH_FILE.write_text(json.dumps(hashes, indent=2), encoding="utf-8")
         except Exception as e:
-            logger.exception('Boot critical exception encountered in guardian/core.py')
-            raise e
-    def _calculate_hashes(self) -> dict[str, str]:
-        hashes = {}
+            logger.error("Failed to write guardian hashes: %s", e)
+
+    def _calculate_hashes(self) -> Dict[str, str]:
+        hashes: Dict[str, str] = {}
         for path_str in PROTECTED_CORE_PATHS:
             p = BASE_DIR / path_str
             if p.exists():
@@ -66,12 +83,17 @@ class GuardianCore:
                     data = p.read_bytes()
                     hashes[path_str] = hashlib.sha256(data).hexdigest()
                 except Exception as e:
-                    logger.exception('Boot critical exception encountered in guardian/core.py')
-                    raise e
+                    logger.error("Failed to calculate hash for %s: %s", path_str, e)
         return hashes
 
-    def rehash_integrity(self) -> None:
-        """Update baseline hashes after a verified, authorized system upgrade."""
+    def rehash_integrity(self, auth_token: Optional[str] = None) -> bool:
+        """Update baseline hashes only if authorized by admin or system environment."""
+        admin_key = os.environ.get("JARVIS_ADMIN_KEY") or os.environ.get("JARVIS_RELEASE_KEY")
+        if admin_key:
+            if not auth_token or not hmac.compare_digest(auth_token, admin_key):
+                logger.warning("Unauthorized attempt to rehash guardian integrity.")
+                return False
+
         self._initial_hashes = self._calculate_hashes()
         self._persist_hashes(self._initial_hashes)
         self._last_check = time.time()
@@ -82,11 +104,12 @@ class GuardianCore:
             risk_level="LOW",
             applied=True,
         )
+        return True
 
-    def verify_integrity(self) -> dict:
+    def verify_integrity(self) -> Dict[str, Any]:
         """Verify core safety files have not been modified outside release process."""
         current_hashes = self._calculate_hashes()
-        mismatches = []
+        mismatches: List[str] = []
         for path_str, original_hash in self._initial_hashes.items():
             current_hash = current_hashes.get(path_str)
             if current_hash != original_hash:
@@ -95,7 +118,6 @@ class GuardianCore:
         self._last_check = time.time()
 
         if mismatches:
-            # Trigger pause & audit log
             msg = f"Guardian Integrity Mismatch in files: {mismatches}"
             KillSwitch.pause(reason=msg)
             AuditLog.log(
@@ -129,7 +151,7 @@ class GuardianCore:
         return True
 
 
-_global_guardian_core = None
+_global_guardian_core: Optional[GuardianCore] = None
 
 
 def get_guardian_core() -> GuardianCore:

@@ -1,50 +1,27 @@
 # backends/openai_compat.py — JARVIS MK37 OpenAI-Compatible Backend
 """
-OpenAI (GPT) backend connector for BR Core.
-Supports custom base_url for local proxies (e.g., localhost:8045).
+OpenAI-compatible backend connector for BR Core.
+Delegates to the centralized ModelGateway pointing to Proxy Brain (default: http://localhost:8045/v1).
 """
 from __future__ import annotations
 
 import logging
 import os
-import traceback
 from typing import Generator
 
 from backends.base import BaseBackend
+from gateway.model_gateway import ModelGateway, get_model_gateway
 
 logger = logging.getLogger("JARVIS.OpenAI")
 
 
 class OpenAIBackend(BaseBackend):
-    """OpenAI-compatible backend with base_url support for local proxies."""
+    """OpenAI-compatible backend adapter wrapping the centralized ModelGateway."""
 
     def __init__(self, model: str = None, api_key: str = None, base_url: str = None):
         self._explicit_model = model or os.environ.get("OPENAI_MODEL", "").strip() or None
-        try:
-            from config.models import get_model
-            default_model = get_model("gpt") or "gemini-3.6-flash-high"
-        except Exception:
-            default_model = "gemini-3.6-flash-high"
-
-        self.model = self._explicit_model or default_model
-        self.client = None
-
-        _api_key = api_key or os.environ.get("OPENAI_API_KEY", "").strip() or "local-proxy-key"
-        _base_url = base_url or os.environ.get("OPENAI_BASE_URL", "").strip() or "http://localhost:8045/v1"
-
-        if _api_key:
-            try:
-                from openai import OpenAI  # type: ignore
-                client_kwargs = {"api_key": _api_key}
-                if _base_url:
-                    client_kwargs["base_url"] = _base_url
-                self.client = OpenAI(**client_kwargs)
-                suffix = f" via {_base_url}" if _base_url else ""
-                logger.info("Auto model routing active (default: %s)%s", self.model, suffix)
-            except ImportError:
-                logger.warning("openai package is not installed.")
-        else:
-            logger.info("No API key configured — backend disabled.")
+        self.model = self._explicit_model or "gemini-3.6-flash-high"
+        self._gateway = ModelGateway(base_url=base_url, api_key=api_key)
 
     @property
     def name(self) -> str:
@@ -54,143 +31,35 @@ class OpenAIBackend(BaseBackend):
     def model_name(self) -> str:
         return self.model
 
-    def _get_target_model(self, messages: list, system: str = "") -> str:
-        if self._explicit_model:
-            return self._explicit_model
-        try:
-            from config.complexity_router import select_model_for_prompt
-            return select_model_for_prompt(messages=messages, system=system)
-        except Exception:
-            return self.model
+    @property
+    def is_local(self) -> bool:
+        return False
 
-    def _ensure_client(self):
-        if not self.client:
-            raise ValueError(
-                "OpenAI client is not initialized. "
-                "Ensure OPENAI_API_KEY is configured in your environment or .env, "
-                "and the 'openai' pip package is installed."
-            )
+    @property
+    def available(self) -> bool:
+        return True
 
     def complete(self, messages: list, system: str = "", tools: list = None, max_tokens: int = None) -> str:
         try:
-            self._ensure_client()
-
-            try:
-                from config.complexity_router import (
-                    analyze_complexity,
-                    get_recommended_token_limit,
-                    prune_messages_to_fit_budget,
-                )
-                complexity = analyze_complexity(messages=messages, system=system)
-                max_output_tokens = get_recommended_token_limit(complexity, user_max_tokens=max_tokens)
-                messages = prune_messages_to_fit_budget(messages, system=system)
-            except Exception:
-                max_output_tokens = max_tokens or 2048
-
-            full_messages = []
-            if system:
-                full_messages.append({"role": "system", "content": system})
-            full_messages.extend(messages)
-
-            target_model = self._get_target_model(messages, system)
-
-            kwargs = {
-                "model": target_model,
-                "messages": full_messages,
-                "max_tokens": max_output_tokens,
-            }
-            if tools:
-                kwargs["tools"] = tools
-
-            response = self.client.chat.completions.create(**kwargs)
-            return response.choices[0].message.content or ""
-        except Exception as e:
-            logger.warning("Primary request failed (%s) — attempting Gemini fallback...", e)
-            try:
-                from backends.gemini import GeminiBackend
-                fallback_backend = GeminiBackend()
-                return fallback_backend.complete(messages=messages, system=system, tools=tools)
-            except Exception as ex_fb:
-                logger.error("OpenAI Fallback Error: %s", ex_fb)
-                raise e
-
-    def stream(self, messages: list, system: str = "") -> Generator[str, None, None]:
-        try:
-            self._ensure_client()
-
-            full_messages = []
-            if system:
-                full_messages.append({"role": "system", "content": system})
-            full_messages.extend(messages)
-
-            target_model = self._get_target_model(messages, system)
-
-            stream_res = self.client.chat.completions.create(
-                model=target_model,
-                messages=full_messages,
-                stream=True
-            )
-            for chunk in stream_res:
-                if chunk.choices and chunk.choices[0].delta.content:
-                    yield chunk.choices[0].delta.content
-        except Exception as e:
-            yield f"\n[OpenAI Stream Error: {e}]"
-
-    def transcribe(self, audio_bytes: bytes, filename: str = "audio.wav") -> str:
-        """Transcribe audio bytes using 100% Offline Local Whisper, falling back to API if offline unavailable."""
-        import base64
-        import io
-
-        # 0. Prioritize 100% Offline Local Whisper (sub-30ms, no network 503 errors)
-        try:
-            from voice.whisper_local import transcribe as whisper_transcribe, is_available
-            if is_available():
-                text = whisper_transcribe(audio_bytes)
-                if text and text.strip():
-                    return text.strip()
-        except Exception:
-            pass
-
-        try:
-            self._ensure_client()
-            file_payload = (filename, audio_bytes, "audio/wav")
-            try:
-                response = self.client.audio.transcriptions.create(
-                    model="whisper-1",
-                    file=file_payload,
-                )
-                return (response.text or "").strip()
-            except Exception as ex_stt:
-                # Fall back to base64 inline audio chat completion for proxies returning HTTP 415/503
-                try:
-                    b64 = base64.b64encode(audio_bytes).decode("ascii")
-                    resp = self.client.chat.completions.create(
-                        model=self.model or "gemini-2.5-flash",
-                        messages=[{
-                            "role": "user",
-                            "content": [
-                                {"type": "text", "text": "Transcribe this audio clip exactly. Return only the transcription, no intro, no comments."},
-                                {"type": "image_url", "image_url": {"url": f"data:audio/wav;base64,{b64}"}}
-                            ]
-                        }]
-                    )
-                    return (resp.choices[0].message.content or "").strip()
-                except Exception:
-                    return ""
-        except Exception as e:
-            logger.warning("OpenAIBackend Transcription error: %s", e)
-            return ""
-
-    def ping(self, timeout: float = 3.0) -> bool:
-        """Quick health check — try a minimal completion."""
-        try:
-            self._ensure_client()
-            response = self.client.chat.completions.create(
+            resp = self._gateway.complete(
+                messages=messages,
                 model=self.model,
-                messages=[{"role": "user", "content": "ping"}],
-                max_tokens=5,
-                timeout=timeout,
+                system=system,
+                tools=tools,
+                max_tokens=max_tokens
             )
-            return bool(response.choices)
-        except Exception:
-            return False
+            return resp.text
+        except Exception as e:
+            logger.warning("[OpenAI] Completion notice: %s", e)
+            return f"ERROR: {e}"
+
+    def stream(self, messages: list, system: str = "", max_tokens: int = None) -> Generator[str, None, None]:
+        try:
+            yield from self._gateway.stream(
+                messages=messages,
+                model=self.model,
+                system=system,
+                max_tokens=max_tokens
+            )
+        except Exception as e:
+            yield f"[OpenAI Stream Error: {e}]"

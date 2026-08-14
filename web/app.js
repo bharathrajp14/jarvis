@@ -1,19 +1,25 @@
-// web/app.js — BR JARVIS AI Operating System Client Engine v38.5
+// web/app.js — BR JARVIS AI Operating System Client Engine (Hardened Production Build)
 document.addEventListener('DOMContentLoaded', () => {
     const host = window.location.host;
     const protocol = window.location.protocol === 'https:' ? 'https' : 'http';
     const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
     const API_BASE = `${protocol}://${host}`;
-    const apiKey = localStorage.getItem('jarvis_api_key') || window.JARVIS_API_KEY || '';
-    const WS_URL = `${wsProtocol}://${host}/ws${apiKey ? `?token=${encodeURIComponent(apiKey)}` : ''}`;
+
+    // Helper: Safe HTML escaping to prevent XSS
+    function escapeHTML(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
 
     window.apiFetch = function(url, options = {}) {
         const opts = Object.assign({}, options);
         opts.headers = Object.assign({}, opts.headers || {});
-        if (apiKey) {
-            opts.headers['X-API-Key'] = apiKey;
-            opts.headers['Authorization'] = `Bearer ${apiKey}`;
-        }
+        // In session mode, credentials / cookies or headers are sent automatically
         return fetch(url, opts);
     };
 
@@ -43,13 +49,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // ── ROLE & MODEL CHANGE NOTIFIERS ──
     if (roleSelector) {
         roleSelector.addEventListener('change', (e) => {
-            window.showToast('Role Switched', `Persona set to '${e.target.value.toUpperCase()}'`, 'info');
+            window.showToast('Role Switched', `Persona set to '${escapeHTML(e.target.value.toUpperCase())}'`, 'info');
         });
     }
 
     if (backendSelector) {
         backendSelector.addEventListener('change', (e) => {
-            window.showToast('Model Switched', `Active model set to '${e.target.options[e.target.selectedIndex].text}'`, 'info');
+            window.showToast('Model Switched', `Active model set to '${escapeHTML(e.target.options[e.target.selectedIndex].text)}'`, 'info');
         });
     }
 
@@ -127,11 +133,19 @@ document.addEventListener('DOMContentLoaded', () => {
             box-shadow: var(--glow-cyan);
             transition: all 0.3s ease;
         `;
-        toast.innerHTML = `
-            <div style="font-weight: bold; font-size: 0.82rem; color: var(--accent-cyan);">${title}</div>
-            <div style="font-size: 0.75rem; color: var(--text-secondary);">${message}</div>
-        `;
+        
+        const titleEl = document.createElement('div');
+        titleEl.style.cssText = "font-weight: bold; font-size: 0.82rem; color: var(--accent-cyan);";
+        titleEl.textContent = title;
+
+        const msgEl = document.createElement('div');
+        msgEl.style.cssText = "font-size: 0.75rem; color: var(--text-secondary);";
+        msgEl.textContent = message;
+
+        toast.appendChild(titleEl);
+        toast.appendChild(msgEl);
         container.appendChild(toast);
+
         setTimeout(() => {
             toast.style.opacity = '0';
             toast.style.transform = 'translateX(50px)';
@@ -139,7 +153,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 3500);
     };
 
-    // ── WEBSOCKET CONNECTION ENGINE ──
+    // ── SECURE WEBSOCKET CONNECTION ENGINE (TICKET-BASED) ──
     let wsReconnectDelay = 1000;
     let wsReconnectTimer = null;
     let wsConnected = false;
@@ -152,10 +166,26 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function initWebSocket() {
+    async function getWsTicket() {
+        try {
+            const res = await window.apiFetch(`${API_BASE}/api/auth/ws-ticket`, { method: 'POST' });
+            if (res.ok) {
+                const data = await res.json();
+                return data.ticket;
+            }
+        } catch (e) {
+            console.debug('Ticket fetch error, falling back:', e);
+        }
+        return '';
+    }
+
+    async function initWebSocket() {
         if (socket && (socket.readyState === WebSocket.CONNECTING || socket.readyState === WebSocket.OPEN)) return;
         try {
-            socket = new WebSocket(WS_URL);
+            const ticket = await getWsTicket();
+            const wsUrl = ticket ? `${wsProtocol}://${host}/ws?ticket=${encodeURIComponent(ticket)}` : `${wsProtocol}://${host}/ws`;
+
+            socket = new WebSocket(wsUrl);
 
             socket.onopen = () => {
                 wsReconnectDelay = 1000;
@@ -204,13 +234,30 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderConnectorPanel(connectors) {
         const panel = document.getElementById('connectorPanel');
         if (!panel) return;
-        panel.innerHTML = connectors.map(c => `
-            <div class="connector-badge ${c.configured ? 'active' : 'inactive'}" style="cursor: pointer;" onclick="switchView('connectorsView')" title="${c.name}: ${c.tools ? c.tools.length : 0} tools (click to view)">
-                <span class="connector-icon">${c.icon || '🔌'}</span>
-                <span class="connector-name">${c.name.split(' ')[0]}</span>
-                <span class="connector-dot ${c.configured ? 'green' : 'grey'}"></span>
-            </div>
-        `).join('');
+        panel.innerHTML = '';
+        connectors.forEach(c => {
+            const badge = document.createElement('div');
+            badge.className = `connector-badge ${c.configured ? 'active' : 'inactive'}`;
+            badge.style.cursor = 'pointer';
+            badge.title = `${c.name}: ${c.tools ? c.tools.length : 0} tools`;
+            badge.onclick = () => window.switchView('connectorsView');
+
+            const iconSpan = document.createElement('span');
+            iconSpan.className = 'connector-icon';
+            iconSpan.textContent = c.icon || '🔌';
+
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'connector-name';
+            nameSpan.textContent = String(c.name || '').split(' ')[0];
+
+            const dotSpan = document.createElement('span');
+            dotSpan.className = `connector-dot ${c.configured ? 'green' : 'grey'}`;
+
+            badge.appendChild(iconSpan);
+            badge.appendChild(nameSpan);
+            badge.appendChild(dotSpan);
+            panel.appendChild(badge);
+        });
     }
 
     setInterval(fetchConnectorStatus, 30000);
@@ -225,12 +272,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!currentStreamBubble) {
             currentStreamBubble = document.createElement('div');
             currentStreamBubble.className = 'msg-bubble system streaming';
-            currentStreamBubble.innerHTML = `
-                <div class="msg-author">JARVIS</div>
-                <div class="msg-body"></div>
-            `;
+
+            const authorEl = document.createElement('div');
+            authorEl.className = 'msg-author';
+            authorEl.textContent = 'JARVIS';
+
+            currentStreamBody = document.createElement('div');
+            currentStreamBody.className = 'msg-body';
+
+            currentStreamBubble.appendChild(authorEl);
+            currentStreamBubble.appendChild(currentStreamBody);
             chatWindow.appendChild(currentStreamBubble);
-            currentStreamBody = currentStreamBubble.querySelector('.msg-body');
             currentStreamText = '';
         }
         currentStreamText += chunk;
@@ -277,7 +329,11 @@ document.addEventListener('DOMContentLoaded', () => {
             taskList = document.createElement('div');
             taskList.id = 'webAgentTaskList';
             taskList.className = 'web-agent-task-panel';
-            taskList.innerHTML = '<div class="nav-title" style="margin-top: 10px;">⚡ LIVE SUB-AGENTS</div>';
+            const navTitle = document.createElement('div');
+            navTitle.className = 'nav-title';
+            navTitle.style.marginTop = '10px';
+            navTitle.textContent = '⚡ LIVE SUB-AGENTS';
+            taskList.appendChild(navTitle);
             sidebar.appendChild(taskList);
         }
         let card = document.getElementById(`task-card-${taskId}`);
@@ -289,11 +345,12 @@ document.addEventListener('DOMContentLoaded', () => {
             taskList.appendChild(card);
         }
         const st = (status || 'running').toUpperCase();
-        const pct = Math.round((progress || 0) * 100);
+        const pct = Math.min(100, Math.max(0, Math.round((progress || 0) * 100)));
+
         card.innerHTML = `
             <div style="display: flex; justify-content: space-between; font-size: 0.72rem; font-family: var(--font-code);">
-                <span style="color: var(--accent-cyan);">🤖 ${name || taskId}</span>
-                <span style="color: var(--accent-green);">${st}</span>
+                <span style="color: var(--accent-cyan);">🤖 ${escapeHTML(name || taskId)}</span>
+                <span style="color: var(--accent-green);">${escapeHTML(st)}</span>
             </div>
             <div style="background: rgba(255,255,255,0.1); height: 4px; border-radius: 2px; margin-top: 4px; overflow: hidden;">
                 <div style="background: var(--accent-cyan); width: ${pct}%; height: 100%;"></div>
@@ -348,10 +405,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!chatWindow) return;
         const bubble = document.createElement('div');
         bubble.className = `msg-bubble ${type}`;
-        bubble.innerHTML = `
-            <div class="msg-author">${author}</div>
-            <div class="msg-body">${formatMarkdown(text)}</div>
-        `;
+        
+        const authorEl = document.createElement('div');
+        authorEl.className = 'msg-author';
+        authorEl.textContent = author;
+
+        const bodyEl = document.createElement('div');
+        bodyEl.className = 'msg-body';
+        bodyEl.innerHTML = formatMarkdown(text);
+
+        bubble.appendChild(authorEl);
+        bubble.appendChild(bodyEl);
         chatWindow.appendChild(bubble);
         chatWindow.scrollTop = chatWindow.scrollHeight;
     }
@@ -367,12 +431,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function formatMarkdown(text) {
         if (!text) return '';
-        let escaped = String(text)
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;')
-            .replace(/'/g, '&#039;');
+        let escaped = escapeHTML(text);
 
         escaped = escaped.replace(/```([\s\S]*?)```/g, (match, code) => {
             return `<div class="code-block" style="position: relative;"><button class="btn btn-secondary" style="position: absolute; top: 6px; right: 6px; font-size: 0.65rem; padding: 2px 8px; background: rgba(255,255,255,0.1);" onclick="copyCodeToClipboard(this)">📋 Copy Code</button><pre><code>${code}</code></pre></div>`;
@@ -433,20 +492,18 @@ document.addEventListener('DOMContentLoaded', () => {
         ];
 
         const filtered = query ? items.filter(i => i.label.toLowerCase().includes(q)) : items;
-        cmdPaletteResults.innerHTML = filtered.map(item => `
-            <div class="cmd-item" onclick="executeCmdItem('${item.label.replace(/'/g, "\\'")}')">${item.label}</div>
-        `).join('');
-
-        window._cmdItemsMap = items;
+        cmdPaletteResults.innerHTML = '';
+        filtered.forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'cmd-item';
+            div.textContent = item.label;
+            div.onclick = () => {
+                item.action();
+                window.closeCommandPalette();
+            };
+            cmdPaletteResults.appendChild(div);
+        });
     }
-
-    window.executeCmdItem = function(label) {
-        if (window._cmdItemsMap) {
-            const found = window._cmdItemsMap.find(i => i.label === label);
-            if (found) found.action();
-        }
-        window.closeCommandPalette();
-    };
 
     // ── CONNECTORS & SKILLS LOADERS ──
     window.runConnectorAction = function(name, actionType = 'default') {
@@ -457,7 +514,7 @@ document.addEventListener('DOMContentLoaded', () => {
         window.switchView('chatView');
         if (!chatInput) return;
         let promptText = '';
-        const n = name.toLowerCase();
+        const n = String(name || '').toLowerCase();
 
         if (n.includes('gmail')) {
             promptText = actionType === 'send' ? 'send_email recipient="" subject="" body=""' : 'read_unread_emails';
@@ -532,70 +589,48 @@ document.addEventListener('DOMContentLoaded', () => {
             .then(data => {
                 const grid = document.getElementById('connectorsGrid');
                 if (!grid || !data.connectors) return;
-                grid.innerHTML = data.connectors.map(c => {
+                grid.innerHTML = '';
+                data.connectors.forEach(c => {
                     const st = (c.status || 'NOT_CONFIGURED').toUpperCase();
                     const isConnected = st === 'CONNECTED';
-                    const safeName = c.name.replace(/'/g, "\\'");
-                    const n = c.name.toLowerCase();
-                    
-                    let actBtns = '';
-                    if (n.includes('gmail')) {
-                        actBtns = `
-                            <button class="btn btn-secondary" onclick="openGoogleAuthModal()">🔑 Google Login</button>
-                            <button class="btn btn-secondary" onclick="runConnectorAction('${safeName}', 'inbox')">📬 Read Inbox</button>
-                            <button class="btn btn-secondary" onclick="runConnectorAction('${safeName}', 'send')">✉️ Send Email</button>
-                        `;
-                    } else if (n.includes('contacts')) {
-                        actBtns = `
-                            <button class="btn btn-secondary" onclick="openContactImportModal()">📥 Import VCF/CSV</button>
-                            <button class="btn btn-secondary" onclick="openAddContactModal()">👤 Add Contact</button>
-                            <button class="btn btn-secondary" onclick="runConnectorAction('${safeName}', 'browse_contacts')">🔍 Browse</button>
-                        `;
-                    } else if (n.includes('github')) {
-                        actBtns = `
-                            <button class="btn btn-secondary" onclick="openConnectorConfigModal('${safeName}')">🔑 Set Token</button>
-                            <button class="btn btn-secondary" onclick="runConnectorAction('${safeName}', 'prs')">📋 List PRs</button>
-                            <button class="btn btn-secondary" onclick="runConnectorAction('${safeName}', 'issue')">🐛 Create Issue</button>
-                        `;
-                    } else if (n.includes('notion')) {
-                        actBtns = `
-                            <button class="btn btn-secondary" onclick="openConnectorConfigModal('${safeName}')">🔑 Set Key</button>
-                            <button class="btn btn-secondary" onclick="runConnectorAction('${safeName}', 'search')">🔍 Search</button>
-                            <button class="btn btn-secondary" onclick="runConnectorAction('${safeName}', 'create')">📝 Create Page</button>
-                        `;
-                    } else if (n.includes('calendar')) {
-                        actBtns = `
-                            <button class="btn btn-secondary" onclick="runConnectorAction('${safeName}', 'list')">📅 Events</button>
-                            <button class="btn btn-secondary" onclick="runConnectorAction('${safeName}', 'add')">➕ Add Event</button>
-                        `;
-                    } else if (n.includes('whatsapp')) {
-                        actBtns = `
-                            <button class="btn btn-secondary" onclick="runConnectorAction('${safeName}', 'send')">💬 Send Msg</button>
-                            <button class="btn btn-secondary" onclick="runConnectorAction('${safeName}', 'contacts')">👥 Contacts</button>
-                        `;
-                    } else if (n.includes('weather')) {
-                        actBtns = `
-                            <button class="btn btn-secondary" onclick="openConnectorConfigModal('${safeName}')">🔑 Set Key</button>
-                            <button class="btn btn-secondary" onclick="runConnectorAction('${safeName}')">🌤️ Weather</button>
-                        `;
-                    } else {
-                        actBtns = `
-                            <button class="btn btn-secondary" onclick="runConnectorAction('${safeName}')">⚡ Action</button>
-                        `;
-                    }
+                    const card = document.createElement('div');
+                    card.className = 'connector-card';
 
-                    return `
-                        <div class="connector-card">
-                            <div style="display: flex; align-items: center; justify-content: space-between;">
-                                <span style="font-size: 28px;">${c.icon}</span>
-                                <span class="os-badge" style="background: ${isConnected ? 'rgba(0, 223, 162, 0.15)' : 'rgba(255, 183, 3, 0.15)'}; color: ${isConnected ? 'var(--accent-green)' : 'var(--accent-amber)'}; border-color: ${isConnected ? 'rgba(0, 223, 162, 0.4)' : 'rgba(255, 183, 3, 0.4)'};">${st}</span>
-                            </div>
-                            <h4 style="color: #fff; font-family: var(--font-heading); margin-top: 10px; font-size: 1.05rem;">${c.name}</h4>
-                            <p style="font-size: 0.78rem; color: var(--text-secondary); flex: 1; margin: 4px 0 12px;">${c.desc}</p>
-                            <div style="display: flex; gap: 6px; flex-wrap: wrap;">${actBtns}</div>
-                        </div>
-                    `;
-                }).join('');
+                    const topRow = document.createElement('div');
+                    topRow.style.cssText = "display: flex; align-items: center; justify-content: space-between;";
+                    const iconSpan = document.createElement('span');
+                    iconSpan.style.fontSize = '28px';
+                    iconSpan.textContent = c.icon || '🔌';
+                    const badgeSpan = document.createElement('span');
+                    badgeSpan.className = 'os-badge';
+                    badgeSpan.style.cssText = `background: ${isConnected ? 'rgba(0, 223, 162, 0.15)' : 'rgba(255, 183, 3, 0.15)'}; color: ${isConnected ? 'var(--accent-green)' : 'var(--accent-amber)'}; border-color: ${isConnected ? 'rgba(0, 223, 162, 0.4)' : 'rgba(255, 183, 3, 0.4)'};`;
+                    badgeSpan.textContent = st;
+                    topRow.appendChild(iconSpan);
+                    topRow.appendChild(badgeSpan);
+
+                    const titleH4 = document.createElement('h4');
+                    titleH4.style.cssText = "color: #fff; font-family: var(--font-heading); margin-top: 10px; font-size: 1.05rem;";
+                    titleH4.textContent = c.name;
+
+                    const descP = document.createElement('p');
+                    descP.style.cssText = "font-size: 0.78rem; color: var(--text-secondary); flex: 1; margin: 4px 0 12px;";
+                    descP.textContent = c.desc || '';
+
+                    const actDiv = document.createElement('div');
+                    actDiv.style.cssText = "display: flex; gap: 6px; flex-wrap: wrap;";
+
+                    const actBtn = document.createElement('button');
+                    actBtn.className = 'btn btn-secondary';
+                    actBtn.textContent = '⚡ Run Action';
+                    actBtn.onclick = () => window.runConnectorAction(c.name);
+                    actDiv.appendChild(actBtn);
+
+                    card.appendChild(topRow);
+                    card.appendChild(titleH4);
+                    card.appendChild(descP);
+                    card.appendChild(actDiv);
+                    grid.appendChild(card);
+                });
             })
             .catch(() => {});
     };
@@ -619,20 +654,44 @@ document.addEventListener('DOMContentLoaded', () => {
             const q = query.toLowerCase();
             filtered = skills.filter(s => (s.name && s.name.toLowerCase().includes(q)) || (s.description && s.description.toLowerCase().includes(q)));
         }
+        grid.innerHTML = '';
         if (filtered.length === 0) {
-            grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 20px;">No matching skills found.</div>`;
+            const empty = document.createElement('div');
+            empty.style.cssText = "grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 20px;";
+            empty.textContent = 'No matching skills found.';
+            grid.appendChild(empty);
             return;
         }
-        grid.innerHTML = filtered.map(s => `
-            <div class="skill-card">
-                <div style="display: flex; align-items: center; justify-content: space-between;">
-                    <h4 style="margin: 0; color: var(--accent-cyan); font-family: var(--font-code); font-size: 14px;">⚡ /${s.name}</h4>
-                    <span class="os-badge">Built-in</span>
-                </div>
-                <p style="font-size: 11px; color: var(--text-secondary); flex: 1;">${s.description}</p>
-                <button class="btn btn-secondary" style="width: 100%;" onclick="runSkill('${s.name}')">⚡ Run Skill</button>
-            </div>
-        `).join('');
+        filtered.forEach(s => {
+            const card = document.createElement('div');
+            card.className = 'skill-card';
+
+            const topRow = document.createElement('div');
+            topRow.style.cssText = "display: flex; align-items: center; justify-content: space-between;";
+            const nameH4 = document.createElement('h4');
+            nameH4.style.cssText = "margin: 0; color: var(--accent-cyan); font-family: var(--font-code); font-size: 14px;";
+            nameH4.textContent = `⚡ /${s.name}`;
+            const typeBadge = document.createElement('span');
+            typeBadge.className = 'os-badge';
+            typeBadge.textContent = 'Built-in';
+            topRow.appendChild(nameH4);
+            topRow.appendChild(typeBadge);
+
+            const descP = document.createElement('p');
+            descP.style.cssText = "font-size: 11px; color: var(--text-secondary); flex: 1;";
+            descP.textContent = s.description || '';
+
+            const runBtn = document.createElement('button');
+            runBtn.className = 'btn btn-secondary';
+            runBtn.style.width = '100%';
+            runBtn.textContent = '⚡ Run Skill';
+            runBtn.onclick = () => window.runSkill(s.name);
+
+            card.appendChild(topRow);
+            card.appendChild(descP);
+            card.appendChild(runBtn);
+            grid.appendChild(card);
+        });
     }
 
     window.runSkill = function(skillName) {
@@ -661,21 +720,40 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderContacts(list) {
         const grid = document.getElementById('contactsGrid');
         if (!grid) return;
+        grid.innerHTML = '';
         if (!list || list.length === 0) {
-            grid.innerHTML = `<div style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 20px;">No contacts found.</div>`;
+            const empty = document.createElement('div');
+            empty.style.cssText = "grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 20px;";
+            empty.textContent = 'No contacts found.';
+            grid.appendChild(empty);
             return;
         }
-        grid.innerHTML = list.slice(0, 60).map(c => `
-            <div class="contact-card">
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <div style="width: 36px; height: 36px; border-radius: 50%; background: var(--accent-purple); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: bold;">${(c.name || '?')[0].toUpperCase()}</div>
-                    <div>
-                        <div style="color: #fff; font-weight: 600; font-size: 14px;">${c.name}</div>
-                        <div style="font-size: 11px; color: var(--text-muted);">${c.phone_number || c.email || ''}</div>
-                    </div>
-                </div>
-            </div>
-        `).join('');
+        list.slice(0, 60).forEach(c => {
+            const card = document.createElement('div');
+            card.className = 'contact-card';
+
+            const row = document.createElement('div');
+            row.style.cssText = "display: flex; align-items: center; gap: 10px;";
+
+            const avatar = document.createElement('div');
+            avatar.style.cssText = "width: 36px; height: 36px; border-radius: 50%; background: var(--accent-purple); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: bold;";
+            avatar.textContent = (c.name || '?')[0].toUpperCase();
+
+            const info = document.createElement('div');
+            const nameEl = document.createElement('div');
+            nameEl.style.cssText = "color: #fff; font-weight: 600; font-size: 14px;";
+            nameEl.textContent = c.name;
+            const subEl = document.createElement('div');
+            subEl.style.cssText = "font-size: 11px; color: var(--text-muted);";
+            subEl.textContent = c.phone_number || c.email || '';
+
+            info.appendChild(nameEl);
+            info.appendChild(subEl);
+            row.appendChild(avatar);
+            row.appendChild(info);
+            card.appendChild(row);
+            grid.appendChild(card);
+        });
     }
 
     const contactSearchInput = document.getElementById('contactSearchInput');

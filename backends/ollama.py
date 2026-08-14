@@ -5,8 +5,8 @@ Safe initialization, standardized error handling, and text streaming.
 """
 from __future__ import annotations
 
-import logging
 import json
+import logging
 import os
 from typing import Generator
 
@@ -37,6 +37,11 @@ class OllamaBackend(BaseBackend):
     @property
     def model_name(self) -> str:
         return self.model
+
+    @property
+    def is_local(self) -> bool:
+        """Ollama is an entirely local on-premise model."""
+        return True
 
     def ping(self, timeout: float = 2.0) -> bool:
         """Fast connectivity check — GET /api/tags with short timeout."""

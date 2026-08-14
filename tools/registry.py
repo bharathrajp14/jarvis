@@ -353,13 +353,15 @@ def execute_tool(name: str, args: dict) -> str:
         return f"ERROR: Unknown tool '{name}'"
 
 
-    # ── Permission enforcement ────────────────────────────────────────────
+    # ── Permission enforcement (Fail-Closed) ──────────────────────────────
     try:
         from permissions import check_permission
         if not check_permission(name, args):
             return f"PERMISSION DENIED: Tool '{name}' is blocked by current security policy. Change JARVIS_PERMISSION_MODE in .env to allow_all to override."
-    except ImportError:
-        pass  # permissions module not available — allow by default
+    except Exception as perm_err:
+        logger.error("Permission check failed closed for tool '%s': %s", name, perm_err)
+        return f"PERMISSION DENIED: Tool '{name}' verification failed (Fail-Closed Policy Engine)."
+
 
     try:
         func = TOOL_REGISTRY[name]

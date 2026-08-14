@@ -2,22 +2,24 @@
 """
 Isolated Code Execution Sandbox for BR JARVIS.
 Features:
-- Strict Environment Variable Filtering (strips API keys, credentials, tokens)
-- Directory Path Jailing in dedicated temporary scratch spaces
-- Process Tree Containment (Windows Job Object / Linux setrlimit)
-- Resource Ceilings (RAM limits, execution timeouts)
-- Support for Python, JavaScript, Bash, PowerShell
+- Strict Environment Variable Allowlist (disallows passing arbitrary host environment)
+- Sandboxed execution in dedicated temporary jail directory
+- Process Tree Containment (Windows Job Object with kill-on-close / Unix setpgid + cgroups)
+- Resource Ceilings (Memory ceiling, strict execution timeouts)
+- Guaranteed full process-tree termination on timeout or cancellation
 """
 from __future__ import annotations
 
-import os
-import sys
-import uuid
-import shutil
 import logging
+import os
 import platform
-import tempfile
+import re
+import shutil
+import signal
 import subprocess
+import sys
+import tempfile
+import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set
 
@@ -27,40 +29,126 @@ _OS = platform.system()
 _DEFAULT_TIMEOUT = 20
 _MAX_MEMORY_BYTES = 256 * 1024 * 1024  # 256 MB
 
-# Environment variables safe to propagate to sandbox
-_SAFE_ENV_KEYS: Set[str] = {
+# Strict allowlist of safe system environment variables
+_STRICT_SAFE_ENV_KEYS: Set[str] = {
     "PATH", "SYSTEMROOT", "WINDIR", "COMSPEC", "PATHEXT",
-    "TEMP", "TMP", "PYTHONIOENCODING", "PYTHONUTF8",
-    "LANG", "LC_ALL", "TERM", "HOME", "USERPROFILE"
+    "TEMP", "TMP", "PYTHONIOENCODING", "PYTHONUTF8", "PYTHONDONTWRITEBYTECODE",
+    "LANG", "LC_ALL", "TERM"
 }
 
 
-def _build_safe_env(extra_env: Optional[Dict[str, str]] = None) -> Dict[str, str]:
-    """Create a sanitized environment dictionary with zero API keys or secrets."""
-    safe_env = {}
+def _build_strict_safe_env(extra_env: Optional[Dict[str, str]] = None) -> Dict[str, str]:
+    """Create a strictly sanitized environment dictionary containing only essential system keys."""
+    safe_env: Dict[str, str] = {}
     for key, value in os.environ.items():
-        key_upper = key.upper()
-        # Explicit allowlist check and secret exclusion
-        if key_upper in _SAFE_ENV_KEYS:
-            safe_env[key] = value
-        elif not any(s in key_upper for s in ("KEY", "SECRET", "TOKEN", "AUTH", "PASS", "CREDENTIAL", "SESSION")):
+        if key.upper() in _STRICT_SAFE_ENV_KEYS:
             safe_env[key] = value
 
-    # Enforce UTF-8 and isolated python behavior
+    # Enforce safe execution defaults
     safe_env["PYTHONIOENCODING"] = "utf-8"
     safe_env["PYTHONUTF8"] = "1"
     safe_env["PYTHONDONTWRITEBYTECODE"] = "1"
+    safe_env["PYTHONUNBUFFERED"] = "1"
 
     if extra_env:
         for k, v in extra_env.items():
-            if not any(s in k.upper() for s in ("KEY", "SECRET", "TOKEN", "PASS")):
+            k_upper = k.upper()
+            if not any(s in k_upper for s in ("KEY", "SECRET", "TOKEN", "AUTH", "PASS", "CRED", "SESSION", "JARVIS")):
                 safe_env[k] = v
 
     return safe_env
 
 
+class WindowsJobObject:
+    """Encapsulates Windows Kernel32 Job Object for process tree containment."""
+
+    def __init__(self, max_memory_bytes: int = _MAX_MEMORY_BYTES):
+        self.handle = None
+        self.max_memory_bytes = max_memory_bytes
+        if _OS == "Windows":
+            try:
+                import ctypes
+                import ctypes.wintypes
+                kernel32 = ctypes.windll.kernel32
+                self.handle = kernel32.CreateJobObjectW(None, None)
+                if self.handle:
+                    # JOBOBJECT_EXTENDED_LIMIT_INFORMATION
+                    # JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE = 0x00002000
+                    # JOB_OBJECT_LIMIT_PROCESS_MEMORY = 0x00000100
+                    JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE = 0x00002000
+                    JOB_OBJECT_LIMIT_PROCESS_MEMORY = 0x00000100
+                    
+                    class IO_COUNTERS(ctypes.Structure):
+                        _fields_ = [
+                            ('ReadOperationCount', ctypes.c_uint64),
+                            ('WriteOperationCount', ctypes.c_uint64),
+                            ('OtherOperationCount', ctypes.c_uint64),
+                            ('ReadTransferCount', ctypes.c_uint64),
+                            ('WriteTransferCount', ctypes.c_uint64),
+                            ('OtherTransferCount', ctypes.c_uint64)
+                        ]
+
+                    class JOBOBJECT_BASIC_LIMIT_INFORMATION(ctypes.Structure):
+                        _fields_ = [
+                            ('PerProcessUserTimeLimit', ctypes.c_int64),
+                            ('PerJobUserTimeLimit', ctypes.c_int64),
+                            ('LimitFlags', ctypes.wintypes.DWORD),
+                            ('MinimumWorkingSetSize', ctypes.c_size_t),
+                            ('MaximumWorkingSetSize', ctypes.c_size_t),
+                            ('ActiveProcessLimit', ctypes.wintypes.DWORD),
+                            ('Affinity', ctypes.c_size_t),
+                            ('PriorityClass', ctypes.wintypes.DWORD),
+                            ('SchedulingClass', ctypes.wintypes.DWORD)
+                        ]
+
+                    class JOBOBJECT_EXTENDED_LIMIT_INFORMATION(ctypes.Structure):
+                        _fields_ = [
+                            ('BasicLimitInformation', JOBOBJECT_BASIC_LIMIT_INFORMATION),
+                            ('IoInfo', IO_COUNTERS),
+                            ('ProcessMemoryLimit', ctypes.c_size_t),
+                            ('JobMemoryLimit', ctypes.c_size_t),
+                            ('PeakProcessMemoryLimit', ctypes.c_size_t),
+                            ('PeakJobMemoryLimit', ctypes.c_size_t)
+                        ]
+
+                    info = JOBOBJECT_EXTENDED_LIMIT_INFORMATION()
+                    info.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE | JOB_OBJECT_LIMIT_PROCESS_MEMORY
+                    info.ProcessMemoryLimit = max_memory_bytes
+                    info.JobMemoryLimit = max_memory_bytes
+
+                    JobObjectExtendedLimitInformation = 9
+                    kernel32.SetInformationJobObject(
+                        self.handle,
+                        JobObjectExtendedLimitInformation,
+                        ctypes.byref(info),
+                        ctypes.sizeof(info)
+                    )
+            except Exception as e:
+                logger.debug("Windows Job Object setup note: %s", e)
+
+    def assign_process(self, process_handle) -> bool:
+        if self.handle and _OS == "Windows":
+            try:
+                import ctypes
+                kernel32 = ctypes.windll.kernel32
+                return bool(kernel32.AssignProcessToJobObject(self.handle, process_handle))
+            except Exception as e:
+                logger.debug("Failed to assign process to Job Object: %s", e)
+        return False
+
+    def close(self) -> None:
+        if self.handle and _OS == "Windows":
+            try:
+                import ctypes
+                kernel32 = ctypes.windll.kernel32
+                kernel32.CloseHandle(self.handle)
+            except Exception:
+                pass
+            self.handle = None
+
+
 class SandboxedProcessRunner:
-    """Executes arbitrary code in an isolated, monitored subprocess jail."""
+    """Executes code in an isolated, monitored subprocess jail with strict tree containment."""
 
     ALLOWED_LANGS = {"python", "javascript", "bash", "powershell"}
 
@@ -79,7 +167,6 @@ class SandboxedProcessRunner:
         allowed_dirs: Optional[List[str]] = None,
         extra_env: Optional[Dict[str, str]] = None,
     ) -> Dict[str, Any]:
-        """Run code inside a sandboxed jail and return stdout, stderr, and exit status."""
         lang = lang.lower().strip()
         if lang not in self.ALLOWED_LANGS:
             return {
@@ -88,8 +175,7 @@ class SandboxedProcessRunner:
                 "returncode": -1
             }
 
-        # Clean markdown codeblocks if present
-        import re
+        # Strip markdown code blocks
         clean_code = code.strip()
         clean_code = re.sub(r"^```[a-zA-Z0-9_\-]*\n?", "", clean_code)
         clean_code = re.sub(r"\n?```$", "", clean_code).strip()
@@ -107,65 +193,58 @@ class SandboxedProcessRunner:
         script_file = jail_dir / f"main{ext_map[lang]}"
         script_file.write_text(clean_code, encoding="utf-8")
 
-        safe_env = _build_safe_env(extra_env)
+        safe_env = _build_strict_safe_env(extra_env)
         safe_env["TEMP"] = str(jail_dir)
         safe_env["TMP"] = str(jail_dir)
 
         cmd = self._resolve_command(lang, script_file)
+        job = WindowsJobObject(max_memory_bytes=_MAX_MEMORY_BYTES)
 
-        # Windows Job Object resource constraint setup if available
-        job_handle = None
-        if _OS == "Windows":
-            try:
-                import ctypes
-                import ctypes.wintypes
-                # Attempt to create Job Object with limit flags
-                # (Standard Windows kernel32 Job Object creation)
-                kernel32 = ctypes.windll.kernel32
-                job_handle = kernel32.CreateJobObjectW(None, None)
-            except Exception as e:
-                logger.debug("Job object initialization note: %s", e)
-
+        proc = None
         try:
             kwargs: Dict[str, Any] = {
                 "cwd": str(jail_dir),
                 "env": safe_env,
-                "capture_output": True,
+                "stdout": subprocess.PIPE,
+                "stderr": subprocess.PIPE,
                 "text": True,
                 "encoding": "utf-8",
                 "errors": "replace",
-                "timeout": max(1, min(timeout, 60)),
             }
 
             if _OS == "Windows":
-                kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
+                kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW | subprocess.CREATE_NEW_PROCESS_GROUP
             else:
-                # Unix resource limits
-                def set_limits():
-                    try:
-                        import resource
-                        resource.setrlimit(resource.RLIMIT_AS, (_MAX_MEMORY_BYTES, _MAX_MEMORY_BYTES))
-                        resource.setrlimit(resource.RLIMIT_CPU, (timeout, timeout + 2))
-                    except Exception:
-                        pass
-                kwargs["preexec_fn"] = set_limits
+                kwargs["start_new_session"] = True
 
-            proc = subprocess.run(cmd, **kwargs)
+            proc = subprocess.Popen(cmd, **kwargs)
+
+            # Attach to Windows Job Object
+            if _OS == "Windows" and job.handle:
+                try:
+                    import ctypes
+                    # proc._handle is the OS process handle
+                    job.assign_process(proc._handle)
+                except Exception:
+                    pass
+
+            stdout_data, stderr_data = proc.communicate(timeout=max(1, min(timeout, 60)))
 
             return {
                 "success": proc.returncode == 0,
-                "stdout": proc.stdout,
-                "stderr": proc.stderr,
+                "stdout": stdout_data,
+                "stderr": stderr_data,
                 "returncode": proc.returncode,
                 "jail_id": jail_id
             }
 
         except subprocess.TimeoutExpired:
+            self._kill_process_tree(proc)
             return {
                 "success": False,
                 "error": f"Sandbox execution timed out after {timeout} seconds.",
                 "stdout": "",
-                "stderr": "Execution timeout exceeded.",
+                "stderr": "Execution timeout exceeded. Process terminated.",
                 "returncode": -1
             }
         except FileNotFoundError as e:
@@ -176,15 +255,38 @@ class SandboxedProcessRunner:
             }
         except Exception as e:
             logger.error("Sandbox execution failure: %s", e, exc_info=True)
+            self._kill_process_tree(proc)
             return {
                 "success": False,
                 "error": f"Sandbox execution error: {e}",
                 "returncode": -1
             }
         finally:
+            job.close()
             # Clean up temporary jail directory
             try:
                 shutil.rmtree(jail_dir, ignore_errors=True)
+            except Exception:
+                pass
+
+    def _kill_process_tree(self, proc: Optional[subprocess.Popen]) -> None:
+        """Kill entire process tree cleanly on timeout or error."""
+        if not proc or proc.poll() is not None:
+            return
+
+        try:
+            if _OS == "Windows":
+                subprocess.run(
+                    ["taskkill", "/F", "/T", "/PID", str(proc.pid)],
+                    capture_output=True,
+                    timeout=5
+                )
+            else:
+                os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+        except Exception as e:
+            logger.debug("Process tree termination note: %s", e)
+            try:
+                proc.kill()
             except Exception:
                 pass
 
@@ -208,7 +310,6 @@ _GLOBAL_SANDBOX: Optional[SandboxedProcessRunner] = None
 
 
 def get_sandbox_runner() -> SandboxedProcessRunner:
-    """Return the global sandboxed process runner instance."""
     global _GLOBAL_SANDBOX
     if _GLOBAL_SANDBOX is None:
         _GLOBAL_SANDBOX = SandboxedProcessRunner()

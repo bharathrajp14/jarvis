@@ -21,7 +21,7 @@ logger = logging.getLogger("JARVIS.ComputerOperator")
 
 try:
     import pyautogui
-    # Enforce PyAutoGUI Fail-Safe security: moving mouse to corner aborts automation
+    # Enforce PyAutoGUI Fail-Safe security: moving mouse to corner immediately aborts automation
     pyautogui.FAILSAFE = True
     _PYAUTOGUI_AVAILABLE = True
 except ImportError:
@@ -35,7 +35,9 @@ except ImportError:
 
 
 class ComputerOperator:
-    """Master Computer Operator automating mouse, keyboard, clipboard, and window focus."""
+    """Master Computer Operator automating mouse, keyboard, clipboard, and window focus.
+    Guarantees strict adherence to human failsafe mechanisms.
+    """
 
     def __init__(self):
         self.runtime = get_runtime()
@@ -52,14 +54,14 @@ class ComputerOperator:
         # 1. Enforcement of Security Permission Check
         target_perm = f"computer.{action.action_type.value}"
         if not check_permission(target_perm, {"action": action.action_type.value}):
-            logger.warning(f"❌ Permission denied for action: {action.action_type.value}")
+            logger.warning("❌ Permission denied for action: %s", action.action_type.value)
             return ActionResult(
                 action_id=action.action_id,
                 success=False,
                 verification_message=f"Permission denied: {target_perm}",
             )
 
-        logger.info(f"🖱️ ComputerOperator: Executing [{action.action_type.value}] - {action.description}")
+        logger.info("🖱️ ComputerOperator: Executing [%s] - %s", action.action_type.value, action.description)
 
         try:
             # Low-level OS execution
@@ -146,15 +148,19 @@ class ComputerOperator:
 
         except Exception as ex:
             if "FailSafeException" in type(ex).__name__:
-                logger.warning(f"⚠️ PyAutoGUI FailSafe triggered during action {action.action_type.value}, moving mouse to screen center.")
-                try:
-                    if _PYAUTOGUI_AVAILABLE:
-                        w, h = pyautogui.size() if hasattr(pyautogui, "size") else (1920, 1080)
-                        pyautogui.moveTo(w // 2, h // 2)
-                except Exception:
-                    pass
-                return ActionResult(action_id=action.action_id, success=True, verification_message="Executed (Failsafe warning bypassed & cursor reset)")
-            logger.error(f"❌ ComputerOperator action failed: {ex}", exc_info=True)
+                logger.critical("🛑 PyAutoGUI FailSafe triggered during action %s. Automation immediately halted.", action.action_type.value)
+                self.event_bus.publish(AuditEvent(
+                    topic="audit.failsafe",
+                    action_type="failsafe_abort",
+                    target=action.action_type.value,
+                    user_confirmed=False
+                ))
+                return ActionResult(
+                    action_id=action.action_id,
+                    success=False,
+                    verification_message="Emergency FailSafe triggered by user: Desktop automation immediately halted."
+                )
+            logger.error("❌ ComputerOperator action failed: %s", ex, exc_info=True)
             return ActionResult(action_id=action.action_id, success=False, verification_message=str(ex))
 
     async def async_execute_action(self, action: ComputerAction) -> ActionResult:
@@ -192,7 +198,7 @@ class ComputerOperator:
                     user32.SetForegroundWindow(found_hwnd)
                     return True
             except Exception as e:
-                logger.debug(f"win32 window focus failed: {e}")
+                logger.debug("win32 window focus failed: %s", e)
 
         elif sys.platform == "darwin":
             try:
@@ -213,7 +219,6 @@ class ComputerOperator:
         return False
 
     def click(self, x: int, y: int, description: str = "") -> ActionResult:
-        """Convenience method to click screen coordinates."""
         action = ComputerAction(
             action_type=ActionType.MOUSE_CLICK,
             x=x,
@@ -223,7 +228,6 @@ class ComputerOperator:
         return self.execute_action(action)
 
     def double_click(self, x: int, y: int, description: str = "") -> ActionResult:
-        """Convenience method to double-click screen coordinates."""
         action = ComputerAction(
             action_type=ActionType.DOUBLE_CLICK,
             x=x,
@@ -233,7 +237,6 @@ class ComputerOperator:
         return self.execute_action(action)
 
     def right_click(self, x: int, y: int, description: str = "") -> ActionResult:
-        """Convenience method to right-click screen coordinates."""
         action = ComputerAction(
             action_type=ActionType.RIGHT_CLICK,
             x=x,
@@ -243,7 +246,6 @@ class ComputerOperator:
         return self.execute_action(action)
 
     def scroll(self, clicks: int, x: Optional[int] = None, y: Optional[int] = None, description: str = "") -> ActionResult:
-        """Convenience method to scroll mouse wheel."""
         action = ComputerAction(
             action_type=ActionType.MOUSE_SCROLL,
             x=x,
@@ -254,7 +256,6 @@ class ComputerOperator:
         return self.execute_action(action)
 
     def type_text(self, text: str, description: str = "") -> ActionResult:
-        """Convenience method to type text."""
         action = ComputerAction(
             action_type=ActionType.KEYBOARD_TYPE,
             text=text,
@@ -263,7 +264,6 @@ class ComputerOperator:
         return self.execute_action(action)
 
     def hotkey(self, keys: List[str], description: str = "") -> ActionResult:
-        """Convenience method to press a hotkey combination."""
         action = ComputerAction(
             action_type=ActionType.HOTKEY,
             keys=keys,

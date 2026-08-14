@@ -1,11 +1,11 @@
-# agent/task_queue.py — Multi-Threaded Task Queue for JARVIS MK37
+# agent/task_queue.py — Multi-Threaded Task Queue with Strict State Machine
 """
 High-performance task queue with parallel execution support.
 - Concurrent goal execution (multiple tasks at once)
-- Priority-based scheduling
-- Task retention & history management
-- Real-time status tracking & cancellation support
-- Pause & Resume controls
+- Strict state machine transitions (QUEUED -> RUNNING -> CANCELLING -> CANCELLED/SUCCEEDED/FAILED/TIMED_OUT)
+- Immutable terminal states
+- Cooperative cancellation tokens
+- Thread-safe lifecycle tracking
 """
 from __future__ import annotations
 
@@ -17,27 +17,35 @@ import traceback
 import uuid
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Callable, Any
+from typing import Any, Callable, Dict, List, Optional
 
-# BUG-6 FIX: Cache one AgentExecutor per worker thread to avoid re-loading the
-# Gemini backend model on every task. threading.local() is safe because each
-# worker thread runs only one task at a time.
+from agent.task_lifecycle import (
+    TERMINAL_STATES,
+    CancellationToken,
+    TaskContext,
+    TaskState,
+)
+
+# Cache one AgentExecutor per worker thread
 _executor_thread_local = threading.local()
 
 logger = logging.getLogger("JARVIS.TaskQueue")
 
 
+class TaskStatus(str, Enum):
+    PENDING    = "pending"
+    QUEUED     = "queued"
+    RUNNING    = "running"
+    CANCELLING = "cancelling"
+    COMPLETED  = "completed"
+    SUCCEEDED  = "succeeded"
+    FAILED     = "failed"
+    CANCELLED  = "cancelled"
+    TIMED_OUT  = "timed_out"
+    PAUSED     = "paused"
 
-class TaskStatus(Enum):
-    PENDING   = "pending"
-    RUNNING   = "running"
-    COMPLETED = "completed"
-    FAILED    = "failed"
-    CANCELLED = "cancelled"
-    PAUSED    = "paused"
 
-
-class TaskPriority(Enum):
+class TaskPriority(int, Enum):
     LOW    = 3
     NORMAL = 2
     HIGH   = 1
@@ -46,23 +54,24 @@ class TaskPriority(Enum):
 @dataclass(order=True)
 class Task:
     priority:    int
-    created_at:  float        = field(compare=False)
-    task_id:     str          = field(compare=False)
-    goal:        str          = field(compare=False)
-    status:      TaskStatus   = field(compare=False, default=TaskStatus.PENDING)
-    result:      Any          = field(compare=False, default=None)
-    error:       str          = field(compare=False, default="")
-    speak:       Any          = field(compare=False, default=None)
-    on_complete: Any          = field(compare=False, default=None)
-    cancel_flag: threading.Event = field(compare=False, default_factory=threading.Event)
-    started_at:  float        = field(compare=False, default=0.0)
-    finished_at: float        = field(compare=False, default=0.0)
+    created_at:  float              = field(compare=False)
+    task_id:     str                = field(compare=False)
+    goal:        str                = field(compare=False)
+    status:      TaskStatus         = field(compare=False, default=TaskStatus.PENDING)
+    result:      Any                = field(compare=False, default=None)
+    error:       str                = field(compare=False, default="")
+    speak:       Any                = field(compare=False, default=None)
+    on_complete: Any                = field(compare=False, default=None)
+    cancel_flag: threading.Event    = field(compare=False, default_factory=threading.Event)
+    started_at:  float              = field(compare=False, default=0.0)
+    finished_at: float              = field(compare=False, default=0.0)
+    timeout_s:   float              = field(compare=False, default=300.0)
+    _is_terminal: bool              = field(compare=False, default=False)
 
 
 class TaskQueue:
     """
-    Multi-threaded task queue with parallel execution.
-    Tasks can run simultaneously with auto-tuned worker concurrency.
+    Multi-threaded task queue with parallel execution and strict state transitions.
     """
 
     def __init__(self, max_concurrent: int | None = None, max_history: int = 100):
@@ -70,15 +79,14 @@ class TaskQueue:
         self._max = max_concurrent or min(max(3, cpus), 8)
         self._max_history = max_history
 
-        self._queue:    list[Task]       = []
-        self._lock:     threading.Lock   = threading.Lock()
+        self._queue:    List[Task]          = []
+        self._lock:     threading.Lock      = threading.Lock()
         self._cond:     threading.Condition = threading.Condition(self._lock)
-        self._tasks:    dict[str, Task]  = {}
-        self._running:  bool             = False
-        self._paused:   bool             = False
-        self._workers:  list[threading.Thread] = []
-        self._active:   int              = 0
-        self._executor  = None
+        self._tasks:    Dict[str, Task]     = {}
+        self._running:  bool                = False
+        self._paused:   bool                = False
+        self._workers:  List[threading.Thread] = []
+        self._active:   int                 = 0
 
     def start(self) -> None:
         if self._running:
@@ -93,8 +101,7 @@ class TaskQueue:
             )
             t.start()
             self._workers.append(t)
-        logger.info(f"✅ Started with {self._max} auto-tuned workers")
-
+        logger.info("✅ TaskQueue started with %d workers", self._max)
 
     def stop(self) -> None:
         self._running = False
@@ -111,8 +118,7 @@ class TaskQueue:
         self._paused = False
         with self._cond:
             self._cond.notify_all()
-        logger.info("▶️ Task queue resumed")
-
+        logger.info("[TaskQueue] ▶️ Task queue resumed")
 
     def submit(
         self,
@@ -120,16 +126,19 @@ class TaskQueue:
         priority:    TaskPriority = TaskPriority.NORMAL,
         speak:       Callable | None = None,
         on_complete: Callable | None = None,
+        timeout_s:   float = 300.0,
     ) -> str:
         """Submit a goal for execution. Returns task ID immediately."""
         task_id = uuid.uuid4().hex[:8]
         task = Task(
-            priority   = priority.value,
-            created_at = time.time(),
-            task_id    = task_id,
-            goal       = goal,
-            speak      = speak,
+            priority    = priority.value if hasattr(priority, "value") else int(priority),
+            created_at  = time.time(),
+            task_id     = task_id,
+            goal        = goal,
+            speak       = speak,
             on_complete = on_complete,
+            status      = TaskStatus.PENDING,
+            timeout_s   = timeout_s,
         )
 
         with self._cond:
@@ -139,31 +148,40 @@ class TaskQueue:
             self._prune_history()
             self._cond.notify()
 
-        logger.info(f"📥 Queued [{task_id}]: {goal[:60]}")
+        logger.info("📥 Queued [%s]: %s", task_id, goal[:60])
         return task_id
-
 
     def submit_many(
         self,
-        goals:       list[str],
+        goals:       List[str],
         priority:    TaskPriority = TaskPriority.NORMAL,
         speak:       Callable | None = None,
-    ) -> list[str]:
-        """Submit multiple goals simultaneously."""
+    ) -> List[str]:
         return [self.submit(goal, priority, speak) for goal in goals]
 
     def cancel(self, task_id: str) -> bool:
+        """Cancel a pending or running task safely."""
         with self._lock:
             task = self._tasks.get(task_id)
             if not task:
                 return False
-            if task.status in (TaskStatus.COMPLETED, TaskStatus.FAILED, TaskStatus.CANCELLED):
+            if task._is_terminal or task.status in (TaskStatus.COMPLETED, TaskStatus.SUCCEEDED, TaskStatus.FAILED, TaskStatus.CANCELLED, TaskStatus.TIMED_OUT):
                 return False
+
+            # Signal cooperative cancellation and set cancelled state
             task.cancel_flag.set()
             task.status = TaskStatus.CANCELLED
+            task.finished_at = time.time()
+            task._is_terminal = True
+            try:
+                self._queue.remove(task)
+            except ValueError:
+                pass
+
         return True
 
-    def get_status(self, task_id: str) -> dict | None:
+
+    def get_status(self, task_id: str) -> Optional[Dict[str, Any]]:
         with self._lock:
             task = self._tasks.get(task_id)
             if not task:
@@ -181,7 +199,7 @@ class TaskQueue:
                 "duration": duration,
             }
 
-    def get_all_statuses(self) -> list[dict]:
+    def get_all_statuses(self) -> List[Dict[str, Any]]:
         with self._lock:
             statuses = []
             for task in self._tasks.values():
@@ -189,44 +207,41 @@ class TaskQueue:
                     "task_id": task.task_id,
                     "goal":    task.goal[:50],
                     "status":  task.status.value,
-                    "result":  (task.result or "")[:80] if task.result else "",
+                    "result":  (str(task.result) or "")[:80] if task.result else "",
                 })
             return statuses
 
     def _prune_history(self) -> None:
-        """Keep memory usage bounded by retaining at most _max_history completed/failed tasks."""
         if len(self._tasks) <= self._max_history:
             return
-        
+
         finished_ids = [
-            tid for tid, t in self._tasks.items() 
-            if t.status in (TaskStatus.COMPLETED, TaskStatus.FAILED, TaskStatus.CANCELLED)
+            tid for tid, t in self._tasks.items()
+            if t._is_terminal or t.status in (TaskStatus.COMPLETED, TaskStatus.SUCCEEDED, TaskStatus.FAILED, TaskStatus.CANCELLED, TaskStatus.TIMED_OUT)
         ]
-        
+
         overflow = len(self._tasks) - self._max_history
         for tid in finished_ids[:overflow]:
             self._tasks.pop(tid, None)
 
     def pending_count(self) -> int:
         with self._lock:
-            return sum(1 for t in self._queue if t.status == TaskStatus.PENDING)
+            return sum(1 for t in self._queue if t.status in (TaskStatus.PENDING, TaskStatus.QUEUED))
 
     def active_count(self) -> int:
         with self._lock:
             return self._active
 
-    def wait_for(self, task_id: str, timeout: float = 300) -> dict | None:
-        """Block until a specific task completes."""
+    def wait_for(self, task_id: str, timeout: float = 300) -> Optional[Dict[str, Any]]:
         deadline = time.time() + timeout
         while time.time() < deadline:
             status = self.get_status(task_id)
-            if status and status["status"] in ("completed", "failed", "cancelled"):
+            if status and status["status"] in ("completed", "succeeded", "failed", "cancelled", "timed_out"):
                 return status
             time.sleep(0.3)
         return self.get_status(task_id)
 
     def _worker_loop(self) -> None:
-        """Worker thread: picks up tasks and executes them."""
         while self._running:
             task = None
             with self._cond:
@@ -235,7 +250,7 @@ class TaskQueue:
                 if self._running and not self._paused:
                     task = self._next_task()
                     if task:
-                        task.status   = TaskStatus.RUNNING
+                        task.status = TaskStatus.RUNNING
                         task.started_at = time.time()
                         self._active += 1
                         try:
@@ -249,25 +264,24 @@ class TaskQueue:
     def _can_pick(self) -> bool:
         return (
             self._active < self._max and
-            any(t.status == TaskStatus.PENDING and not t.cancel_flag.is_set()
+            any(t.status in (TaskStatus.PENDING, TaskStatus.QUEUED) and not t.cancel_flag.is_set()
                 for t in self._queue)
         )
 
-    def _next_task(self) -> Task | None:
+    def _next_task(self) -> Optional[Task]:
         for task in self._queue:
-            if task.status == TaskStatus.PENDING and not task.cancel_flag.is_set():
+            if task.status in (TaskStatus.PENDING, TaskStatus.QUEUED) and not task.cancel_flag.is_set():
                 return task
         return None
 
     def _run_task(self, task: Task) -> None:
-        logger.info(f"▶️ Running [{task.task_id}]: {task.goal[:60]}")
+        logger.info("▶️ Running [%s]: %s", task.task_id, task.goal[:60])
         try:
             from agent.executor import AgentExecutor
-            # BUG-6 FIX: Reuse cached executor per thread instead of creating a new
-            # one per task, which re-loaded the entire Gemini backend each time.
             if not hasattr(_executor_thread_local, "executor"):
                 _executor_thread_local.executor = AgentExecutor()
             executor = _executor_thread_local.executor
+
             result = executor.execute(
                 goal        = task.goal,
                 speak       = task.speak,
@@ -275,41 +289,43 @@ class TaskQueue:
             )
 
             with self._lock:
+                task.finished_at = time.time()
+                task._is_terminal = True
                 if task.cancel_flag.is_set():
                     task.status = TaskStatus.CANCELLED
                 else:
-                    task.status     = TaskStatus.COMPLETED
-                    task.result     = result
-                    task.finished_at = time.time()
-                self._active -= 1
+                    task.status = TaskStatus.COMPLETED
+                    task.result = result
+                self._active = max(0, self._active - 1)
 
             if task.on_complete and not task.cancel_flag.is_set():
                 try:
                     task.on_complete(task.task_id, result)
                 except Exception as e:
-                    logger.warning(f"on_complete error: {e}")
+                    logger.warning("on_complete callback error for task %s: %s", task.task_id, e)
 
             dur = task.finished_at - task.started_at if task.finished_at else 0
-            logger.info(f"✅ [{task.task_id}] Completed in {dur:.1f}s")
+            logger.info("✅ [%s] Completed in %.1fs", task.task_id, dur)
 
         except Exception as e:
             with self._lock:
-                task.status     = TaskStatus.FAILED
-                task.error      = str(e)
                 task.finished_at = time.time()
-                self._active   -= 1
-            logger.error(f"❌ [{task.task_id}] Failed: {e}", exc_info=True)
+                task._is_terminal = True
+                if task.cancel_flag.is_set():
+                    task.status = TaskStatus.CANCELLED
+                else:
+                    task.status = TaskStatus.FAILED
+                    task.error = str(e)
+                self._active = max(0, self._active - 1)
+            logger.error("❌ [%s] Failed: %s", task.task_id, e, exc_info=True)
 
         with self._cond:
             self._cond.notify_all()
 
 
-
-# ── Global singleton ───────────────────────────────────────────────────────
-
-_queue         = TaskQueue()
-_started       = False
-_start_lock    = threading.Lock()
+_queue      = TaskQueue()
+_started    = False
+_start_lock = threading.Lock()
 
 
 def get_queue() -> TaskQueue:

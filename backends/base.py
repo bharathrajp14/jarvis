@@ -1,13 +1,14 @@
 # backends/base.py — JARVIS MK37 Abstract Backend Interface
 """
 Abstract base class that ALL AI backends must implement.
-Provides a consistent interface for completion, streaming, and health checks.
+Provides a consistent interface for completion, streaming, health checks,
+and network privacy classification.
 """
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
-from typing import Generator, Any
 import time
+from abc import ABC, abstractmethod
+from typing import Any, Dict, Generator, Optional
 
 
 class BaseBackend(ABC):
@@ -16,7 +17,7 @@ class BaseBackend(ABC):
     @property
     @abstractmethod
     def name(self) -> str:
-        """Human-readable backend name (e.g., 'Gemini', 'Claude')."""
+        """Human-readable backend name (e.g., 'Gemini', 'Claude', 'Ollama')."""
         ...
 
     @property
@@ -24,6 +25,11 @@ class BaseBackend(ABC):
     def model_name(self) -> str:
         """Currently active model identifier."""
         ...
+
+    @property
+    def is_local(self) -> bool:
+        """Return True if the backend executes entirely on the local machine without cloud telemetry."""
+        return False
 
     @property
     def available(self) -> bool:
@@ -78,4 +84,4 @@ class BaseBackend(ABC):
             return False
 
     def __repr__(self) -> str:
-        return f"<{self.__class__.__name__} model={self.model_name!r}>"
+        return f"<{self.__class__.__name__} model={self.model_name!r} local={self.is_local}>"

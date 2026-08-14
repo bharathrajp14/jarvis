@@ -15,7 +15,8 @@ def test_fast_complexity():
     score, tier, breakdown = calculate_complexity_score(messages)
     assert tier == TaskComplexity.FAST
     assert score < 15.0
-    assert select_model_for_prompt(messages) in ("gemini-3.6-flash-low", "gemini-3-flash", "gemini-2.5-flash", "gemini-3.5-flash")
+    assert select_model_for_prompt(messages) in ("gemini-3.1-flash-lite", "gemini-3.6-flash-low", "gemini-3-flash", "gemini-2.5-flash", "gemini-3.5-flash")
+
     assert get_recommended_token_limit(TaskComplexity.FAST) >= 1024
 
     messages_status = [{"role": "user", "content": "status"}]

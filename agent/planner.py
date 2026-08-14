@@ -1,27 +1,23 @@
-# agent/planner.py — JARVIS MK37 Intelligent Task Planner
+# agent/planner.py — JARVIS Intelligent Task Planner
 """
-AI-powered task planner using Gemini.
-Creates structured plans with dependency tracking and parallel execution support.
+AI-powered task planner powered by SmartModelRouter and Proxy Brain.
+Creates structured plans with dependency tracking, deterministic schema validation,
+and parallel execution support.
 """
 from __future__ import annotations
 
-import logging
 import json
+import logging
 import re
-import sys
-from pathlib import Path
+from typing import Any, Dict, List, Optional
 
-logger = logging.getLogger(__name__)
+from gateway.models_registry import TaskCapability
+from router.smart_router import ModelRequest, get_smart_router
 
-
-def _get_gemini():
-    """Get GeminiBackend instance."""
-    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-    from backends.gemini import GeminiBackend
-    return GeminiBackend()
+logger = logging.getLogger("JARVIS.Planner")
 
 
-PLANNER_PROMPT = """You are JARVIS MK37's intelligent planning module. Break complex goals into smart execution steps.
+PLANNER_PROMPT = """You are JARVIS's intelligent planning module. Break complex goals into smart execution steps.
 
 AVAILABLE TOOLS:
 open_app          → launch any application (app_name)
@@ -48,16 +44,9 @@ PLANNING RULES:
 3. Use "depends_on": [step_number] for sequential requirements
 4. Mark "critical": true for steps that MUST succeed
 5. Keep parameters clean and complete
-6. For game tasks: ALWAYS use game_updater, NEVER browser_control
-7. For information lookup: web_search, for current page: browser_control
-8. Max 8 steps per plan
+6. Max 8 steps per plan
 
-PARALLEL EXECUTION EXAMPLES:
-- Searching multiple topics simultaneously
-- Opening multiple apps at once
-- Running independent operations
-
-Return ONLY valid JSON:
+Return ONLY valid JSON with this schema:
 {
   "goal": "description",
   "can_parallelize": true,
@@ -87,56 +76,104 @@ Use a DIFFERENT approach for the failed step.
 Return ONLY valid JSON with the same schema."""
 
 
+def _strip_json(text: str) -> str:
+    """Extract JSON object from model response."""
+    text = text.strip()
+    # Remove markdown code fence if present
+    match = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', text)
+    if match:
+        return match.group(1).strip()
+    return text
+
+
+def _validate_and_sanitize_plan(raw_plan: dict, goal: str) -> dict:
+    """Deterministic validation of plan structure and parameters."""
+    if not isinstance(raw_plan, dict):
+        raise ValueError("Plan must be a JSON object")
+
+    steps = raw_plan.get("steps")
+    if not isinstance(steps, list) or len(steps) == 0:
+        raise ValueError("Plan must contain a non-empty 'steps' list")
+
+    sanitized_steps = []
+    for idx, s in enumerate(steps, start=1):
+        if not isinstance(s, dict):
+            continue
+        tool_name = str(s.get("tool", "web_search")).strip()
+        desc = str(s.get("description", f"Step {idx}")).strip()
+        params = s.get("parameters", {})
+        if not isinstance(params, dict):
+            params = {}
+
+        # Safety transform: map invalid or non-existent tools to safe search
+        if tool_name == "generated_code":
+            tool_name = "web_search"
+            params = {"query": desc[:200]}
+
+        sanitized_steps.append({
+            "step": s.get("step", idx),
+            "tool": tool_name,
+            "description": desc,
+            "parameters": params,
+            "depends_on": s.get("depends_on", []) if isinstance(s.get("depends_on"), list) else [],
+            "parallel": bool(s.get("parallel", False)),
+            "critical": bool(s.get("critical", True)),
+        })
+
+    if not sanitized_steps:
+        return _fallback_plan(goal)
+
+    return {
+        "goal": str(raw_plan.get("goal", goal)),
+        "can_parallelize": bool(raw_plan.get("can_parallelize", False)),
+        "steps": sanitized_steps
+    }
+
+
 def create_plan(goal: str, context: str = "") -> dict:
-    """Create an intelligent execution plan for a goal."""
+    """Create an intelligent execution plan for a goal using SmartModelRouter."""
     try:
-        gemini = _get_gemini()
+        router = get_smart_router()
 
         user_input = f"Goal: {goal}"
         if context:
             user_input += f"\n\nAdditional context: {context}"
 
-        response = gemini.complete(
-            messages=[{"role": "user", "content": user_input}],
-            system=PLANNER_PROMPT
+        from gateway.execution import get_execution_service
+        from router.task_profile import TaskComplexity, TaskProfile
+
+        exec_service = get_execution_service()
+        profile = TaskProfile(
+            task_type="planning",
+            complexity=TaskComplexity.HIGH if len(goal) > 100 else TaskComplexity.MEDIUM,
+            requires_structured_output=True,
+            requires_reasoning=True
         )
 
-        text = _strip_json(response)
-        plan = json.loads(text)
+        resp = exec_service.execute(
+            messages=[{"role": "user", "content": user_input}],
+            system=PLANNER_PROMPT,
+            json_mode=True,
+            task_profile=profile
+        )
+        clean_text = _strip_json(resp.text)
+        raw_plan = json.loads(clean_text)
 
-        if "steps" not in plan or not isinstance(plan["steps"], list):
-            raise ValueError("Invalid plan structure")
+        plan = _validate_and_sanitize_plan(raw_plan, goal)
 
-        # Validate and clean steps
-        for step in plan["steps"]:
-            step.setdefault("depends_on", [])
-            step.setdefault("parallel", False)
-            step.setdefault("critical", True)
-            # Safety: never use generated_code
-            if step.get("tool") == "generated_code":
-                step["tool"] = "web_search"
-                step["parameters"] = {"query": step.get("description", goal)[:200]}
-
-        logger.info(f"[Planner] ✅ Plan: {len(plan['steps'])} steps (parallel={plan.get('can_parallelize', False)})")
-        for s in plan["steps"]:
-            par = " [PARALLEL]" if s.get("parallel") else ""
-            dep = f" [depends: {s['depends_on']}]" if s.get("depends_on") else ""
-            logger.info(f"  Step {s['step']}: [{s['tool']}] {s['description']}{par}{dep}")
-
+        logger.info("[Planner] Generated plan: %d steps (parallel=%s)", len(plan["steps"]), plan.get("can_parallelize", False))
         return plan
 
-    except json.JSONDecodeError as e:
-        logger.warning(f"[Planner] JSON parse failed: {e} — using fallback")
+    except Exception as exc:
+        logger.warning("[Planner] Planning notice (%s) — using resilient fallback plan", exc)
         return _fallback_plan(goal)
-    except Exception as e:
-        logger.warning(f"[Planner] Planning failed: {e} — using fallback")
-        return _fallback_plan(goal)
+
 
 
 def replan(goal: str, completed_steps: list, failed_step: dict, error: str) -> dict:
     """Replan after a failure — try a different approach."""
     try:
-        gemini = _get_gemini()
+        router = get_smart_router()
 
         completed_summary = "\n".join(
             f"  - Step {s.get('step')}: [{s.get('tool')}] {s.get('description')} — DONE"
@@ -147,57 +184,65 @@ def replan(goal: str, completed_steps: list, failed_step: dict, error: str) -> d
             goal=goal,
             completed=completed_summary,
             failed_step=f"[{failed_step.get('tool')}] {failed_step.get('description')}",
-            error=error[:400]
+            error=str(error)[:400]
         )
 
-        response = gemini.complete(
+        from gateway.execution import get_execution_service
+        from router.task_profile import TaskComplexity, TaskProfile
+
+        exec_service = get_execution_service()
+        profile = TaskProfile(
+            task_type="planning",
+            complexity=TaskComplexity.HIGH,
+            requires_structured_output=True,
+            requires_reasoning=True
+        )
+
+        resp = exec_service.execute(
             messages=[{"role": "user", "content": prompt}],
-            system=PLANNER_PROMPT
+            system=PLANNER_PROMPT,
+            json_mode=True,
+            task_profile=profile
         )
+        clean_text = _strip_json(resp.text)
+        raw_plan = json.loads(clean_text)
 
-        text = _strip_json(response)
-        plan = json.loads(text)
-
-        for step in plan.get("steps", []):
-            step.setdefault("depends_on", [])
-            step.setdefault("parallel", False)
-            step.setdefault("critical", False)
-            if step.get("tool") == "generated_code":
-                step["tool"] = "web_search"
-                step["parameters"] = {"query": step.get("description", goal)[:200]}
-
-        logger.info(f"[Planner] 🔄 Replan: {len(plan.get('steps', []))} steps")
-        return plan
-
-    except Exception as e:
-        logger.warning(f"[Planner] Replan failed: {e}")
-        return _fallback_plan(f"Alternative approach for: {goal}")
+        return _validate_and_sanitize_plan(raw_plan, goal)
 
 
-def _strip_json(text: str) -> str:
-    """Strip markdown fences and extract JSON."""
-    text = text.strip()
-    text = re.sub(r"```(?:json)?", "", text).strip().rstrip("`").strip()
-    # Find JSON object
-    start = text.find("{")
-    end   = text.rfind("}") + 1
-    if start != -1 and end > start:
-        return text[start:end]
-    return text
+    except Exception as exc:
+        logger.warning("[Planner] Replanning notice (%s) — using fallback", exc)
+        return _fallback_plan(goal)
 
 
 def _fallback_plan(goal: str) -> dict:
-    """Safe fallback plan — single web search step."""
+    """Deterministic, resilient single/two-step fallback plan."""
+    goal_lower = goal.lower()
+    if any(k in goal_lower for k in ("search", "find", "who is", "what is", "lookup")):
+        tool = "web_search"
+        params = {"query": goal}
+    elif any(k in goal_lower for k in ("open", "launch", "start")):
+        tool = "open_app"
+        params = {"app_name": goal}
+    elif any(k in goal_lower for k in ("code", "python", "script", "program")):
+        tool = "code_helper"
+        params = {"action": "write", "description": goal}
+    else:
+        tool = "web_search"
+        params = {"query": goal}
+
     return {
         "goal": goal,
         "can_parallelize": False,
-        "steps": [{
-            "step": 1,
-            "tool": "web_search",
-            "description": f"Search for: {goal}",
-            "parameters": {"query": goal[:200]},
-            "depends_on": [],
-            "parallel": False,
-            "critical": True,
-        }]
+        "steps": [
+            {
+                "step": 1,
+                "tool": tool,
+                "description": f"Execute: {goal}",
+                "parameters": params,
+                "depends_on": [],
+                "parallel": False,
+                "critical": True
+            }
+        ]
     }

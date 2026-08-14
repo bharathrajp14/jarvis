@@ -4,9 +4,9 @@ Enforces deterministic 6-tuple policy evaluation:
 (User, Device, Application, Resource, Action, Risk) -> ActionDecision
 
 Preserves historical top-level permissions interface for backwards compatibility:
-- ALLOW_ALL permits every tool except explicit deny-list entries.
+- ALLOW_ALL permits tools except explicit deny-list entries.
 - CONFIRM_DESTRUCTIVE prompts for confirmation on destructive tools.
-- CONFIRM_ALL only permits tools in ALWAYS_ALLOWED.
+- CONFIRM_ALL only permits safe read-only tools in ALWAYS_ALLOWED.
 - DENY_ALL blocks everything except explicit allow-list entries.
 """
 from __future__ import annotations
@@ -17,86 +17,81 @@ import os
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, FrozenSet, Optional, Union
+from typing import Any, Dict, FrozenSet, Optional, Set, Union
+
+from security.capabilities import Capability, RiskLevel as CapRiskLevel
+from security.path_policy import (
+    CRITICAL_RESOURCE_DENYLIST as SEC_CRITICAL_DENYLIST,
+    PathTier as SecPathTier,
+    get_path_policy,
+)
+from security.policy_engine import (
+    ActionDecision as SecActionDecision,
+    PermissionMode as SecPermissionMode,
+    PolicyContext as SecPolicyContext,
+    PolicyEngine,
+    get_policy_engine,
+)
 
 logger = logging.getLogger("JARVIS.Permissions")
 
 
 class PermissionMode(str, Enum):
-    ALLOW_ALL = "allow_all"
+    ALLOW_ALL           = "allow_all"
     CONFIRM_DESTRUCTIVE = "confirm_destructive"
-    CONFIRM_ALL = "confirm_all"
-    DENY_ALL = "deny_all"
+    CONFIRM_ALL         = "confirm_all"
+    DENY_ALL            = "deny_all"
 
 
 class ActionDecision(str, Enum):
-    ALLOW = "allow"
-    DENY = "deny"
-    CONFIRM = "confirm"
-    ALLOW_FOR_SESSION = "allow_for_session"
-    ALLOW_FOR_DEVICE = "allow_for_device"
+    ALLOW                 = "allow"
+    DENY                  = "deny"
+    CONFIRM               = "confirm"
+    ALLOW_FOR_SESSION     = "allow_for_session"
+    ALLOW_FOR_DEVICE      = "allow_for_device"
     ALLOW_FOR_APPLICATION = "allow_for_application"
 
 
 class RiskLevel(str, Enum):
-    LOW = "low"
-    MEDIUM = "medium"
-    HIGH = "high"
+    LOW      = "low"
+    MEDIUM   = "medium"
+    HIGH     = "high"
     CRITICAL = "critical"
 
 
 # Tools that require confirmation under CONFIRM_DESTRUCTIVE mode
-DESTRUCTIVE_TOOLS: FrozenSet[str] = frozenset(
-    {
-        "file_delete",
-        "file_write",
-        "run_code",
-        "scratchpad_eval",
-        "computer_settings",
-        "system_cleanup",
-        "system_optimizer",
-        "process_kill",
-        "run_automation_workflow",
-        "execute_system_automation",
-        "game_updater",
-        "mobile_send_message",
-        "mobile_delete_files",
-    }
-)
+DESTRUCTIVE_TOOLS: FrozenSet[str] = frozenset({
+    "file_delete",
+    "file_write",
+    "run_code",
+    "scratchpad_eval",
+    "computer_settings",
+    "system_cleanup",
+    "system_optimizer",
+    "process_kill",
+    "run_automation_workflow",
+    "execute_system_automation",
+    "game_updater",
+    "mobile_send_message",
+    "mobile_delete_files",
+})
 
 
-ALWAYS_ALLOWED: FrozenSet[str] = frozenset(
-    {
-        "help",
-        "status",
-        "memory_list",
-        "memory_search",
-        "file_read",
-        "fetch_page",
-        "fetch_raw",
-        "web_search",
-        "open_app",
-        "browser_control",
-        "keyboard_type",
-        "keyboard_hotkey",
-        "keyboard_press",
-        "cursor_move",
-        "cursor_click",
-        "mouse_scroll",
-        "focus_window",
-        "screen_find",
-        "screen_click",
-        "smart_click",
-    }
-)
+# Strictly safe read-only informative tools
+ALWAYS_ALLOWED: FrozenSet[str] = frozenset({
+    "help",
+    "status",
+    "memory_list",
+    "memory_search",
+    "file_read",
+    "fetch_page",
+    "fetch_raw",
+    "web_search",
+})
 
 
 # Explicit permanent deny list for critical system resources
-CRITICAL_RESOURCE_DENYLIST: FrozenSet[str] = frozenset({
-    "system32", "winsxs", "registry", "sam", "security",
-    "login data", ".ssh", ".gnupg", "id_rsa", "id_ed25519",
-    "wallet.dat", ".pfx", "shadow", "/etc/passwd"
-})
+CRITICAL_RESOURCE_DENYLIST: FrozenSet[str] = SEC_CRITICAL_DENYLIST
 
 
 def _normalize_mode(value: str | None) -> PermissionMode:
@@ -137,77 +132,68 @@ class PolicyContext:
 
 @dataclass(slots=True)
 class PermissionPolicy:
+    """Unified backward-compatible permission policy backed by PolicyEngine."""
     mode: PermissionMode = PermissionMode.CONFIRM_DESTRUCTIVE
     deny_names: FrozenSet[str] = field(default_factory=frozenset)
     allow_names: FrozenSet[str] = field(default_factory=frozenset)
     session_allowed_actions: set[str] = field(default_factory=set)
 
     def check(self, tool_name: str) -> bool:
-        name = (tool_name or "").strip()
-        if not name:
-            return False
-        if name in self.deny_names:
-            return False
-        if name in self.session_allowed_actions:
-            return True
-        if self.mode == PermissionMode.ALLOW_ALL:
-            return True
-        if self.mode == PermissionMode.CONFIRM_DESTRUCTIVE:
-            # Allow everything except destructive tools (unless explicitly allowed)
-            if name in DESTRUCTIVE_TOOLS and name not in self.allow_names:
+        """Check if a tool is permitted under active policy. Fail CLOSED on error."""
+        try:
+            name = (tool_name or "").strip()
+            if not name:
                 return False
-            return True
-        if self.mode == PermissionMode.CONFIRM_ALL:
-            return name in ALWAYS_ALLOWED or name in self.allow_names
-        if self.mode == PermissionMode.DENY_ALL:
-            return name in self.allow_names
-        return False
+            if name in self.deny_names:
+                return False
+            if name in self.session_allowed_actions:
+                return True
+            if self.mode == PermissionMode.ALLOW_ALL:
+                return True
+            if self.mode == PermissionMode.CONFIRM_DESTRUCTIVE:
+                if name in DESTRUCTIVE_TOOLS and name not in self.allow_names:
+                    return False
+                return True
+            if self.mode == PermissionMode.CONFIRM_ALL:
+                return name in ALWAYS_ALLOWED or name in self.allow_names
+            if self.mode == PermissionMode.DENY_ALL:
+                return name in self.allow_names
+            return False
+        except Exception as e:
+            logger.error("Permission check failed closed (DENY): %s", e)
+            return False
 
     def evaluate(self, ctx: PolicyContext) -> ActionDecision:
-        """Deterministic 6-tuple evaluation engine."""
-        action = (ctx.action or "").strip()
-        resource_lower = (ctx.resource or "").lower().replace("\\", "/")
+        """Deterministic 6-tuple evaluation engine. Fail CLOSED on error."""
+        try:
+            sec_ctx = SecPolicyContext(
+                user=ctx.user,
+                device=ctx.device,
+                application=ctx.application,
+                resource=ctx.resource,
+                action=ctx.action,
+                risk=CapRiskLevel(ctx.risk.value) if hasattr(ctx.risk, "value") else CapRiskLevel.LOW,
+                metadata=ctx.metadata,
+            )
+            # Forward session grants
+            engine = get_policy_engine()
+            for action in self.session_allowed_actions:
+                engine.grant_session_action(action, session_id="default_session")
 
-        # 1. Check critical resource denylist
-        if any(bad in resource_lower for bad in CRITICAL_RESOURCE_DENYLIST):
-            logger.warning("DENY: Resource '%s' matches critical security denylist.", ctx.resource)
+            engine.mode = SecPermissionMode(self.mode.value)
+            engine.deny_names = self.deny_names
+            engine.allow_names = self.allow_names
+
+            decision = engine.evaluate(sec_ctx)
+            return ActionDecision(decision.value)
+        except Exception as exc:
+            logger.error("Policy evaluation failed closed (DENY): %s", exc)
             return ActionDecision.DENY
-
-        # 2. Check explicit action denylist
-        if action in self.deny_names:
-            return ActionDecision.DENY
-
-        # 3. Check session grant
-        if action in self.session_allowed_actions:
-            return ActionDecision.ALLOW_FOR_SESSION
-
-        # 4. Evaluate based on Risk Level & Mode
-        if ctx.risk == RiskLevel.CRITICAL:
-            return ActionDecision.CONFIRM
-
-        if self.mode == PermissionMode.DENY_ALL:
-            return ActionDecision.ALLOW if action in self.allow_names else ActionDecision.DENY
-
-        if self.mode == PermissionMode.ALLOW_ALL:
-            return ActionDecision.ALLOW
-
-        if self.mode == PermissionMode.CONFIRM_ALL:
-            if action in ALWAYS_ALLOWED or action in self.allow_names:
-                return ActionDecision.ALLOW
-            return ActionDecision.CONFIRM
-
-        # Default CONFIRM_DESTRUCTIVE
-        if action in DESTRUCTIVE_TOOLS and action not in self.allow_names:
-            return ActionDecision.CONFIRM
-
-        if ctx.risk == RiskLevel.HIGH:
-            return ActionDecision.CONFIRM
-
-        return ActionDecision.ALLOW
 
     def grant_session_action(self, action: str) -> None:
         """Allow an action for the lifetime of the active session."""
         self.session_allowed_actions.add(action)
+        get_policy_engine().grant_session_action(action)
 
 
 def _build_global_policy() -> PermissionPolicy:
@@ -239,17 +225,23 @@ PERMISSIONS = _build_global_policy()
 
 
 def check_permission(tool_name: str, args: dict | None = None) -> bool:
-    """Check if tool execution is permitted under global policy and path security policies."""
-    if not PERMISSIONS.check(tool_name):
-        return False
+    """Check if tool execution is permitted under global policy and path security policies.
+    Fails CLOSED on any exception or invalid configuration.
+    """
+    try:
+        if not PERMISSIONS.check(tool_name):
+            return False
 
-    if args and isinstance(args, dict):
-        for path_key in ("AbsolutePath", "TargetFile", "SearchPath", "file_path", "path"):
-            val = args.get(path_key)
-            if val and isinstance(val, (str, Path)):
-                if not PathPolicy.allow_cloud_context(val):
-                    return False
-    return True
+        if args and isinstance(args, dict):
+            for path_key in ("AbsolutePath", "TargetFile", "SearchPath", "file_path", "path", "target", "cwd"):
+                val = args.get(path_key)
+                if val and isinstance(val, (str, Path)):
+                    if not PathPolicy.allow_cloud_context(val):
+                        return False
+        return True
+    except Exception as exc:
+        logger.error("check_permission encountered exception — failing closed (DENY): %s", exc)
+        return False
 
 
 def evaluate_action_policy(
@@ -262,31 +254,31 @@ def evaluate_action_policy(
     args: Optional[Dict[str, Any]] = None
 ) -> ActionDecision:
     """Public helper to evaluate a full 6-tuple policy decision."""
-    ctx = PolicyContext(
-        user=user,
-        device=device,
-        application=application,
-        resource=resource,
-        action=action,
-        risk=risk,
-        metadata=args or {}
-    )
-    return PERMISSIONS.evaluate(ctx)
+    try:
+        ctx = PolicyContext(
+            user=user,
+            device=device,
+            application=application,
+            resource=resource,
+            action=action,
+            risk=risk,
+            metadata=args or {}
+        )
+        return PERMISSIONS.evaluate(ctx)
+    except Exception as exc:
+        logger.error("evaluate_action_policy failed closed (DENY): %s", exc)
+        return ActionDecision.DENY
 
 
 # ── Path Policy & Tiered File Access ────────────────────────────────────────
 
 class PathTier(Enum):
-    TIER_0_WORKSPACE = 0
-    TIER_1_USER_PROFILE = 1
+    TIER_0_WORKSPACE        = 0
+    TIER_1_USER_PROFILE     = 1
     TIER_2_CRITICAL_SECRETS = 2
 
 
-TIER_2_PATTERNS = frozenset({
-    "system32", "winsxs", "registry", "sam", "system", "security",
-    "login data", ".ssh", ".gnupg", "id_rsa", "id_ed25519", "wallet",
-    ".pem", ".key", ".pfx", "shadow", "passwd"
-})
+TIER_2_PATTERNS = CRITICAL_RESOURCE_DENYLIST
 
 
 class PathPolicy:
@@ -294,25 +286,21 @@ class PathPolicy:
 
     @classmethod
     def get_tier(cls, path_input: Union[str, Path]) -> PathTier:
-        p_str = str(path_input).lower().replace("\\", "/")
-
-        # Check Tier 2 Critical / Secrets
-        if any(pat in p_str for pat in TIER_2_PATTERNS) or p_str.endswith((".pem", ".key", ".pfx")):
+        sec_policy = get_path_policy()
+        sec_tier = sec_policy.get_tier(path_input)
+        if sec_tier == SecPathTier.TIER_2_CRITICAL_SECRETS:
             return PathTier.TIER_2_CRITICAL_SECRETS
-
-        # Check Tier 0 Workspace
-        workspace_root = str(Path(".").resolve()).lower().replace("\\", "/")
-        if p_str.startswith(workspace_root) or "br_workspace" in p_str or "documents/projects" in p_str:
+        elif sec_tier == SecPathTier.TIER_0_WORKSPACE:
             return PathTier.TIER_0_WORKSPACE
-
-        # Default to Tier 1 User Profile
         return PathTier.TIER_1_USER_PROFILE
 
     @classmethod
     def allow_cloud_context(cls, path_input: Union[str, Path]) -> bool:
         """Return True if path is safe to send to cloud LLMs (Tier 0 or Tier 1). Return False for Tier 2."""
-        tier = cls.get_tier(path_input)
-        return tier != PathTier.TIER_2_CRITICAL_SECRETS
+        try:
+            return get_path_policy().allow_cloud_context(path_input)
+        except Exception:
+            return False
 
 
 def cloud_context_exclusion_check(path_input: Union[str, Path]) -> bool:

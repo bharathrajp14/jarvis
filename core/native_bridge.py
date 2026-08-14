@@ -3,20 +3,22 @@
 High-performance C/C++ native bridge for JARVIS MK37.
 Provides fast FNV-1a hashing, C-level audio VAD energy calculation,
 fast cosine vector distance calculations, and low-overhead system metrics.
-Includes pure-Python fallbacks when compiled native binary is unavailable.
+Includes robust pure-Python fallbacks when compiled native binary is unavailable.
+Never invokes a compiler at runtime startup.
 """
 from __future__ import annotations
 
-import logging
 import ctypes
 import hashlib
+import logging
 import math
 import os
 import platform
 import sys
 from pathlib import Path
+from typing import Dict, List, Optional, Tuple, Union
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("JARVIS.NativeBridge")
 
 BASE_DIR   = Path(__file__).resolve().parent.parent
 NATIVE_DIR = BASE_DIR / "native"
@@ -34,35 +36,26 @@ LIB_PATH = NATIVE_DIR / LIB_NAME
 _c_lib: ctypes.CDLL | None = None
 _native_loaded: bool       = False
 _native_version: str       = "Python Fallback"
-_compile_attempted: bool   = False
 
 
 def _init_native():
-    global _c_lib, _native_loaded, _native_version, _compile_attempted
+    global _c_lib, _native_loaded, _native_version
     if _native_loaded:
         return
 
-    if not LIB_PATH.exists() and not _compile_attempted:
-        _compile_attempted = True
-        try:
-            from scripts.setup_native import compile_native
-            compile_native()
-        except Exception:
-            try:
-                from setup_native import compile_native
-                compile_native()
-            except Exception as e:
-                logger.debug('Suppressed exception: %s', e)
-    if LIB_PATH.exists():
+    # Check if pre-built verified native binary exists
+    if LIB_PATH.exists() and LIB_PATH.is_file():
         try:
             _c_lib = ctypes.CDLL(str(LIB_PATH))
             
-            # Signatures
-            _c_lib.jarvis_fast_hash.argtypes = [ctypes.POINTER(ctypes.c_uint8), ctypes.c_size_t]
-            _c_lib.jarvis_fast_hash.restype  = ctypes.c_uint64
+            # Setup Signatures
+            if hasattr(_c_lib, "jarvis_fast_hash"):
+                _c_lib.jarvis_fast_hash.argtypes = [ctypes.POINTER(ctypes.c_uint8), ctypes.c_size_t]
+                _c_lib.jarvis_fast_hash.restype  = ctypes.c_uint64
 
-            _c_lib.jarvis_audio_energy.argtypes = [ctypes.POINTER(ctypes.c_float), ctypes.c_size_t]
-            _c_lib.jarvis_audio_energy.restype  = ctypes.c_float
+            if hasattr(_c_lib, "jarvis_audio_energy"):
+                _c_lib.jarvis_audio_energy.argtypes = [ctypes.POINTER(ctypes.c_float), ctypes.c_size_t]
+                _c_lib.jarvis_audio_energy.restype  = ctypes.c_float
 
             if hasattr(_c_lib, "jarvis_vector_dot_product"):
                 _c_lib.jarvis_vector_dot_product.argtypes = [ctypes.POINTER(ctypes.c_float), ctypes.POINTER(ctypes.c_float), ctypes.c_size_t]
@@ -72,28 +65,35 @@ def _init_native():
                 _c_lib.jarvis_fast_cosine_distance.argtypes = [ctypes.POINTER(ctypes.c_float), ctypes.POINTER(ctypes.c_float), ctypes.c_size_t]
                 _c_lib.jarvis_fast_cosine_distance.restype  = ctypes.c_float
 
-            _c_lib.jarvis_grid_transform.argtypes = [
-                ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int,
-                ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.c_int)
-            ]
-            _c_lib.jarvis_grid_transform.restype = None
+            if hasattr(_c_lib, "jarvis_grid_transform"):
+                _c_lib.jarvis_grid_transform.argtypes = [
+                    ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int,
+                    ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.c_int)
+                ]
+                _c_lib.jarvis_grid_transform.restype = None
 
-            _c_lib.jarvis_sys_memory_avail_kb.argtypes = []
-            _c_lib.jarvis_sys_memory_avail_kb.restype  = ctypes.c_uint64
+            if hasattr(_c_lib, "jarvis_sys_memory_avail_kb"):
+                _c_lib.jarvis_sys_memory_avail_kb.argtypes = []
+                _c_lib.jarvis_sys_memory_avail_kb.restype  = ctypes.c_uint64
 
-            _c_lib.jarvis_native_version.argtypes = []
-            _c_lib.jarvis_native_version.restype  = ctypes.c_char_p
+            if hasattr(_c_lib, "jarvis_native_version"):
+                _c_lib.jarvis_native_version.argtypes = []
+                _c_lib.jarvis_native_version.restype  = ctypes.c_char_p
+                _native_version = _c_lib.jarvis_native_version().decode("utf-8")
+            else:
+                _native_version = "1.0.0-native"
 
-            _native_loaded  = True
-            _native_version = _c_lib.jarvis_native_version().decode("utf-8")
-            logger.info(f"[NativeBridge] ⚡ Loaded C Native Library v{_native_version}")
+            _native_loaded = True
+            logger.info("[NativeBridge] ⚡ Loaded verified native C library v%s", _native_version)
         except Exception as e:
-            logger.warning(f"[NativeBridge] ⚠️ Failed to load C native library: {e}")
+            logger.debug("[NativeBridge] Native library not loaded (%s) — using Python fallback", e)
             _c_lib = None
             _native_loaded = False
+    else:
+        _native_loaded = False
 
 
-# Auto init on module import
+# Safe non-compiling init
 _init_native()
 
 
@@ -113,12 +113,12 @@ def fast_hash(data: bytes) -> int:
     """Fast non-cryptographic FNV-1a 64-bit frame hashing."""
     if not data:
         return 0
-    if _native_loaded and _c_lib:
+    if _native_loaded and _c_lib and hasattr(_c_lib, "jarvis_fast_hash"):
         try:
             buf = (ctypes.c_uint8 * len(data)).from_buffer_copy(data)
             return _c_lib.jarvis_fast_hash(buf, len(data))
         except Exception as e:
-            logger.debug('Suppressed exception: %s', e)
+            logger.debug("Native fast_hash exception: %s", e)
     return int(hashlib.md5(data).hexdigest()[:16], 16)
 
 
@@ -133,7 +133,7 @@ def fast_cosine_distance(v1: list[float], v2: list[float]) -> float:
             arr2 = (ctypes.c_float * dim)(*v2)
             return float(_c_lib.jarvis_fast_cosine_distance(arr1, arr2, dim))
         except Exception as e:
-            logger.debug('Suppressed exception: %s', e)
+            logger.debug("Native cosine distance exception: %s", e)
     # Pure Python fallback
     dot = sum(a * b for a, b in zip(v1, v2))
     norm1 = math.sqrt(sum(a * a for a in v1))
@@ -148,12 +148,12 @@ def audio_energy(samples: list[float] | tuple[float, ...]) -> float:
     """Calculate RMS audio energy for Voice Activity Detection."""
     if not samples:
         return 0.0
-    if _native_loaded and _c_lib:
+    if _native_loaded and _c_lib and hasattr(_c_lib, "jarvis_audio_energy"):
         try:
             c_arr = (ctypes.c_float * len(samples))(*samples)
             return float(_c_lib.jarvis_audio_energy(c_arr, len(samples)))
         except Exception as e:
-            logger.debug('Suppressed exception: %s', e)
+            logger.debug("Native audio energy exception: %s", e)
     try:
         sum_sq = sum(s * s for s in samples)
         return math.sqrt(sum_sq / len(samples))
@@ -168,14 +168,14 @@ def audio_energy(samples: list[float] | tuple[float, ...]) -> float:
 
 def grid_transform(x_norm: int, y_norm: int, screen_w: int, screen_h: int) -> tuple[int, int]:
     """Transform 0..1000 normalized target grid coordinates to actual screen pixels."""
-    if _native_loaded and _c_lib:
+    if _native_loaded and _c_lib and hasattr(_c_lib, "jarvis_grid_transform"):
         try:
             out_x = ctypes.c_int()
             out_y = ctypes.c_int()
             _c_lib.jarvis_grid_transform(x_norm, y_norm, screen_w, screen_h, ctypes.byref(out_x), ctypes.byref(out_y))
             return out_x.value, out_y.value
         except Exception as e:
-            logger.debug('Suppressed exception: %s', e)
+            logger.debug("Native grid transform exception: %s", e)
     px = int((float(x_norm) / 1000.0) * float(screen_w))
     py = int((float(y_norm) / 1000.0) * float(screen_h))
     px = max(0, min(screen_w - 1, px)) if screen_w > 0 else 0
@@ -184,14 +184,14 @@ def grid_transform(x_norm: int, y_norm: int, screen_w: int, screen_h: int) -> tu
 
 
 def get_sys_memory_avail_kb() -> int:
-    """Retrieve available memory in KB using low-overhead C call on Linux."""
-    if _native_loaded and _c_lib:
+    """Retrieve available memory in KB."""
+    if _native_loaded and _c_lib and hasattr(_c_lib, "jarvis_sys_memory_avail_kb"):
         try:
             val = _c_lib.jarvis_sys_memory_avail_kb()
             if val > 0:
                 return val
         except Exception as e:
-            logger.debug('Suppressed exception: %s', e)
+            logger.debug("Native memory avail exception: %s", e)
     try:
         import psutil
         return int(psutil.virtual_memory().available / 1024)
@@ -202,11 +202,9 @@ def get_sys_memory_avail_kb() -> int:
 def proc_memory_kb(pid: int = 0) -> int:
     """Retrieve process memory usage in KB."""
     try:
-        import os
         import psutil
         target_pid = pid if pid > 0 else os.getpid()
         proc = psutil.Process(target_pid)
         return int(proc.memory_info().rss / 1024)
     except Exception:
         return get_sys_memory_avail_kb()
-

@@ -5,51 +5,50 @@ Mounts all route routers with authentication, CORS, rate limiting, and lifespan 
 """
 from __future__ import annotations
 
-import os
-import re
-import sys
+import asyncio
 import hmac
 import json
 import logging
-import asyncio
-from pathlib import Path
+import os
+import re
+import sys
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Set
 
 import uvicorn
-from fastapi import FastAPI, Request, WebSocket, HTTPException
-from fastapi.responses import HTMLResponse, FileResponse, JSONResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi import FastAPI, HTTPException, Request, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from core.bootstrap import build_assistant_runtime
-from agent.task_queue import get_queue
 from agent.recovery_watchdog import get_recovery_watchdog
-from orchestrator import JarvisOrchestrator
-
-from api.routes.health import router as health_router
-from api.routes.tasks import router as tasks_router
+from agent.task_queue import get_queue
+from api.routes.auth import router as auth_router
+from api.routes.chat import router as chat_router
+from api.routes.connectors import router as connectors_router
 from api.routes.devices import router as devices_router
+from api.routes.health import router as health_router
+from api.routes.memory import router as memory_router
 from api.routes.routines import router as routines_router
 from api.routes.skills import router as skills_router
-from api.routes.connectors import router as connectors_router
-from api.routes.memory import router as memory_router
-from api.routes.chat import router as chat_router
+from api.routes.tasks import router as tasks_router
 from api.routes.voice import router as voice_router
 from api.routes.websocket import router as ws_router
-
 from api.state import (
+    ACTIVE_WEBSOCKETS,
+    API_FILE,
     BASE_DIR,
     CONFIG_DIR,
-    API_FILE,
-    WEB_DIR,
     SERVER_API_KEY,
-    ACTIVE_WEBSOCKETS,
-    get_ws_lock,
+    WEB_DIR,
     get_orchestrator,
+    get_ws_lock,
     set_orchestrator,
 )
+from core.bootstrap import build_assistant_runtime
+from orchestrator import JarvisOrchestrator
 
 logger = logging.getLogger("JARVIS.API.Server")
 
@@ -177,14 +176,14 @@ def create_app() -> FastAPI:
     @app.middleware("http")
     async def verify_api_key(request: Request, call_next):
         if SERVER_API_KEY:
-            if request.url.path.startswith(("/api", "/v1")) and request.url.path not in ("/api/health", "/health"):
+            if request.url.path.startswith(("/api", "/v1")) and request.url.path not in ("/api/health", "/health", "/api/auth/ws-ticket"):
                 auth_header = request.headers.get("Authorization")
                 api_key_header = request.headers.get("X-API-Key")
                 token = None
                 if auth_header and auth_header.startswith("Bearer "):
-                    token = auth_header[7:]
+                    token = auth_header[7:].strip()
                 elif api_key_header:
-                    token = api_key_header
+                    token = api_key_header.strip()
                 if not token or not hmac.compare_digest(token, SERVER_API_KEY):
                     return JSONResponse(status_code=401, content={"detail": "Unauthorized: Invalid API Key"})
         return await call_next(request)
@@ -193,7 +192,14 @@ def create_app() -> FastAPI:
     @app.exception_handler(Exception)
     async def global_exception_handler(request: Request, exc: Exception):
         logger.exception("Unhandled server exception on %s %s: %s", request.method, request.url.path, exc)
-        return JSONResponse(status_code=500, content={"detail": "Internal Server Error", "error": str(exc)})
+        return JSONResponse(
+            status_code=500,
+            content={
+                "error_code": "INTERNAL_SERVER_ERROR",
+                "message": "An internal server error occurred while processing the request.",
+                "detail": str(exc)
+            }
+        )
 
     # 404 Exception Handler with Glassmorphic Web Fallback
     @app.exception_handler(StarletteHTTPException)
@@ -207,6 +213,7 @@ def create_app() -> FastAPI:
         return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
 
     # Mount Route Routers
+    app.include_router(auth_router)
     app.include_router(health_router)
     app.include_router(tasks_router)
     app.include_router(devices_router)
