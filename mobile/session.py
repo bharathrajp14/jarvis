@@ -10,7 +10,7 @@ import json
 import logging
 import time
 import uuid
-from typing import Any, Callable, Dict, Optional, Set
+from typing import Any, Callable, Dict, Optional, Set, List
 
 from mobile.protocol import MobileMessage, MobileMessageType, DeviceState, AccessibilityNode
 
@@ -73,17 +73,20 @@ class MobileDeviceSession:
 
 
 class MobileSessionManager:
-    """Manages pool of active mobile device sessions."""
+    """Manages pool of active mobile device sessions with keepalive heartbeat watchdog."""
 
     def __init__(self):
         self._sessions: Dict[str, MobileDeviceSession] = {}
         self._lock = asyncio.Lock()
+        self._watchdog_task: Optional[asyncio.Task] = None
 
     async def register_session(self, device_id: str, ws: Any) -> MobileDeviceSession:
         async with self._lock:
             session = MobileDeviceSession(device_id, ws)
             self._sessions[device_id] = session
             logger.info("Mobile session registered for device %s", device_id)
+            if self._watchdog_task is None or self._watchdog_task.done():
+                self._watchdog_task = asyncio.create_task(self._keepalive_loop())
             return session
 
     async def remove_session(self, device_id: str) -> None:
@@ -99,6 +102,35 @@ class MobileSessionManager:
 
     def list_active_devices(self) -> List[str]:
         return list(self._sessions.keys())
+
+    async def _keepalive_loop(self, interval: float = 15.0) -> None:
+        """Periodic background ping loop ensuring responsive mobile channels."""
+        while True:
+            await asyncio.sleep(interval)
+            async with self._lock:
+                if not self._sessions:
+                    break
+                now = time.time()
+                dead = []
+                for did, session in self._sessions.items():
+                    if (now - session.last_heartbeat) > 40.0:
+                        dead.append(did)
+                    else:
+                        try:
+                            msg = MobileMessage(
+                                msg_type=MobileMessageType.HEARTBEAT,
+                                msg_id=str(uuid.uuid4()),
+                                device_id=did,
+                                payload={},
+                                timestamp=now
+                            )
+                            asyncio.create_task(session.send_message(msg))
+                        except Exception:
+                            dead.append(did)
+
+                for did in dead:
+                    self._sessions.pop(did, None)
+                    logger.warning("Mobile device %s timed out. Session pruned.", did)
 
 
 _session_manager_instance: Optional[MobileSessionManager] = None

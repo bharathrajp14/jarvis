@@ -643,6 +643,20 @@ window.GRAPH = {
       "group": "captures",
       "path": "captures\\20260814_224932_prompt_packs_make_excellent_free.md",
       "excerpt": "# prompt packs make excellent free gifts...\n\nCaptured: 2026-08-14 22:49:32\n\nprompt packs make excellent free gifts\n"
+    },
+    {
+      "id": 92,
+      "label": "20260814 225711 Prompt Packs Make Excellent Free",
+      "group": "captures",
+      "path": "captures\\20260814_225711_prompt_packs_make_excellent_free.md",
+      "excerpt": "# prompt packs make excellent free gifts...\n\nCaptured: 2026-08-14 22:57:11\n\nprompt packs make excellent free gifts\n"
+    },
+    {
+      "id": 93,
+      "label": "20260814 230421 Prompt Packs Make Excellent Free",
+      "group": "captures",
+      "path": "captures\\20260814_230421_prompt_packs_make_excellent_free.md",
+      "excerpt": "# prompt packs make excellent free gifts...\n\nCaptured: 2026-08-14 23:04:21\n\nprompt packs make excellent free gifts\n"
     }
   ],
   "links": [

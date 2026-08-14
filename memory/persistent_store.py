@@ -215,8 +215,21 @@ def save_memory(entry: MemoryEntry, scope: str = "user") -> None:
     try:
         from memory.sqlite_lock import run_sqlite_write
         run_sqlite_write(_do_sqlite_write)
+        # Also sync to central canonical DB
+        from memory.canonical_db import get_canonical_db
+        with get_canonical_db().get_connection() as cdb:
+            cdb.execute(
+                """
+                INSERT OR REPLACE INTO persistent_memories (name, type, description, content, scope, tags, created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (entry.name, entry.type, entry.description, entry.content, scope, entry.conflict_group, entry.created, time.time())
+            )
+            cdb.commit()
     except Exception as e:
-        logger.debug('Suppressed exception: %s', e)
+        logger.debug('Suppressed exception in memory sync: %s', e)
+
+
 def delete_memory(name: str, scope: str = "user") -> None:
     """Remove the memory file matching name, delete from SQLite/Vector, and rebuild the index."""
     mem_dir = get_memory_dir(scope)
@@ -240,8 +253,13 @@ def delete_memory(name: str, scope: str = "user") -> None:
     try:
         from memory.sqlite_lock import run_sqlite_write
         run_sqlite_write(_do_sqlite_delete)
+        # Also delete from central canonical DB
+        from memory.canonical_db import get_canonical_db
+        with get_canonical_db().get_connection() as cdb:
+            cdb.execute("DELETE FROM persistent_memories WHERE name = ?", (name,))
+            cdb.commit()
     except Exception as e:
-        logger.debug('Suppressed exception: %s', e)
+        logger.debug('Suppressed exception in memory delete: %s', e)
 def load_entries(scope: str = "user") -> list[MemoryEntry]:
     """Scan all .md files (except MEMORY.md) in a scope and return entries."""
     mem_dir = get_memory_dir(scope)

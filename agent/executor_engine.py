@@ -1,4 +1,4 @@
-# agent/executor_engine.py — Multi-Worker Parallel Execution Engine for JARVIS MK37
+# agent/executor_engine.py — Multi-Worker Parallel Execution Engine for BR JARVIS
 from __future__ import annotations
 
 import asyncio
@@ -7,25 +7,28 @@ import logging
 import time
 from typing import Any, Callable, Dict, List, Optional
 from agent.types import ExecutionReport, GoalGraph, StepStatus, TaskStepNode
+from agent.task_state import get_task_state_manager, TaskStatus
 from core.runtime import get_runtime
 from events.bus import get_event_bus
 from events.types import TaskEvent
+from permissions import evaluate_action_policy, ActionDecision, RiskLevel
 
 logger = logging.getLogger("JARVIS.ExecutorEngine")
 
 
 class ParallelExecutionEngine:
-    """Multi-Worker Parallel Task Execution Engine with Human-in-the-Loop Safety Interlocks."""
+    """Multi-Worker Parallel Task Execution Engine with WAL Persistence & Safety Interlocks."""
 
     def __init__(self, max_workers: Optional[int] = None):
         self.runtime = get_runtime()
         self.event_bus = get_event_bus()
+        self.task_state_mgr = get_task_state_manager()
         self.max_workers = max_workers or self.runtime.config.system.max_workers
         self._cancelled = False
 
         # Register self in DI container
         self.runtime.container.register_instance(ParallelExecutionEngine, self)
-        logger.info(f"⚡ ParallelExecutionEngine initialized with {self.max_workers} parallel workers")
+        logger.info("⚡ ParallelExecutionEngine initialized with %d parallel workers", self.max_workers)
 
     def cancel_all(self) -> None:
         """Emergency stop: Cancel all active and queued goal executions."""
@@ -36,24 +39,67 @@ class ParallelExecutionEngine:
         self,
         step: TaskStepNode,
         tool_resolver_fn: Optional[Callable[[str, Dict[str, Any]], Any]] = None,
+        task_id: Optional[str] = None,
     ) -> TaskStepNode:
-        """Execute a single DAG task step with safety interlock and verification."""
+        """Execute a single DAG task step with safety interlock, WAL logging, and retry backoff."""
         if self._cancelled:
             step.status = StepStatus.CANCELLED
             return step
 
-        # Human-in-the-Loop Safety Interlock
-        if step.requires_approval and step.status != StepStatus.SUCCESS:
+        tid = task_id or "task_default"
+
+        # 1. Deterministic Security Policy Evaluation
+        risk_map = {
+            "low": RiskLevel.LOW,
+            "medium": RiskLevel.MEDIUM,
+            "high": RiskLevel.HIGH,
+            "critical": RiskLevel.CRITICAL
+        }
+        step_risk = risk_map.get(getattr(step.risk_level, "value", "low").lower(), RiskLevel.LOW)
+        policy_decision = evaluate_action_policy(
+            action=step.tool,
+            resource=str(step.parameters.get("path") or step.parameters.get("TargetFile") or ""),
+            risk=step_risk,
+            args=step.parameters
+        )
+
+        # 2. Human-in-the-Loop Approval Interlock
+        if (step.requires_approval or policy_decision == ActionDecision.CONFIRM) and step.status != StepStatus.SUCCESS:
             step.status = StepStatus.WAITING_FOR_APPROVAL
-            logger.warning(f"⚠️ Human Approval Interlock: Step #{step.step_id} [{step.description}] requires confirmation!")
+            logger.warning("⚠️ Human Approval Interlock: Step #%s [%s] requires confirmation!", step.step_id, step.description)
+
+            # Record approval gate in TaskStateManager
+            self.task_state_mgr.request_approval(
+                task_id=tid,
+                action_id=str(step.step_id),
+                description=step.description,
+                risk_level=step_risk.value,
+                details={"tool": step.tool, "parameters": step.parameters}
+            )
+
             self.event_bus.publish(TaskEvent(
                 topic="task.step.approval_required",
                 task_id=str(step.step_id),
                 goal=step.description,
                 status="WAITING_FOR_APPROVAL",
-                payload={"tool": step.tool, "risk_level": step.risk_level.value}
+                payload={"tool": step.tool, "risk_level": step_risk.value}
             ))
             return step
+
+        if policy_decision == ActionDecision.DENY:
+            step.status = StepStatus.FAILED
+            step.error = f"Policy Denied: Action '{step.tool}' blocked by security rules."
+            logger.error("❌ Step #%s Denied by Policy Engine", step.step_id)
+            return step
+
+        # 3. WAL Log: Step Start
+        self.task_state_mgr.record_step_wal(
+            task_id=tid,
+            step_index=step.step_id,
+            capability=step.tool,
+            parameters=step.parameters,
+            status="in_progress"
+        )
 
         step.status = StepStatus.IN_PROGRESS
         step.start_time = time.time()
@@ -65,45 +111,84 @@ class ParallelExecutionEngine:
             status="IN_PROGRESS"
         ))
 
-        try:
-            logger.info(f"▶ Executing Step #{step.step_id}: {step.description} (Tool: {step.tool})")
+        # 4. Step Execution Loop with Exponential Backoff Retries
+        max_retries = 2 if not step.critical else 1
+        attempt = 0
+        last_error = None
 
-            # Execute tool if resolver provided
-            if tool_resolver_fn:
-                if inspect.iscoroutinefunction(tool_resolver_fn):
-                    res = await tool_resolver_fn(step.tool, step.parameters)
+        while attempt <= max_retries:
+            try:
+                logger.info("▶ Executing Step #%s (Attempt %d): %s (Tool: %s)", step.step_id, attempt + 1, step.description, step.tool)
+
+                # Execute tool if resolver provided
+                if tool_resolver_fn:
+                    if inspect.iscoroutinefunction(tool_resolver_fn):
+                        res = await asyncio.wait_for(tool_resolver_fn(step.tool, step.parameters), timeout=60.0)
+                    else:
+                        res = await asyncio.to_thread(tool_resolver_fn, step.tool, step.parameters)
+                    step.result = res
                 else:
-                    res = tool_resolver_fn(step.tool, step.parameters)
-                step.result = res
-            else:
-                # Simulated verification execution
-                await asyncio.sleep(0.05)
-                step.result = {"status": "success", "executed_tool": step.tool}
+                    await asyncio.sleep(0.05)
+                    step.result = {"status": "success", "executed_tool": step.tool}
 
-            step.status = StepStatus.SUCCESS
-            step.end_time = time.time()
+                step.status = StepStatus.SUCCESS
+                step.end_time = time.time()
+                step_duration = step.end_time - (step.start_time or step.end_time)
 
-            self.event_bus.publish(TaskEvent(
-                topic="task.step.completed",
-                task_id=str(step.step_id),
-                goal=step.description,
-                status="SUCCESS",
-                payload={"result": str(step.result)}
-            ))
+                # WAL Log: Step Success
+                self.task_state_mgr.record_step_wal(
+                    task_id=tid,
+                    step_index=step.step_id,
+                    capability=step.tool,
+                    parameters=step.parameters,
+                    status="completed",
+                    result=step.result,
+                    duration=step_duration,
+                    verified=True
+                )
 
-        except Exception as e:
-            step.status = StepStatus.FAILED
-            step.error = str(e)
-            step.end_time = time.time()
-            logger.error(f"❌ Step #{step.step_id} Failed: {e}", exc_info=True)
+                self.event_bus.publish(TaskEvent(
+                    topic="task.step.completed",
+                    task_id=str(step.step_id),
+                    goal=step.description,
+                    status="SUCCESS",
+                    payload={"result": str(step.result)}
+                ))
+                return step
 
-            self.event_bus.publish(TaskEvent(
-                topic="task.step.failed",
-                task_id=str(step.step_id),
-                goal=step.description,
-                status="FAILED",
-                payload={"error": str(e)}
-            ))
+            except Exception as e:
+                attempt += 1
+                last_error = e
+                logger.warning("⚠️ Step #%s Attempt %d failed: %s", step.step_id, attempt, e)
+                if attempt <= max_retries:
+                    backoff = 0.5 * (2 ** (attempt - 1))
+                    await asyncio.sleep(backoff)
+
+        # Step Failure after all retries
+        step.status = StepStatus.FAILED
+        step.error = str(last_error)
+        step.end_time = time.time()
+        step_duration = step.end_time - (step.start_time or step.end_time)
+        logger.error("❌ Step #%s Failed Permanently: %s", step.step_id, last_error)
+
+        # WAL Log: Step Failure
+        self.task_state_mgr.record_step_wal(
+            task_id=tid,
+            step_index=step.step_id,
+            capability=step.tool,
+            parameters=step.parameters,
+            status="failed",
+            error=str(last_error),
+            duration=step_duration
+        )
+
+        self.event_bus.publish(TaskEvent(
+            topic="task.step.failed",
+            task_id=str(step.step_id),
+            goal=step.description,
+            status="FAILED",
+            payload={"error": str(last_error)}
+        ))
 
         return step
 
@@ -111,14 +196,16 @@ class ParallelExecutionEngine:
         self,
         graph: GoalGraph,
         tool_resolver_fn: Optional[Callable[[str, Dict[str, Any]], Any]] = None,
+        task_id: Optional[str] = None,
     ) -> ExecutionReport:
-        """Execute an entire GoalGraph DAG respecting step dependencies and parallelism."""
+        """Execute an entire GoalGraph DAG respecting step dependencies, WAL, and parallelism."""
         self._cancelled = False
         start_t = time.time()
         completed_count = 0
         total_steps = len(graph.steps)
+        tid = task_id or graph.goal_id or f"goal_{int(start_t)}"
 
-        logger.info(f"🚀 Executing GoalGraph [{graph.goal}] ({total_steps} steps)")
+        logger.info("🚀 Executing GoalGraph [%s] (%d steps, Task ID: %s)", graph.goal, total_steps, tid)
 
         # DAG resolution loop
         while completed_count < total_steps and not self._cancelled:
@@ -140,14 +227,14 @@ class ParallelExecutionEngine:
 
             # Execute ready steps (parallel workers up to max_workers)
             batch = ready_steps[:self.max_workers]
-            tasks = [self.execute_step(step, tool_resolver_fn) for step in batch]
+            tasks = [self.execute_step(step, tool_resolver_fn, task_id=tid) for step in batch]
             results = await asyncio.gather(*tasks)
 
             for step in results:
                 if step.status == StepStatus.SUCCESS:
                     completed_count += 1
                 elif step.status == StepStatus.FAILED and step.critical:
-                    logger.error(f"Critical Step #{step.step_id} failed. Halting graph execution.")
+                    logger.error("Critical Step #%s failed. Halting graph execution.", step.step_id)
                     break
 
         duration = time.time() - start_t
