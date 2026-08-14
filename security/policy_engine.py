@@ -240,3 +240,6 @@ def get_policy_engine() -> PolicyEngine:
     if _GLOBAL_POLICY_ENGINE is None:
         _GLOBAL_POLICY_ENGINE = PolicyEngine()
     return _GLOBAL_POLICY_ENGINE
+
+
+SecurityPolicyEngine = PolicyEngine

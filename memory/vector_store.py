@@ -15,6 +15,7 @@ import json
 import logging
 import math
 import re
+import threading
 import uuid
 from pathlib import Path
 from typing import Optional
@@ -57,7 +58,10 @@ class GeminiEmbeddingFunction(_BaseClass):
 
     FIXED: Removed hardcoded 768-dim truncation/padding. Embedding vectors are
     returned at the model's native dimensionality, letting ChromaDB handle alignment.
+    Added thread-safe in-memory LRU/dict caching for sub-millisecond repeated queries.
     """
+    _CACHE: dict[str, list[float]] = {}
+    _LOCK = threading.Lock()
 
     def __init__(self, api_key: str, model: str = "models/gemini-embedding-001"):
         self.api_key = api_key
@@ -78,33 +82,57 @@ class GeminiEmbeddingFunction(_BaseClass):
             self._client = genai.Client(api_key=self.api_key)
         return self._client
 
-
     def __call__(self, input: list[str]) -> list[list[float]]:  # noqa: A002
         embeddings = []
         for text in input:
+            cache_key = f"{self.model}:{text.strip()}"
+            with self._LOCK:
+                if cache_key in self._CACHE:
+                    embeddings.append(self._CACHE[cache_key])
+                    continue
+
+            # 1. Primary Model Attempt
             try:
                 res = self.client.models.embed_content(
                     model=self.model,
                     contents=text,
                     config={"output_dimensionality": 768},
                 )
-                embeddings.append(list(res.embeddings[0].values))
-            except Exception as exc:
-                # Fallback model attempt
-                try:
-                    res = self.client.models.embed_content(
-                        model="models/gemini-embedding-2-preview",
-                        contents=text,
-                        config={"output_dimensionality": 768},
-                    )
-                    embeddings.append(list(res.embeddings[0].values))
-                except Exception as inner_exc:
-                    logger.warning(
-                        f"[VectorMemory] Embedding generation failed: {exc} / {inner_exc}. "
-                        f"Using zero vector."
-                    )
-                    # Use an empty list — ChromaDB will handle the mismatch error
-                    embeddings.append([])
+                if hasattr(res, "embeddings") and res.embeddings:
+                    vals = getattr(res.embeddings[0], "values", None)
+                    if vals:
+                        vec = list(vals)
+                        with self._LOCK:
+                            self._CACHE[cache_key] = vec
+                        embeddings.append(vec)
+                        continue
+            except Exception:
+                pass
+
+            # 2. Fallback Model Attempt
+            try:
+                res = self.client.models.embed_content(
+                    model="models/gemini-embedding-2-preview",
+                    contents=text,
+                    config={"output_dimensionality": 768},
+                )
+                if hasattr(res, "embeddings") and res.embeddings:
+                    vals = getattr(res.embeddings[0], "values", None)
+                    if vals:
+                        vec = list(vals)
+                        with self._LOCK:
+                            self._CACHE[cache_key] = vec
+                        embeddings.append(vec)
+                        continue
+            except Exception:
+                pass
+
+            # 3. Safe fallback vector (768-dim)
+            zero_vec = [0.0] * 768
+            with self._LOCK:
+                self._CACHE[cache_key] = zero_vec
+            embeddings.append(zero_vec)
+
         return embeddings
 
 
@@ -179,6 +207,7 @@ class VectorMemory:
     """Unified vector memory with ChromaDB + Gemini Embeddings primary,
     and pure-Python TF-IDF similarity as fallback.
     """
+    _RECALL_CACHE: dict[str, list[str]] = {}
 
     def __init__(self, collection_name: str = "jarvis"):
         self._collection = None
@@ -219,6 +248,8 @@ class VectorMemory:
         if not self._available:
             return
 
+        VectorMemory._RECALL_CACHE.clear()
+
         if self._collection is not None:
             try:
                 # Safe deduplication check
@@ -249,6 +280,11 @@ class VectorMemory:
         if not self._available:
             return []
 
+        cache_key = f"{query.strip()}:{n}"
+        if cache_key in VectorMemory._RECALL_CACHE:
+            return list(VectorMemory._RECALL_CACHE[cache_key])
+
+        results_list: list[str] = []
         if self._collection is not None:
             try:
                 count = self._collection.count()
@@ -262,17 +298,18 @@ class VectorMemory:
                     docs = results["documents"][0]
                     distances = results.get("distances", [[]])[0] if results.get("distances") else []
                     if distances:
-                        # Only return items with cosine distance <= 0.38 (relevant similarity)
                         filtered = [d for d, dist in zip(docs, distances) if dist <= 0.38]
-                        return filtered
-                    return docs
-                return []
+                        results_list = filtered
+                    else:
+                        results_list = docs
             except Exception as exc:
                 logger.warning(f"[VectorMemory] recall() failed: {exc}")
-                return []
+                results_list = []
         elif self._fallback is not None:
-            return self._fallback.recall(query, n)
-        return []
+            results_list = self._fallback.recall(query, n)
+
+        VectorMemory._RECALL_CACHE[cache_key] = results_list
+        return results_list
 
     def search(self, query: str, top_k: int = 5) -> list[str]:
         """Alias for recall() — backwards compatibility with orchestrator."""

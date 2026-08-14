@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+import threading
 import time
 from pathlib import Path
 
@@ -20,6 +21,7 @@ class LessonStore:
         self.db_path = db_path
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self._conn: sqlite3.Connection | None = None
+        self._lock = threading.RLock()
         self._init_db()
 
     def _get_conn(self) -> sqlite3.Connection:
@@ -36,41 +38,52 @@ class LessonStore:
         return self._conn
 
     def _init_db(self):
-        conn = self._get_conn()
-        conn.execute(
-            """
-            CREATE TABLE IF NOT EXISTS lessons (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                topic TEXT NOT NULL,
-                correction TEXT NOT NULL,
-                source TEXT NOT NULL,
-                weight REAL DEFAULT 1.0,
-                created_at REAL NOT NULL,
-                last_retrieved_at REAL
+        with self._lock:
+            conn = self._get_conn()
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS lessons (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    topic TEXT NOT NULL,
+                    correction TEXT NOT NULL,
+                    source TEXT NOT NULL,
+                    weight REAL DEFAULT 1.0,
+                    created_at REAL NOT NULL,
+                    last_retrieved_at REAL
+                )
+                """
             )
-            """
-        )
-        conn.commit()
+            conn.commit()
 
     def add_lesson(
         self, topic: str, correction: str, source: str = "explicit", weight: float = 1.0
     ) -> int:
         """Add a correction lesson to the database."""
+        return self.store_lesson(topic, correction, source, weight)
+
+    def store_lesson(
+        self,
+        topic: str,
+        correction: str,
+        source: str = "user_correction",
+        weight: float = 1.0,
+    ) -> int:
+        """Store a new lesson learned from a user correction."""
         def _do_write():
-            conn = self._get_conn()
-            cur = conn.execute(
-                """
-                INSERT INTO lessons (topic, correction, source, weight, created_at)
-                VALUES (?, ?, ?, ?, ?)
-                """,
-                (topic, correction, source, weight, time.time()),
-            )
-            conn.commit()
-            return cur.lastrowid or 0
+            with self._lock:
+                conn = self._get_conn()
+                cur = conn.execute(
+                    """
+                    INSERT INTO lessons (topic, correction, source, weight, created_at)
+                    VALUES (?, ?, ?, ?, ?)
+                    """,
+                    (topic, correction, source, weight, time.time()),
+                )
+                conn.commit()
+                return cur.lastrowid or 0
 
         from memory.sqlite_lock import run_sqlite_write
         return run_sqlite_write(_do_write)
-
 
     def get_relevant_lessons(self, query: str, limit: int = 5) -> list[dict]:
         """Retrieve relevant lessons matching query keywords."""
@@ -78,26 +91,33 @@ class LessonStore:
         if not query_words:
             return self.get_latest_lessons(limit=limit)
 
-        conn = self._get_conn()
-        rows = conn.execute(
-            "SELECT * FROM lessons ORDER BY weight DESC, created_at DESC LIMIT 50"
-        ).fetchall()
+        with self._lock:
+            conn = self._get_conn()
+            rows = conn.execute(
+                "SELECT * FROM lessons ORDER BY weight DESC, created_at DESC LIMIT 50"
+            ).fetchall()
 
-        matched = []
-        for row in rows:
-            text = f"{row['topic']} {row['correction']}".lower()
-            score = sum(1 for w in query_words if w in text)
-            if score > 0 or not query_words:
-                item = dict(row)
-                matched.append((score, item))
+            matched = []
+            for row in rows:
+                try:
+                    topic_val = row["topic"] if "topic" in row.keys() else ""
+                    corr_val = row["correction"] if "correction" in row.keys() else ""
+                    text = f"{topic_val} {corr_val}".lower()
+                    score = sum(1 for w in query_words if w in text)
+                    if score > 0 or not query_words:
+                        item = dict(row)
+                        matched.append((score, item))
+                except Exception:
+                    continue
 
-        matched.sort(key=lambda x: x[0], reverse=True)
-        return [m[1] for m in matched[:limit]]
+            matched.sort(key=lambda x: x[0], reverse=True)
+            return [m[1] for m in matched[:limit]]
 
     def get_latest_lessons(self, limit: int = 5) -> list[dict]:
         """Get latest lessons sorted by timestamp."""
-        conn = self._get_conn()
-        rows = conn.execute(
-            "SELECT * FROM lessons ORDER BY created_at DESC LIMIT ?", (limit,)
-        ).fetchall()
-        return [dict(r) for r in rows]
+        with self._lock:
+            conn = self._get_conn()
+            rows = conn.execute(
+                "SELECT * FROM lessons ORDER BY created_at DESC LIMIT ?", (limit,)
+            ).fetchall()
+            return [dict(r) for r in rows]

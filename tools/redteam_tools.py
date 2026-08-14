@@ -172,35 +172,36 @@ def tool_generate_report(args: dict) -> str:
     }
 )
 def audit_prompt_security(args: dict) -> str:
-    """Audit content for prompt injection indicators (instruction-override phrases, fake roles, etc.)."""
+    """Audit content for prompt injection indicators (instruction-override phrases, fake roles, jailbreaks, etc.)."""
+    import re
     content = args.get("content", "")
     if not isinstance(content, str):
         return "CLEAN"
-    
-    # 1. Pattern matching common injection override phrases
-    override_keywords = [
-        "ignore previous instructions",
-        "ignore all instructions",
-        "disregard the system prompt",
-        "ignore system prompt",
-        "disregard previous instructions",
-        "you must now ignore",
-        "ignore the above instructions",
-        "ignore instructions above",
-        "dan mode",
-        "developer mode active",
-        "unrestricted mode",
-        "reveal your system prompt",
-        "print system instructions",
-        "output your initial prompt",
-        "send my api key",
-        "bypass security constraints"
+
+    low_content = content.lower().strip()
+
+    # 1. Regex pattern matching for flexible injection override phrases
+    injection_patterns = [
+        r"ignore\s+(?:all\s+)?(?:previous|prior|above)\s+instructions",
+        r"ignore\s+all\s+instructions",
+        r"disregard\s+(?:all\s+)?(?:the\s+)?(?:system\s+prompt|previous\s+instructions)",
+        r"system\s+(?:prompt\s+)?override",
+        r"developer\s+(?:debug\s+)?mode",
+        r"dan\s+mode",
+        r"unrestricted\s+mode",
+        r"reveal\s+your\s+system\s+prompt",
+        r"print\s+system\s+instructions",
+        r"output\s+(?:your\s+)?initial\s+prompt",
+        r"dump\s+all\s+(?:api\s+)?keys",
+        r"send\s+(?:my|the)\s+api\s+key",
+        r"bypass\s+security\s+constraints",
+        r"you\s+are\s+an?\s+unrestricted\s+ai",
     ]
-    low_content = content.lower()
-    for kw in override_keywords:
-        if kw in low_content:
-            return f"INJECTION DETECTED: Security override phrase matched '{kw}'"
-            
+
+    for pat in injection_patterns:
+        if re.search(pat, low_content):
+            return f"INJECTION DETECTED: Security override pattern matched '{pat}'"
+
     # 2. Fake role markers inside data
     fake_role_markers = [
         "system:",
@@ -223,7 +224,6 @@ def audit_prompt_security(args: dict) -> str:
             return "INJECTION DETECTED: Suspicious hidden zero-width character detected"
 
     # 4. Unusually long base64-looking blocks to hide instruction injections
-    import re
     base64_pat = re.compile(r'[A-Za-z0-9+/]{80,}=*')
     if base64_pat.search(content):
         return "INJECTION DETECTED: Large base64 payload block detected"

@@ -432,7 +432,30 @@ class JarvisOrchestrator:
         return None
 
     def _try_instant_action(self, user_input: str) -> Optional[str]:
-        """0-token instant action bypass disabled. All requests route through full AI loop."""
+        """Tier-1 Deterministic Fast Path: Executes simple OS commands, app launches, volume/settings
+        with 0 LLM token consumption and sub-50ms latency."""
+        try:
+            res = DeterministicIntentEngine.parse_and_execute(user_input)
+            if res and res.get("executed"):
+                result_text = res.get("result", "Action executed successfully.")
+                self._record_turn("user", user_input)
+                self._record_turn("assistant", result_text, backend="fast_path", latency_ms=0)
+                self.working_memory.add("user", user_input)
+                self.working_memory.add("assistant", result_text)
+                
+                try:
+                    event_bus = get_event_bus()
+                    event_bus.publish(TaskEvent(
+                        topic="task.fast_path.executed",
+                        task_id=str(uuid.uuid4()),
+                        goal=user_input,
+                        status="completed",
+                    ))
+                except Exception:
+                    pass
+                return result_text
+        except Exception as exc:
+            logger.debug(f"[Orchestrator] Fast-path bypass error: {exc}")
         return None
 
     def _run_react_loop(

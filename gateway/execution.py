@@ -8,7 +8,7 @@ from __future__ import annotations
 import json
 import logging
 import time
-from typing import Any, Generator, Optional
+from typing import Any, Generator, Optional, TYPE_CHECKING
 
 from gateway.client import (
     GatewayAuthenticationError,
@@ -24,8 +24,10 @@ from gateway.client import (
     sanitize_error_msg,
 )
 from gateway.health import ModelHealthService, get_health_service
-from router.smart_router import ModelSelection, SmartModelRouter, get_smart_router
 from router.task_profile import TaskProfile, TaskProfileClassifier
+
+if TYPE_CHECKING:
+    from router.smart_router import ModelSelection, SmartModelRouter
 
 logger = logging.getLogger("JARVIS.ModelExecution")
 
@@ -37,12 +39,16 @@ class ModelExecutionService:
 
     def __init__(
         self,
-        router: Optional[SmartModelRouter] = None,
+        router: Optional["SmartModelRouter"] = None,
         client: Optional[ProxyBrainClient] = None,
         health_service: Optional[ModelHealthService] = None,
         max_attempts: int = 3
     ):
-        self.router = router or get_smart_router()
+        if router is None:
+            from router.smart_router import get_smart_router
+            self.router = get_smart_router()
+        else:
+            self.router = router
         self.client = client or get_proxy_brain_client()
         self.health = health_service or get_health_service()
         self.max_attempts = max_attempts

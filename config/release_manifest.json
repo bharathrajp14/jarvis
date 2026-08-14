@@ -1,5 +1,16 @@
 {
-  "version": "38.5.0",
+  "manifest_version": "40.1",
+  "hashes": {
+    "guardian/core.py": "3f6de39ebd1e252bc50311c17f7b487022ea56032da43d09af5a9c350f861190",
+    "guardian/kill_switch.py": "e9a6dbc8c6802fa2cbdaf21cb3af680fc20a1723b10cfb9bb9e931a4415b645c",
+    "guardian/snapshot.py": "4e1a9190d2ee1be17861e630720df0fab1d83dc02ade6ed70441667a460014f9",
+    "guardian/rollback.py": "6a0fade807cc5add88f5383675726abc7f8bd96b2e949281a43b95d1c723f772",
+    "guardian/audit_log.py": "cccd184434dca29ecb8f664f909d77d00b3977ff17110743ce264aaacb4324fe",
+    "permissions.py": "c26e770b98ce904c805442e087ab00c9e935cb73642b31cadf6ad6ab6b65ebde",
+    "security/capabilities.py": "90aa5f25422e984c33ce7e6e8ffab1bd37e2a9334bcff6faee6ac5ae249781d4",
+    "security/policy_engine.py": "e77a896e92bd55b027060f5a539c509a0ebeaffbddf4fc5d6deba5c1f26d2f0c",
+    "security/path_policy.py": "aef746a37893d930754b4bba04c6b291d1121b0d2eeae798bc5fe9ac38efa113"
+  },
   "file_hashes": {
     "guardian/core.py": "3f6de39ebd1e252bc50311c17f7b487022ea56032da43d09af5a9c350f861190",
     "guardian/kill_switch.py": "e9a6dbc8c6802fa2cbdaf21cb3af680fc20a1723b10cfb9bb9e931a4415b645c",
@@ -8,7 +19,8 @@
     "guardian/audit_log.py": "cccd184434dca29ecb8f664f909d77d00b3977ff17110743ce264aaacb4324fe",
     "permissions.py": "c26e770b98ce904c805442e087ab00c9e935cb73642b31cadf6ad6ab6b65ebde",
     "security/capabilities.py": "90aa5f25422e984c33ce7e6e8ffab1bd37e2a9334bcff6faee6ac5ae249781d4",
-    "security/policy_engine.py": "9e08b5e0d3f66dea412d77013fcdff7a59868b7cc7bd39702589345eae6be191",
-    "security/path_policy.py": "5edaabca228ee0a9923464c082b52d79d9958146add2e9780f883183bf40487d"
-  }
+    "security/policy_engine.py": "e77a896e92bd55b027060f5a539c509a0ebeaffbddf4fc5d6deba5c1f26d2f0c",
+    "security/path_policy.py": "2eae66286fd75827444cc15fcb0b409628a6ddcb666fec33b6dc0d501ff0f02a"
+  },
+  "version": "MK40.2-CERTIFIED"
 }

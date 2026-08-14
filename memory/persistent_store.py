@@ -225,13 +225,14 @@ def save_memory(entry: MemoryEntry, scope: str = "user") -> None:
                 """,
                 (entry.name, entry.type, entry.description, entry.content, scope, entry.conflict_group, entry.created, time.time())
             )
-            cdb.commit()
     except Exception as e:
         logger.debug('Suppressed exception in memory sync: %s', e)
+    _SEARCH_CACHE.clear()
 
 
 def delete_memory(name: str, scope: str = "user") -> None:
     """Remove the memory file matching name, delete from SQLite/Vector, and rebuild the index."""
+    _SEARCH_CACHE.clear()
     mem_dir = get_memory_dir(scope)
     slug = _slugify(name)
     fp = mem_dir / f"{slug}.md"
@@ -297,8 +298,15 @@ def load_index(scope: str = "all") -> list[MemoryEntry]:
     return load_entries(scope)
 
 
+_SEARCH_CACHE: dict[str, list[MemoryEntry]] = {}
+
+
 def search_memory(query: str, scope: str = "all") -> list[MemoryEntry]:
     """Search memories using vector similarity (if ChromaDB available) + keyword fallback."""
+    cache_key = f"{scope}:{query.strip().lower()}"
+    if cache_key in _SEARCH_CACHE:
+        return list(_SEARCH_CACHE[cache_key])
+
     all_entries = load_index(scope)
     if not all_entries:
         return []
@@ -309,6 +317,7 @@ def search_memory(query: str, scope: str = "all") -> list[MemoryEntry]:
     vector_results = _vector_search(query, all_entries, top_k=10)
     vector_results = [e for e in vector_results if e.name in valid_names]
     if vector_results:
+        _SEARCH_CACHE[cache_key] = vector_results
         return vector_results
 
     # Fallback: case-insensitive keyword match with stop-word filter & exact word boundary matching
@@ -318,8 +327,8 @@ def search_memory(query: str, scope: str = "all") -> list[MemoryEntry]:
         "make", "find", "show", "tell", "about", "your", "some", "here", "there",
         "then", "when", "where", "which", "will", "would", "could", "should", "please"
     }
-    q_words = [w for w in re.findall(r'\b\w+\b', q) if len(w) >= 3 and w not in stop_words]
-    if not q_words and len(q) >= 3:
+    q_words = [w for w in re.findall(r'\b\w+\b', q) if (len(w) >= 3 or w.isdigit()) and w not in stop_words]
+    if not q_words and (len(q) >= 3 or q.strip().isdigit()):
         q_words = [q.strip()]
 
     scored_results = []
@@ -337,7 +346,9 @@ def search_memory(query: str, scope: str = "all") -> list[MemoryEntry]:
 
     # Sort by match count descending
     scored_results.sort(key=lambda x: x[0], reverse=True)
-    return [entry for score, entry in scored_results]
+    res = [entry for score, entry in scored_results]
+    _SEARCH_CACHE[cache_key] = res
+    return res
 
 
 # ── Optional ChromaDB vector layer ─────────────────────────────────────────

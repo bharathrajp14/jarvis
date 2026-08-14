@@ -6,7 +6,7 @@ import inspect
 import logging
 import time
 from typing import Any, Callable, Dict, List, Optional
-from pydantic import BaseModel, Field
+from dataclasses import dataclass, field
 
 from core.runtime import get_runtime
 from events.bus import get_event_bus
@@ -17,10 +17,11 @@ from permissions import check_permission
 logger = logging.getLogger("JARVIS.ToolRuntime")
 
 
-class ToolDefinition(BaseModel):
+@dataclass
+class ToolDefinition:
     name: str
     description: str
-    parameters: Dict[str, Any] = Field(default_factory=dict)
+    parameters: Dict[str, Any] = field(default_factory=dict)
     is_read_only: bool = False
     permission_required: str = "DEFAULT"
 

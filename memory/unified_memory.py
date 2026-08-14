@@ -11,6 +11,7 @@ from memory.working import WorkingMemory
 from memory.persistent_store import MemoryEntry, save_memory, search_memory, delete_memory, load_index
 from memory.vector_store import VectorMemory
 from memory.conversation_store import ConversationStore
+from memory.experience_replay import ExperienceReplayStore, ExperienceTrajectory, get_experience_replay
 from memory.lessons import LessonStore
 from memory.reflection import ReflectionEngine
 
@@ -19,13 +20,14 @@ logger = logging.getLogger("JARVIS.UnifiedMemory")
 
 class UnifiedMemoryManager:
     """
-    Master Unified Memory Coordinator bringing together:
-      1. Working Memory (Short-term context window)
-      2. Persistent Memory (Markdown files + SQLite metadata)
-      3. Semantic Vector Memory (ChromaDB / TF-IDF)
-      4. Lesson & Reflection Memory (Self-correction learning)
-      5. Conversation History (Session/turn history)
-      6. Result Cache (Tool call caching with TTL)
+    Master Unified Memory Coordinator bringing together 7 tiers:
+      L0: Immediate Scratchpad
+      L1: Working Memory (Short-term context window)
+      L2: Session Conversation Store (Turn logs)
+      L3: Semantic Vector Memory (Embeddings)
+      L4: Persistent Memory (Structured facts/preferences)
+      L5: Document & Knowledge Graph RAG
+      L6: Experience Replay & Lessons (Execution trajectory learning)
     """
 
     def __init__(self):
@@ -35,6 +37,7 @@ class UnifiedMemoryManager:
         self.vector = VectorMemory()
         self.conversations = ConversationStore()
         self.lessons = LessonStore()
+        self.experience = get_experience_replay()
         self.reflection = ReflectionEngine(self.lessons)
 
         self.runtime = get_runtime()
@@ -42,7 +45,7 @@ class UnifiedMemoryManager:
 
         # Register self in DI Container
         self.runtime.container.register_instance(UnifiedMemoryManager, self)
-        logger.info("⚡ UnifiedMemoryManager fully initialized across 6 memory tiers")
+        logger.info("⚡ UnifiedMemoryManager fully initialized across 7 hierarchical memory tiers")
 
     # ── Tier 1: Working Memory ─────────────────────────────────────────────
 
@@ -96,10 +99,10 @@ class UnifiedMemoryManager:
         logger.info(f"🗑️ Unified Memory deleted: [{scope}] {name}")
 
     def recall(self, query: str, limit: int = 5) -> List[Dict[str, Any]]:
-        """Search all memory tiers for query relevant context."""
+        """Search all memory tiers for query relevant context (Fast-local first)."""
         results = []
 
-        # 1. Search Persistent Markdown/SQLite memory
+        # 1. Search Persistent Markdown/SQLite memory (sub-millisecond local tier)
         persistent_hits = search_memory(query)
         for p in persistent_hits[:limit]:
             results.append({
@@ -111,18 +114,7 @@ class UnifiedMemoryManager:
                 "confidence": p.confidence,
             })
 
-        # 2. Search Vector store
-        vector_hits = self.vector.recall(query, n=limit)
-        for v_text in vector_hits:
-            if not any(r["content"] in v_text for r in results):
-                results.append({
-                    "source": "vector",
-                    "name": "Semantic Vector Memory",
-                    "content": v_text,
-                    "confidence": 0.85,
-                })
-
-        # 3. Search Lesson store
+        # 2. Search Lesson store (sub-millisecond local tier)
         lesson_hits = self.lessons.get_relevant_lessons(query, limit=3)
         for l in lesson_hits:
             results.append({
@@ -131,6 +123,21 @@ class UnifiedMemoryManager:
                 "content": l['correction'],
                 "confidence": 0.9,
             })
+
+        # 3. Only query Semantic Vector Store if local results are insufficient to satisfy limit
+        if len(results) < limit and len(query.split()) >= 3:
+            try:
+                vector_hits = self.vector.recall(query, n=max(1, limit - len(results)))
+                for v_text in vector_hits:
+                    if not any(r.get("content", "") in v_text for r in results):
+                        results.append({
+                            "source": "vector",
+                            "name": "Semantic Vector Memory",
+                            "content": v_text,
+                            "confidence": 0.85,
+                        })
+            except Exception as v_err:
+                logger.debug("Vector memory recall fallback: %s", v_err)
 
         return results[:limit]
 
@@ -159,6 +166,34 @@ class UnifiedMemoryManager:
         history = self.working.get()
         consolidated = self.archiver.consolidate_history(history, max_keep=40)
         self.working.history = consolidated
+
+    # ── Tier 6: Experience Replay & Trajectory Learning ───────────────────
+
+    def record_execution_experience(
+        self,
+        goal: str,
+        success: bool,
+        tool_sequence: List[str],
+        failure_reason: Optional[str] = None,
+        context: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Record an execution trajectory to experience replay for autonomous learning."""
+        traj = ExperienceTrajectory(
+            goal_query=goal,
+            success_status=success,
+            step_count=len(tool_sequence),
+            tool_sequence=tool_sequence,
+            failure_reason=failure_reason,
+            execution_context=context or {},
+        )
+        self.experience.record_trajectory(traj)
+
+    def get_relevant_experiences(self, goal: str, limit: int = 3) -> Dict[str, List[Dict[str, Any]]]:
+        """Retrieve successful strategies and known failure pitfalls for similar goals."""
+        return {
+            "successes": self.experience.get_successful_patterns(goal, limit=limit),
+            "failures": self.experience.get_similar_failures(goal, limit=limit),
+        }
 
 
 _global_unified_memory: Optional[UnifiedMemoryManager] = None

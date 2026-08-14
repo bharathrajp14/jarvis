@@ -18,13 +18,15 @@ logger = logging.getLogger("JARVIS.PathPolicy")
 # Critical OS and secret paths permanently denied
 CRITICAL_RESOURCE_DENYLIST: FrozenSet[str] = frozenset({
     "system32", "winsxs", "registry", "sam", "security",
-    "login data", ".ssh", ".gnupg", "id_rsa", "id_ed25519",
+    "login data", ".ssh", ".gnupg", ".aws", "credentials", "id_rsa", "id_ed25519", "id_dsa",
     "wallet.dat", ".pfx", "shadow", "passwd", "/etc/shadow",
-    "/etc/sudoers", "/etc/passwd", "windows/system32", "windows/syswow64"
+    "/etc/sudoers", "/etc/passwd", "windows/system32", "windows/syswow64",
+    ".env", ".env.local", ".env.production", ".git", ".npmrc", ".pypirc",
+    "secrets.json", "secrets.yaml", "secrets.env"
 })
 
 DENIED_EXTENSIONS: FrozenSet[str] = frozenset({
-    ".pem", ".key", ".pfx", ".pkcs12", ".kdbx", ".wallet"
+    ".pem", ".key", ".pfx", ".pkcs12", ".kdbx", ".wallet", ".crt", ".cer"
 })
 
 
@@ -95,10 +97,14 @@ class PathSecurityPolicy:
         if resolved.suffix.lower() in DENIED_EXTENSIONS:
             return False
 
-        # 2. Check path component denylist
+        # 2. Check filename and path components
+        name_lower = resolved.name.lower()
+        if name_lower in CRITICAL_RESOURCE_DENYLIST or name_lower.startswith(".env"):
+            return False
+
         parts = [p.lower() for p in resolved.parts]
         for part in parts:
-            if part in CRITICAL_RESOURCE_DENYLIST:
+            if part in CRITICAL_RESOURCE_DENYLIST or part.startswith(".env"):
                 return False
 
         for bad in CRITICAL_RESOURCE_DENYLIST:

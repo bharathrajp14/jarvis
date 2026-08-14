@@ -21,7 +21,7 @@ def get_system_health() -> Dict[str, Any]:
     try:
         import psutil
         vm = psutil.virtual_memory()
-        cpu_pct = psutil.cpu_percent(interval=0.1)
+        cpu_pct = psutil.cpu_percent(interval=None)
         disk = psutil.disk_usage("/")
 
         health["cpu_usage_percent"] = cpu_pct

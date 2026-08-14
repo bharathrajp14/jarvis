@@ -407,139 +407,138 @@ def get_orchestrator_ref() -> Any:
     return _orchestrator_ref
 
 
-try:
-    from actions.reminders import reminder_tool_action
-    register_tool(
-        name="reminder",
-        description="Set or list smart reminders and desktop toast notifications. Args: 'action' ('add' or 'list'), 'text' (reminder message), 'time_str' (e.g. '9:00 AM', '14:30', 'tomorrow 9am'), 'delay_seconds' (optional integer).",
-        parameters={
-            "type": "object",
-            "properties": {
-                "action": {"type": "string", "enum": ["add", "list"]},
-                "text": {"type": "string", "description": "Reminder text"},
-                "time_str": {"type": "string", "description": "Target time (e.g. '9am', '14:30')"},
-                "delay_seconds": {"type": "integer", "description": "Delay in seconds"},
-            },
-            "required": ["action"],
-        }
-    )(reminder_tool_action)
-except Exception as exc:
-    logger.debug(f"[Tools] Failed to register reminder tool: {exc}")
+def _lazy_register_tool(name: str, description: str, module_path: str, func_name: str, parameters: dict | None = None):
+    def _lazy_wrapper(args: dict = None, **kwargs) -> Any:
+        try:
+            mod = importlib.import_module(module_path)
+            target_func = getattr(mod, func_name)
+            if args is not None and isinstance(args, dict):
+                return target_func(args)
+            elif kwargs:
+                return target_func(**kwargs)
+            return target_func(args or {})
+        except Exception as exc:
+            return f"ERROR: Failed to load tool handler '{name}' from {module_path}: {exc}"
+    register_tool(name=name, description=description, parameters=parameters)(_lazy_wrapper)
 
-try:
-    from actions.fast_file_search import fast_file_search_action
-    register_tool(
-        name="fast_file_search",
-        description="High-speed desktop file search by filename or text content. Args: 'action' ('name' or 'content'), 'query' (search keyword), 'search_path' (optional directory path), 'extension' (optional file extension).",
-        parameters={
-            "type": "object",
-            "properties": {
-                "action": {"type": "string", "enum": ["name", "content"]},
-                "query": {"type": "string", "description": "Search keyword or filename"},
-                "search_path": {"type": "string", "description": "Root directory path"},
-                "extension": {"type": "string", "description": "File extension filter"},
-            },
-            "required": ["action", "query"],
-        }
-    )(fast_file_search_action)
-except Exception as exc:
-    logger.debug(f"[Tools] Failed to register fast_file_search tool: {exc}")
 
-try:
-    from actions.longform_builder import longform_builder_action
-    register_tool(
-        name="longform_builder",
-        description="Build comprehensive multi-volume books, technical manuals, research publications, and project toolkits automatically. Args: 'title' (book title), 'description' (topic focus), 'year' (publication year), 'folder_name' (optional output subfolder).",
-        parameters={
-            "type": "object",
-            "properties": {
-                "title": {"type": "string", "description": "Title of the book or guide"},
-                "description": {"type": "string", "description": "Detailed topic focus"},
-                "year": {"type": "string", "description": "Target year (default: '2026')"},
-                "folder_name": {"type": "string", "description": "Output folder name inside ./workspace/"},
-            },
-            "required": ["title", "description"],
-        }
-    )(longform_builder_action)
-except Exception as exc:
-    logger.debug(f"[Tools] Failed to register longform_builder tool: {exc}")
+_lazy_register_tool(
+    name="reminder",
+    description="Set or list smart reminders and desktop toast notifications. Args: 'action' ('add' or 'list'), 'text' (reminder message), 'time_str' (e.g. '9:00 AM', '14:30', 'tomorrow 9am'), 'delay_seconds' (optional integer).",
+    module_path="actions.reminders",
+    func_name="reminder_tool_action",
+    parameters={
+        "type": "object",
+        "properties": {
+            "action": {"type": "string", "enum": ["add", "list"]},
+            "text": {"type": "string", "description": "Reminder text"},
+            "time_str": {"type": "string", "description": "Target time (e.g. '9am', '14:30')"},
+            "delay_seconds": {"type": "integer", "description": "Delay in seconds"},
+        },
+        "required": ["action"],
+    }
+)
 
-try:
-    from actions.system_optimizer import system_optimizer_action
-    register_tool(
-        name="system_optimizer",
-        description="Run automated RAM, garbage collection, and temporary file cache optimization. Returns memory stats.",
-        parameters={
-            "type": "object",
-            "properties": {
-                "action": {"type": "string", "enum": ["optimize"]}
-            }
-        }
-    )(system_optimizer_action)
-except Exception as exc:
-    logger.debug(f"[Tools] Failed to register system_optimizer tool: {exc}")
+_lazy_register_tool(
+    name="fast_file_search",
+    description="High-speed desktop file search by filename or text content. Args: 'action' ('name' or 'content'), 'query' (search keyword), 'search_path' (optional directory path), 'extension' (optional file extension).",
+    module_path="actions.fast_file_search",
+    func_name="fast_file_search_action",
+    parameters={
+        "type": "object",
+        "properties": {
+            "action": {"type": "string", "enum": ["name", "content"]},
+            "query": {"type": "string", "description": "Search keyword or filename"},
+            "search_path": {"type": "string", "description": "Root directory path"},
+            "extension": {"type": "string", "description": "File extension filter"},
+        },
+        "required": ["action", "query"],
+    }
+)
 
-try:
-    from tools.window_manager import window_manager_action
-    register_tool(
-        name="window_manager",
-        description="Inspect visible desktop window titles and focus/switch applications. Args: 'action' ('list' or 'focus'), 'title' (optional application window title).",
-        parameters={
-            "type": "object",
-            "properties": {
-                "action": {"type": "string", "enum": ["list", "focus"]},
-                "title": {"type": "string", "description": "Title or partial title of window to focus"}
-            },
-            "required": ["action"]
-        }
-    )(window_manager_action)
-except Exception as exc:
-    logger.debug(f"[Tools] Failed to register window_manager tool: {exc}")
+_lazy_register_tool(
+    name="longform_builder",
+    description="Build comprehensive multi-volume books, technical manuals, research publications, and project toolkits automatically. Args: 'title' (book title), 'description' (topic focus), 'year' (publication year), 'folder_name' (optional output subfolder).",
+    module_path="actions.longform_builder",
+    func_name="longform_builder_action",
+    parameters={
+        "type": "object",
+        "properties": {
+            "title": {"type": "string", "description": "Title of the book or guide"},
+            "description": {"type": "string", "description": "Detailed topic focus"},
+            "year": {"type": "string", "description": "Target year (default: '2026')"},
+            "folder_name": {"type": "string", "description": "Output folder name inside ./workspace/"},
+        },
+        "required": ["title", "description"],
+    }
+)
 
-try:
-    from tools.web_extractor import web_extractor_action
-    register_tool(
-        name="web_extractor",
-        description="Extract clean text content, headers, and main article text from any web URL. Args: 'url' (webpage URL).",
-        parameters={
-            "type": "object",
-            "properties": {
-                "url": {"type": "string", "description": "Target webpage URL to fetch and extract"}
-            },
-            "required": ["url"]
+_lazy_register_tool(
+    name="system_optimizer",
+    description="Run automated RAM, garbage collection, and temporary file cache optimization. Returns memory stats.",
+    module_path="actions.system_optimizer",
+    func_name="system_optimizer_action",
+    parameters={
+        "type": "object",
+        "properties": {
+            "action": {"type": "string", "enum": ["optimize"]}
         }
-    )(web_extractor_action)
-except Exception:
-    pass
+    }
+)
 
-try:
-    from tools.system_health import system_health_action
-    register_tool(
-        name="system_health",
-        description="Retrieve system health metrics including CPU load, RAM usage, storage, and battery state.",
-        parameters={
-            "type": "object",
-            "properties": {}
-        }
-    )(system_health_action)
-except Exception:
-    pass
+_lazy_register_tool(
+    name="window_manager",
+    description="Inspect visible desktop window titles and focus/switch applications. Args: 'action' ('list' or 'focus'), 'title' (optional application window title).",
+    module_path="tools.window_manager",
+    func_name="window_manager_action",
+    parameters={
+        "type": "object",
+        "properties": {
+            "action": {"type": "string", "enum": ["list", "focus"]},
+            "title": {"type": "string", "description": "Title or partial title of window to focus"}
+        },
+        "required": ["action"]
+    }
+)
 
-try:
-    from tools.file_search_semantic import file_search_semantic_action
-    register_tool(
-        name="file_search_semantic",
-        description="Fast natural language semantic file search across workspace files. Args: 'query' (search term or file description).",
-        parameters={
-            "type": "object",
-            "properties": {
-                "query": {"type": "string", "description": "Natural language file description or keywords"}
-            },
-            "required": ["query"]
-        }
-    )(file_search_semantic_action)
-except Exception:
-    pass
+_lazy_register_tool(
+    name="web_extractor",
+    description="Extract clean text content, headers, and main article text from any web URL. Args: 'url' (webpage URL).",
+    module_path="tools.web_extractor",
+    func_name="web_extractor_action",
+    parameters={
+        "type": "object",
+        "properties": {
+            "url": {"type": "string", "description": "Target webpage URL to fetch and extract"}
+        },
+        "required": ["url"]
+    }
+)
+
+_lazy_register_tool(
+    name="system_health",
+    description="Retrieve system health metrics including CPU load, RAM usage, storage, and battery state.",
+    module_path="tools.system_health",
+    func_name="system_health_action",
+    parameters={
+        "type": "object",
+        "properties": {}
+    }
+)
+
+_lazy_register_tool(
+    name="file_search_semantic",
+    description="Fast natural language semantic file search across workspace files. Args: 'query' (search term or file description).",
+    module_path="tools.file_search_semantic",
+    func_name="file_search_semantic_action",
+    parameters={
+        "type": "object",
+        "properties": {
+            "query": {"type": "string", "description": "Natural language file description or keywords"}
+        },
+        "required": ["query"]
+    }
+)
 
 
 def parse_tool_call(text: str) -> tuple[str | None, dict | None]:

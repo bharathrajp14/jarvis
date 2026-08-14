@@ -47,7 +47,9 @@ def test_scenario_1_to_2_open_app_and_calculation():
         ]
     )
 
-    with patch.object(vision, "analyze_screen", return_value=dummy_report):
+    with patch.object(vision, "analyze_screen", return_value=dummy_report), \
+         patch("pyautogui.click"), \
+         patch("pyautogui.moveTo"):
         # Trigger vision analysis
         report = vision.analyze_screen(force_refresh=True)
         assert "Calculator" in report.ocr_text

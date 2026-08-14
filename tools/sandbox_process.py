@@ -242,6 +242,7 @@ class SandboxedProcessRunner:
             self._kill_process_tree(proc)
             return {
                 "success": False,
+                "timed_out": True,
                 "error": f"Sandbox execution timed out after {timeout} seconds.",
                 "stdout": "",
                 "stderr": "Execution timeout exceeded. Process terminated.",
