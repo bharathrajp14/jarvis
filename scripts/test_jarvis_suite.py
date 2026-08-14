@@ -10,9 +10,12 @@ Executes full end-to-end integration test matrix for BR JARVIS features:
 """
 from __future__ import annotations
 
+import logging
 import sys
 import time
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 if str(BASE_DIR) not in sys.path:
@@ -20,21 +23,9 @@ if str(BASE_DIR) not in sys.path:
 
 
 def run_full_suite():
-    if 'logger' in globals() or 'logger' in locals():
-        logger.info(f"{ "=" * 65 }" if isinstance("=" * 65, str) else "=" * 65)
-    else:
-        import logging
-        logging.getLogger(__name__).info(f"{ "=" * 65 }" if isinstance("=" * 65, str) else "=" * 65)
-    if 'logger' in globals() or 'logger' in locals():
-        logger.info(" [TEST] BR JARVIS MK37 AUTOMATED INTEGRATION TEST SUITE")
-    else:
-        import logging
-        logging.getLogger(__name__).info(" [TEST] BR JARVIS MK37 AUTOMATED INTEGRATION TEST SUITE")
-    if 'logger' in globals() or 'logger' in locals():
-        logger.info(f"{ "=" * 65 }" if isinstance("=" * 65, str) else "=" * 65)
-    else:
-        import logging
-        logging.getLogger(__name__).info(f"{ "=" * 65 }" if isinstance("=" * 65, str) else "=" * 65)
+    logger.info("=" * 65)
+    logger.info(" [TEST] BR JARVIS MK37 AUTOMATED INTEGRATION TEST SUITE")
+    logger.info("=" * 65)
 
     results = []
 
@@ -108,48 +99,20 @@ def run_full_suite():
         results.append(("Live OS Control (0=Unlimited Mode)", False, "0ms", str(e)))
 
     # Print Summary Table
-    if 'logger' in globals() or 'logger' in locals():
-        logger.info(f"{ "\n" + "-" * 65 }" if isinstance("\n" + "-" * 65, str) else "\n" + "-" * 65)
-    else:
-        import logging
-        logging.getLogger(__name__).info(f"{ "\n" + "-" * 65 }" if isinstance("\n" + "-" * 65, str) else "\n" + "-" * 65)
-    if 'logger' in globals() or 'logger' in locals():
-        logger.info(f"{ f"{'Feature / Engine':<38} | {'Status':<8} | {'Latency':<9} | Details" }" if isinstance(f"{'Feature / Engine':<38} | {'Status':<8} | {'Latency':<9} | Details", str) else f"{'Feature / Engine':<38} | {'Status':<8} | {'Latency':<9} | Details")
-    else:
-        import logging
-        logging.getLogger(__name__).info(f"{ f"{'Feature / Engine':<38} | {'Status':<8} | {'Latency':<9} | Details" }" if isinstance(f"{'Feature / Engine':<38} | {'Status':<8} | {'Latency':<9} | Details", str) else f"{'Feature / Engine':<38} | {'Status':<8} | {'Latency':<9} | Details")
-    if 'logger' in globals() or 'logger' in locals():
-        logger.info(f"{ "-" * 65 }" if isinstance("-" * 65, str) else "-" * 65)
-    else:
-        import logging
-        logging.getLogger(__name__).info(f"{ "-" * 65 }" if isinstance("-" * 65, str) else "-" * 65)
+    logger.info("\n" + "-" * 65)
+    logger.info(f"{'Feature / Engine':<38} | {'Status':<8} | {'Latency':<9} | Details")
+    logger.info("-" * 65)
 
     passed_count = 0
     for name, ok, lat, detail in results:
         status_str = "[PASS]" if ok else "[FAIL]"
         if ok:
             passed_count += 1
-        if 'logger' in globals() or 'logger' in locals():
-            logger.info(f"{ f"{name:<38} | {status_str:<8} | {lat:<9} | {detail}" }" if isinstance(f"{name:<38} | {status_str:<8} | {lat:<9} | {detail}", str) else f"{name:<38} | {status_str:<8} | {lat:<9} | {detail}")
-        else:
-            import logging
-            logging.getLogger(__name__).info(f"{ f"{name:<38} | {status_str:<8} | {lat:<9} | {detail}" }" if isinstance(f"{name:<38} | {status_str:<8} | {lat:<9} | {detail}", str) else f"{name:<38} | {status_str:<8} | {lat:<9} | {detail}")
+        logger.info(f"{name:<38} | {status_str:<8} | {lat:<9} | {detail}")
 
-    if 'logger' in globals() or 'logger' in locals():
-        logger.info(f"{ "-" * 65 }" if isinstance("-" * 65, str) else "-" * 65)
-    else:
-        import logging
-        logging.getLogger(__name__).info(f"{ "-" * 65 }" if isinstance("-" * 65, str) else "-" * 65)
-    if 'logger' in globals() or 'logger' in locals():
-        logger.info(f"{ f"RESULT: {passed_count}/{len(results)} Test Cases Passed Successfully." }" if isinstance(f"RESULT: {passed_count}/{len(results)} Test Cases Passed Successfully.", str) else f"RESULT: {passed_count}/{len(results)} Test Cases Passed Successfully.")
-    else:
-        import logging
-        logging.getLogger(__name__).info(f"{ f"RESULT: {passed_count}/{len(results)} Test Cases Passed Successfully." }" if isinstance(f"RESULT: {passed_count}/{len(results)} Test Cases Passed Successfully.", str) else f"RESULT: {passed_count}/{len(results)} Test Cases Passed Successfully.")
-    if 'logger' in globals() or 'logger' in locals():
-        logger.info("=" * 65 + "\n")
-    else:
-        import logging
-        logging.getLogger(__name__).info("=" * 65 + "\n")
+    logger.info("-" * 65)
+    logger.info(f"RESULT: {passed_count}/{len(results)} Test Cases Passed Successfully.")
+    logger.info("=" * 65 + "\n")
 
     # Generate Markdown Report Artifact
     report_lines = [
@@ -170,11 +133,7 @@ def run_full_suite():
     report_path = BASE_DIR / "workspace" / "self_test_report.md"
     report_path.parent.mkdir(exist_ok=True)
     report_path.write_text("\n".join(report_lines), encoding="utf-8")
-    if 'logger' in globals() or 'logger' in locals():
-        logger.info(f"{ f"Generated Test Report Artifact at: '{report_path}'" }" if isinstance(f"Generated Test Report Artifact at: '{report_path}'", str) else f"Generated Test Report Artifact at: '{report_path}'")
-    else:
-        import logging
-        logging.getLogger(__name__).info(f"{ f"Generated Test Report Artifact at: '{report_path}'" }" if isinstance(f"Generated Test Report Artifact at: '{report_path}'", str) else f"Generated Test Report Artifact at: '{report_path}'")
+    logger.info(f"Generated Test Report Artifact at: '{report_path}'")
 
 
 if __name__ == "__main__":

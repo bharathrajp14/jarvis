@@ -168,11 +168,7 @@ def connector_search_action(args: Dict[str, Any]) -> str:
                             if result:
                                 results.append(f"--- From **{source.replace('_', ' ').title()}** ---\n{result}")
                 except Exception as e:
-                    if 'logger' in globals() or 'logger' in locals():
-                        logger.debug('Suppressed exception: %s', e)
-                    else:
-                        import logging
-                        logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                    logger.debug('Suppressed exception: %s', e)
         if not results:
             return f"No results found for '{query}' across connected sources."
 

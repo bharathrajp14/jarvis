@@ -4,8 +4,11 @@ Central model configuration loader for JARVIS MK37.
 Reads config/models.json and provides defaults if it doesn't exist.
 """
 
+import logging
 import json
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 _CONFIG_DIR = Path(__file__).resolve().parent
 _MODELS_FILE = _CONFIG_DIR / "models.json"
@@ -40,11 +43,7 @@ def load_models() -> dict:
             json.dumps(DEFAULTS, indent=4),
             encoding="utf-8",
         )
-        if 'logger' in globals() or 'logger' in locals():
-            logger.info(f"{ f"[CONFIG] Created default models.json at {_MODELS_FILE}" }" if isinstance(f"[CONFIG] Created default models.json at {_MODELS_FILE}", str) else f"[CONFIG] Created default models.json at {_MODELS_FILE}")
-        else:
-            import logging
-            logging.getLogger(__name__).info(f"{ f"[CONFIG] Created default models.json at {_MODELS_FILE}" }" if isinstance(f"[CONFIG] Created default models.json at {_MODELS_FILE}", str) else f"[CONFIG] Created default models.json at {_MODELS_FILE}")
+        logger.info(f"[CONFIG] Created default models.json at {_MODELS_FILE}")
         return DEFAULTS.copy()
 
     try:
@@ -53,11 +52,7 @@ def load_models() -> dict:
         merged = {**DEFAULTS, **data}
         return merged
     except Exception as e:
-        if 'logger' in globals() or 'logger' in locals():
-            logger.warning(f"{ f"[CONFIG] Error reading models.json: {e} — using defaults" }" if isinstance(f"[CONFIG] Error reading models.json: {e} — using defaults", str) else f"[CONFIG] Error reading models.json: {e} — using defaults")
-        else:
-            import logging
-            logging.getLogger(__name__).warning(f"{ f"[CONFIG] Error reading models.json: {e} — using defaults" }" if isinstance(f"[CONFIG] Error reading models.json: {e} — using defaults", str) else f"[CONFIG] Error reading models.json: {e} — using defaults")
+        logger.warning(f"[CONFIG] Error reading models.json: {e} — using defaults")
         return DEFAULTS.copy()
 
 

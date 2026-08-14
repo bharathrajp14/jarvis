@@ -12,6 +12,7 @@ Features:
 """
 from __future__ import annotations
 
+import logging
 import json
 import math
 import os
@@ -29,6 +30,8 @@ try:
     _chroma_available = True
 except ImportError:
     pass
+
+logger = logging.getLogger(__name__)
 
 
 class HistoryLinker:
@@ -48,11 +51,7 @@ class HistoryLinker:
                     metadata={"hnsw:space": "cosine"},
                 )
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         if not self.available:
             self._load_fallback()
 
@@ -72,11 +71,7 @@ class HistoryLinker:
             self._fallback_file.parent.mkdir(parents=True, exist_ok=True)
             self._fallback_file.write_text(json.dumps(self._fallback_entries, indent=2), encoding="utf-8")
         except Exception as e:
-            if 'logger' in globals() or 'logger' in locals():
-                logger.debug('Suppressed exception: %s', e)
-            else:
-                import logging
-                logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+            logger.debug('Suppressed exception: %s', e)
     def on_session_close(self, session_id: str, summary: str, mode: str = "", backend: str = "") -> None:
         """Embed a session summary into the vector store on close."""
         if not summary or not summary.strip():
@@ -90,11 +85,7 @@ class HistoryLinker:
                     metadatas=[{"mode": mode, "backend": backend}],
                 )
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         else:
             # Fallback storage
             self._fallback_entries = [e for e in self._fallback_entries if e["session_id"] != session_id]
@@ -146,11 +137,7 @@ class HistoryLinker:
 
                 return results[:n]
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.warning(f"{ f"[HistoryLinker] Search error: {e}" }" if isinstance(f"[HistoryLinker] Search error: {e}", str) else f"[HistoryLinker] Search error: {e}")
-                else:
-                    import logging
-                    logging.getLogger(__name__).warning(f"{ f"[HistoryLinker] Search error: {e}" }" if isinstance(f"[HistoryLinker] Search error: {e}", str) else f"[HistoryLinker] Search error: {e}")
+                logger.warning(f"[HistoryLinker] Search error: {e}")
                 return []
         else:
             # TF-IDF Fallback search

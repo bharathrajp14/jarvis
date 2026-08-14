@@ -31,11 +31,7 @@ if __name__ == "__main__" and sys.version_info >= (3, 14) and sys.platform == "w
         for _ver in ("-3.12", "-3.13", "-3.11"):
             _chk = subprocess.run([_py_cmd, _ver, "--version"], capture_output=True)
             if _chk.returncode == 0:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.info(f"{ f"[server] -> Auto-rerouting from Python 3.14 alpha to stable Python {_ver[1:]}..." }" if isinstance(f"[server] -> Auto-rerouting from Python 3.14 alpha to stable Python {_ver[1:]}...", str) else f"[server] -> Auto-rerouting from Python 3.14 alpha to stable Python {_ver[1:]}...")
-                else:
-                    import logging
-                    logging.getLogger(__name__).info(f"{ f"[server] -> Auto-rerouting from Python 3.14 alpha to stable Python {_ver[1:]}..." }" if isinstance(f"[server] -> Auto-rerouting from Python 3.14 alpha to stable Python {_ver[1:]}...", str) else f"[server] -> Auto-rerouting from Python 3.14 alpha to stable Python {_ver[1:]}...")
+                print(f"[server] -> Auto-rerouting from Python 3.14 alpha to stable Python {_ver[1:]}...")
                 os.environ["JARVIS_IGNORE_PY314"] = "1"
                 _res = subprocess.run([_py_cmd, _ver] + sys.argv)
                 sys.exit(_res.returncode)
@@ -1063,6 +1059,235 @@ async def health_check():
         }
 
 
+# ── Agent Control Center APIs (MK37) ─────────────────────────────────────────
+
+class CreateTaskRequest(BaseModel):
+    goal: str
+    active_devices: Optional[list[str]] = None
+
+
+class ResolveApprovalRequest(BaseModel):
+    request_id: str
+    approved: bool
+
+
+class CreateRoutineRequest(BaseModel):
+    name: str
+    goal: str
+    trigger_type: str = "schedule"
+    trigger_config: Optional[dict] = None
+    skill_name: Optional[str] = None
+    target_device: str = "pc"
+    requires_approval: bool = False
+
+
+class RunSkillRequest(BaseModel):
+    inputs: dict = {}
+
+
+class PairDeviceRequest(BaseModel):
+    pin: str
+    device_id: str
+    model_name: str
+    public_key: str = ""
+
+
+@app.get("/api/agent/tasks")
+async def list_agent_tasks(status: Optional[str] = None, limit: int = 50):
+    """List active and historical tasks from the persistent TaskStateManager."""
+    from agent.task_state import get_task_state_manager
+    mgr = get_task_state_manager()
+    tasks = mgr.list_tasks(status=status, limit=limit)
+    return {"total": len(tasks), "tasks": [t.to_dict() for t in tasks]}
+
+
+@app.get("/api/agent/tasks/{task_id}")
+async def get_agent_task(task_id: str):
+    """Retrieve detailed task state, steps, and checkpoints by task_id."""
+    from agent.task_state import get_task_state_manager
+    mgr = get_task_state_manager()
+    task = mgr.get_task(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return task.to_dict()
+
+
+@app.post("/api/agent/tasks")
+async def create_agent_task(req: CreateTaskRequest):
+    """Create and trigger an autonomous task via AgentExecutor."""
+    from agent.task_state import get_task_state_manager
+    from agent.executor import AgentExecutor
+    mgr = get_task_state_manager()
+    task = mgr.create_task(req.goal, active_devices=req.active_devices)
+
+    def _run_job():
+        try:
+            executor = AgentExecutor()
+            executor.execute(req.goal, task_id=task.task_id)
+        except Exception as e:
+            logger.error("Background task execution error: %s", e)
+
+    threading.Thread(target=_run_job, daemon=True).start()
+    return {"status": "started", "task_id": task.task_id, "goal": req.goal}
+
+
+@app.post("/api/agent/tasks/{task_id}/approve")
+async def approve_agent_task(task_id: str, req: ResolveApprovalRequest):
+    """Approve or reject a pending high-risk action approval gate."""
+    from agent.task_state import get_task_state_manager
+    mgr = get_task_state_manager()
+    updated = mgr.resolve_approval(task_id, req.request_id, approved=req.approved)
+    if not updated:
+        raise HTTPException(status_code=400, detail="Unable to resolve approval request")
+    return {"status": "resolved", "task": updated.to_dict()}
+
+
+@app.get("/api/agent/routines")
+async def list_agent_routines():
+    """List persistent background routines."""
+    from actions.routine_engine import get_routine_engine
+    engine = get_routine_engine()
+    routines = engine.list_routines()
+    return {"total": len(routines), "routines": [r.to_dict() for r in routines]}
+
+
+@app.post("/api/agent/routines")
+async def create_agent_routine(req: CreateRoutineRequest):
+    """Create a new background automation routine."""
+    from actions.routine_engine import get_routine_engine, TriggerType
+    engine = get_routine_engine()
+    try:
+        trig = TriggerType(req.trigger_type)
+    except ValueError:
+        trig = TriggerType.SCHEDULE
+    r = engine.create_routine(
+        name=req.name,
+        goal=req.goal,
+        trigger_type=trig,
+        trigger_config=req.trigger_config,
+        skill_name=req.skill_name,
+        target_device=req.target_device,
+        requires_approval=req.requires_approval
+    )
+    return {"status": "created", "routine": r.to_dict()}
+
+
+@app.post("/api/agent/routines/{routine_id}/run")
+async def run_agent_routine(routine_id: str):
+    """Trigger immediate execution of a background routine."""
+    from actions.routine_engine import get_routine_engine
+    engine = get_routine_engine()
+    res = await asyncio.to_thread(engine.run_routine_now, routine_id)
+    return res
+
+
+@app.get("/api/agent/skills/declarative")
+async def list_declarative_skills():
+    """List all declarative versioned skills."""
+    from skills.skill_engine import get_skill_engine
+    engine = get_skill_engine()
+    skills = engine.list_skills()
+    return {"total": len(skills), "skills": [s.to_dict() for s in skills]}
+
+
+@app.post("/api/agent/skills/{name}/run")
+async def run_declarative_skill(name: str, req: RunSkillRequest):
+    """Execute a declarative skill by name with supplied input values."""
+    from skills.skill_engine import get_skill_engine
+    engine = get_skill_engine()
+    res = await asyncio.to_thread(engine.execute_skill, name, req.inputs)
+    return res
+
+
+@app.get("/api/agent/devices")
+async def list_agent_devices():
+    """List connected desktop and paired Android mobile devices."""
+    from mobile.gateway import get_device_gateway
+    from mobile.session import get_mobile_session_manager
+    gateway = get_device_gateway()
+    session_mgr = get_mobile_session_manager()
+
+    devices = gateway.list_devices()
+    active_ids = set(session_mgr.list_active_devices())
+
+    out = []
+    # Primary PC device
+    out.append({
+        "device_id": "pc_primary",
+        "display_name": "Host PC Controller",
+        "platform": platform.system().lower(),
+        "trust_state": "trusted",
+        "status": "online",
+        "capabilities": ["desktop_control", "filesystem", "browser", "voice", "vision"]
+    })
+    for d in devices:
+        item = d.to_dict()
+        item["status"] = "online" if d.device_id in active_ids else "offline"
+        out.append(item)
+    return {"devices": out}
+
+
+@app.post("/api/agent/devices/pair-token")
+async def generate_device_pairing_token():
+    """Generate a pairing PIN and QR token for Android Companion app."""
+    from mobile.gateway import get_device_gateway
+    gateway = get_device_gateway()
+    return gateway.generate_pairing_token()
+
+
+@app.post("/api/agent/devices/pair")
+async def pair_android_device(req: PairDeviceRequest):
+    """Complete device pairing with PIN and register Android device."""
+    from mobile.gateway import get_device_gateway
+    gateway = get_device_gateway()
+    paired = gateway.complete_pairing(req.pin, req.device_id, req.model_name, req.public_key)
+    if not paired:
+        raise HTTPException(status_code=400, detail="Invalid or expired pairing PIN")
+    return {"status": "success", "device": paired.to_dict()}
+
+
+@app.get("/api/agent/audit")
+async def query_audit_events(task_id: Optional[str] = None, device_id: Optional[str] = None, risk: Optional[str] = None, limit: int = 50):
+    """Query structured audit logs."""
+    from history.audit_engine import get_audit_engine
+    engine = get_audit_engine()
+    events = engine.query_events(task_id=task_id, device_id=device_id, risk=risk, limit=limit)
+    return {"total": len(events), "events": [e.to_dict() for e in events]}
+
+
+# ── Mobile Companion WebSocket ──────────────────────────────────────────────
+@app.websocket("/mobile/ws")
+async def mobile_websocket_endpoint(websocket: WebSocket):
+    """Secure WebSocket endpoint for Android Companion app."""
+    from mobile.gateway import get_device_gateway
+    from mobile.session import get_mobile_session_manager
+
+    gateway = get_device_gateway()
+    session_mgr = get_mobile_session_manager()
+
+    device_id = websocket.query_params.get("device_id")
+    token = websocket.query_params.get("token")
+
+    if not device_id or not token or not gateway.verify_auth_token(device_id, token):
+        await websocket.accept()
+        await websocket.close(code=4001, reason="Unauthorized Mobile Device")
+        return
+
+    await websocket.accept()
+    session = await session_mgr.register_session(device_id, websocket)
+
+    try:
+        while True:
+            raw_text = await websocket.receive_text()
+            session.handle_incoming_message(raw_text)
+    except WebSocketDisconnect:
+        pass
+    except Exception as e:
+        logger.error("Mobile WS exception for %s: %s", device_id, e)
+    finally:
+        await session_mgr.remove_session(device_id)
+
+
 # ── WebSockets ───────────────────────────────────────────────────────────────
 async def _safe_ws_send(ws: WebSocket, data: dict) -> bool:
     try:
@@ -1203,11 +1428,7 @@ def main():
                         if pid.isdigit() and int(pid) != os.getpid():
                             subprocess.run(["taskkill", "/F", "/PID", pid],
                                            capture_output=True, timeout=5)
-                            if 'logger' in globals() or 'logger' in locals():
-                                logger.info(f"{ f"[Server] Killed stale process PID {pid} on port {port}" }" if isinstance(f"[Server] Killed stale process PID {pid} on port {port}", str) else f"[Server] Killed stale process PID {pid} on port {port}")
-                            else:
-                                import logging
-                                logging.getLogger(__name__).info(f"{ f"[Server] Killed stale process PID {pid} on port {port}" }" if isinstance(f"[Server] Killed stale process PID {pid} on port {port}", str) else f"[Server] Killed stale process PID {pid} on port {port}")
+                            logger.info(f"[Server] Killed stale process PID {pid} on port {port}")
             else:
                 cleaned = False
                 try:
@@ -1220,11 +1441,7 @@ def main():
                                 if conn.laddr and conn.laddr.port == port:
                                     proc.kill()
                                     cleaned = True
-                                    if 'logger' in globals() or 'logger' in locals():
-                                        logger.info(f"{ f"[Server] Killed stale process {proc.name()} (PID {proc.pid}) on port {port}" }" if isinstance(f"[Server] Killed stale process {proc.name()} (PID {proc.pid}) on port {port}", str) else f"[Server] Killed stale process {proc.name()} (PID {proc.pid}) on port {port}")
-                                    else:
-                                        import logging
-                                        logging.getLogger(__name__).info(f"{ f"[Server] Killed stale process {proc.name()} (PID {proc.pid}) on port {port}" }" if isinstance(f"[Server] Killed stale process {proc.name()} (PID {proc.pid}) on port {port}", str) else f"[Server] Killed stale process {proc.name()} (PID {proc.pid}) on port {port}")
+                                    logger.info(f"[Server] Killed stale process {proc.name()} (PID {proc.pid}) on port {port}")
                         except (psutil.NoSuchProcess, psutil.AccessDenied):
                             pass
                 except Exception:
@@ -1245,12 +1462,18 @@ def main():
         except Exception:
             pass
 
-    if 'logger' in globals() or 'logger' in locals():
-        logger.info(f"{ f"[Server] Exposing JARVIS AI Core on http://{host}:{port}" }" if isinstance(f"[Server] Exposing JARVIS AI Core on http://{host}:{port}", str) else f"[Server] Exposing JARVIS AI Core on http://{host}:{port}")
-    else:
-        import logging
-        logging.getLogger(__name__).info(f"{ f"[Server] Exposing JARVIS AI Core on http://{host}:{port}" }" if isinstance(f"[Server] Exposing JARVIS AI Core on http://{host}:{port}", str) else f"[Server] Exposing JARVIS AI Core on http://{host}:{port}")
+    logger.info(f"[Server] Exposing JARVIS AI Core on http://{host}:{port}")
+    # ── Auto-Boot Proactive Multi-Channel Listener ──────────────────────────
+    try:
+        from actions.proactive_listener import get_proactive_listener
+        listener = get_proactive_listener()
+        boot_res = listener.start(poll_interval=30)
+        logger.info("[Server] Proactive Listener Boot: %s", boot_res)
+    except Exception as exc:
+        logger.debug("[Server] Proactive Listener auto-boot skipped: %s", exc)
+
     uvicorn.run(app, host=host, port=port)
+
 
 
 if __name__ == "__main__":

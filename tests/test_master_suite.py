@@ -9,10 +9,13 @@ Master Test Suite Runner consolidating all 80+ unit & integration tests across 5
 """
 from __future__ import annotations
 
+import logging
 import unittest
 import pytest
 import sys
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 
 def run_master_suite() -> int:
@@ -20,21 +23,9 @@ def run_master_suite() -> int:
     project_root = Path(__file__).resolve().parent.parent
     test_dir = project_root / "tests"
     
-    if 'logger' in globals() or 'logger' in locals():
-        logger.info(f"{ "=" * 60 }" if isinstance("=" * 60, str) else "=" * 60)
-    else:
-        import logging
-        logging.getLogger(__name__).info(f"{ "=" * 60 }" if isinstance("=" * 60, str) else "=" * 60)
-    if 'logger' in globals() or 'logger' in locals():
-        logger.info("BR JARVIS -- MASTER SYSTEM TEST SUITE RUNNER")
-    else:
-        import logging
-        logging.getLogger(__name__).info("BR JARVIS -- MASTER SYSTEM TEST SUITE RUNNER")
-    if 'logger' in globals() or 'logger' in locals():
-        logger.info(f"{ "=" * 60 }" if isinstance("=" * 60, str) else "=" * 60)
-    else:
-        import logging
-        logging.getLogger(__name__).info(f"{ "=" * 60 }" if isinstance("=" * 60, str) else "=" * 60)
+    logger.info("=" * 60)
+    logger.info("BR JARVIS -- MASTER SYSTEM TEST SUITE RUNNER")
+    logger.info("=" * 60)
 
     exit_code = pytest.main([
         str(test_dir),

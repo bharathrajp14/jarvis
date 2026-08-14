@@ -1,13 +1,97 @@
 from __future__ import annotations
+import logging
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Sequence
 from pathlib import Path
+
+logger = logging.getLogger("JARVIS.TaskDAG")
+
+
+# ── BUG-016 FIX: DAG Cycle Detection ──────────────────────────────────────────
+
+def detect_cycles(nodes: Sequence["DAGNode"]) -> None:
+    """
+    Validate that the given DAG nodes contain no cyclic dependencies.
+
+    Uses Kahn's topological sort (BFS). If all nodes cannot be processed,
+    a cycle exists among the remaining nodes.
+
+    Raises:
+        ValueError: If a cycle is detected, with a message identifying the cycle nodes.
+    """
+    all_ids = {n.node_id for n in nodes}
+    in_degree: dict[str, int] = {n.node_id: 0 for n in nodes}
+    adj: dict[str, list[str]] = {n.node_id: [] for n in nodes}
+
+    for node in nodes:
+        for dep in node.dependencies:
+            if dep not in all_ids:
+                continue
+            adj[dep].append(node.node_id)
+            in_degree[node.node_id] += 1
+
+    from collections import deque
+    queue: deque[str] = deque(nid for nid, deg in in_degree.items() if deg == 0)
+    processed = 0
+
+    while queue:
+        nid = queue.popleft()
+        processed += 1
+        for neighbour in adj.get(nid, []):
+            in_degree[neighbour] -= 1
+            if in_degree[neighbour] == 0:
+                queue.append(neighbour)
+
+    if processed < len(all_ids):
+        cycle_nodes = [nid for nid, deg in in_degree.items() if deg > 0]
+        raise ValueError(
+            f"[TaskDAG] Cyclic dependency detected! Nodes involved: {cycle_nodes}. "
+            "Fix your task graph before execution."
+        )
+
+
+def topological_order(nodes: Sequence["DAGNode"]) -> list["DAGNode"]:
+    """
+    Return nodes in a valid topological execution order (dependencies first).
+
+    Raises:
+        ValueError: If cycles are detected.
+    """
+    detect_cycles(nodes)
+
+    node_map = {n.node_id: n for n in nodes}
+    all_ids = set(node_map)
+    in_degree: dict[str, int] = {n.node_id: 0 for n in nodes}
+    adj: dict[str, list[str]] = {n.node_id: [] for n in nodes}
+
+    for node in nodes:
+        for dep in node.dependencies:
+            if dep not in all_ids:
+                continue
+            adj[dep].append(node.node_id)
+            in_degree[node.node_id] += 1
+
+    from collections import deque
+    queue: deque[str] = deque(nid for nid, deg in in_degree.items() if deg == 0)
+    result: list["DAGNode"] = []
+
+    while queue:
+        nid = queue.popleft()
+        result.append(node_map[nid])
+        for neighbour in adj.get(nid, []):
+            in_degree[neighbour] -= 1
+            if in_degree[neighbour] == 0:
+                queue.append(neighbour)
+
+    return result
+
 
 class DAGNodeState(Enum):
     PENDING = "PENDING"
     RUNNING = "RUNNING"
     COMPLETED = "COMPLETED"
     FAILED = "FAILED"
+
 
 
 class DAGNode:
@@ -67,7 +151,7 @@ class PersistentTaskDAG:
 
     def _init_db(self) -> None:
         import sqlite3
-        conn = sqlite3.connect(str(self.db_path))
+        conn = sqlite3.connect(str(self.db_path), timeout=15.0)
         try:
             conn.execute("PRAGMA journal_mode=WAL")
             conn.execute("""
@@ -97,7 +181,7 @@ class PersistentTaskDAG:
     def checkpoint(self, task_id: str, goal: str, nodes: List[Any], status: str) -> None:
         import sqlite3
         import json
-        conn = sqlite3.connect(str(self.db_path))
+        conn = sqlite3.connect(str(self.db_path), timeout=15.0)
         try:
             conn.execute("PRAGMA journal_mode=WAL")
             conn.execute(
@@ -136,7 +220,7 @@ class PersistentTaskDAG:
     def resume(self, task_id: str) -> Optional[Dict[str, Any]]:
         import sqlite3
         import json
-        conn = sqlite3.connect(str(self.db_path))
+        conn = sqlite3.connect(str(self.db_path), timeout=15.0)
         try:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()

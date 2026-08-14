@@ -6,6 +6,7 @@ Uses ChromaDB for vector storage and semantic search.
 """
 from __future__ import annotations
 
+import logging
 import hashlib
 import json
 import os
@@ -24,6 +25,8 @@ CHUNK_OVERLAP = 100    # overlap between chunks
 MAX_CHUNKS_PER_DOC = 500
 
 import threading
+
+logger = logging.getLogger(__name__)
 
 _chroma_client = None
 _collection = None
@@ -48,11 +51,7 @@ def _get_collection():
             )
             return _collection
         except Exception as e:
-            if 'logger' in globals() or 'logger' in locals():
-                logger.warning(f"{ f"[RAG] Failed to initialize ChromaDB: {e}" }" if isinstance(f"[RAG] Failed to initialize ChromaDB: {e}", str) else f"[RAG] Failed to initialize ChromaDB: {e}")
-            else:
-                import logging
-                logging.getLogger(__name__).warning(f"{ f"[RAG] Failed to initialize ChromaDB: {e}" }" if isinstance(f"[RAG] Failed to initialize ChromaDB: {e}", str) else f"[RAG] Failed to initialize ChromaDB: {e}")
+            logger.warning(f"[RAG] Failed to initialize ChromaDB: {e}")
             return None
 
 
@@ -378,11 +377,7 @@ def query(question: str, top_k: int = 5, doc_filter: str = None) -> list[dict]:
     try:
         results = collection.query(**kwargs)
     except Exception as e:
-        if 'logger' in globals() or 'logger' in locals():
-            logger.warning(f"{ f"[RAG] Query error: {e}" }" if isinstance(f"[RAG] Query error: {e}", str) else f"[RAG] Query error: {e}")
-        else:
-            import logging
-            logging.getLogger(__name__).warning(f"{ f"[RAG] Query error: {e}" }" if isinstance(f"[RAG] Query error: {e}", str) else f"[RAG] Query error: {e}")
+        logger.warning(f"[RAG] Query error: {e}")
         return []
 
     output = []
@@ -426,11 +421,7 @@ def list_documents() -> list[dict]:
 
         return list(docs.values())
     except Exception as e:
-        if 'logger' in globals() or 'logger' in locals():
-            logger.warning(f"{ f"[RAG] List error: {e}" }" if isinstance(f"[RAG] List error: {e}", str) else f"[RAG] List error: {e}")
-        else:
-            import logging
-            logging.getLogger(__name__).warning(f"{ f"[RAG] List error: {e}" }" if isinstance(f"[RAG] List error: {e}", str) else f"[RAG] List error: {e}")
+        logger.warning(f"[RAG] List error: {e}")
         return []
 
 

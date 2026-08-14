@@ -5,11 +5,14 @@ Searches files by name, extension, or inside text contents across system drives.
 """
 from __future__ import annotations
 
+import logging
 import os
 import sys
 import time
 import glob
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 _EXCLUDE_DIRS = {".git", "__pycache__", "node_modules", "AppData", "Windows", "Program Files", "Program Files (x86)", "$Recycle.Bin", ".venv", "venv"}
 
@@ -33,11 +36,7 @@ def search_files_by_name(query: str, root_dir: str = "", max_results: int = 20) 
                     if len(results) >= max_results:
                         return results
     except Exception as e:
-        if 'logger' in globals() or 'logger' in locals():
-            logger.debug('Suppressed exception: %s', e)
-        else:
-            import logging
-            logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+        logger.debug('Suppressed exception: %s', e)
     return results[:max_results]
 
 
@@ -74,17 +73,9 @@ def search_file_contents(query: str, search_path: str = "", extension: str = "",
                         "snippet": f"...{snippet}...",
                     })
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
     except Exception as e:
-        if 'logger' in globals() or 'logger' in locals():
-            logger.debug('Suppressed exception: %s', e)
-        else:
-            import logging
-            logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+        logger.debug('Suppressed exception: %s', e)
     return matches[:max_results]
 
 

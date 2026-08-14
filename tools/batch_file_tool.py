@@ -5,11 +5,14 @@ and zip archive operations.
 """
 from __future__ import annotations
 
+import logging
 import os
 import re
 import zipfile
 from pathlib import Path
 from tools.registry import register_tool
+
+logger = logging.getLogger(__name__)
 
 
 @register_tool(
@@ -88,11 +91,7 @@ def batch_file_ops(args: dict) -> str:
                         f.write_text(new_content, encoding="utf-8")
                         modified_files.append(str(f.relative_to(target_dir if target_dir.is_dir() else target_dir.parent)))
                 except Exception as e:
-                    if 'logger' in globals() or 'logger' in locals():
-                        logger.debug('Suppressed exception: %s', e)
-                    else:
-                        import logging
-                        logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                    logger.debug('Suppressed exception: %s', e)
         return f"✅ Batch replace complete. Modified {len(modified_files)} file(s):\n" + "\n".join(f"- {m}" for m in modified_files[:20])
 
     elif action == "create_zip":

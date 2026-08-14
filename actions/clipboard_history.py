@@ -5,6 +5,7 @@ Logs clipboard copies to a SQLite database and provides search tools.
 """
 from __future__ import annotations
 
+import logging
 import sqlite3
 import time
 import threading
@@ -13,6 +14,8 @@ from pathlib import Path
 from memory.persistent_store import get_memory_dir
 from tools.registry import register_tool
 from actions.clipboard_utils import get_clipboard_text
+
+logger = logging.getLogger(__name__)
 
 
 class ClipboardTracker:
@@ -27,7 +30,7 @@ class ClipboardTracker:
         self._thread = None
 
     def _init_db(self):
-        conn = sqlite3.connect(str(self.db_path))
+        conn = sqlite3.connect(str(self.db_path), timeout=15.0)
         try:
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS clipboard (
@@ -61,15 +64,11 @@ class ClipboardTracker:
                     last_val = val
                     self._save_entry(val)
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
             time.sleep(1.0)
 
     def _save_entry(self, content: str):
-        conn = sqlite3.connect(str(self.db_path))
+        conn = sqlite3.connect(str(self.db_path), timeout=15.0)
         try:
             conn.execute(
                 "INSERT OR REPLACE INTO clipboard (timestamp, content, char_count) VALUES (datetime('now', 'localtime'), ?, ?)",
@@ -77,16 +76,12 @@ class ClipboardTracker:
             )
             conn.commit()
         except Exception as e:
-            if 'logger' in globals() or 'logger' in locals():
-                logger.debug('Suppressed exception: %s', e)
-            else:
-                import logging
-                logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+            logger.debug('Suppressed exception: %s', e)
         finally:
             conn.close()
 
     def search(self, query: str, limit: int = 15) -> list[dict]:
-        conn = sqlite3.connect(str(self.db_path))
+        conn = sqlite3.connect(str(self.db_path), timeout=15.0)
         conn.row_factory = sqlite3.Row
         try:
             cursor = conn.cursor()
@@ -99,7 +94,7 @@ class ClipboardTracker:
             conn.close()
 
     def get_recent(self, limit: int = 15) -> list[dict]:
-        conn = sqlite3.connect(str(self.db_path))
+        conn = sqlite3.connect(str(self.db_path), timeout=15.0)
         conn.row_factory = sqlite3.Row
         try:
             cursor = conn.cursor()

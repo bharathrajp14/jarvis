@@ -7,6 +7,7 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
+from typing import Any
 from datetime import datetime
 
 logger = logging.getLogger("JARVIS.Actions.Desktop")
@@ -297,8 +298,9 @@ def _execute_generated_code(code: str, player=None) -> str:
 
 def _ask_gemini_for_desktop_action(task: str) -> str:
 
-    from google import genai as _genai  # type: ignore
-    _client = _genai.Client(api_key=_get_api_key())
+    from actions._gemini_client import get_gemini_client as _get_gc, get_proxy_model as _gpm
+    _client = _get_gc()
+    _desktop_model = _gpm("gemini-3.5-flash", "gemini-2.5-flash")
 
     desktop = str(_get_desktop())
 
@@ -336,7 +338,7 @@ Output ONLY the Python code. No explanation, no markdown, no backticks.
 Task: {task}"""
 
     try:
-        response = _client.models.generate_content(model="gemini-2.5-flash", contents=prompt)
+        response = _client.models.generate_content(model=_desktop_model, contents=prompt)
         code = response.text.strip()
         if code.startswith("```"):
             lines = code.split("\n")

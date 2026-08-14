@@ -1,5 +1,9 @@
 """JARVIS MK37 -- Deep Audit: Runtime cross-reference and logic bug test."""
+
+import logging
 import sys, os, traceback
+
+logger = logging.getLogger(__name__)
 sys.path.insert(0, '.')
 os.environ['JARVIS_PERMISSION_MODE'] = 'allow_all'
 try:
@@ -17,34 +21,18 @@ def _run_audit(name, func):
     try:
         func()
         passed += 1
-        if 'logger' in globals() or 'logger' in locals():
-            logger.info(f"{ f"  ✅ PASS: {name}" }" if isinstance(f"  ✅ PASS: {name}", str) else f"  ✅ PASS: {name}")
-        else:
-            import logging
-            logging.getLogger(__name__).info(f"{ f"  ✅ PASS: {name}" }" if isinstance(f"  ✅ PASS: {name}", str) else f"  ✅ PASS: {name}")
+        logger.info(f"  ✅ PASS: {name}")
     except Exception as e:
         failed += 1
         errors.append((name, str(e)))
-        if 'logger' in globals() or 'logger' in locals():
-            logger.info(f"{ f"  ❌ FAIL: {name} -> {e}" }" if isinstance(f"  ❌ FAIL: {name} -> {e}", str) else f"  ❌ FAIL: {name} -> {e}")
-        else:
-            import logging
-            logging.getLogger(__name__).info(f"{ f"  ❌ FAIL: {name} -> {e}" }" if isinstance(f"  ❌ FAIL: {name} -> {e}", str) else f"  ❌ FAIL: {name} -> {e}")
+        logger.info(f"  ❌ FAIL: {name} -> {e}")
 
 audit_case = _run_audit
 
-if 'logger' in globals() or 'logger' in locals():
-    logger.info(f"{ "=" * 60 }" if isinstance("=" * 60, str) else "=" * 60)
-else:
-    import logging
-    logging.getLogger(__name__).info(f"{ "=" * 60 }" if isinstance("=" * 60, str) else "=" * 60)
+logger.info("=" * 60)
 
 # == 1. Permissions ==
-if 'logger' in globals() or 'logger' in locals():
-    logger.info("\n>> Permissions")
-else:
-    import logging
-    logging.getLogger(__name__).info("\n>> Permissions")
+logger.info("\n>> Permissions")
 
 def t_perm_allow_all():
     from permissions import PermissionMode, PermissionPolicy
@@ -88,11 +76,7 @@ def t_perm_confirm_all_allows_safe():
 _run_audit("CONFIRM_ALL allows safe tools without prompt", t_perm_confirm_all_allows_safe)
 
 # == 2. Skill Loader ==
-if 'logger' in globals() or 'logger' in locals():
-    logger.info("\n>> Skill Loader")
-else:
-    import logging
-    logging.getLogger(__name__).info("\n>> Skill Loader")
+logger.info("\n>> Skill Loader")
 
 def t_skill_parse_list_field():
     from skills.loader import _parse_list_field
@@ -151,11 +135,7 @@ def t_skill_editor_triggers():
 _run_audit("Editor skill triggers all resolve", t_skill_editor_triggers)
 
 # == 3. Multi-Agent ==
-if 'logger' in globals() or 'logger' in locals():
-    logger.info("\n>> Multi-Agent")
-else:
-    import logging
-    logging.getLogger(__name__).info("\n>> Multi-Agent")
+logger.info("\n>> Multi-Agent")
 
 def t_agent_all_builtins():
     from multi_agent.subagent import load_agent_definitions
@@ -181,11 +161,7 @@ def t_subagent_depth_limit():
 _run_audit("SubAgent depth limit", t_subagent_depth_limit)
 
 # == 4. Persistent Memory ==
-if 'logger' in globals() or 'logger' in locals():
-    logger.info("\n>> Persistent Memory")
-else:
-    import logging
-    logging.getLogger(__name__).info("\n>> Persistent Memory")
+logger.info("\n>> Persistent Memory")
 
 def t_memory_roundtrip():
     from memory.persistent_store import MemoryEntry, save_memory, search_memory, delete_memory
@@ -245,11 +221,7 @@ def t_memory_touch():
 audit_case("Memory touch_last_used", t_memory_touch)
 
 # == 5. Memory Scan ==
-if 'logger' in globals() or 'logger' in locals():
-    logger.info("\n>> Memory Scan")
-else:
-    import logging
-    logging.getLogger(__name__).info("\n>> Memory Scan")
+logger.info("\n>> Memory Scan")
 
 def t_memory_scan_freshness():
     import time as _time
@@ -263,11 +235,7 @@ def t_memory_scan_freshness():
 audit_case("Memory freshness functions", t_memory_scan_freshness)
 
 # == 6. Memory Context ==
-if 'logger' in globals() or 'logger' in locals():
-    logger.info("\n>> Memory Context")
-else:
-    import logging
-    logging.getLogger(__name__).info("\n>> Memory Context")
+logger.info("\n>> Memory Context")
 
 def t_memory_context_truncation():
     from memory.memory_context import truncate_index_content
@@ -300,11 +268,7 @@ def t_find_relevant_memories():
 audit_case("find_relevant_memories", t_find_relevant_memories)
 
 # == 7. Tool Registry ==
-if 'logger' in globals() or 'logger' in locals():
-    logger.info("\n>> Tool Registry")
-else:
-    import logging
-    logging.getLogger(__name__).info("\n>> Tool Registry")
+logger.info("\n>> Tool Registry")
 
 def t_registry_all_schemas_have_name():
     from tools.registry import TOOL_SCHEMAS, _import_plugins
@@ -355,11 +319,7 @@ def t_registry_execute_unknown():
 audit_case("execute_tool unknown tool", t_registry_execute_unknown)
 
 # == 8. Orchestrator ==
-if 'logger' in globals() or 'logger' in locals():
-    logger.info("\n>> Orchestrator")
-else:
-    import logging
-    logging.getLogger(__name__).info("\n>> Orchestrator")
+logger.info("\n>> Orchestrator")
 
 def t_orchestrator_mode_switch():
     from orchestrator import JarvisOrchestrator
@@ -406,11 +366,7 @@ def t_orchestrator_system_prompt():
 audit_case("System prompt has all tool blocks", t_orchestrator_system_prompt)
 
 # == 9. Working Memory ==
-if 'logger' in globals() or 'logger' in locals():
-    logger.info("\n>> Working Memory")
-else:
-    import logging
-    logging.getLogger(__name__).info("\n>> Working Memory")
+logger.info("\n>> Working Memory")
 
 def t_working_memory_trim():
     from memory.working import WorkingMemory
@@ -423,11 +379,7 @@ def t_working_memory_trim():
 audit_case("WorkingMemory trimming", t_working_memory_trim)
 
 # == 10. Consolidator ==
-if 'logger' in globals() or 'logger' in locals():
-    logger.info("\n>> Consolidator")
-else:
-    import logging
-    logging.getLogger(__name__).info("\n>> Consolidator")
+logger.info("\n>> Consolidator")
 
 def t_consolidator_short_session():
     from memory.consolidator import consolidate_session
@@ -442,11 +394,7 @@ def t_consolidator_no_router():
 audit_case("Consolidator skips without router", t_consolidator_no_router)
 
 # == 11. Router ==
-if 'logger' in globals() or 'logger' in locals():
-    logger.info("\n>> Router")
-else:
-    import logging
-    logging.getLogger(__name__).info("\n>> Router")
+logger.info("\n>> Router")
 
 def t_router_fallback():
     from router import AgentRouter, AgentProfile
@@ -477,11 +425,7 @@ def t_router_run_missing():
 _run_audit("Router.run handles missing backend", t_router_run_missing)
 
 # == 12. Cross-module Integration ==
-if 'logger' in globals() or 'logger' in locals():
-    logger.info("\n>> Cross-module Integration")
-else:
-    import logging
-    logging.getLogger(__name__).info("\n>> Cross-module Integration")
+logger.info("\n>> Cross-module Integration")
 
 def t_skill_executor_inline():
     from skills import load_skills, execute_skill
@@ -550,11 +494,7 @@ audit_case("ScopeEnforcer auth checks", t_redteam_scope_enforcer)
 
 
 # == 13. Deep Audit Upgrades ==
-if 'logger' in globals() or 'logger' in locals():
-    logger.info("\n>> Deep Audit Upgrades")
-else:
-    import logging
-    logging.getLogger(__name__).info("\n>> Deep Audit Upgrades")
+logger.info("\n>> Deep Audit Upgrades")
 
 def t_dynamic_token_budget_wiring():
     from context.engine import get_context_engine
@@ -617,21 +557,9 @@ audit_case("Whisper silence gate skips silent audio", t_whisper_silence_gate_and
 
 
 # == Summary ==
-if 'logger' in globals() or 'logger' in locals():
-    logger.info(f"{ "\n" + "=" * 60 }" if isinstance("\n" + "=" * 60, str) else "\n" + "=" * 60)
-else:
-    import logging
-    logging.getLogger(__name__).info(f"{ "\n" + "=" * 60 }" if isinstance("\n" + "=" * 60, str) else "\n" + "=" * 60)
-if 'logger' in globals() or 'logger' in locals():
-    logger.warning(f"{ f"  Results: {passed} passed, {failed} failed" }" if isinstance(f"  Results: {passed} passed, {failed} failed", str) else f"  Results: {passed} passed, {failed} failed")
-else:
-    import logging
-    logging.getLogger(__name__).warning(f"{ f"  Results: {passed} passed, {failed} failed" }" if isinstance(f"  Results: {passed} passed, {failed} failed", str) else f"  Results: {passed} passed, {failed} failed")
-if 'logger' in globals() or 'logger' in locals():
-    logger.info(f"{ "=" * 60 }" if isinstance("=" * 60, str) else "=" * 60)
-else:
-    import logging
-    logging.getLogger(__name__).info(f"{ "=" * 60 }" if isinstance("=" * 60, str) else "=" * 60)
+logger.info("\n" + "=" * 60)
+logger.warning(f"  Results: {passed} passed, {failed} failed")
+logger.info("=" * 60)
 
 def test_deep_audit_suite():
     assert failed == 0, f"Deep audit had {failed} failures: {errors}"

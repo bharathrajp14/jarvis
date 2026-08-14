@@ -286,14 +286,32 @@ def execute_tool(name: str, args: dict) -> str:
         if act in ("type", "write", "type_text", "write_text"):
             act = "type_text"
         args = {"action": act, "value": text}
-    elif name in ("file_controller", "file_manager"):
-        act = args.get("action", "write")
-        if act in ("create", "write", "create_file"):
+    elif name in ("file_controller", "file_manager", "file_control"):
+        act = str(args.get("action", "read")).lower()
+        if act in ("create", "write", "create_file", "save"):
             name = "file_write"
             args = {"path": args.get("name") or args.get("path") or "file.txt", "content": args.get("content", "")}
-        elif act in ("list", "dir", "ls"):
+        elif act in ("read", "get", "view", "cat", "open_read"):
+            name = "file_read"
+            args = {"path": args.get("path") or args.get("name") or "file.txt"}
+        elif act in ("list", "dir", "ls", "search"):
             name = "file_list"
             args = {"path": args.get("path", ".")}
+        elif act in ("open", "launch", "open_file", "view_doc"):
+            name = "open_app"
+            target_path = args.get("path") or args.get("name") or args.get("file") or ""
+            args = {"app_name": f"start {target_path}".strip() if target_path else "explorer"}
+        else:
+            name = "file_list"
+            args = {"path": args.get("path", ".")}
+    elif name in ("screen_process", "screen_processor", "screen_share", "screen_shot"):
+        name = "screen_find"
+        desc = args.get("description") or args.get("query") or args.get("text") or "screen"
+        args = {"description": str(desc)}
+    elif name == "window_control":  # keep only the non-registered alias
+        name = "window_manager"
+        args = {"action": args.get("action", "list"), "title": args.get("title", "")}
+
 
     # ── Lazy Loading Resolve ──
     if name not in TOOL_REGISTRY:
@@ -321,7 +339,13 @@ def execute_tool(name: str, args: dict) -> str:
             "git_repo_tool": "tools.git_repo_tool",
             "system_diagnostic": "tools.system_diagnostic_tool",
             "mcp_connector": "tools.mcp_connector",
+            "mcp_call_tool": "tools.mcp_connector",
+            "start_multichannel_listener": "tools.proactive_listener_tools",
+            "stop_multichannel_listener": "tools.proactive_listener_tools",
+            "get_pending_channel_actions": "tools.proactive_listener_tools",
+            "respond_channel_action": "tools.proactive_listener_tools",
         }
+
         if name in tool_to_module:
             _import_plugins(plugin_name=tool_to_module[name])
 
@@ -610,7 +634,10 @@ def _import_plugins(*, full: bool = False, plugin_name: str | None = None):
     """
     global _plugins_stage
     
-    # Core essential tools needed immediately
+    # Core essential tools needed immediately.
+    # IMPORTANT: Any tool referenced in essential_tools or the system prompt MUST be
+    # in this list — otherwise the LLM will be told a tool exists but get
+    # 'ERROR: Unknown tool' when it tries to call it.
     core_plugins = [
         "tools.web_tools",
         "tools.file_tools",
@@ -619,13 +646,25 @@ def _import_plugins(*, full: bool = False, plugin_name: str | None = None):
         "tools.memory_tools",
         "tools.agent_tools",
         "tools.system_tools",
+        # FIX: these plugins define tools listed in essential_tools / the system
+        # prompt, so they must load at startup — not lazily on first use.
+        "tools.legacy_actions_tools",   # open_app, computer_settings, agent_task,
+                                         # code_helper, dev_agent, youtube_video,
+                                         # flight_finder, file_controller, screen_process
+        "tools.automation_tools",        # automate_app, run_automation_workflow,
+                                         # execute_system_automation
+        "tools.app_analyzer_tools",      # list_installed_applications,
+                                         # list_running_applications
+        "tools.app_tracker_tools",       # get_app_launch_history,
+                                         # get_app_usage_statistics
+        "tools.skills_tools",             # run_skill, list_skills
     ]
 
-    # Extended plugins loaded on demand or after core
+    # Extended plugins loaded on demand or after core.
+    # NOTE: Plugins already in core_plugins are skipped via _loaded_plugins guard.
     extended_plugins = [
         "tools.redteam_tools",
         "tools.skills_tools",
-        "tools.legacy_actions_tools",
         "actions.clipboard_history",
         "actions.scheduler",
         "actions.email_assistant",
@@ -649,10 +688,8 @@ def _import_plugins(*, full: bool = False, plugin_name: str | None = None):
         "tools.browser_automation",
         "tools.qa_testing_tool",
         "tools.autonomous_browser_agent",
-        "tools.app_analyzer_tools",
-        "tools.app_tracker_tools",
-        "tools.automation_tools",
         "tools.whatsapp_tools",
+        "tools.telegram_tools",
         "tools.calendar_tools",
         "tools.gmail_auth_tools",
         "tools.smart_email_tools",
@@ -661,7 +698,12 @@ def _import_plugins(*, full: bool = False, plugin_name: str | None = None):
         "tools.system_health",
         "tools.mcp_connector",
         "tools.web_app_tools",
+        "tools.pdf_tools",
+        "tools.proactive_listener_tools",
+        "tools.browser_agent_v2",
     ]
+
+
 
     with _plugins_lock:
         # 1. Handle single-plugin lazy request

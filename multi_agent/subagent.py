@@ -120,11 +120,7 @@ def load_agent_definitions() -> Dict[str, AgentDefinition]:
                 d = _parse_agent_md(p, source="user")
                 defs[d.name] = d
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
     # Project-level (overrides user)
     proj_dir = Path.cwd() / ".jarvis" / "agents"
     if proj_dir.is_dir():
@@ -133,11 +129,7 @@ def load_agent_definitions() -> Dict[str, AgentDefinition]:
                 d = _parse_agent_md(p, source="project")
                 defs[d.name] = d
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
     return defs
 
 
@@ -238,9 +230,11 @@ class SubAgentManager:
                 import re
 
                 final_response = ""
+                sub_tool_counts: dict[str, int] = {}  # Sub-agent-local cyclic guard
                 for _step in range(15):
                     if task._cancel_flag:
                         break
+
 
                     try:
                         response = orchestrator.router.run(
@@ -253,6 +247,20 @@ class SubAgentManager:
                     tool_name, tool_args = parse_tool_call(response)
 
                     if tool_name:
+                        # ── Sub-agent cyclic loop guard ──
+                        import json as _json
+                        _sub_sig = f"{tool_name}:{_json.dumps(tool_args or {}, sort_keys=True)}"
+                        sub_tool_counts[_sub_sig] = sub_tool_counts.get(_sub_sig, 0) + 1
+                        _sub_limit = 4  # Sub-agents are short-lived; 4 identical calls = loop
+                        if sub_tool_counts[_sub_sig] >= _sub_limit:
+                            final_response = (
+                                f"[SubAgent] ⛔ Cyclic-loop protection: '{tool_name}' called "
+                                f"{sub_tool_counts[_sub_sig]} times inside sub-agent (limit={_sub_limit}). "
+                                "Halting sub-agent to prevent token burn."
+                            )
+                            logger.warning("[MultiAgent] %s", final_response)
+                            break
+
                         tool_result = execute_tool(tool_name, tool_args)
                         clean_response = re.sub(
                             r'```tool_call\s*\n\s*\{.*?\}\s*\n\s*```',
@@ -358,11 +366,7 @@ class SubAgentManager:
             try:
                 task._future.result(timeout=timeout)
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         return task
 
     def get_result(self, task_id: str) -> Optional[str]:

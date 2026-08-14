@@ -13,6 +13,7 @@ Features:
 """
 from __future__ import annotations
 
+import logging
 import json
 import os
 import threading
@@ -20,6 +21,8 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 
 _JSONL_PATH = Path.home() / ".jarvis" / "history" / "audit.jsonl"
@@ -57,11 +60,7 @@ def _rotate_if_needed(file_path: Path) -> None:
             target.unlink()
         file_path.rename(target)
     except Exception as e:
-        if 'logger' in globals() or 'logger' in locals():
-            logger.debug('Suppressed exception: %s', e)
-        else:
-            import logging
-            logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+        logger.debug('Suppressed exception: %s', e)
 def _truncate_args(args: Any, max_len: int = 500) -> Any:
     """Safely truncate arguments for audit storage without JSON syntax errors."""
     if args is None:
@@ -147,8 +146,4 @@ def write_audit(
             with open(_PLAINTEXT_PATH, "a", encoding="utf-8") as f:
                 f.write(plain_line)
         except Exception as e:
-            if 'logger' in globals() or 'logger' in locals():
-                logger.debug('Suppressed exception: %s', e)
-            else:
-                import logging
-                logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+            logger.debug('Suppressed exception: %s', e)

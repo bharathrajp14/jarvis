@@ -5,10 +5,13 @@ calling external APIs or opening UI windows.
 """
 from __future__ import annotations
 
+import logging
 import json
 import os
 import sys
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 if sys.platform == "win32":
     os.environ["PYTHONIOENCODING"] = "utf-8"
@@ -26,18 +29,10 @@ def _repo_root() -> Path:
 def _check(name: str, fn):
     try:
         fn()
-        if 'logger' in globals() or 'logger' in locals():
-            logger.info(f"{ f"[PASS] {name}" }" if isinstance(f"[PASS] {name}", str) else f"[PASS] {name}")
-        else:
-            import logging
-            logging.getLogger(__name__).info(f"{ f"[PASS] {name}" }" if isinstance(f"[PASS] {name}", str) else f"[PASS] {name}")
+        logger.info(f"[PASS] {name}")
         return True
     except Exception as exc:
-        if 'logger' in globals() or 'logger' in locals():
-            logger.info(f"{ f"[FAIL] {name}: {exc}" }" if isinstance(f"[FAIL] {name}: {exc}", str) else f"[FAIL] {name}: {exc}")
-        else:
-            import logging
-            logging.getLogger(__name__).info(f"{ f"[FAIL] {name}: {exc}" }" if isinstance(f"[FAIL] {name}: {exc}", str) else f"[FAIL] {name}: {exc}")
+        logger.info(f"[FAIL] {name}: {exc}")
         return False
 
 
@@ -132,11 +127,7 @@ def main() -> int:
 
     passed = sum(1 for ok in results if ok)
     total = len(results)
-    if 'logger' in globals() or 'logger' in locals():
-        logger.info(f"{ f"\nSmoke summary: {passed}/{total} checks passed" }" if isinstance(f"\nSmoke summary: {passed}/{total} checks passed", str) else f"\nSmoke summary: {passed}/{total} checks passed")
-    else:
-        import logging
-        logging.getLogger(__name__).info(f"{ f"\nSmoke summary: {passed}/{total} checks passed" }" if isinstance(f"\nSmoke summary: {passed}/{total} checks passed", str) else f"\nSmoke summary: {passed}/{total} checks passed")
+    logger.info(f"\nSmoke summary: {passed}/{total} checks passed")
     return 0 if passed == total else 1
 
 

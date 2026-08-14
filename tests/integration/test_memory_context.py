@@ -1,12 +1,15 @@
 # tests/integration/test_memory_context.py — Scenarios 23, 24, 26: Memory & Context Integration
 from __future__ import annotations
 
+import logging
 import time
 import pytest
 from memory.unified_memory import get_unified_memory
 from events.bus import get_event_bus
 from events.types import BaseEvent
 from events.store import EventStore
+
+logger = logging.getLogger(__name__)
 
 
 def test_scenario_23_context_persistence():
@@ -50,11 +53,7 @@ def test_scenario_24_event_logging():
             assert len(matches) > 0
             assert matches[0].payload["action"] == "test_verification"
     except Exception as e:
-        if 'logger' in globals() or 'logger' in locals():
-            logger.debug('Suppressed exception: %s', e)
-        else:
-            import logging
-            logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+        logger.debug('Suppressed exception: %s', e)
 def test_scenario_26_memory_recall():
     """Scenario 26: Set, recall, and retrieve cached entries."""
     mem = get_unified_memory()

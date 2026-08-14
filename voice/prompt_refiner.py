@@ -11,6 +11,8 @@ import os
 import re
 import sys
 import logging
+from pathlib import Path
+from typing import Any, Dict, Optional
 
 logger = logging.getLogger("JARVIS.PromptRefiner")
 
@@ -48,11 +50,7 @@ class VoicePromptRefiner:
                 data = json.loads(vocab_path.read_text(encoding="utf-8"))
                 return data.get("corrections", {})
         except Exception as e:
-            if 'logger' in globals() or 'logger' in locals():
-                logger.info(f"{ f"[PromptRefiner] Vocabulary load warning: {e}" }" if isinstance(f"[PromptRefiner] Vocabulary load warning: {e}", str) else f"[PromptRefiner] Vocabulary load warning: {e}")
-            else:
-                import logging
-                logging.getLogger(__name__).info(f"{ f"[PromptRefiner] Vocabulary load warning: {e}" }" if isinstance(f"[PromptRefiner] Vocabulary load warning: {e}", str) else f"[PromptRefiner] Vocabulary load warning: {e}")
+            logger.info(f"[PromptRefiner] Vocabulary load warning: {e}")
         return {}
 
     def strip_fillers(self, text: str) -> str:

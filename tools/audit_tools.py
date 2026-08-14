@@ -4,6 +4,7 @@ Codebase Auditor, Security Vulnerability Scanner, and Code Quality Suite.
 """
 from __future__ import annotations
 
+import logging
 import ast
 import os
 import re
@@ -11,6 +12,8 @@ from pathlib import Path
 from typing import Any
 
 from tools.registry import register_tool
+
+logger = logging.getLogger(__name__)
 
 
 def _get_workspace_dir() -> Path:
@@ -66,11 +69,7 @@ def audit_codebase(args: dict) -> str:
                 security_findings.append(f" - {rel_str} → Possible hardcoded API key or secret token")
 
         except Exception as e:
-            if 'logger' in globals() or 'logger' in locals():
-                logger.debug('Suppressed exception: %s', e)
-            else:
-                import logging
-                logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+            logger.debug('Suppressed exception: %s', e)
     status_str = "🟢 CLEAN" if not syntax_errors and not security_findings else "⚠️ ISSUES DETECTED"
 
     report = [

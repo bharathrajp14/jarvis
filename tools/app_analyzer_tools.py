@@ -8,7 +8,8 @@ from __future__ import annotations
 import json
 from typing import Any, Dict
 from tools.registry import register_tool
-from actions.app_analyzer import get_app_analyzer
+# NOTE: get_app_analyzer is imported lazily inside each handler to prevent a
+# missing/broken actions.app_analyzer from silently killing all tool registrations.
 
 
 @register_tool(
@@ -24,6 +25,7 @@ from actions.app_analyzer import get_app_analyzer
 )
 def tool_list_installed_applications(args: dict) -> str:
     """List installed applications on the host system."""
+    from actions.app_analyzer import get_app_analyzer  # lazy import
     query = str(args.get("query", "")).strip().lower()
     limit = args.get("limit", 50)
 
@@ -58,6 +60,7 @@ def tool_list_installed_applications(args: dict) -> str:
 )
 def tool_list_running_applications(args: dict) -> str:
     """List running desktop applications and processes."""
+    from actions.app_analyzer import get_app_analyzer  # lazy import
     gui_only = args.get("gui_only", True)
     top_n = args.get("top_n", 25)
 
@@ -85,6 +88,7 @@ def tool_list_running_applications(args: dict) -> str:
 )
 def tool_search_applications(args: dict) -> str:
     """Search installed and running applications by keyword."""
+    from actions.app_analyzer import get_app_analyzer  # lazy import
     query = str(args.get("query", "")).strip()
     if not query:
         return "Error: Search query required."

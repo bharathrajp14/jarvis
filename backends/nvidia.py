@@ -5,11 +5,14 @@ Uses the OpenAI SDK pointed at NVIDIA's API endpoint.
 """
 from __future__ import annotations
 
+import logging
 import os
 import traceback
 from typing import Generator
 
 from backends.base import BaseBackend
+
+logger = logging.getLogger(__name__)
 
 
 class NvidiaBackend(BaseBackend):
@@ -33,17 +36,9 @@ class NvidiaBackend(BaseBackend):
                     base_url="https://integrate.api.nvidia.com/v1",
                     api_key=_api_key,
                 )
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.info(f"{ f"[NVIDIA] [OK] Using model: {self.model}" }" if isinstance(f"[NVIDIA] [OK] Using model: {self.model}", str) else f"[NVIDIA] [OK] Using model: {self.model}")
-                else:
-                    import logging
-                    logging.getLogger(__name__).info(f"{ f"[NVIDIA] [OK] Using model: {self.model}" }" if isinstance(f"[NVIDIA] [OK] Using model: {self.model}", str) else f"[NVIDIA] [OK] Using model: {self.model}")
+                logger.info(f"[NVIDIA] [OK] Using model: {self.model}")
             except ImportError:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.info("[NVIDIA] Warning: openai package is not installed.")
-                else:
-                    import logging
-                    logging.getLogger(__name__).info("[NVIDIA] Warning: openai package is not installed.")
+                logger.info("[NVIDIA] Warning: openai package is not installed.")
 
     @property
     def name(self) -> str:
@@ -90,11 +85,7 @@ class NvidiaBackend(BaseBackend):
             response = self.client.chat.completions.create(**kwargs)
             return response.choices[0].message.content
         except Exception as e:
-            if 'logger' in globals() or 'logger' in locals():
-                logger.warning(f"{ f"[NVIDIA] Error: {e}" }" if isinstance(f"[NVIDIA] Error: {e}", str) else f"[NVIDIA] Error: {e}")
-            else:
-                import logging
-                logging.getLogger(__name__).warning(f"{ f"[NVIDIA] Error: {e}" }" if isinstance(f"[NVIDIA] Error: {e}", str) else f"[NVIDIA] Error: {e}")
+            logger.warning(f"[NVIDIA] Error: {e}")
             raise
 
     def stream(self, messages: list, system: str = "") -> Generator[str, None, None]:

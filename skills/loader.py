@@ -11,6 +11,7 @@ Skills can be loaded from:
 """
 from __future__ import annotations
 
+import logging
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -21,6 +22,8 @@ try:
     _HAS_YAML = True
 except ImportError:
     _HAS_YAML = False
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -114,11 +117,7 @@ def _parse_skill_file(path: Path, source: str = "user") -> Optional[SkillDef]:
             if isinstance(parsed_yaml, dict):
                 fields = {str(k).lower(): v for k, v in parsed_yaml.items()}
         except Exception as e:
-            if 'logger' in globals() or 'logger' in locals():
-                logger.debug('Suppressed exception: %s', e)
-            else:
-                import logging
-                logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+            logger.debug('Suppressed exception: %s', e)
     # Fallback to key-value string parsing if PyYAML fails or isn't available
     if not fields:
         for line in frontmatter_raw.splitlines():

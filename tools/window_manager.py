@@ -6,9 +6,12 @@ minimize/maximize windows, and manage desktop layout autonomously.
 """
 from __future__ import annotations
 
+import logging
 import os
 import sys
 from typing import Dict, List, Any
+
+logger = logging.getLogger(__name__)
 
 _HAS_WIN32 = False
 if sys.platform == "win32":
@@ -70,11 +73,7 @@ def focus_window_by_title(title_query: str) -> str:
             try:
                 win32gui.SetForegroundWindow(target_hwnd)
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
             return f"Focused window: '{target_title}' (HWND: {target_hwnd})"
         return f"No visible window matching '{title_query}' was found."
     except Exception as e:

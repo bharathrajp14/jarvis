@@ -6,6 +6,7 @@ AI video generation using multiple providers:
 """
 from __future__ import annotations
 
+import logging
 import base64
 import json
 import os
@@ -13,6 +14,8 @@ import time
 import traceback
 from datetime import datetime
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 
 def _output_dir() -> Path:
@@ -71,11 +74,7 @@ def generate_video(
                 result["prompt"] = prompt
                 return result
         except Exception as e:
-            if 'logger' in globals() or 'logger' in locals():
-                logger.warning(f"{ f"[VideoGen] {prov} failed: {e}" }" if isinstance(f"[VideoGen] {prov} failed: {e}", str) else f"[VideoGen] {prov} failed: {e}")
-            else:
-                import logging
-                logging.getLogger(__name__).warning(f"{ f"[VideoGen] {prov} failed: {e}" }" if isinstance(f"[VideoGen] {prov} failed: {e}", str) else f"[VideoGen] {prov} failed: {e}")
+            logger.warning(f"[VideoGen] {prov} failed: {e}")
             traceback.print_exc()
             continue
 

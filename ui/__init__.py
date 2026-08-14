@@ -81,9 +81,10 @@ def __getattr__(name: str):
         "JarvisUI", "HeadlessJarvisUI", "is_gui_available", "_RootShim",
     }
     if name in _public:
-        from ui import app as _app  # noqa: PLC0415
+        import ui.app as _app  # noqa: PLC0415
         val = getattr(_app, name, None)
         if val is not None:
             globals()[name] = val  # cache for subsequent accesses
             return val
+
     raise AttributeError(f"module 'ui' has no attribute {name!r}")

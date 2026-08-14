@@ -9,6 +9,7 @@
 #   _nvml_gpu_windows() — NVIDIA GPU utilization via nvml.dll (no subprocess)
 from __future__ import annotations
 
+import logging
 import platform
 
 from ui import _base_dir, setup_qt_paths
@@ -17,6 +18,8 @@ from ui import _base_dir, setup_qt_paths
 setup_qt_paths()
 
 from ui._qt import QApplication, QColor  # noqa: E402
+
+logger = logging.getLogger(__name__)
 
 _OS = platform.system()  # "Windows" | "Darwin" | "Linux"
 
@@ -126,11 +129,7 @@ def retheme_all_widgets(old: dict[str, str], new: dict[str, str]) -> None:
                     w.setStyleSheet(s2)
             w.update()
         except Exception as e:
-            if 'logger' in globals() or 'logger' in locals():
-                logger.debug('Suppressed exception: %s', e)
-            else:
-                import logging
-                logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+            logger.debug('Suppressed exception: %s', e)
 def qcol(h: str, a: int = 255) -> QColor:
     """Convenience factory: create a QColor from a hex string with optional alpha."""
     c = QColor(h)

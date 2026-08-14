@@ -1,6 +1,7 @@
 # guardian/core.py — Master Guardian Core Safety Engine
 from __future__ import annotations
 
+import logging
 import hashlib
 import time
 from pathlib import Path
@@ -8,6 +9,8 @@ from guardian.kill_switch import KillSwitch
 from guardian.snapshot import SnapshotManager
 from guardian.rollback import RollbackEngine
 from guardian.audit_log import AuditLog
+
+logger = logging.getLogger(__name__)
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -38,11 +41,7 @@ class GuardianCore:
             try:
                 return json.loads(self._HASH_FILE.read_text(encoding="utf-8"))
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.exception('Boot critical exception encountered in guardian/core.py')
-                else:
-                    import logging
-                    logging.getLogger(__name__).exception('Boot critical exception')
+                logger.exception('Boot critical exception encountered in guardian/core.py')
                 raise e
         hashes = self._calculate_hashes()
         self._persist_hashes(hashes)
@@ -56,11 +55,7 @@ class GuardianCore:
                 json.dumps(hashes, indent=2), encoding="utf-8"
             )
         except Exception as e:
-            if 'logger' in globals() or 'logger' in locals():
-                logger.exception('Boot critical exception encountered in guardian/core.py')
-            else:
-                import logging
-                logging.getLogger(__name__).exception('Boot critical exception')
+            logger.exception('Boot critical exception encountered in guardian/core.py')
             raise e
     def _calculate_hashes(self) -> dict[str, str]:
         hashes = {}
@@ -71,11 +66,7 @@ class GuardianCore:
                     data = p.read_bytes()
                     hashes[path_str] = hashlib.sha256(data).hexdigest()
                 except Exception as e:
-                    if 'logger' in globals() or 'logger' in locals():
-                        logger.exception('Boot critical exception encountered in guardian/core.py')
-                    else:
-                        import logging
-                        logging.getLogger(__name__).exception('Boot critical exception')
+                    logger.exception('Boot critical exception encountered in guardian/core.py')
                     raise e
         return hashes
 

@@ -17,6 +17,7 @@ Features:
 """
 from __future__ import annotations
 
+import logging
 import json
 import sqlite3
 import threading
@@ -24,6 +25,8 @@ import time
 import uuid
 from pathlib import Path
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 
 _DB_DIR = Path.home() / ".jarvis" / "history"
@@ -109,11 +112,7 @@ class SessionStore:
             if cols and "last_active_ts" not in cols:
                 conn.execute("ALTER TABLE sessions ADD COLUMN last_active_ts INTEGER NOT NULL DEFAULT 0")
         except Exception as e:
-            if 'logger' in globals() or 'logger' in locals():
-                logger.debug('Suppressed exception: %s', e)
-            else:
-                import logging
-                logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+            logger.debug('Suppressed exception: %s', e)
         conn.executescript(_SCHEMA_SQL)
 
         try:
@@ -142,11 +141,7 @@ class SessionStore:
             try:
                 self._conn.close()
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
             self._conn = None
 
     def __del__(self):

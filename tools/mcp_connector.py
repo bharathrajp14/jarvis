@@ -2,9 +2,12 @@
 # Compatible with any MCP server (Claude Desktop, Open Claw, Paperclip, custom)
 from __future__ import annotations
 
+import logging
 import httpx
 from typing import Dict, Any
 from tools.registry import register_tool
+
+logger = logging.getLogger(__name__)
 
 
 class MCPConnector:
@@ -23,11 +26,7 @@ class MCPConnector:
                 return data.get("tools", [])
             return []
         except Exception as e:
-            if 'logger' in globals() or 'logger' in locals():
-                logger.warning(f"{ f"[MCPConnector] List tools error ({self.url}): {e}" }" if isinstance(f"[MCPConnector] List tools error ({self.url}): {e}", str) else f"[MCPConnector] List tools error ({self.url}): {e}")
-            else:
-                import logging
-                logging.getLogger(__name__).warning(f"{ f"[MCPConnector] List tools error ({self.url}): {e}" }" if isinstance(f"[MCPConnector] List tools error ({self.url}): {e}", str) else f"[MCPConnector] List tools error ({self.url}): {e}")
+            logger.warning(f"[MCPConnector] List tools error ({self.url}): {e}")
             return []
 
     def call_tool(self, name: str, args: dict) -> dict:

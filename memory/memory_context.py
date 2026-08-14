@@ -9,6 +9,7 @@ Provides:
 """
 from __future__ import annotations
 
+import logging
 from memory.persistent_store import (
     INDEX_FILENAME,
     MAX_INDEX_LINES,
@@ -19,6 +20,8 @@ from memory.persistent_store import (
 from memory.memory_scan import scan_all_memories, memory_freshness_text
 from memory.memory_types import MEMORY_SYSTEM_PROMPT
 from memory.lessons import LessonStore
+
+logger = logging.getLogger(__name__)
 
 
 # ── Index truncation ───────────────────────────────────────────────────────
@@ -85,11 +88,7 @@ def get_memory_context(include_guidance: bool = False) -> str:
             lesson_lines = [f"- {l['topic']}: {l['correction']}" for l in top_lessons]
             parts.append("[Learned Lessons & User Corrections]\n" + "\n".join(lesson_lines))
     except Exception as e:
-        if 'logger' in globals() or 'logger' in locals():
-            logger.debug('Suppressed exception: %s', e)
-        else:
-            import logging
-            logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+        logger.debug('Suppressed exception: %s', e)
     if not parts:
         return ""
 

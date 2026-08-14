@@ -6,6 +6,8 @@ import sys
 import time
 from pathlib import Path
 
+from actions._gemini_client import get_gemini_client, get_proxy_model
+
 logger = logging.getLogger("JARVIS.Actions.DevAgent")
 
 
@@ -19,8 +21,8 @@ BASE_DIR         = get_base_dir()
 API_CONFIG_PATH  = BASE_DIR / "config" / "api_keys.json"
 PROJECTS_DIR     = Path.home() / "Desktop" / "JarvisProjects"
 MAX_FIX_ATTEMPTS = 5
-MODEL_PLANNER    = "gemini-2.5-flash"
-MODEL_WRITER     = "gemini-2.5-flash"
+MODEL_PLANNER    = get_proxy_model("gemini-3.6-flash-high", "gemini-2.5-flash")
+MODEL_WRITER     = get_proxy_model("gemini-3.5-flash", "gemini-2.5-flash")
 
 def _get_api_key() -> str:
     with open(API_CONFIG_PATH, "r", encoding="utf-8") as f:
@@ -28,8 +30,7 @@ def _get_api_key() -> str:
 
 
 def _get_model(model_name: str):
-    from google import genai
-    _c = genai.Client(api_key=_get_api_key())
+    _c = get_gemini_client()
 
     class _W:
         def generate_content(self, contents):

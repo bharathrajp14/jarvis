@@ -4,10 +4,13 @@ Automatic Rollback Engine that restores system state on failed healthchecks.
 """
 from __future__ import annotations
 
+import logging
 import shutil
 import subprocess
 from pathlib import Path
 from guardian.snapshot import SNAPSHOT_DIR
+
+logger = logging.getLogger(__name__)
 
 
 class RollbackEngine:
@@ -43,11 +46,7 @@ class RollbackEngine:
                 if res.returncode == 0:
                     git_restored = True
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.exception('Boot critical exception encountered in guardian/rollback.py')
-                else:
-                    import logging
-                    logging.getLogger(__name__).exception('Boot critical exception')
+                logger.exception('Boot critical exception encountered in guardian/rollback.py')
                 raise e
         # 2. Restore Database files
         restored_dbs = []

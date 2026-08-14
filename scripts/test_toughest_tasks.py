@@ -1,6 +1,7 @@
 # scripts/test_toughest_tasks.py — Tough Test Suite for JARVIS MK37 Subsystems
 from __future__ import annotations
 
+import logging
 import sys
 import os
 import time
@@ -22,15 +23,13 @@ from start import _check_module
 from actions.live_os_control import LiveOSController
 from core.bootstrap import build_assistant_runtime
 
+logger = logging.getLogger(__name__)
+
 RESULTS = []
 
 def log_result(name, ok, latency, detail):
     status = "PASS" if ok else "FAIL"
-    if 'logger' in globals() or 'logger' in locals():
-        logger.info("[%s] %s (%.2fms) - %s", status, name, latency, detail)
-    else:
-        import logging
-        logging.getLogger(__name__).info("[%s] %s (%.2fms) - %s", status, name, latency, detail)
+    logger.info("[%s] %s (%.2fms) - %s", status, name, latency, detail)
     RESULTS.append({
         "name": name,
         "status": status,
@@ -291,21 +290,9 @@ def test_10_floating_headless_grace():
         log_result("10. FLOATING (Headless UI Grace)", False, dt, f"Error: {e}")
 
 def main():
-    if 'logger' in globals() or 'logger' in locals():
-        logger.info(f"{ "=" * 75 }" if isinstance("=" * 75, str) else "=" * 75)
-    else:
-        import logging
-        logging.getLogger(__name__).info(f"{ "=" * 75 }" if isinstance("=" * 75, str) else "=" * 75)
-    if 'logger' in globals() or 'logger' in locals():
-        logger.info(" [TEST] JARVIS MK37 TOUGHEST SUB-SYSTEM SCENARIOS TEST SUITE")
-    else:
-        import logging
-        logging.getLogger(__name__).info(" [TEST] JARVIS MK37 TOUGHEST SUB-SYSTEM SCENARIOS TEST SUITE")
-    if 'logger' in globals() or 'logger' in locals():
-        logger.info(f"{ "=" * 75 }" if isinstance("=" * 75, str) else "=" * 75)
-    else:
-        import logging
-        logging.getLogger(__name__).info(f"{ "=" * 75 }" if isinstance("=" * 75, str) else "=" * 75)
+    logger.info("=" * 75)
+    logger.info(" [TEST] JARVIS MK37 TOUGHEST SUB-SYSTEM SCENARIOS TEST SUITE")
+    logger.info("=" * 75)
     
     test_1_voice_fallback()
     test_2_cli_reasoning()
@@ -318,23 +305,11 @@ def main():
     test_9_live_os_destructive_bounds()
     test_10_floating_headless_grace()
     
-    if 'logger' in globals() or 'logger' in locals():
-        logger.info(f"{ "=" * 75 }" if isinstance("=" * 75, str) else "=" * 75)
-    else:
-        import logging
-        logging.getLogger(__name__).info(f"{ "=" * 75 }" if isinstance("=" * 75, str) else "=" * 75)
+    logger.info("=" * 75)
     passed = sum(1 for r in RESULTS if r["status"] == "PASS")
     total = len(RESULTS)
-    if 'logger' in globals() or 'logger' in locals():
-        logger.info(f"{ f"SUMMARY: {passed}/{total} Toughest Scenario Test Cases Passed." }" if isinstance(f"SUMMARY: {passed}/{total} Toughest Scenario Test Cases Passed.", str) else f"SUMMARY: {passed}/{total} Toughest Scenario Test Cases Passed.")
-    else:
-        import logging
-        logging.getLogger(__name__).info(f"{ f"SUMMARY: {passed}/{total} Toughest Scenario Test Cases Passed." }" if isinstance(f"SUMMARY: {passed}/{total} Toughest Scenario Test Cases Passed.", str) else f"SUMMARY: {passed}/{total} Toughest Scenario Test Cases Passed.")
-    if 'logger' in globals() or 'logger' in locals():
-        logger.info(f"{ "=" * 75 }" if isinstance("=" * 75, str) else "=" * 75)
-    else:
-        import logging
-        logging.getLogger(__name__).info(f"{ "=" * 75 }" if isinstance("=" * 75, str) else "=" * 75)
+    logger.info(f"SUMMARY: {passed}/{total} Toughest Scenario Test Cases Passed.")
+    logger.info("=" * 75)
     
     # Save Report
     report_lines = [
@@ -352,11 +327,7 @@ def main():
     report_path = BASE_DIR / "workspace" / "toughest_scenarios_report.md"
     report_path.parent.mkdir(exist_ok=True)
     report_path.write_text("\n".join(report_lines), encoding="utf-8")
-    if 'logger' in globals() or 'logger' in locals():
-        logger.info(f"{ f"Report written to '{report_path}'" }" if isinstance(f"Report written to '{report_path}'", str) else f"Report written to '{report_path}'")
-    else:
-        import logging
-        logging.getLogger(__name__).info(f"{ f"Report written to '{report_path}'" }" if isinstance(f"Report written to '{report_path}'", str) else f"Report written to '{report_path}'")
+    logger.info(f"Report written to '{report_path}'")
 
 if __name__ == "__main__":
     main()

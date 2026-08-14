@@ -11,11 +11,7 @@ def subscribe(topic_pattern: str):
     Usage:
         @subscribe("system.startup")
         async def on_startup(event: BaseEvent):
-            if 'logger' in globals() or 'logger' in locals():
-                logger.info("System booted!")
-            else:
-                import logging
-                logging.getLogger(__name__).info("System booted!")
+            logger.info("System booted!")
     """
     def decorator(fn: EventHandler):
         bus = get_event_bus()

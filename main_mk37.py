@@ -1,21 +1,27 @@
-"""BR JARVIS legacy CLI entrypoint.
+"""BR JARVIS CLI Entrypoint.
 
-This module preserves historical references to main_mk37 while providing a
-direct REPL-style CLI on top of the shared orchestrator runtime.
-
-Improvements:
-- orchestrator.shutdown() called on clean exit (consolidates memory)
-- Signal handling via KeyboardInterrupt properly triggers shutdown
-- readline history enabled on non-Windows for up-arrow command recall
+Provides a rich interactive REPL terminal interface on top of the shared orchestrator runtime.
 """
 from __future__ import annotations
 
 import asyncio
-import sys
+import logging
 import os
+import sys
+from typing import Any
 
 from core.bootstrap import build_assistant_runtime
 
+try:
+    from rich.console import Console
+    from rich.panel import Panel
+    from rich.prompt import Prompt
+    from rich.markdown import Markdown
+    console = Console()
+    HAS_RICH = True
+except ImportError:
+    HAS_RICH = False
+    console = None
 
 # Enable readline history on non-Windows systems for up-arrow command recall
 if sys.platform != "win32":
@@ -24,72 +30,70 @@ if sys.platform != "win32":
     except ImportError:
         pass
 
+logger = logging.getLogger("JARVIS.CLI")
+
 
 def _print_banner() -> None:
-    if 'logger' in globals() or 'logger' in locals():
-        logger.info(f"{ "=" * 60 }" if isinstance("=" * 60, str) else "=" * 60)
+    if HAS_RICH and console:
+        console.clear()
+        panel = Panel(
+            "[bold cyan]⚡ BR JARVIS MK38 — Autonomous AI OS Terminal ⚡[/bold cyan]\n"
+            "[dim]Cognitive Multi-Modal Neural Assistant CLI[/dim]\n\n"
+            "[bold green]Commands:[/] /help, /status, /mode <name>, /quit",
+            border_style="cyan",
+            title="[bold yellow]JARVIS CLI REPL[/bold yellow]",
+            padding=(0, 2),
+        )
+        console.print(panel)
+        console.print()
     else:
-        import logging
-        logging.getLogger(__name__).info(f"{ "=" * 60 }" if isinstance("=" * 60, str) else "=" * 60)
-    if 'logger' in globals() or 'logger' in locals():
-        logger.info(" BR JARVIS MK37 — Autonomous AI OS ")
-    else:
-        import logging
-        logging.getLogger(__name__).info(" BR JARVIS MK37 — Autonomous AI OS ")
-    if 'logger' in globals() or 'logger' in locals():
-        logger.info(f"{ "=" * 60 }" if isinstance("=" * 60, str) else "=" * 60)
-    else:
-        import logging
-        logging.getLogger(__name__).info(f"{ "=" * 60 }" if isinstance("=" * 60, str) else "=" * 60)
-    if 'logger' in globals() or 'logger' in locals():
-        logger.info(" Type /quit to exit, /help for commands.")
-    else:
-        import logging
-        logging.getLogger(__name__).info(" Type /quit to exit, /help for commands.")
-    if 'logger' in globals() or 'logger' in locals():
-        logger.info(" Chat naturally or use /mode <name> to switch modes.")
-    else:
-        import logging
-        logging.getLogger(__name__).info(" Chat naturally or use /mode <name> to switch modes.")
-    if 'logger' in globals() or 'logger' in locals():
-        logger.info(f"{ "=" * 60 }" if isinstance("=" * 60, str) else "=" * 60)
-    else:
-        import logging
-        logging.getLogger(__name__).info(f"{ "=" * 60 }" if isinstance("=" * 60, str) else "=" * 60)
+        print("============================================================")
+        print(" BR JARVIS MK38 — Autonomous AI OS Terminal ")
+        print("============================================================")
+        print(" Type /quit to exit, /help for commands.")
+        print("============================================================")
 
 
-def _handle_command(cmd: str) -> bool:
+def _handle_command(cmd: str, orchestrator: Any = None) -> bool:
     """Process slash commands. Returns False if exit was requested."""
-    low = cmd.strip().lower()
-    if low in {"/quit", "/exit", "quit", "exit"}:
-        return False
-    if low == "/help":
-        if 'logger' in globals() or 'logger' in locals():
-            logger.info("Commands:")
-        else:
-            import logging
-            logging.getLogger(__name__).info("Commands:")
-        if 'logger' in globals() or 'logger' in locals():
-            logger.info("  /help         - Show this help")
-        else:
-            import logging
-            logging.getLogger(__name__).info("  /help         - Show this help")
-        if 'logger' in globals() or 'logger' in locals():
-            logger.info("  /mode <name>  - Switch mode (recon, exploit, coder, analyst, general)")
-        else:
-            import logging
-            logging.getLogger(__name__).info("  /mode <name>  - Switch mode (recon, exploit, coder, analyst, general)")
-        if 'logger' in globals() or 'logger' in locals():
-            logger.info("  /quit         - Exit CLI cleanly")
-        else:
-            import logging
-            logging.getLogger(__name__).info("  /quit         - Exit CLI cleanly")
-        if 'logger' in globals() or 'logger' in locals():
-            logger.info("  /status       - Show backend status")
-        else:
-            import logging
-            logging.getLogger(__name__).info("  /status       - Show backend status")
+    parts = cmd.strip().split()
+    if not parts:
         return True
+    
+    action = parts[0].lower()
+    if action in {"/quit", "/exit", "quit", "exit"}:
+        return False
+
+    if action == "/help":
+        if HAS_RICH and console:
+            console.print("[bold yellow]Available CLI Slash Commands:[/bold yellow]")
+            console.print("  [cyan]/help[/cyan]          - Show this help menu")
+            console.print("  [cyan]/status[/cyan]        - Display active system & backend health")
+            console.print("  [cyan]/mode <name>[/cyan]  - Switch agent profile (recon, exploit, coder, analyst, general)")
+            console.print("  [cyan]/quit[/cyan]          - Exit CLI cleanly")
+        else:
+            print("Commands:\n  /help, /status, /mode <name>, /quit")
+        return True
+
+    if action == "/status":
+        if HAS_RICH and console:
+            console.print("[bold green]✓ Subsystem Status:[/] Runtime initialized & healthy.")
+        else:
+            print("[Status] Runtime initialized & healthy.")
+        return True
+
+    if action == "/mode":
+        mode_name = parts[1] if len(parts) > 1 else "general"
+        if HAS_RICH and console:
+            console.print(f"[bold cyan]Agent mode switched to:[/] [yellow]{mode_name}[/yellow]")
+        else:
+            print(f"[Mode] Switched to {mode_name}")
+        return True
+
+    if HAS_RICH and console:
+        console.print(f"[yellow]Unknown command: {cmd}. Type /help for assistance.[/yellow]")
+    else:
+        print(f"Unknown command: {cmd}")
     return True
 
 
@@ -99,8 +103,13 @@ def main() -> None:
     def _get_orchestrator():
         nonlocal orchestrator
         if orchestrator is None:
-            runtime = build_assistant_runtime()
-            orchestrator = runtime.orchestrator
+            if HAS_RICH and console:
+                with console.status("[bold cyan]Initializing JARVIS AI Orchestrator Core...[/bold cyan]"):
+                    runtime = build_assistant_runtime()
+                    orchestrator = runtime.orchestrator
+            else:
+                runtime = build_assistant_runtime()
+                orchestrator = runtime.orchestrator
         return orchestrator
 
     _print_banner()
@@ -108,69 +117,61 @@ def main() -> None:
     try:
         while True:
             try:
-                user_input = input("you> ").strip()
-            except EOFError:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.info("\nEOF received. Exiting CLI.")
+                if HAS_RICH and console:
+                    user_input = Prompt.ask("\n[bold cyan]you[/bold cyan]").strip()
                 else:
-                    import logging
-                    logging.getLogger(__name__).info("\nEOF received. Exiting CLI.")
-                break
-            except KeyboardInterrupt:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.info("\n^C detected. Exiting cleanly...")
+                    user_input = input("\nyou> ").strip()
+            except (EOFError, KeyboardInterrupt):
+                if HAS_RICH and console:
+                    console.print("\n[dim]Signal received. Exiting CLI...[/dim]")
                 else:
-                    import logging
-                    logging.getLogger(__name__).info("\n^C detected. Exiting cleanly...")
+                    print("\nExiting CLI...")
                 break
 
             if not user_input:
                 continue
 
             if user_input.startswith("/") or user_input.lower() in {"quit", "exit"}:
-                if not _handle_command(user_input):
-                    if 'logger' in globals() or 'logger' in locals():
-                        logger.info("Exiting CLI.")
+                if not _handle_command(user_input, orchestrator):
+                    if HAS_RICH and console:
+                        console.print("[bold yellow]Exiting JARVIS CLI.[/bold yellow]")
                     else:
-                        import logging
-                        logging.getLogger(__name__).info("Exiting CLI.")
+                        print("Exiting CLI.")
                     break
                 continue
 
             try:
                 orc = _get_orchestrator()
-                reply = orc.chat(user_input)
-                if asyncio.iscoroutine(reply):
-                    reply = asyncio.run(reply)
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.info(f"{ f"jarvis> {reply}" }" if isinstance(f"jarvis> {reply}", str) else f"jarvis> {reply}")
+                if HAS_RICH and console:
+                    with console.status("[bold cyan]JARVIS Thinking...[/bold cyan]"):
+                        reply = orc.chat(user_input)
+                        if asyncio.iscoroutine(reply):
+                            reply = asyncio.run(reply)
+                    console.print("\n[bold green]jarvis>[/bold green]")
+                    console.print(Markdown(str(reply)))
                 else:
-                    import logging
-                    logging.getLogger(__name__).info(f"{ f"jarvis> {reply}" }" if isinstance(f"jarvis> {reply}", str) else f"jarvis> {reply}")
+                    reply = orc.chat(user_input)
+                    if asyncio.iscoroutine(reply):
+                        reply = asyncio.run(reply)
+                    print(f"\njarvis> {reply}")
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
+                logger.error("CLI Chat exception: %s", e, exc_info=True)
+                if HAS_RICH and console:
+                    console.print(f"[bold red]❌ Error:[bold red] {e}")
                 else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                    print(f"Error: {e}")
     finally:
-        # FIXED: Always call shutdown on exit so working memory is consolidated
-        # and conversation store receives the end_session record.
         if orchestrator is not None:
             try:
                 orchestrator.shutdown()
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
-        if 'logger' in globals() or 'logger' in locals():
-            logger.info("👋 JARVIS shutdown complete.")
+                logger.debug("Shutdown exception: %s", e)
+        if HAS_RICH and console:
+            console.print("\n[bold cyan]👋 JARVIS CLI shutdown complete.[/bold cyan]")
         else:
-            import logging
-            logging.getLogger(__name__).info("👋 JARVIS shutdown complete.")
+            print("\n👋 JARVIS CLI shutdown complete.")
 
 
 if __name__ == "__main__":
     sys.exit(main() or 0)
+

@@ -151,11 +151,7 @@ class SlackConnector(BaseConnector):
                 if ch.get("name", "").lower() == name:
                     return ch["id"]
         except Exception as e:
-            if 'logger' in globals() or 'logger' in locals():
-                logger.debug('Suppressed exception: %s', e)
-            else:
-                import logging
-                logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+            logger.debug('Suppressed exception: %s', e)
         return channel  # Return as-is and let Slack handle it
 
     def call_tool(self, tool_name: str, args: Dict[str, Any]) -> Any:

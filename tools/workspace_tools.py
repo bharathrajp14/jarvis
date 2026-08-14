@@ -63,7 +63,8 @@ def get_workspace_timeline(args: dict) -> str:
     ws = CognitiveWorkspaceEngine()
 
     import sqlite3
-    conn = sqlite3.connect(ws.db_path)
+    conn = sqlite3.connect(ws.db_path, timeout=15.0)
+
     cur = conn.cursor()
     cur.execute("SELECT timestamp, event_type, project_name, description FROM workspace_timeline ORDER BY timestamp DESC LIMIT ?", (limit,))
     rows = cur.fetchall()

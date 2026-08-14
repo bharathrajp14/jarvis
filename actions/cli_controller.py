@@ -4,6 +4,7 @@ Windows-specialized terminal command execution. Optimized for PowerShell/CMD.
 """
 from __future__ import annotations
 
+import logging
 import json
 import os
 import platform
@@ -16,6 +17,8 @@ import threading
 import time
 from pathlib import Path
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 _OS = platform.system()
 
@@ -94,11 +97,7 @@ class ShellSession:
                 try:
                     self._proc.kill()
                 except Exception as e:
-                    if 'logger' in globals() or 'logger' in locals():
-                        logger.debug('Suppressed exception: %s', e)
-                    else:
-                        import logging
-                        logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                    logger.debug('Suppressed exception: %s', e)
         self._proc = None
         return "Shell session stopped."
 
@@ -303,11 +302,7 @@ def cli_controller(
     if player:
         player.write_log(f"[CLI] {action}: {cmd[:60]}")
 
-    if 'logger' in globals() or 'logger' in locals():
-        logger.info(f"{ f"[CLIController] ▶ {action}  '{cmd[:60]}'" }" if isinstance(f"[CLIController] ▶ {action}  '{cmd[:60]}'", str) else f"[CLIController] ▶ {action}  '{cmd[:60]}'")
-    else:
-        import logging
-        logging.getLogger(__name__).info(f"{ f"[CLIController] ▶ {action}  '{cmd[:60]}'" }" if isinstance(f"[CLIController] ▶ {action}  '{cmd[:60]}'", str) else f"[CLIController] ▶ {action}  '{cmd[:60]}'")
+    logger.info(f"[CLIController] ▶ {action}  '{cmd[:60]}'")
 
     # ── Actions ───────────────────────────────────────────────────────────
 

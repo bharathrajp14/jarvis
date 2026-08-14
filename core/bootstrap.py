@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import threading
 from dataclasses import dataclass
 from typing import Optional
@@ -9,6 +10,8 @@ from events.bus import EventBus, get_event_bus
 from events.types import SystemEvent
 from orchestrator import JarvisOrchestrator
 from router import AgentRouter, load_available_backends
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
@@ -61,11 +64,7 @@ def build_assistant_runtime(*, use_vector_memory: bool = True) -> AssistantRunti
             try:
                 orchestrator.shutdown()
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.exception('Boot critical exception encountered in core/bootstrap.py')
-                else:
-                    import logging
-                    logging.getLogger(__name__).exception('Boot critical exception')
+                logger.exception('Boot critical exception encountered in core/bootstrap.py')
                 raise e
         core_runtime.lifecycle.add_shutdown_hook(_orchestrator_shutdown)
 

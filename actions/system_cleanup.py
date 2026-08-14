@@ -5,10 +5,13 @@ build artifacts, and free up disk space.
 """
 from __future__ import annotations
 
+import logging
 import os
 import shutil
 import tempfile
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 
 class SystemCleanupAction:
@@ -30,11 +33,7 @@ class SystemCleanupAction:
                     reclaimed_bytes += size
                     removed_items.append(f"Pycache: {p.relative_to(self.workspace_root)}")
                 except Exception as e:
-                    if 'logger' in globals() or 'logger' in locals():
-                        logger.debug('Suppressed exception: %s', e)
-                    else:
-                        import logging
-                        logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                    logger.debug('Suppressed exception: %s', e)
         # 2. Clean OS Temp directory (.tmp files > 24 hours old)
         if clean_temp:
             temp_dir = Path(tempfile.gettempdir())
@@ -46,17 +45,9 @@ class SystemCleanupAction:
                             reclaimed_bytes += st.st_size
                             item.unlink()
                         except Exception as e:
-                            if 'logger' in globals() or 'logger' in locals():
-                                logger.debug('Suppressed exception: %s', e)
-                            else:
-                                import logging
-                                logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                            logger.debug('Suppressed exception: %s', e)
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         # 3. Clean workspace logs if requested
         if clean_logs:
             logs_dir = self.workspace_root / "logs"
@@ -68,11 +59,7 @@ class SystemCleanupAction:
                         reclaimed_bytes += size
                         removed_items.append(f"Log: {log_file.name}")
                     except Exception as e:
-                        if 'logger' in globals() or 'logger' in locals():
-                            logger.debug('Suppressed exception: %s', e)
-                        else:
-                            import logging
-                            logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                        logger.debug('Suppressed exception: %s', e)
         mb = reclaimed_bytes / (1024 * 1024)
         return (
             f"🧹 System Cleanup Complete:\n"

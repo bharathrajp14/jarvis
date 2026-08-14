@@ -1,12 +1,15 @@
 # agent/error_handler.py — Automated Error Recovery & Reflection for JARVIS MK37
 from __future__ import annotations
 
+import logging
 import json
 import os
 import re
 import sys
 from pathlib import Path
 from enum import Enum
+
+logger = logging.getLogger(__name__)
 
 
 def get_base_dir() -> Path:
@@ -63,11 +66,7 @@ def _get_api_key() -> str:
             with open(API_CONFIG_PATH, "r", encoding="utf-8") as f:
                 return json.load(f).get("gemini_api_key", "").strip()
     except Exception as e:
-        if 'logger' in globals() or 'logger' in locals():
-            logger.debug('Suppressed exception: %s', e)
-        else:
-            import logging
-            logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+        logger.debug('Suppressed exception: %s', e)
     return ""
 
 
@@ -92,17 +91,9 @@ def analyze_error(
             weight=1.5
         )
     except Exception as e:
-        if 'logger' in globals() or 'logger' in locals():
-            logger.debug('Suppressed exception: %s', e)
-        else:
-            import logging
-            logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+        logger.debug('Suppressed exception: %s', e)
     if attempt >= max_attempts:
-        if 'logger' in globals() or 'logger' in locals():
-            logger.warning(f"{ f"[ErrorHandler] ⚠️ Max attempts reached for step {step.get('step')} — forcing replan" }" if isinstance(f"[ErrorHandler] ⚠️ Max attempts reached for step {step.get('step')} — forcing replan", str) else f"[ErrorHandler] ⚠️ Max attempts reached for step {step.get('step')} — forcing replan")
-        else:
-            import logging
-            logging.getLogger(__name__).warning(f"{ f"[ErrorHandler] ⚠️ Max attempts reached for step {step.get('step')} — forcing replan" }" if isinstance(f"[ErrorHandler] ⚠️ Max attempts reached for step {step.get('step')} — forcing replan", str) else f"[ErrorHandler] ⚠️ Max attempts reached for step {step.get('step')} — forcing replan")
+        logger.warning(f"[ErrorHandler] ⚠️ Max attempts reached for step {step.get('step')} — forcing replan")
         return {
             "decision":      ErrorDecision.REPLAN,
             "reason":        f"Failed {attempt} times: {error[:100]}",
@@ -157,19 +148,11 @@ Attempt number: {attempt}"""
             result["decision"]     = ErrorDecision.REPLAN
             result["user_message"] = "This step is critical — finding alternative approach, sir."
 
-        if 'logger' in globals() or 'logger' in locals():
-            logger.warning(f"{ f"[ErrorHandler] Decision: {result['decision'].value} — {result.get('reason', '')}" }" if isinstance(f"[ErrorHandler] Decision: {result['decision'].value} — {result.get('reason', '')}", str) else f"[ErrorHandler] Decision: {result['decision'].value} — {result.get('reason', '')}")
-        else:
-            import logging
-            logging.getLogger(__name__).warning(f"{ f"[ErrorHandler] Decision: {result['decision'].value} — {result.get('reason', '')}" }" if isinstance(f"[ErrorHandler] Decision: {result['decision'].value} — {result.get('reason', '')}", str) else f"[ErrorHandler] Decision: {result['decision'].value} — {result.get('reason', '')}")
+        logger.warning(f"[ErrorHandler] Decision: {result['decision'].value} — {result.get('reason', '')}")
         return result
 
     except Exception as e:
-        if 'logger' in globals() or 'logger' in locals():
-            logger.warning(f"{ f"[ErrorHandler] ⚠️ Analysis failed: {e} — defaulting to replan" }" if isinstance(f"[ErrorHandler] ⚠️ Analysis failed: {e} — defaulting to replan", str) else f"[ErrorHandler] ⚠️ Analysis failed: {e} — defaulting to replan")
-        else:
-            import logging
-            logging.getLogger(__name__).warning(f"{ f"[ErrorHandler] ⚠️ Analysis failed: {e} — defaulting to replan" }" if isinstance(f"[ErrorHandler] ⚠️ Analysis failed: {e} — defaulting to replan", str) else f"[ErrorHandler] ⚠️ Analysis failed: {e} — defaulting to replan")
+        logger.warning(f"[ErrorHandler] ⚠️ Analysis failed: {e} — defaulting to replan")
         return {
             "decision":       ErrorDecision.REPLAN,
             "reason":         str(e),
@@ -220,8 +203,9 @@ Return ONLY the Python code, no explanation."""
 
         return {
             "step":        step.get("step"),
-            "tool":        "code_helper",
+            "tool":        "run_code",
             "description": f"Auto-fix for: {step.get('description')}",
+
             "parameters": {
                 "action":      "run",
                 "description": fix_suggestion,
@@ -233,11 +217,7 @@ Return ONLY the Python code, no explanation."""
         }
 
     except Exception as e:
-        if 'logger' in globals() or 'logger' in locals():
-            logger.warning(f"{ f"[ErrorHandler] ⚠️ Fix generation failed: {e}" }" if isinstance(f"[ErrorHandler] ⚠️ Fix generation failed: {e}", str) else f"[ErrorHandler] ⚠️ Fix generation failed: {e}")
-        else:
-            import logging
-            logging.getLogger(__name__).warning(f"{ f"[ErrorHandler] ⚠️ Fix generation failed: {e}" }" if isinstance(f"[ErrorHandler] ⚠️ Fix generation failed: {e}", str) else f"[ErrorHandler] ⚠️ Fix generation failed: {e}")
+        logger.warning(f"[ErrorHandler] ⚠️ Fix generation failed: {e}")
         return {
             "step":        step.get("step"),
             "tool":        "web_search",

@@ -361,11 +361,7 @@ def _focus_window(title: str) -> str:
 def _screen_find(description: str) -> tuple[int, int] | None:
     api_key = _get_api_key()
     if not api_key:
-        if 'logger' in globals() or 'logger' in locals():
-            logger.info("[ComputerControl] ⚠️ No API key for screen_find")
-        else:
-            import logging
-            logging.getLogger(__name__).info("[ComputerControl] ⚠️ No API key for screen_find")
+        logger.info("[ComputerControl] ⚠️ No API key for screen_find")
         return None
 
     try:

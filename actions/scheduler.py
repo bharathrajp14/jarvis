@@ -5,6 +5,7 @@ Allows scheduling goals (e.g. "every day at 9:00am") and running them via TaskQu
 """
 from __future__ import annotations
 
+import logging
 import sqlite3
 import time
 import threading
@@ -15,6 +16,8 @@ from pathlib import Path
 from memory.persistent_store import get_memory_dir
 from tools.registry import register_tool
 from agent.task_queue import get_queue, TaskPriority
+
+logger = logging.getLogger(__name__)
 
 
 class TaskScheduler:
@@ -29,7 +32,7 @@ class TaskScheduler:
         self._thread = None
 
     def _init_db(self):
-        conn = sqlite3.connect(str(self.db_path))
+        conn = sqlite3.connect(str(self.db_path), timeout=15.0)
         try:
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS scheduled_tasks (
@@ -59,15 +62,11 @@ class TaskScheduler:
             try:
                 self._check_and_run_tasks()
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.info(f"{ f"[Scheduler] Loop warning: {e}" }" if isinstance(f"[Scheduler] Loop warning: {e}", str) else f"[Scheduler] Loop warning: {e}")
-                else:
-                    import logging
-                    logging.getLogger(__name__).info(f"{ f"[Scheduler] Loop warning: {e}" }" if isinstance(f"[Scheduler] Loop warning: {e}", str) else f"[Scheduler] Loop warning: {e}")
+                logger.info(f"[Scheduler] Loop warning: {e}")
             time.sleep(30)
 
     def _check_and_run_tasks(self):
-        conn = sqlite3.connect(str(self.db_path))
+        conn = sqlite3.connect(str(self.db_path), timeout=15.0)
         conn.row_factory = sqlite3.Row
         try:
             cursor = conn.cursor()
@@ -124,17 +123,13 @@ class TaskScheduler:
         return False
 
     def _trigger_task(self, task_id: int, goal: str, now: datetime):
-        if 'logger' in globals() or 'logger' in locals():
-            logger.info(f"{ f"[Scheduler] ⏰ Triggering scheduled goal: {goal!r}" }" if isinstance(f"[Scheduler] ⏰ Triggering scheduled goal: {goal!r}", str) else f"[Scheduler] ⏰ Triggering scheduled goal: {goal!r}")
-        else:
-            import logging
-            logging.getLogger(__name__).info(f"{ f"[Scheduler] ⏰ Triggering scheduled goal: {goal!r}" }" if isinstance(f"[Scheduler] ⏰ Triggering scheduled goal: {goal!r}", str) else f"[Scheduler] ⏰ Triggering scheduled goal: {goal!r}")
+        logger.info(f"[Scheduler] ⏰ Triggering scheduled goal: {goal!r}")
         try:
             q = get_queue()
             q.submit(goal, priority=TaskPriority.NORMAL)
             
             # Update last run
-            conn = sqlite3.connect(str(self.db_path))
+            conn = sqlite3.connect(str(self.db_path), timeout=15.0)
             conn.execute(
                 "UPDATE scheduled_tasks SET last_run = ? WHERE id = ?",
                 (now.isoformat(), task_id)
@@ -142,14 +137,10 @@ class TaskScheduler:
             conn.commit()
             conn.close()
         except Exception as e:
-            if 'logger' in globals() or 'logger' in locals():
-                logger.warning(f"{ f"[Scheduler] Failed to trigger task {task_id}: {e}" }" if isinstance(f"[Scheduler] Failed to trigger task {task_id}: {e}", str) else f"[Scheduler] Failed to trigger task {task_id}: {e}")
-            else:
-                import logging
-                logging.getLogger(__name__).warning(f"{ f"[Scheduler] Failed to trigger task {task_id}: {e}" }" if isinstance(f"[Scheduler] Failed to trigger task {task_id}: {e}", str) else f"[Scheduler] Failed to trigger task {task_id}: {e}")
+            logger.warning(f"[Scheduler] Failed to trigger task {task_id}: {e}")
 
     def add(self, schedule: str, goal: str) -> int:
-        conn = sqlite3.connect(str(self.db_path))
+        conn = sqlite3.connect(str(self.db_path), timeout=15.0)
         try:
             cursor = conn.cursor()
             cursor.execute(
@@ -162,7 +153,7 @@ class TaskScheduler:
             conn.close()
 
     def remove(self, task_id: int) -> bool:
-        conn = sqlite3.connect(str(self.db_path))
+        conn = sqlite3.connect(str(self.db_path), timeout=15.0)
         try:
             cursor = conn.cursor()
             cursor.execute("DELETE FROM scheduled_tasks WHERE id = ?", (task_id,))
@@ -172,7 +163,7 @@ class TaskScheduler:
             conn.close()
 
     def list_all(self) -> list[dict]:
-        conn = sqlite3.connect(str(self.db_path))
+        conn = sqlite3.connect(str(self.db_path), timeout=15.0)
         conn.row_factory = sqlite3.Row
         try:
             cursor = conn.cursor()

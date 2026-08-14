@@ -37,7 +37,8 @@ class CalendarEngine:
     @contextmanager
     def _db_session(self) -> Generator[sqlite3.Connection, None, None]:
         """Context manager yielding a SQLite connection and ensuring proper closure."""
-        conn = sqlite3.connect(self.db_path)
+        conn = sqlite3.connect(self.db_path, timeout=15.0)
+
         conn.row_factory = sqlite3.Row
         try:
             yield conn

@@ -210,11 +210,7 @@ def transcribe(audio_bytes: bytes, language: str = "en", detect_language: bool =
             if rms < min_rms:
                 return ""
     except Exception as e:
-        if 'logger' in globals() or 'logger' in locals():
-            logger.warning(f"{ f"[WhisperLocal] Silence gate check failed: {e}" }" if isinstance(f"[WhisperLocal] Silence gate check failed: {e}", str) else f"[WhisperLocal] Silence gate check failed: {e}")
-        else:
-            import logging
-            logging.getLogger(__name__).warning(f"{ f"[WhisperLocal] Silence gate check failed: {e}" }" if isinstance(f"[WhisperLocal] Silence gate check failed: {e}", str) else f"[WhisperLocal] Silence gate check failed: {e}")
+        logger.warning(f"[WhisperLocal] Silence gate check failed: {e}")
         float_samples = None
 
     engine, engine_type = _get_engine()
@@ -258,11 +254,7 @@ def transcribe(audio_bytes: bytes, language: str = "en", detect_language: bool =
         return text_clean
 
     except Exception as e:
-        if 'logger' in globals() or 'logger' in locals():
-            logger.warning(f"{ f"[WhisperLocal] Transcription error: {e}" }" if isinstance(f"[WhisperLocal] Transcription error: {e}", str) else f"[WhisperLocal] Transcription error: {e}")
-        else:
-            import logging
-            logging.getLogger(__name__).warning(f"{ f"[WhisperLocal] Transcription error: {e}" }" if isinstance(f"[WhisperLocal] Transcription error: {e}", str) else f"[WhisperLocal] Transcription error: {e}")
+        logger.warning(f"[WhisperLocal] Transcription error: {e}")
         traceback.print_exc()
         return ""
 

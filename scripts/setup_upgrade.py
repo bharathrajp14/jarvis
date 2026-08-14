@@ -11,12 +11,16 @@ What this does:
 3. Installs/verifies required packages
 4. Runs a quick sanity check
 """
+
+import logging
 import os
 import sys
 import argparse
 import shutil
 import subprocess
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 # Fix terminal encoding issues on Windows
 if sys.platform == "win32":
@@ -27,11 +31,7 @@ if sys.platform == "win32":
         if hasattr(sys.stderr, "reconfigure"):
             sys.stderr.reconfigure(encoding="utf-8", errors="replace")
     except Exception as e:
-        if 'logger' in globals() or 'logger' in locals():
-            logger.debug('Suppressed exception: %s', e)
-        else:
-            import logging
-            logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+        logger.debug('Suppressed exception: %s', e)
 # ── The upgraded files to copy ─────────────────────────────────────────────
 UPGRADE_DIR = Path(__file__).parent
 TARGET_DIR = None
@@ -188,11 +188,7 @@ def main():
                 api_keys_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
                 print_ok("Added gemini_api_key slot to config/api_keys.json")
         except Exception as e:
-            if 'logger' in globals() or 'logger' in locals():
-                logger.debug('Suppressed exception: %s', e)
-            else:
-                import logging
-                logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+            logger.debug('Suppressed exception: %s', e)
     # 4. Install required packages
     print_step("Installing required packages...")
     for pkg in REQUIRED_PACKAGES:

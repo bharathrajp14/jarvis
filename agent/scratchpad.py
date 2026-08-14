@@ -6,12 +6,15 @@ and transient data storage in ./scratch/.
 """
 from __future__ import annotations
 
+import logging
 import os
 import sys
 import time
 import subprocess
 from pathlib import Path
 from typing import Dict, Any, List, Optional
+
+logger = logging.getLogger(__name__)
 
 
 def _get_scratch_dir() -> Path:
@@ -87,11 +90,7 @@ class ScratchpadManager:
                     p.unlink()
                     count += 1
                 except Exception as e:
-                    if 'logger' in globals() or 'logger' in locals():
-                        logger.debug('Suppressed exception: %s', e)
-                    else:
-                        import logging
-                        logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                    logger.debug('Suppressed exception: %s', e)
         return f"Scratchpad cleared: {count} files removed, notes reset."
 
     def eval_script(self, target: str, language: str = "python", timeout: int = 30) -> Dict[str, Any]:

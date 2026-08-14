@@ -5,12 +5,15 @@ disk usage analysis, and network port inspection.
 """
 from __future__ import annotations
 
+import logging
 import os
 import sys
 import psutil
 import socket
 import platform
 from tools.registry import register_tool
+
+logger = logging.getLogger(__name__)
 
 
 @register_tool(
@@ -70,11 +73,7 @@ def system_diagnostic(args: dict) -> str:
                 usage = psutil.disk_usage(d.mountpoint)
                 out.append(f"  ● Drive {d.mountpoint:<6} ({d.fstype or 'N/A'}) -> Used: {usage.percent}% ({usage.used / (1024**3):.1f} GB / {usage.total / (1024**3):.1f} GB)")
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         return "\n".join(out)
 
     elif aspect == "network_ports":

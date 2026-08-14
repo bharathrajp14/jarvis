@@ -21,7 +21,7 @@ class SQLiteManagerAction:
             return f"Error: Database file '{self.db_path}' does not exist."
 
         try:
-            conn = sqlite3.connect(self.db_path)
+            conn = sqlite3.connect(self.db_path, timeout=15.0)
             cur = conn.cursor()
             cur.execute("SELECT name FROM sqlite_master WHERE type='table';")
             tables = [r[0] for r in cur.fetchall()]
@@ -48,7 +48,7 @@ class SQLiteManagerAction:
 
         try:
             orig_size = self.db_path.stat().st_size
-            conn = sqlite3.connect(self.db_path)
+            conn = sqlite3.connect(self.db_path, timeout=15.0)
             conn.execute("VACUUM;")
             conn.execute("PRAGMA optimize;")
             conn.close()

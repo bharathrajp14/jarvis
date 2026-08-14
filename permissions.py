@@ -28,6 +28,15 @@ class PermissionMode(str, Enum):
     DENY_ALL = "deny_all"
 
 
+class ActionDecision(str, Enum):
+    ALLOW = "allow"
+    DENY = "deny"
+    CONFIRM = "confirm"
+    ALLOW_FOR_SESSION = "allow_for_session"
+    ALLOW_FOR_DEVICE = "allow_for_device"
+    ALLOW_FOR_APPLICATION = "allow_for_application"
+
+
 # Tools that require confirmation under CONFIRM_DESTRUCTIVE mode
 DESTRUCTIVE_TOOLS: FrozenSet[str] = frozenset(
     {
@@ -42,6 +51,8 @@ DESTRUCTIVE_TOOLS: FrozenSet[str] = frozenset(
         "run_automation_workflow",
         "execute_system_automation",
         "game_updater",
+        "mobile_send_message",
+        "mobile_delete_files",
     }
 )
 
@@ -130,11 +141,8 @@ def _build_global_policy() -> PermissionPolicy:
     scope_mode = _normalize_mode(scope_raw) if scope_raw else None
     
     mode = env_mode or scope_mode or PermissionMode.CONFIRM_DESTRUCTIVE
-    if 'logger' in globals() or 'logger' in locals():
-        logger.info(f"{ f"[Permissions] Active permission policy mode: {mode.value.upper()}" }" if isinstance(f"[Permissions] Active permission policy mode: {mode.value.upper()}", str) else f"[Permissions] Active permission policy mode: {mode.value.upper()}")
-    else:
-        import logging
-        logging.getLogger(__name__).info(f"{ f"[Permissions] Active permission policy mode: {mode.value.upper()}" }" if isinstance(f"[Permissions] Active permission policy mode: {mode.value.upper()}", str) else f"[Permissions] Active permission policy mode: {mode.value.upper()}")
+    import logging
+    logging.getLogger(__name__).info(f"[Permissions] Active permission policy mode: {mode.value.upper()}")
 
     deny_tools = scope_defaults.get("deny_tools", [])
     if not isinstance(deny_tools, list):

@@ -5,9 +5,12 @@ Priority: ENV VARS > models.json > hardcoded defaults
 """
 from __future__ import annotations
 
+import logging
 import os
 import json
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 _CONFIG_DIR  = Path(__file__).resolve().parent
 _MODELS_JSON = _CONFIG_DIR / "models.json"
@@ -73,11 +76,7 @@ def get_model_config(force_reload: bool = False) -> dict:
                 if not k.startswith("_") and isinstance(v, str) and v.strip():
                     config[k] = v.strip()
         except Exception as e:
-            if 'logger' in globals() or 'logger' in locals():
-                logger.info(f"{ f"[Config] Warning reading models.json: {e}" }" if isinstance(f"[Config] Warning reading models.json: {e}", str) else f"[Config] Warning reading models.json: {e}")
-            else:
-                import logging
-                logging.getLogger(__name__).info(f"{ f"[Config] Warning reading models.json: {e}" }" if isinstance(f"[Config] Warning reading models.json: {e}", str) else f"[Config] Warning reading models.json: {e}")
+            logger.info(f"[Config] Warning reading models.json: {e}")
 
     # ENV overrides (highest priority)
     for env_key, cfg_key in _ENV_MAP.items():
@@ -116,11 +115,7 @@ def get_model_for_task(
             from config.complexity_router import select_model_for_prompt
             return select_model_for_prompt(messages=messages, system=system, task_type=task_type)
         except Exception as e:
-            if 'logger' in globals() or 'logger' in locals():
-                logger.warning(f"{ f"[Config] Complexity router error: {e}" }" if isinstance(f"[Config] Complexity router error: {e}", str) else f"[Config] Complexity router error: {e}")
-            else:
-                import logging
-                logging.getLogger(__name__).warning(f"{ f"[Config] Complexity router error: {e}" }" if isinstance(f"[Config] Complexity router error: {e}", str) else f"[Config] Complexity router error: {e}")
+            logger.warning(f"[Config] Complexity router error: {e}")
 
     cfg = get_model_config()
     task = (task_type or "general").lower()
@@ -151,11 +146,7 @@ def ensure_models_json():
             "Gemini is the only required backend. Set GEMINI_API_KEY in .env"
         )
         _MODELS_JSON.write_text(json.dumps(data, indent=4), encoding="utf-8")
-        if 'logger' in globals() or 'logger' in locals():
-            logger.info(f"{ f"[Config] Created default models.json at {_MODELS_JSON}" }" if isinstance(f"[Config] Created default models.json at {_MODELS_JSON}", str) else f"[Config] Created default models.json at {_MODELS_JSON}")
-        else:
-            import logging
-            logging.getLogger(__name__).info(f"{ f"[Config] Created default models.json at {_MODELS_JSON}" }" if isinstance(f"[Config] Created default models.json at {_MODELS_JSON}", str) else f"[Config] Created default models.json at {_MODELS_JSON}")
+        logger.info(f"[Config] Created default models.json at {_MODELS_JSON}")
 
 
 ensure_models_json()

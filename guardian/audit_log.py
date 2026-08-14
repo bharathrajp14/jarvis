@@ -5,9 +5,12 @@ Includes automatic log file rotation.
 """
 from __future__ import annotations
 
+import logging
 import json
 import time
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 AUDIT_LOG_FILE = Path("workspace/logs/autonomy_audit.jsonl")
 _MAX_BYTES = 5 * 1024 * 1024   # 5 MB per audit log
@@ -36,11 +39,7 @@ class AuditLog:
                 target.unlink()
             AUDIT_LOG_FILE.rename(target)
         except Exception as e:
-            if 'logger' in globals() or 'logger' in locals():
-                logger.exception('Boot critical exception encountered in guardian/audit_log.py')
-            else:
-                import logging
-                logging.getLogger(__name__).exception('Boot critical exception')
+            logger.exception('Boot critical exception encountered in guardian/audit_log.py')
             raise e
     @classmethod
     def log(
@@ -67,11 +66,7 @@ class AuditLog:
             with open(AUDIT_LOG_FILE, "a", encoding="utf-8") as f:
                 f.write(json.dumps(record) + "\n")
         except Exception as e:
-            if 'logger' in globals() or 'logger' in locals():
-                logger.exception('Boot critical exception encountered in guardian/audit_log.py')
-            else:
-                import logging
-                logging.getLogger(__name__).exception('Boot critical exception')
+            logger.exception('Boot critical exception encountered in guardian/audit_log.py')
             raise e
         return record
 
@@ -89,10 +84,6 @@ class AuditLog:
                     if line:
                         records.append(json.loads(line))
         except Exception as e:
-            if 'logger' in globals() or 'logger' in locals():
-                logger.exception('Boot critical exception encountered in guardian/audit_log.py')
-            else:
-                import logging
-                logging.getLogger(__name__).exception('Boot critical exception')
+            logger.exception('Boot critical exception encountered in guardian/audit_log.py')
             raise e
         return records

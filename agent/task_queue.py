@@ -104,11 +104,7 @@ class TaskQueue:
     def pause(self) -> None:
         """Pause worker processing."""
         self._paused = True
-        if 'logger' in globals() or 'logger' in locals():
-            logger.info("[TaskQueue] ⏸️ Task queue paused")
-        else:
-            import logging
-            logging.getLogger(__name__).info("[TaskQueue] ⏸️ Task queue paused")
+        logger.info("[TaskQueue] ⏸️ Task queue paused")
 
     def resume(self) -> None:
         """Resume worker processing."""

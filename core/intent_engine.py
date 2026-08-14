@@ -83,11 +83,7 @@ class DeterministicIntentEngine:
             res = open_app({"app_name": app_name})
             return "Opened" in res or "launched" in res.lower() or "success" in res.lower()
         except Exception as e:
-            if 'logger' in globals() or 'logger' in locals():
-                logger.debug('Suppressed exception: %s', e)
-            else:
-                import logging
-                logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+            logger.debug('Suppressed exception: %s', e)
         name = app_name.lower().strip()
         executables = cls.APP_MAPPINGS.get(name, [name])
         for exe in executables:
@@ -97,11 +93,7 @@ class DeterministicIntentEngine:
                     subprocess.Popen(["cmd", "/c", "start", exe], shell=False)
                     return True
                 except Exception as e:
-                    if 'logger' in globals() or 'logger' in locals():
-                        logger.debug('Suppressed exception: %s', e)
-                    else:
-                        import logging
-                        logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                    logger.debug('Suppressed exception: %s', e)
             else:
                 try:
                     if sys.platform == "win32":
@@ -110,11 +102,7 @@ class DeterministicIntentEngine:
                         subprocess.Popen([exe])
                     return True
                 except Exception as e:
-                    if 'logger' in globals() or 'logger' in locals():
-                        logger.debug('Suppressed exception: %s', e)
-                    else:
-                        import logging
-                        logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                    logger.debug('Suppressed exception: %s', e)
         return False
 
     @classmethod
@@ -143,21 +131,13 @@ class DeterministicIntentEngine:
                         subprocess.Popen([exe, url])
                         return True
                     except Exception as e:
-                        if 'logger' in globals() or 'logger' in locals():
-                            logger.debug('Suppressed exception: %s', e)
-                        else:
-                            import logging
-                            logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                        logger.debug('Suppressed exception: %s', e)
             if sys.platform == "win32":
                 try:
                     subprocess.Popen(["cmd", "/c", "start", "brave", url], shell=False)
                     return True
                 except Exception as e:
-                    if 'logger' in globals() or 'logger' in locals():
-                        logger.debug('Suppressed exception: %s', e)
-                    else:
-                        import logging
-                        logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                    logger.debug('Suppressed exception: %s', e)
         elif "chrome" in target:
             chrome_paths = [
                 r"C:\Program Files\Google\Chrome\Application\chrome.exe",
@@ -170,11 +150,7 @@ class DeterministicIntentEngine:
                         subprocess.Popen([exe, url])
                         return True
                     except Exception as e:
-                        if 'logger' in globals() or 'logger' in locals():
-                            logger.debug('Suppressed exception: %s', e)
-                        else:
-                            import logging
-                            logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                        logger.debug('Suppressed exception: %s', e)
         elif "edge" in target:
             edge_paths = [
                 r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
@@ -187,11 +163,7 @@ class DeterministicIntentEngine:
                         subprocess.Popen([exe, url])
                         return True
                     except Exception as e:
-                        if 'logger' in globals() or 'logger' in locals():
-                            logger.debug('Suppressed exception: %s', e)
-                        else:
-                            import logging
-                            logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                        logger.debug('Suppressed exception: %s', e)
         elif "firefox" in target:
             ff_paths = [
                 r"C:\Program Files\Mozilla Firefox\firefox.exe",
@@ -204,11 +176,7 @@ class DeterministicIntentEngine:
                         subprocess.Popen([exe, url])
                         return True
                     except Exception as e:
-                        if 'logger' in globals() or 'logger' in locals():
-                            logger.debug('Suppressed exception: %s', e)
-                        else:
-                            import logging
-                            logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                        logger.debug('Suppressed exception: %s', e)
         # Fallback to system default browser
         try:
             webbrowser.open(url)
@@ -411,11 +379,7 @@ class DeterministicIntentEngine:
                         "tokens_saved": 1500,
                     }
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         # 0b. Match Time & Date Intent (e.g., "what time is it", "tell me the time", "what date is it")
         if any(phrase in clean for phrase in ["what time", "current time", "tell me the time", "what date", "current date", "what day is it"]):
             try:
@@ -430,11 +394,7 @@ class DeterministicIntentEngine:
                     "tokens_saved": 1200,
                 }
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         # 0c. Match System Cleanup Intent
         if any(phrase in clean for phrase in ["clear system cache", "clean temporary files", "clean temp files", "free disk space", "clear cache"]):
             try:
@@ -448,11 +408,7 @@ class DeterministicIntentEngine:
                     "tokens_saved": 1800,
                 }
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         # 0d. Match Process Memory Optimizer Intent
         if any(phrase in clean for phrase in ["find memory hogs", "top memory processes", "high memory processes", "process optimization", "memory hog"]):
             try:
@@ -466,11 +422,7 @@ class DeterministicIntentEngine:
                     "tokens_saved": 1800,
                 }
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         # 0e. Match Persistent Memory Save & Recall Intent
         if clean.startswith("remember ") or "remember that " in clean:
             try:
@@ -488,11 +440,7 @@ class DeterministicIntentEngine:
                         "tokens_saved": 1500,
                     }
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         if any(clean.startswith(prefix) or prefix in clean for prefix in ["recall ", "search memory for ", "what do you remember"]):
             try:
                 from memory.memory_context import find_relevant_memories
@@ -515,11 +463,7 @@ class DeterministicIntentEngine:
                         "tokens_saved": 1500,
                     }
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         # 0f. Match Screenshot Intent
         if any(phrase in clean for phrase in ["take a screenshot", "capture screen", "take screenshot", "screenshot"]):
             try:
@@ -545,11 +489,7 @@ class DeterministicIntentEngine:
                     "tokens_saved": 2000,
                 }
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         # 0g. Match Network Telemetry Intent
         if any(phrase in clean for phrase in ["get network status", "check ip address", "network status", "my ip address", "ip address", "show current ip", "what is my ip", "show ip", "current ip"]):
             try:
@@ -564,11 +504,7 @@ class DeterministicIntentEngine:
                         public_ip = data.get("ip", "Unknown")
                         conn_status = "Online (Connected)"
                 except Exception as e:
-                    if 'logger' in globals() or 'logger' in locals():
-                        logger.debug('Suppressed exception: %s', e)
-                    else:
-                        import logging
-                        logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                    logger.debug('Suppressed exception: %s', e)
                 return {
                     "executed": True,
                     "intent": "network_status",
@@ -577,11 +513,7 @@ class DeterministicIntentEngine:
                     "tokens_saved": 1500,
                 }
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         # 0h. Match Session History Intent
         if any(phrase in clean for phrase in ["summarize session history", "get session history", "recent session history", "session history"]):
             try:
@@ -597,11 +529,7 @@ class DeterministicIntentEngine:
                     "tokens_saved": 1500,
                 }
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         # 0i. Match Media & Volume Controls (Strict match for standalone media control commands)
         if clean in ("play", "pause", "play pause", "pause media", "play media", "toggle playback", "play music", "pause music", "resume music", "next track", "previous track"):
             try:
@@ -616,11 +544,7 @@ class DeterministicIntentEngine:
                     "tokens_saved": 1500,
                 }
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         # 0j. Match Codebase Excel Analysis Export Intent
         if any(w in clean for w in ["excel", "sheet", "xlsx", "spreadsheet"]) and any(w in clean for w in ["analysis", "analisis", "audit", "export", "project", "codebase"]):
             try:
@@ -650,11 +574,7 @@ class DeterministicIntentEngine:
                     "tokens_saved": 1500,
                 }
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         # 0t. Match Display Resolution Telemetry Intent
         if any(phrase in clean for phrase in ["check display resolution", "display resolution", "screen resolution", "display geometry"]):
             try:
@@ -668,11 +588,7 @@ class DeterministicIntentEngine:
                     "tokens_saved": 1500,
                 }
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         # 0j. Match Show Desktop / Minimize All Windows Intent
         if any(phrase in clean for phrase in ["show desktop", "minimize all windows", "minimize all", "desktop view"]):
             try:
@@ -687,11 +603,7 @@ class DeterministicIntentEngine:
                     "tokens_saved": 1500,
                 }
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         # 0k. Match Workspace File Discovery Intent (e.g., "find pdf files in workspace", "list python files")
         file_disc_match = re.search(r"^(?:find|list|search|show)\s+([a-z0-9]+)\s+files", clean)
         if file_disc_match:
@@ -722,11 +634,7 @@ class DeterministicIntentEngine:
                     "tokens_saved": 1800,
                 }
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         # 0l. Match RAM Memory Freeing Intent
         if any(phrase in clean for phrase in ["free ram memory", "free ram", "free memory", "flush ram"]):
             try:
@@ -742,11 +650,7 @@ class DeterministicIntentEngine:
                     "tokens_saved": 1800,
                 }
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         # 0m. Match Lock Workstation Intent
         if any(phrase in clean for phrase in ["lock computer", "lock screen", "lock workstation", "lock pc"]):
             try:
@@ -765,11 +669,7 @@ class DeterministicIntentEngine:
                     "tokens_saved": 1500,
                 }
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         # 0n. Match Workspace Health Diagnostic Intent
         if any(phrase in clean for phrase in ["workspace health", "check workspace health", "workspace diagnostics"]):
             try:
@@ -783,11 +683,7 @@ class DeterministicIntentEngine:
                     "tokens_saved": 2000,
                 }
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         # 0o. Match Project Codebase Statistics Intent
         if any(phrase in clean for phrase in ["project statistics", "project stats", "count project files", "codebase stats"]):
             try:
@@ -797,11 +693,7 @@ class DeterministicIntentEngine:
                     try:
                         total_loc += len(pf.read_text(encoding="utf-8", errors="ignore").splitlines())
                     except Exception as e:
-                        if 'logger' in globals() or 'logger' in locals():
-                            logger.debug('Suppressed exception: %s', e)
-                        else:
-                            import logging
-                            logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                        logger.debug('Suppressed exception: %s', e)
                 return {
                     "executed": True,
                     "intent": "project_stats",
@@ -810,11 +702,7 @@ class DeterministicIntentEngine:
                     "tokens_saved": 2200,
                 }
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         # 0p. Match System Uptime Intent
         if any(phrase in clean for phrase in ["system uptime", "uptime", "how long has computer been running"]):
             try:
@@ -834,11 +722,7 @@ class DeterministicIntentEngine:
                     "tokens_saved": 1500,
                 }
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         # 0q. Match Memory Store Summary Intent
         if any(phrase in clean for phrase in ["memory store summary", "persistent memory count", "memory index count", "memory count"]):
             try:
@@ -853,11 +737,7 @@ class DeterministicIntentEngine:
                     "tokens_saved": 1500,
                 }
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         # 0r. Match Battery & Power Telemetry Intent
         if any(phrase in clean for phrase in ["check battery status", "battery status", "battery level", "power status"]):
             try:
@@ -876,11 +756,7 @@ class DeterministicIntentEngine:
                     "tokens_saved": 1500,
                 }
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         # 0s. Match Workspace Git Status Intent
         if any(phrase in clean for phrase in ["check git status", "git status", "repository status", "git info"]):
             try:
@@ -895,11 +771,7 @@ class DeterministicIntentEngine:
                     "tokens_saved": 1800,
                 }
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         # 0u. Match Python Environment Telemetry Intent
         if any(phrase in clean for phrase in ["check python version", "python version", "python info", "python environment"]):
             try:
@@ -912,11 +784,7 @@ class DeterministicIntentEngine:
                     "tokens_saved": 1500,
                 }
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         # 0v. Match Recent Git Commit History Intent
         if any(phrase in clean for phrase in ["recent commits", "git log", "commit history", "recent git commits"]):
             try:
@@ -930,11 +798,7 @@ class DeterministicIntentEngine:
                     "tokens_saved": 1800,
                 }
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         # 0w. Match Active Process Count Telemetry Intent
         if any(phrase in clean for phrase in ["count active processes", "how many processes are running", "process count", "running processes count"]):
             try:
@@ -948,11 +812,7 @@ class DeterministicIntentEngine:
                     "tokens_saved": 1500,
                 }
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         # 0x. Match Virtual Environment Status Intent
         if any(phrase in clean for phrase in ["check venv", "virtual environment status", "is venv active", "venv status"]):
             try:
@@ -966,11 +826,7 @@ class DeterministicIntentEngine:
                     "tokens_saved": 1500,
                 }
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         # 0y. Match Environment Variables Summary Intent
         if any(phrase in clean for phrase in ["check environment variables", "list env vars", "env vars", "environment variables"]):
             try:
@@ -991,11 +847,7 @@ class DeterministicIntentEngine:
                     "tokens_saved": 1800,
                 }
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         # 0z. Match Disk Storage Telemetry Intent
         if any(phrase in clean for phrase in ["check disk space", "disk space", "disk storage"]):
             try:
@@ -1014,11 +866,7 @@ class DeterministicIntentEngine:
                     "tokens_saved": 1500,
                 }
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         # 0aa. Match CPU Hardware Telemetry Intent
         if any(phrase in clean for phrase in ["cpu architecture", "cpu info", "processor info", "cpu count"]):
             try:
@@ -1035,11 +883,7 @@ class DeterministicIntentEngine:
                     "tokens_saved": 1500,
                 }
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         # 0ab. Match Active Window Focus Info Intent
         if any(phrase in clean for phrase in ["get active window", "active window", "current window"]):
             try:
@@ -1055,11 +899,7 @@ class DeterministicIntentEngine:
                     "tokens_saved": 1200,
                 }
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         # 0ac. Match Automated Deep Audit Test Suite Intent
         if any(phrase in clean for phrase in ["run deep audit", "run test suite", "system audit test", "run automated deep audit", "run automated audit", "deep audit", "run audit"]):
             try:
@@ -1074,11 +914,7 @@ class DeterministicIntentEngine:
                     "tokens_saved": 3000,
                 }
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         # 0ad. Match Active Git Branch Intent
         if any(phrase in clean for phrase in ["current git branch", "what is the git branch", "git branch", "active branch", "current branch", "check branch", "check current branch"]):
             try:
@@ -1091,11 +927,7 @@ class DeterministicIntentEngine:
                     "tokens_saved": 1200,
                 }
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         # 0ae. Match Installed Python Packages Telemetry Intent
         if any(phrase in clean for phrase in ["installed python packages", "count pip packages", "pip packages", "python packages"]):
             try:
@@ -1112,11 +944,7 @@ class DeterministicIntentEngine:
                     "tokens_saved": 1800,
                 }
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         # 0af. Match System Clipboard Inspection Intent
         if any(phrase in clean for phrase in ["read clipboard", "check clipboard", "clipboard content", "what is on clipboard"]):
             try:
@@ -1139,11 +967,7 @@ class DeterministicIntentEngine:
                     "tokens_saved": 1500,
                 }
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         # 0ag. Match Network Ping Telemetry Intent
         if any(phrase in clean for phrase in ["ping check", "check ping", "network ping", "ping google"]):
             try:
@@ -1164,11 +988,7 @@ class DeterministicIntentEngine:
                     "tokens_saved": 1500,
                 }
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         # 0ah. Match Python Functions Counter Intent
         if any(phrase in clean for phrase in ["search python functions", "list python functions", "count python functions"]):
             try:
@@ -1180,11 +1000,7 @@ class DeterministicIntentEngine:
                             if line.strip().startswith("def "):
                                 func_count += 1
                     except Exception as e:
-                        if 'logger' in globals() or 'logger' in locals():
-                            logger.debug('Suppressed exception: %s', e)
-                        else:
-                            import logging
-                            logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                        logger.debug('Suppressed exception: %s', e)
                 return {
                     "executed": True,
                     "intent": "python_functions",
@@ -1193,11 +1009,7 @@ class DeterministicIntentEngine:
                     "tokens_saved": 2000,
                 }
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         # 0ai. Match Operating System Info Telemetry Intent
         if any(phrase in clean for phrase in ["operating system info", "os platform", "os version", "system platform"]):
             try:
@@ -1214,11 +1026,7 @@ class DeterministicIntentEngine:
                     "tokens_saved": 1500,
                 }
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         # 0aj. Match Python Classes Counter Intent
         if any(phrase in clean for phrase in ["count python classes", "search python classes", "list python classes"]):
             try:
@@ -1230,11 +1038,7 @@ class DeterministicIntentEngine:
                             if line.strip().startswith("class "):
                                 class_count += 1
                     except Exception as e:
-                        if 'logger' in globals() or 'logger' in locals():
-                            logger.debug('Suppressed exception: %s', e)
-                        else:
-                            import logging
-                            logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                        logger.debug('Suppressed exception: %s', e)
                 return {
                     "executed": True,
                     "intent": "python_classes",
@@ -1243,11 +1047,7 @@ class DeterministicIntentEngine:
                     "tokens_saved": 2000,
                 }
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         # 0ak. Match Hostname & Computer Name Intent
         if any(phrase in clean for phrase in ["check hostname", "hostname", "computer name", "device name"]):
             try:
@@ -1262,11 +1062,7 @@ class DeterministicIntentEngine:
                     "tokens_saved": 1200,
                 }
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         # 0al. Match Python Imports Counter Intent
         if any(phrase in clean for phrase in ["count python imports", "search python imports", "list python imports"]):
             try:
@@ -1279,11 +1075,7 @@ class DeterministicIntentEngine:
                             if l.startswith("import ") or l.startswith("from "):
                                 import_count += 1
                     except Exception as e:
-                        if 'logger' in globals() or 'logger' in locals():
-                            logger.debug('Suppressed exception: %s', e)
-                        else:
-                            import logging
-                            logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                        logger.debug('Suppressed exception: %s', e)
                 return {
                     "executed": True,
                     "intent": "python_imports",
@@ -1292,11 +1084,7 @@ class DeterministicIntentEngine:
                     "tokens_saved": 2000,
                 }
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         # 0am. Match Temporary Directory Telemetry Intent
         if any(phrase in clean for phrase in ["check temp directory", "temp files size", "temp folder size"]):
             try:
@@ -1308,11 +1096,7 @@ class DeterministicIntentEngine:
                     try:
                         total_bytes += f.stat().st_size
                     except Exception as e:
-                        if 'logger' in globals() or 'logger' in locals():
-                            logger.debug('Suppressed exception: %s', e)
-                        else:
-                            import logging
-                            logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                        logger.debug('Suppressed exception: %s', e)
                 mb_size = round(total_bytes / (1024 * 1024), 2)
                 return {
                     "executed": True,
@@ -1322,11 +1106,7 @@ class DeterministicIntentEngine:
                     "tokens_saved": 1500,
                 }
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         # 0an. Match System Timezone Telemetry Intent
         if any(phrase in clean for phrase in ["check timezone", "system timezone", "timezone", "time zone"]):
             try:
@@ -1343,11 +1123,7 @@ class DeterministicIntentEngine:
                     "tokens_saved": 1500,
                 }
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         # 0ao. Match Markdown Documentation Files Counter Intent
         if any(phrase in clean for phrase in ["count markdown files", "find markdown files", "list markdown files", "markdown files"]):
             try:
@@ -1362,11 +1138,7 @@ class DeterministicIntentEngine:
                     "tokens_saved": 1800,
                 }
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         # 0ap. Match Largest Python Source File Scanner Intent
         if any(phrase in clean for phrase in ["largest python file", "biggest python file", "largest file"]):
             try:
@@ -1382,11 +1154,7 @@ class DeterministicIntentEngine:
                     "tokens_saved": 2000,
                 }
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         # 0aq. Match CPU load query directly
         if any(phrase in clean for phrase in ["what is the cpu load", "cpu load", "current cpu load", "get cpu load"]):
             try:
@@ -1400,11 +1168,7 @@ class DeterministicIntentEngine:
                     "tokens_saved": 1500,
                 }
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         # 0ar. Match Python Modules Counter Intent
         if any(phrase in clean for phrase in ["count python modules", "list python modules", "python modules"]):
             try:
@@ -1418,11 +1182,7 @@ class DeterministicIntentEngine:
                     "tokens_saved": 2000,
                 }
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         # 0as. Match Disk Partitions Telemetry Intent
         if any(phrase in clean for phrase in ["check disk partitions", "disk partitions", "list partitions"]):
             try:
@@ -1444,11 +1204,7 @@ class DeterministicIntentEngine:
                     "tokens_saved": 1800,
                 }
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         # 0at. Match Swap Memory Telemetry Intent
         if any(phrase in clean for phrase in ["check swap memory", "swap memory", "swap usage"]):
             try:
@@ -1465,11 +1221,7 @@ class DeterministicIntentEngine:
                     "tokens_saved": 1500,
                 }
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         # 0au. Match CPU frequency Telemetry Intent
         if any(phrase in clean for phrase in ["get cpu frequency", "cpu frequency", "cpu speed", "processor speed"]):
             try:
@@ -1487,11 +1239,7 @@ class DeterministicIntentEngine:
                     "tokens_saved": 1500,
                 }
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         # 0av. Match Path Environment Telemetry Intent
         if any(phrase in clean for phrase in ["check path environment", "path environment", "system path"]):
             try:
@@ -1508,11 +1256,7 @@ class DeterministicIntentEngine:
                     "tokens_saved": 1800,
                 }
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         # Do NOT intercept complex prompts containing pipelines, custom filenames, or multi-step requests
         if any(marker in clean for marker in ["|", "named ", "content:", "then ", "create a pdf", "create a word", "save to"]):
             return None
@@ -1569,11 +1313,7 @@ class DeterministicIntentEngine:
                     "tokens_saved": 1800,
                 }
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         # 2b. Match Web Search Intent (e.g., "search web for python 3.14", "google search python 3.14")
         search_match = re.search(r"^(?:search web for|google search|search web|google)\s+(.+)$", clean)
         if search_match:
@@ -1591,11 +1331,7 @@ class DeterministicIntentEngine:
                         "tokens_saved": 1800,
                     }
                 except Exception as e:
-                    if 'logger' in globals() or 'logger' in locals():
-                        logger.debug('Suppressed exception: %s', e)
-                    else:
-                        import logging
-                        logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                    logger.debug('Suppressed exception: %s', e)
         # 3. Match Excel Codebase Analysis Intent — STRICT: only for JARVIS project analysis
         #    Must explicitly mention the codebase/project analysis, NOT generic "report in excel"
         has_excel = any(w in clean for w in ["excel", "spreadsheet", "xls"])
@@ -1628,11 +1364,7 @@ class DeterministicIntentEngine:
                     "tokens_saved": 3500,
                 }
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         # 4. Match JARVIS Product Analysis Document Generation Intent — STRICT
         #    Only intercept explicit requests for JARVIS product analysis docs
         has_doc_type = any(w in clean for w in ["word", "pdf", "docx"])
@@ -1654,11 +1386,7 @@ class DeterministicIntentEngine:
                     "tokens_saved": 4000,
                 }
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         # 5. Match System Diagnostics Intent
         if any(phrase in clean for phrase in ["system diagnostics", "system status", "check system", "computer status", "top processes", "cpu usage", "ram usage"]):
             try:
@@ -1672,11 +1400,7 @@ class DeterministicIntentEngine:
                     "tokens_saved": 2000,
                 }
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         # 6. Match Workspace Timeline Intent
         if any(phrase in clean for phrase in ["workspace timeline", "get timeline", "activity timeline", "recent workspace events"]):
             try:
@@ -1690,11 +1414,7 @@ class DeterministicIntentEngine:
                     "tokens_saved": 1800,
                 }
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         # 7. Match Codebase Security Audit Intent
         if any(phrase in clean for phrase in ["audit codebase", "codebase analysis", "full codebase analysis", "codebase audit", "code security audit", "security audit"]):
             try:
@@ -1708,11 +1428,7 @@ class DeterministicIntentEngine:
                     "tokens_saved": 2800,
                 }
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         # 6. Match System & Audio Controls (Volume Up/Down/Mute, Play/Pause, Screenshot)
         if any(w in clean for w in ["volume up", "increase volume", "louder"]):
             try:
@@ -1728,11 +1444,7 @@ class DeterministicIntentEngine:
                     "tokens_saved": 1500,
                 }
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         if any(w in clean for w in ["volume down", "decrease volume", "quieter"]):
             try:
                 import pyautogui
@@ -1747,11 +1459,7 @@ class DeterministicIntentEngine:
                     "tokens_saved": 1500,
                 }
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         if clean in ("mute", "mute audio", "mute volume", "unmute"):
             try:
                 import pyautogui
@@ -1765,11 +1473,7 @@ class DeterministicIntentEngine:
                     "tokens_saved": 1500,
                 }
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         # BUG-5 FIX: Removed duplicate play/pause and screenshot matchers here.
         # These were already handled earlier in the file (around line 513-580).
         # Having them twice caused double execution of keypresses and double screenshots.
@@ -1803,11 +1507,7 @@ class DeterministicIntentEngine:
                         "tokens_saved": 1800,
                     }
                 except Exception as e:
-                    if 'logger' in globals() or 'logger' in locals():
-                        logger.debug('Suppressed exception: %s', e)
-                    else:
-                        import logging
-                        logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                    logger.debug('Suppressed exception: %s', e)
         # 8. Match Direct Web Search Intents (e.g. "search youtube for <query>", "search google for <query>", "search wikipedia for <query>")
         search_youtube_match = re.search(r"^(?:search|find)\s+youtube\s+(?:for\s+)?(.+)$", clean)
         if search_youtube_match:
@@ -1826,11 +1526,7 @@ class DeterministicIntentEngine:
                         "tokens_saved": 2200,
                     }
                 except Exception as e:
-                    if 'logger' in globals() or 'logger' in locals():
-                        logger.debug('Suppressed exception: %s', e)
-                    else:
-                        import logging
-                        logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                    logger.debug('Suppressed exception: %s', e)
         search_google_match = re.search(r"^(?:search|find)\s+google\s+(?:for\s+)?(.+)$", clean)
         if search_google_match:
             query = search_google_match.group(1).strip()
@@ -1848,11 +1544,7 @@ class DeterministicIntentEngine:
                         "tokens_saved": 2200,
                     }
                 except Exception as e:
-                    if 'logger' in globals() or 'logger' in locals():
-                        logger.debug('Suppressed exception: %s', e)
-                    else:
-                        import logging
-                        logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                    logger.debug('Suppressed exception: %s', e)
         search_wiki_match = re.search(r"^(?:search|find)\s+wikipedia\s+(?:for\s+)?(.+)$", clean)
         if search_wiki_match:
             query = search_wiki_match.group(1).strip()
@@ -1870,11 +1562,7 @@ class DeterministicIntentEngine:
                         "tokens_saved": 2200,
                     }
                 except Exception as e:
-                    if 'logger' in globals() or 'logger' in locals():
-                        logger.debug('Suppressed exception: %s', e)
-                    else:
-                        import logging
-                        logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                    logger.debug('Suppressed exception: %s', e)
         # 9. Match Compound Multi-Channel Intents & Standalone WhatsApp / Email Intents
         WA_KW = r"(?:whats?\s*app|wats?\s*app|wapp)"
         MAIL_KW = r"(?:g\s*mail|email|mail)"
@@ -1931,11 +1619,7 @@ class DeterministicIntentEngine:
                     "tokens_saved": 2500,
                 }
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         email_say_match = re.search(rf"^(?:say|send|tell|mail)\s+(.+?)\s+(?:to\s+)?(.+?)\s+(?:in|on|via|through)\s+{MAIL_KW}\b", clean)
         if email_say_match:
             msg_text = email_say_match.group(1).strip()
@@ -1953,11 +1637,7 @@ class DeterministicIntentEngine:
                     "tokens_saved": 2500,
                 }
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         email_send_match = re.search(rf"^send\s+(?:an?\s+)?{MAIL_KW}\s+(?:to\s+)?(.+?)\s*(?:saying|with|:)\s*(.+)$", clean)
         if email_send_match:
             recipient = email_send_match.group(1).strip()
@@ -1975,11 +1655,7 @@ class DeterministicIntentEngine:
                     "tokens_saved": 2500,
                 }
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         # 9c. Standalone WhatsApp Instant Message Intents
         wa_say_match = re.search(rf"^(?:say|send|tell|text)\s+(.+?)\s+(?:to\s+)?(.+?)\s+(?:in|on|via)\s+{WA_KW}\b", clean)
         if wa_say_match:
@@ -1997,11 +1673,7 @@ class DeterministicIntentEngine:
                     "tokens_saved": 2500,
                 }
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         wa_send_match = re.search(rf"^send\s+(?:a\s+)?{WA_KW}\s+(?:message\s+)?(?:to\s+)?(.+?)\s*(?:saying|with|:)\s*(.+)$", clean)
         if wa_send_match:
             recipient = wa_send_match.group(1).strip()
@@ -2018,11 +1690,7 @@ class DeterministicIntentEngine:
                     "tokens_saved": 2500,
                 }
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         wa_colon_match = re.search(rf"^{WA_KW}\s+(?:message\s+)?(?:to\s+)?(.+?)\s*(?:saying|with|:)\s*(.+)$", clean)
         if wa_colon_match:
             recipient = wa_colon_match.group(1).strip()
@@ -2039,11 +1707,7 @@ class DeterministicIntentEngine:
                     "tokens_saved": 2500,
                 }
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
         return None
 
     @classmethod

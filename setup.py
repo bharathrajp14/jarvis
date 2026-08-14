@@ -1,23 +1,27 @@
-import subprocess
+"""BRJARVIS Setup & Package Installer"""
+import os
 import sys
+import subprocess
+from setuptools import setup, find_packages
 
-if 'logger' in globals() or 'logger' in locals():
-    logger.info("Installing requirements...")
-else:
-    import logging
-    logging.getLogger(__name__).info("Installing requirements...")
-subprocess.run([sys.executable, "-m", "pip", "install", "-r", "requirements.txt"], check=True)
-
-if 'logger' in globals() or 'logger' in locals():
-    logger.info("Installing Playwright browsers...")
-else:
-    import logging
-    logging.getLogger(__name__).info("Installing Playwright browsers...")
-subprocess.run([sys.executable, "-m", "playwright", "install"], check=True)
-
-if 'logger' in globals() or 'logger' in locals():
-    logger.info("\n✅ Setup complete! Run 'python start.py' to start BR JARVIS.")
-else:
-    import logging
-    logging.getLogger(__name__).info("\n✅ Setup complete! Run 'python start.py' to start BR JARVIS.")
-
+if __name__ == "__main__":
+    if len(sys.argv) == 1:
+        # Running python setup.py directly installs dependencies & editable package
+        print("[BRJARVIS] Installing dependencies...")
+        subprocess.run([sys.executable, "-m", "pip", "install", "-r", "requirements.txt"], check=False)
+        subprocess.run([sys.executable, "-m", "pip", "install", "-e", "."], check=False)
+        print("\n✅ Setup complete! You can now run 'brjarvis' or 'python start.py'.")
+    else:
+        setup(
+            name="brjarvis",
+            version="38.5.0",
+            description="BRJARVIS Autonomous AI OS",
+            py_modules=["brjarvis", "start", "ui_mark", "float_widget", "server", "main_mk37"],
+            packages=find_packages(),
+            entry_points={
+                "console_scripts": [
+                    "brjarvis=brjarvis:main",
+                    "jarvis=brjarvis:main",
+                ],
+            },
+        )

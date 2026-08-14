@@ -107,11 +107,7 @@ class SounddeviceMicrophone(_BaseAudioSource):
                                 self.device_index = idx
                                 break
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.warning(f"{ f"[SounddeviceMicrophone] Device query error: {e}" }" if isinstance(f"[SounddeviceMicrophone] Device query error: {e}", str) else f"[SounddeviceMicrophone] Device query error: {e}")
-                else:
-                    import logging
-                    logging.getLogger(__name__).warning(f"{ f"[SounddeviceMicrophone] Device query error: {e}" }" if isinstance(f"[SounddeviceMicrophone] Device query error: {e}", str) else f"[SounddeviceMicrophone] Device query error: {e}")
+                logger.warning(f"[SounddeviceMicrophone] Device query error: {e}")
                 self.device_index = None
 
         self.SAMPLE_RATE = sample_rate
@@ -344,3 +340,28 @@ class SounddeviceMicrophone(_BaseAudioSource):
     def set_noise_floor(self, rms: float) -> None:
         """Update the energy pre-filter noise floor from the NoiseCalibrator."""
         self._noise_floor_rms = max(0.0, float(rms))
+
+
+class SpeechToTextEngine:
+    """Convenience wrapper for transcribing audio files using whisper or speech_recognition."""
+
+    def transcribe(self, audio_path: str) -> str:
+        """Transcribe audio file to text."""
+        try:
+            from voice.whisper_local import transcribe_file
+            res = transcribe_file(audio_path)
+            if res:
+                return res
+        except Exception:
+            pass
+
+        if _HAS_SR and sr is not None:
+            try:
+                r = sr.Recognizer()
+                with sr.AudioFile(audio_path) as source:
+                    audio = r.record(source)
+                return r.recognize_google(audio)
+            except Exception as e:
+                return f"[STT Error: {e}]"
+        return "[STT Error: No speech recognition engine available]"
+

@@ -75,11 +75,7 @@ class GeminiLiveVoiceLoop:
         self._stop_event.clear()
         self._loop_thread = threading.Thread(target=self._run_duplex_loop, daemon=True)
         self._loop_thread.start()
-        if 'logger' in globals() or 'logger' in locals():
-            logger.info("[GeminiLive] ⚡ Gemini Live Duplex Voice Engine Active")
-        else:
-            import logging
-            logging.getLogger(__name__).info("[GeminiLive] ⚡ Gemini Live Duplex Voice Engine Active")
+        logger.info("[GeminiLive] ⚡ Gemini Live Duplex Voice Engine Active")
 
     def stop(self):
         """Stop the voice session."""
@@ -88,20 +84,12 @@ class GeminiLiveVoiceLoop:
         self.tts.stop()
         if self.ui:
             self.ui.set_state("IDLE")
-        if 'logger' in globals() or 'logger' in locals():
-            logger.info("[GeminiLive] ⏹ Gemini Live Voice Engine Stopped")
-        else:
-            import logging
-            logging.getLogger(__name__).info("[GeminiLive] ⏹ Gemini Live Voice Engine Stopped")
+        logger.info("[GeminiLive] ⏹ Gemini Live Voice Engine Stopped")
 
     def interrupt_speech(self):
         """Instantly interrupt ongoing TTS speech when user speaks (Barge-In)."""
         if self.tts.is_speaking:
-            if 'logger' in globals() or 'logger' in locals():
-                logger.info("[GeminiLive] ⚡ Barge-In Interruption Triggered!")
-            else:
-                import logging
-                logging.getLogger(__name__).info("[GeminiLive] ⚡ Barge-In Interruption Triggered!")
+            logger.info("[GeminiLive] ⚡ Barge-In Interruption Triggered!")
             self.tts.stop()
             if self.ui:
                 self.ui.set_state("LISTENING")
@@ -147,11 +135,7 @@ class GeminiLiveVoiceLoop:
                         if not text or len(text) < 2:
                             continue
 
-                        if 'logger' in globals() or 'logger' in locals():
-                            logger.info(f"{ f"[GeminiLive] 🎤 Spoken: '{text}'" }" if isinstance(f"[GeminiLive] 🎤 Spoken: '{text}'", str) else f"[GeminiLive] 🎤 Spoken: '{text}'")
-                        else:
-                            import logging
-                            logging.getLogger(__name__).info(f"{ f"[GeminiLive] 🎤 Spoken: '{text}'" }" if isinstance(f"[GeminiLive] 🎤 Spoken: '{text}'", str) else f"[GeminiLive] 🎤 Spoken: '{text}'")
+                        logger.info(f"[GeminiLive] 🎤 Spoken: '{text}'")
 
                         # Check fast voice shortcuts sub-10ms
                         shortcut = match_voice_shortcut(text)
@@ -178,18 +162,10 @@ class GeminiLiveVoiceLoop:
                             self._speak_conversational(f"Received: {text}")
 
                     except Exception as e:
-                        if 'logger' in globals() or 'logger' in locals():
-                            logger.warning(f"{ f"[GeminiLive] Loop error: {e}" }" if isinstance(f"[GeminiLive] Loop error: {e}", str) else f"[GeminiLive] Loop error: {e}")
-                        else:
-                            import logging
-                            logging.getLogger(__name__).warning(f"{ f"[GeminiLive] Loop error: {e}" }" if isinstance(f"[GeminiLive] Loop error: {e}", str) else f"[GeminiLive] Loop error: {e}")
+                        logger.warning(f"[GeminiLive] Loop error: {e}")
                         time.sleep(0.3)
         except Exception as e:
-            if 'logger' in globals() or 'logger' in locals():
-                logger.warning(f"{ f"[GeminiLive] Microphone stream failed: {e}" }" if isinstance(f"[GeminiLive] Microphone stream failed: {e}", str) else f"[GeminiLive] Microphone stream failed: {e}")
-            else:
-                import logging
-                logging.getLogger(__name__).warning(f"{ f"[GeminiLive] Microphone stream failed: {e}" }" if isinstance(f"[GeminiLive] Microphone stream failed: {e}", str) else f"[GeminiLive] Microphone stream failed: {e}")
+            logger.warning(f"[GeminiLive] Microphone stream failed: {e}")
 
     def _speak_conversational(self, response_text: str):
         """Speak response using fast sentence-level TTS."""

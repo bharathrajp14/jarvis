@@ -62,7 +62,7 @@ class MainWindow(QMainWindow):
 
         # Load customization from config
         _cfg = _read_full_config()
-        self._assistant_name: str = (_cfg.get("assistant_name") or "JARVIS").strip()
+        self._assistant_name: str = (_cfg.get("assistant_name") or "BRJARVIS").strip()
         _display = self._assistant_name.upper()
 
         # Kayıtlı UI rengini panel/stylesheet'ler kurulmadan ÖNCE uygula
@@ -293,11 +293,7 @@ class MainWindow(QMainWindow):
             cap.release()
         except Exception as e:
             self._log_sig.emit(f"ERR: Camera stream error — {e}")
-            if 'logger' in globals() or 'logger' in locals():
-                logger.warning(f"[Camera] Stream error: {e}")
-            else:
-                import logging
-                logging.getLogger(__name__).warning(f"[Camera] Stream error: {e}")
+            logger.warning(f"[Camera] Stream error: {e}")
         finally:
             self._cam_stream_sig.emit(False)
 
@@ -404,11 +400,7 @@ class MainWindow(QMainWindow):
             )
             return True
         except Exception as e:
-            if 'logger' in globals() or 'logger' in locals():
-                logger.warning(f"{ f"[Shortcut] ⚠️  Icon generation failed: {e}" }" if isinstance(f"[Shortcut] ⚠️  Icon generation failed: {e}", str) else f"[Shortcut] ⚠️  Icon generation failed: {e}")
-            else:
-                import logging
-                logging.getLogger(__name__).warning(f"{ f"[Shortcut] ⚠️  Icon generation failed: {e}" }" if isinstance(f"[Shortcut] ⚠️  Icon generation failed: {e}", str) else f"[Shortcut] ⚠️  Icon generation failed: {e}")
+            logger.warning(f"[Shortcut] ⚠️  Icon generation failed: {e}")
             return False
 
     @staticmethod
@@ -988,6 +980,32 @@ class MainWindow(QMainWindow):
         lay.addWidget(self._mute_btn)
 
         return w
+
+    def _on_file_selected(self, path: str):
+        """Asynchronously ingest dropped/selected file into RAG memory & knowledge store."""
+        if not path:
+            self._file_hint.setText("No file loaded — drop or click above to upload")
+            return
+
+        file_name = Path(path).name
+        self._file_hint.setText(f"Ingesting '{file_name}'...")
+        self._log.append_log(f"SYS: Ingesting '{file_name}' into knowledge base...")
+
+        def _worker():
+            try:
+                self._state_sig.emit("THINKING")
+                from actions.file_importer import import_file_to_knowledge
+                res = import_file_to_knowledge(path)
+                msg = res.get("message", f"Imported '{file_name}' successfully.")
+                self._log_sig.emit(f"SYS: {msg}")
+                self._content_sig.emit(f"KNOWLEDGE INGESTED: {file_name}", msg)
+            except Exception as e:
+                self._log_sig.emit(f"ERR: Ingestion failed for '{file_name}' — {e}")
+            finally:
+                self._state_sig.emit("LISTENING")
+
+        threading.Thread(target=_worker, daemon=True).start()
+
 
     def _build_quick_drawer(self) -> QWidget:
         """Floating overlay panel shown when the ⚙ header button is toggled."""

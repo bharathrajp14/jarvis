@@ -7,7 +7,8 @@ from __future__ import annotations
 
 from typing import Any, Dict
 from tools.registry import register_tool
-from actions.app_tracker import get_app_tracker
+# NOTE: get_app_tracker is imported lazily inside each handler to prevent a
+# missing/broken actions.app_tracker from silently killing all tool registrations.
 
 
 @register_tool(
@@ -23,6 +24,7 @@ from actions.app_tracker import get_app_tracker
 )
 def tool_get_app_launch_history(args: dict) -> str:
     """Retrieve app launch history log."""
+    from actions.app_tracker import get_app_tracker  # lazy import
     limit = args.get("limit", 30)
     app_name = str(args.get("app_name", "")).strip()
 
@@ -52,6 +54,7 @@ def tool_get_app_launch_history(args: dict) -> str:
 )
 def tool_get_app_usage_statistics(args: dict) -> str:
     """Retrieve app usage statistics."""
+    from actions.app_tracker import get_app_tracker  # lazy import
     tracker = get_app_tracker()
     stats = tracker.get_statistics()
 

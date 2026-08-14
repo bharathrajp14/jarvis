@@ -86,20 +86,42 @@ class AgentExecutor:
         goal:        str,
         speak:       Callable | None = None,
         cancel_flag: threading.Event | None = None,
+        task_id:     str | None = None,
     ) -> str:
-        logger.info(f"🎯 Goal: {goal}")
+        from agent.task_state import get_task_state_manager, TaskStatus, TaskAction
+        from agent.recovery_engine import get_recovery_engine
 
+        state_mgr = get_task_state_manager()
+        recovery = get_recovery_engine()
+
+        logger.info(f"🎯 Goal: {goal}")
 
         replan_count   = 0
         completed_steps = []
         step_results: dict[int, str] = {}
         plan = create_plan(goal)
+        steps = plan.get("steps", [])
+
+        if task_id:
+            state = state_mgr.get_task(task_id)
+            if state:
+                state.plan = plan
+                state.total_steps = len(steps)
+                state.status = TaskStatus.RUNNING
+                state_mgr.save_task(state)
+            else:
+                state = state_mgr.create_task(goal, total_steps=len(steps))
+                task_id = state.task_id
+        else:
+            state = state_mgr.create_task(goal, total_steps=len(steps))
+            task_id = state.task_id
 
         while True:
             steps = plan.get("steps", [])
             if not steps:
                 msg = "I couldn't create a valid plan, sir."
                 if speak: speak(msg)
+                state_mgr.update_status(task_id, TaskStatus.FAILED, {"error": msg})
                 return msg
 
             can_parallelize = plan.get("can_parallelize", False)
@@ -111,18 +133,32 @@ class AgentExecutor:
             )
 
             if cancel_flag and cancel_flag.is_set():
+                state_mgr.update_status(task_id, TaskStatus.CANCELLED)
                 return "Task cancelled, sir."
 
             if result["success"]:
-                return self._summarize(goal, completed_steps, step_results, speak)
+                summary = self._summarize(goal, completed_steps, step_results, speak)
+                state = state_mgr.get_task(task_id)
+                if state:
+                    state.status = TaskStatus.COMPLETED
+                    state.final_report = summary
+                    state_mgr.save_task(state)
+                return summary
 
             # Handle failure
             failed_step  = result["failed_step"]
             failed_error = result["failed_error"]
 
-            if replan_count >= self.MAX_REPLAN:
-                msg = f"Task failed after {replan_count} replan attempts, sir."
+            analysis = recovery.analyze_failure(
+                failed_step.get("tool", "") if isinstance(failed_step, dict) else "",
+                failed_error
+            )
+            logger.warning("Recovery analysis: category=%s, suggested=%s", analysis.category.value, analysis.suggested_action)
+
+            if replan_count >= self.MAX_REPLAN or not analysis.retry_allowed:
+                msg = f"Task failed after {replan_count} replan attempts ({analysis.category.value}): {analysis.message}"
                 if speak: speak(msg)
+                state_mgr.update_status(task_id, TaskStatus.FAILED, {"error": msg, "category": analysis.category.value})
                 return msg
 
             logger.info("Replanning (attempt %d)...", replan_count + 1)
@@ -160,11 +196,7 @@ class AgentExecutor:
 
             if not ready:
                 # Deadlock — some dependency never completed
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.info("[Executor] ⚠️ Dependency deadlock — breaking remaining steps")
-                else:
-                    import logging
-                    logging.getLogger(__name__).info("[Executor] ⚠️ Dependency deadlock — breaking remaining steps")
+                logger.info("[Executor] ⚠️ Dependency deadlock — breaking remaining steps")
                 break
 
             # Separate parallel-capable from sequential
@@ -256,6 +288,15 @@ class AgentExecutor:
         logger.info("Step %s: [%s] %s", step_num, tool, desc)
         t_start = time.time()
 
+        # Prevent repetitive stuck loops
+        from agent.recovery_engine import get_recovery_engine
+        recovery_eng = get_recovery_engine()
+        if recovery_eng.check_loop_or_stuck(tool, json.dumps(params, sort_keys=True)):
+            result.error = f"Aborted: Infinite loop detected with repeated tool '{tool}' calls."
+            result.success = False
+            result.duration = time.time() - t_start
+            return result
+
         max_attempts = 3 if step.get("critical") else 2
         for attempt in range(1, max_attempts + 1):
             try:
@@ -294,11 +335,7 @@ class AgentExecutor:
                                 result.duration = time.time() - t_start
                                 return result
                             except Exception as fix_err:
-                                if 'logger' in globals() or 'logger' in locals():
-                                    logger.warning(f"{ f"[Executor] Fix also failed: {fix_err}" }" if isinstance(f"[Executor] Fix also failed: {fix_err}", str) else f"[Executor] Fix also failed: {fix_err}")
-                                else:
-                                    import logging
-                                    logging.getLogger(__name__).warning(f"{ f"[Executor] Fix also failed: {fix_err}" }" if isinstance(f"[Executor] Fix also failed: {fix_err}", str) else f"[Executor] Fix also failed: {fix_err}")
+                                logger.warning(f"[Executor] Fix also failed: {fix_err}")
                         break
                     else:  # ABORT
                         break
@@ -332,7 +369,9 @@ class AgentExecutor:
         params = dict(params)
 
         # For file write operations, inject collected content
-        if tool == "file_controller" and params.get("action") in ("write", "create_file"):
+        if tool == "file_write" and params.get("action") in ("write", "create_file"):
+
+
             if not params.get("content") or len(params.get("content", "")) < 30:
                 all_results = [
                     v for v in step_results.values()
@@ -340,11 +379,7 @@ class AgentExecutor:
                 ]
                 if all_results:
                     params["content"] = "\n\n---\n\n".join(all_results[:3])
-                    if 'logger' in globals() or 'logger' in locals():
-                        logger.info(f"{ f"[Executor] 💉 Injected {len(params['content'])} chars of context" }" if isinstance(f"[Executor] 💉 Injected {len(params['content'])} chars of context", str) else f"[Executor] 💉 Injected {len(params['content'])} chars of context")
-                    else:
-                        import logging
-                        logging.getLogger(__name__).info(f"{ f"[Executor] 💉 Injected {len(params['content'])} chars of context" }" if isinstance(f"[Executor] 💉 Injected {len(params['content'])} chars of context", str) else f"[Executor] 💉 Injected {len(params['content'])} chars of context")
+                    logger.info(f"[Executor] 💉 Injected {len(params['content'])} chars of context")
 
         return params
 
@@ -412,11 +447,7 @@ class ParallelGoalExecutor:
         """
         Run multiple goals in parallel. Returns {goal: result} mapping.
         """
-        if 'logger' in globals() or 'logger' in locals():
-            logger.info(f"{ f"\n[ParallelExecutor] 🚀 Running {len(goals)} goals simultaneously" }" if isinstance(f"\n[ParallelExecutor] 🚀 Running {len(goals)} goals simultaneously", str) else f"\n[ParallelExecutor] 🚀 Running {len(goals)} goals simultaneously")
-        else:
-            import logging
-            logging.getLogger(__name__).info(f"{ f"\n[ParallelExecutor] 🚀 Running {len(goals)} goals simultaneously" }" if isinstance(f"\n[ParallelExecutor] 🚀 Running {len(goals)} goals simultaneously", str) else f"\n[ParallelExecutor] 🚀 Running {len(goals)} goals simultaneously")
+        logger.info(f"\n[ParallelExecutor] 🚀 Running {len(goals)} goals simultaneously")
 
         results = {}
 
@@ -431,11 +462,7 @@ class ParallelGoalExecutor:
                     results[goal] = future.result(timeout=300)
                 except Exception as e:
                     results[goal] = f"Failed: {e}"
-                    if 'logger' in globals() or 'logger' in locals():
-                        logger.info(f"{ f"[ParallelExecutor] ❌ Goal '{goal[:40]}': {e}" }" if isinstance(f"[ParallelExecutor] ❌ Goal '{goal[:40]}': {e}", str) else f"[ParallelExecutor] ❌ Goal '{goal[:40]}': {e}")
-                    else:
-                        import logging
-                        logging.getLogger(__name__).info(f"{ f"[ParallelExecutor] ❌ Goal '{goal[:40]}': {e}" }" if isinstance(f"[ParallelExecutor] ❌ Goal '{goal[:40]}': {e}", str) else f"[ParallelExecutor] ❌ Goal '{goal[:40]}': {e}")
+                    logger.info(f"[ParallelExecutor] ❌ Goal '{goal[:40]}': {e}")
 
         return results
 

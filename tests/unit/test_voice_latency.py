@@ -9,6 +9,7 @@ Tests:
 """
 from __future__ import annotations
 
+import logging
 import time
 import math
 import numpy as np
@@ -16,6 +17,8 @@ import pytest
 
 from voice.silero_vad import SileroVAD
 from voice.whisper_local import transcribe, is_available as is_whisper_available
+
+logger = logging.getLogger(__name__)
 
 
 def test_silero_vad_latency():
@@ -32,11 +35,7 @@ def test_silero_vad_latency():
 
     t_elapsed = (time.monotonic() - t_start) * 1000
 
-    if 'logger' in globals() or 'logger' in locals():
-        logger.info(f"{ f"\n[Test] Silero VAD Frame Execution Time: {t_elapsed:.3f} ms | Speech Prob: {prob:.2f}" }" if isinstance(f"\n[Test] Silero VAD Frame Execution Time: {t_elapsed:.3f} ms | Speech Prob: {prob:.2f}", str) else f"\n[Test] Silero VAD Frame Execution Time: {t_elapsed:.3f} ms | Speech Prob: {prob:.2f}")
-    else:
-        import logging
-        logging.getLogger(__name__).info(f"{ f"\n[Test] Silero VAD Frame Execution Time: {t_elapsed:.3f} ms | Speech Prob: {prob:.2f}" }" if isinstance(f"\n[Test] Silero VAD Frame Execution Time: {t_elapsed:.3f} ms | Speech Prob: {prob:.2f}", str) else f"\n[Test] Silero VAD Frame Execution Time: {t_elapsed:.3f} ms | Speech Prob: {prob:.2f}")
+    logger.info(f"\n[Test] Silero VAD Frame Execution Time: {t_elapsed:.3f} ms | Speech Prob: {prob:.2f}")
     assert t_elapsed < 50.0, f"Silero VAD execution took too long: {t_elapsed:.2f}ms"
 
 
@@ -66,11 +65,7 @@ def test_in_memory_whisper_performance():
     result = transcribe(wav_bytes, language="en")
     t_elapsed = (time.monotonic() - t_start) * 1000
 
-    if 'logger' in globals() or 'logger' in locals():
-        logger.info(f"{ f"\n[Test] Zero-Disk Whisper Transcription Execution Time: {t_elapsed:.2f} ms" }" if isinstance(f"\n[Test] Zero-Disk Whisper Transcription Execution Time: {t_elapsed:.2f} ms", str) else f"\n[Test] Zero-Disk Whisper Transcription Execution Time: {t_elapsed:.2f} ms")
-    else:
-        import logging
-        logging.getLogger(__name__).info(f"{ f"\n[Test] Zero-Disk Whisper Transcription Execution Time: {t_elapsed:.2f} ms" }" if isinstance(f"\n[Test] Zero-Disk Whisper Transcription Execution Time: {t_elapsed:.2f} ms", str) else f"\n[Test] Zero-Disk Whisper Transcription Execution Time: {t_elapsed:.2f} ms")
+    logger.info(f"\n[Test] Zero-Disk Whisper Transcription Execution Time: {t_elapsed:.2f} ms")
     assert isinstance(result, str)
 
 
@@ -88,23 +83,11 @@ def test_async_registry_safety():
 
 
 if __name__ == "__main__":
-    if 'logger' in globals() or 'logger' in locals():
-        logger.info("Running BR Voice Engine Verification Suite...")
-    else:
-        import logging
-        logging.getLogger(__name__).info("Running BR Voice Engine Verification Suite...")
+    logger.info("Running BR Voice Engine Verification Suite...")
     test_silero_vad_latency()
     test_async_registry_safety()
     try:
         test_in_memory_whisper_performance()
     except Exception as e:
-        if 'logger' in globals() or 'logger' in locals():
-            logger.info(f"{ f"Whisper test note: {e}" }" if isinstance(f"Whisper test note: {e}", str) else f"Whisper test note: {e}")
-        else:
-            import logging
-            logging.getLogger(__name__).info(f"{ f"Whisper test note: {e}" }" if isinstance(f"Whisper test note: {e}", str) else f"Whisper test note: {e}")
-    if 'logger' in globals() or 'logger' in locals():
-        logger.info("\n✅ All Voice Engine Verification Tests Passed!")
-    else:
-        import logging
-        logging.getLogger(__name__).info("\n✅ All Voice Engine Verification Tests Passed!")
+        logger.info(f"Whisper test note: {e}")
+    logger.info("\n✅ All Voice Engine Verification Tests Passed!")

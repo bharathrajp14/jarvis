@@ -17,6 +17,7 @@ Synchronizes across:
 """
 from __future__ import annotations
 
+import logging
 import re
 import sqlite3
 from dataclasses import dataclass
@@ -162,11 +163,7 @@ def _backup_version(file_path: Path):
         history_file = history_dir / f"{file_path.stem}_{timestamp}.md"
         history_file.write_text(file_path.read_text(encoding="utf-8"), encoding="utf-8")
     except Exception as e:
-        if 'logger' in globals() or 'logger' in locals():
-            logger.debug('Suppressed exception: %s', e)
-        else:
-            import logging
-            logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+        logger.debug('Suppressed exception: %s', e)
 # ── Core storage operations ────────────────────────────────────────────────
 
 def save_memory(entry: MemoryEntry, scope: str = "user") -> None:
@@ -219,11 +216,7 @@ def save_memory(entry: MemoryEntry, scope: str = "user") -> None:
         from memory.sqlite_lock import run_sqlite_write
         run_sqlite_write(_do_sqlite_write)
     except Exception as e:
-        if 'logger' in globals() or 'logger' in locals():
-            logger.debug('Suppressed exception: %s', e)
-        else:
-            import logging
-            logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+        logger.debug('Suppressed exception: %s', e)
 def delete_memory(name: str, scope: str = "user") -> None:
     """Remove the memory file matching name, delete from SQLite/Vector, and rebuild the index."""
     mem_dir = get_memory_dir(scope)
@@ -248,11 +241,7 @@ def delete_memory(name: str, scope: str = "user") -> None:
         from memory.sqlite_lock import run_sqlite_write
         run_sqlite_write(_do_sqlite_delete)
     except Exception as e:
-        if 'logger' in globals() or 'logger' in locals():
-            logger.debug('Suppressed exception: %s', e)
-        else:
-            import logging
-            logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+        logger.debug('Suppressed exception: %s', e)
 def load_entries(scope: str = "user") -> list[MemoryEntry]:
     """Scan all .md files (except MEMORY.md) in a scope and return entries."""
     mem_dir = get_memory_dir(scope)
@@ -344,6 +333,8 @@ try:
 except ImportError:
     pass
 
+logger = logging.getLogger(__name__)
+
 
 def _get_chroma_collection():
     """Lazy-load ChromaDB collection."""
@@ -383,11 +374,7 @@ def _sync_to_vector(entry: MemoryEntry):
             }]
         )
     except Exception as e:
-        if 'logger' in globals() or 'logger' in locals():
-            logger.debug('Suppressed exception: %s', e)
-        else:
-            import logging
-            logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+        logger.debug('Suppressed exception: %s', e)
 def _remove_from_vector(name: str):
     """Remove a memory from the vector store."""
     coll = _get_chroma_collection()
@@ -396,11 +383,7 @@ def _remove_from_vector(name: str):
     try:
         coll.delete(ids=[_slugify(name)])
     except Exception as e:
-        if 'logger' in globals() or 'logger' in locals():
-            logger.debug('Suppressed exception: %s', e)
-        else:
-            import logging
-            logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+        logger.debug('Suppressed exception: %s', e)
 def _vector_search(query: str, all_entries: list[MemoryEntry], top_k: int = 10) -> list[MemoryEntry]:
     """Search using ChromaDB vector similarity."""
     coll = _get_chroma_collection()
@@ -501,8 +484,4 @@ def touch_last_used(file_path: str) -> None:
         new_text = "\n".join(fm_lines) + "\n" + body + "\n"
         fp.write_text(new_text, encoding="utf-8")
     except Exception as e:
-        if 'logger' in globals() or 'logger' in locals():
-            logger.debug('Suppressed exception: %s', e)
-        else:
-            import logging
-            logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+        logger.debug('Suppressed exception: %s', e)

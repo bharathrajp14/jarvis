@@ -223,18 +223,18 @@ class GeminiBackend(BaseBackend):
                     logger.warning("Model %s response error: %s — trying next...", target_model, safety_err)
             except Exception as e:
                 err_str = str(e).lower()
-                if "quota" in err_str or "rate" in err_str or "429" in err_str:
-                    import random
-                    backoff = min(60, (2 ** attempt) + random.uniform(0, 1))
-                    logger.info("Rate limit on %s, backoff %.1fs...", target_model, backoff)
-                    time.sleep(backoff)
+                if "quota" in err_str or "rate" in err_str or "429" in err_str or "resource_exhausted" in err_str:
+                    logger.warning("Gemini 429 rate/quota limit on %s: %s", target_model, e)
+                    # Break out early to trigger router fallback to alternative provider (Claude/GPT/Ollama)
+                    break
                 elif "safety" in err_str or "recitation" in err_str or "block" in err_str:
                     logger.warning("Safety block on %s — trying next model", target_model)
                 else:
                     logger.warning("Model %s failed: %s — trying next...", target_model, e)
                 time.sleep(0.5)
 
-        return ""
+        return "ERROR: Gemini API quota exceeded (429 RESOURCE_EXHAUSTED). Please wait for quota reset or switch model backend."
+
 
     def stream(self, messages: list, system: str = "") -> Generator[str, None, None]:
         """Streaming completion."""

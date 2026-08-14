@@ -3,12 +3,12 @@ requires = ["setuptools>=68.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "br-jarvis"
-version = "37.5.0"
-description = "BR JARVIS — Cognitive Multi-Modal AI Operating System & Autonomous Controller"
+name = "brjarvis"
+version = "38.5.0"
+description = "BRJARVIS — Cognitive Multi-Modal AI Operating System & Autonomous Controller"
 readme = "readme.md"
 license = {text = "MIT"}
-requires-python = ">=3.11, <3.14"
+requires-python = ">=3.11, <=3.14"
 authors = [
     {name = "Bharath Raj", email = "bharathraj14120@gmail.com"},
 ]
@@ -22,10 +22,6 @@ keywords = [
     "desktop-automation"
 ]
 
-[project.urls]
-Homepage = "https://github.com/bharthraj1412/BrJarvis"
-Repository = "https://github.com/bharthraj1412/BrJarvis.git"
-
 dependencies = [
     "google-genai>=1.0.0",
     "python-dotenv>=1.0.0",
@@ -38,6 +34,10 @@ dependencies = [
     "httpx>=0.27.0",
     "pydantic>=2.0.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/bharthraj1412/BrJarvis"
+Repository = "https://github.com/bharthraj1412/BrJarvis.git"
 
 [project.optional-dependencies]
 voice = [
@@ -86,7 +86,7 @@ windows = [
     "send2trash",
 ]
 all = [
-    "br-jarvis[voice,automation,web,documents,memory,llm-backends,windows]",
+    "brjarvis[voice,automation,web,documents,memory,llm-backends,windows]",
 ]
 dev = [
     "pytest>=7.0.0",
@@ -95,7 +95,8 @@ dev = [
 ]
 
 [project.scripts]
-jarvis = "start:main"
+brjarvis = "brjarvis:main"
+jarvis = "brjarvis:main"
 jarvis-cli = "main_mk37:main"
 jarvis-server = "server:main"
 

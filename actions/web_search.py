@@ -1,8 +1,9 @@
 #web_search.py
-import json
 import logging
 import sys
 from pathlib import Path
+
+from actions._gemini_client import get_gemini_client, get_proxy_model
 
 logger = logging.getLogger("JARVIS.Actions.WebSearch")
 
@@ -12,29 +13,24 @@ def _get_base_dir() -> Path:
     return Path(__file__).resolve().parent.parent
 
 
-BASE_DIR        = _get_base_dir()
-API_CONFIG_PATH = BASE_DIR / "config" / "api_keys.json"
-
-
-def _get_api_key() -> str:
-    with open(API_CONFIG_PATH, "r", encoding="utf-8") as f:
-        return json.load(f)["gemini_api_key"]
+BASE_DIR = _get_base_dir()
 
 
 def _gemini_search(query: str) -> str:
-    from google import genai
-
-    client   = genai.Client(api_key=_get_api_key())
+    client = get_gemini_client()
+    model = get_proxy_model(proxy_alias="gemini-3.5-flash", real_model="gemini-2.5-flash")
     response = client.models.generate_content(
-        model="gemini-2.5-flash",
+        model=model,
         contents=query,
-        config={"tools": [{"google_search": {}}]},
     )
 
     text = ""
-    for part in response.candidates[0].content.parts:
-        if hasattr(part, "text") and part.text:
-            text += part.text
+    if hasattr(response, "candidates") and response.candidates:
+        for part in response.candidates[0].content.parts:
+            if hasattr(part, "text") and part.text:
+                text += part.text
+    elif hasattr(response, "text") and response.text:
+        text = response.text
 
     text = text.strip()
     if not text:
@@ -123,19 +119,21 @@ def _gemini_headlines(n: int = 5) -> tuple[list[str], str]:
     Returns (headline_list, raw_text_for_display).
     """
     import re
-    from google import genai
 
-    client = genai.Client(api_key=_get_api_key())
+    client = get_gemini_client()
+    model = get_proxy_model(proxy_alias="gemini-3.5-flash", real_model="gemini-2.5-flash")
     response = client.models.generate_content(
-        model="gemini-2.5-flash",
+        model=model,
         contents=f"Current world news: {n} headlines. Numbered list, titles only.",
-        config={"tools": [{"google_search": {}}]},
     )
 
     raw = ""
-    for part in response.candidates[0].content.parts:
-        if hasattr(part, "text") and part.text:
-            raw += part.text
+    if hasattr(response, "candidates") and response.candidates:
+        for part in response.candidates[0].content.parts:
+            if hasattr(part, "text") and part.text:
+                raw += part.text
+    elif hasattr(response, "text") and response.text:
+        raw = response.text
 
     headlines = []
     for line in raw.strip().split("\n"):

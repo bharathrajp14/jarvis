@@ -16,6 +16,7 @@ Supported types:
   pptx    → summarize, extract_text, to_pdf
 """
 
+import logging
 import os
 import re
 import json
@@ -25,19 +26,18 @@ import tempfile
 from pathlib import Path
 from datetime import datetime
 
-def _get_api_key() -> str:
-    config_path = Path(__file__).resolve().parent.parent / "config" / "api_keys.json"
-    with open(config_path, "r", encoding="utf-8") as f:
-        return json.load(f)["gemini_api_key"]
+from actions._gemini_client import get_gemini_client, get_proxy_model
+
+logger = logging.getLogger(__name__)
 
 
 def _gemini_client():
-    from google import genai
-    _c = genai.Client(api_key=_get_api_key())
+    _c = get_gemini_client()
+    _model = get_proxy_model("gemini-3.5-flash", "gemini-2.5-flash")
 
     class _W:
         def generate_content(self, contents):
-            return _c.models.generate_content(model="gemini-2.5-flash", contents=contents)
+            return _c.models.generate_content(model=_model, contents=contents)
 
     return _W()
 
@@ -795,11 +795,7 @@ def file_processor(parameters: dict, player=None, speak=None) -> str:
     params      = {**parameters, "instruction": instruction}
 
     log_msg = f"[FileProcessor] {file_type.upper()} | {path.name} | action={action or 'auto'}"
-    if 'logger' in globals() or 'logger' in locals():
-        logger.info(f"{ log_msg }" if isinstance(log_msg, str) else log_msg)
-    else:
-        import logging
-        logging.getLogger(__name__).info(f"{ log_msg }" if isinstance(log_msg, str) else log_msg)
+    logger.info(log_msg)
     if player:
         player.write_log(log_msg)
 

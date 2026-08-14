@@ -156,7 +156,17 @@ def _send_whatsapp(receiver: str, message: str) -> str:
     return _desktop_send("WhatsApp", receiver, message)
 
 def _send_telegram(receiver: str, message: str) -> str:
+    # Prefer the Telegram Bot API engine when a bot token is configured
+    try:
+        from actions.telegram_automation import get_telegram_automation
+        tg = get_telegram_automation()
+        if tg._token:
+            return tg.send_message(recipient=receiver, message_text=message)
+    except Exception:
+        pass
+    # Fallback: open Telegram desktop app via pyautogui
     return _desktop_send("Telegram", receiver, message)
+
 
 def _send_signal(receiver: str, message: str) -> str:
     return _desktop_send("Signal", receiver, message)
@@ -252,11 +262,7 @@ def send_message(
         return "PyAutoGUI is not installed — cannot control the desktop."
 
     preview = message_text[:50] + ("…" if len(message_text) > 50 else "")
-    if 'logger' in globals() or 'logger' in locals():
-        logger.info(f"{ f"[SendMessage] 📨 {platform} → {receiver}: {preview}" }" if isinstance(f"[SendMessage] 📨 {platform} → {receiver}: {preview}", str) else f"[SendMessage] 📨 {platform} → {receiver}: {preview}")
-    else:
-        import logging
-        logging.getLogger(__name__).info(f"{ f"[SendMessage] 📨 {platform} → {receiver}: {preview}" }" if isinstance(f"[SendMessage] 📨 {platform} → {receiver}: {preview}", str) else f"[SendMessage] 📨 {platform} → {receiver}: {preview}")
+    logger.info(f"[SendMessage] 📨 {platform} → {receiver}: {preview}")
     if player:
         player.write_log(f"[msg] {platform} → {receiver}")
 

@@ -16,7 +16,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from actions.whatsapp_automation import get_whatsapp_automation
 from actions.calendar_engine import get_calendar_engine
 from actions.automation_engine import get_automation_engine
+import logging
+logger = logging.getLogger("TestWhatsAppCalendar")
+
 from tools.registry import execute_tool, TOOL_REGISTRY, _import_plugins
+
 
 
 class TestWhatsAppCalendarAutomation(unittest.TestCase):
@@ -32,11 +36,7 @@ class TestWhatsAppCalendarAutomation(unittest.TestCase):
 
         name, phone = wa.resolve_recipient("Alice")
         self.assertEqual(phone, "+15551234567")
-        if 'logger' in globals() or 'logger' in locals():
-            logger.info(f"{ f"\n[Test] WhatsApp contact resolution: 'Alice' -> '{name}' ({phone})" }" if isinstance(f"\n[Test] WhatsApp contact resolution: 'Alice' -> '{name}' ({phone})", str) else f"\n[Test] WhatsApp contact resolution: 'Alice' -> '{name}' ({phone})")
-        else:
-            import logging
-            logging.getLogger(__name__).info(f"{ f"\n[Test] WhatsApp contact resolution: 'Alice' -> '{name}' ({phone})" }" if isinstance(f"\n[Test] WhatsApp contact resolution: 'Alice' -> '{name}' ({phone})", str) else f"\n[Test] WhatsApp contact resolution: 'Alice' -> '{name}' ({phone})")
+        logger.info(f"\n[Test] WhatsApp contact resolution: 'Alice' -> '{name}' ({phone})")
 
     def test_02_whatsapp_messaging_and_scheduling(self):
         """Test formatting and scheduling WhatsApp messages."""
@@ -46,11 +46,7 @@ class TestWhatsAppCalendarAutomation(unittest.TestCase):
 
         sched_res = wa.schedule_message("Alice", "Scheduled Reminder", "23:59:59")
         self.assertIn("Scheduled WhatsApp message", sched_res)
-        if 'logger' in globals() or 'logger' in locals():
-            logger.info(f"{ f"[Test] WhatsApp schedule output: {sched_res}" }" if isinstance(f"[Test] WhatsApp schedule output: {sched_res}", str) else f"[Test] WhatsApp schedule output: {sched_res}")
-        else:
-            import logging
-            logging.getLogger(__name__).info(f"{ f"[Test] WhatsApp schedule output: {sched_res}" }" if isinstance(f"[Test] WhatsApp schedule output: {sched_res}", str) else f"[Test] WhatsApp schedule output: {sched_res}")
+        logger.info(f"[Test] WhatsApp schedule output: {sched_res}")
 
     def test_03_calendar_natural_language_event_creation(self):
         """Test creating calendar events with natural language expressions."""
@@ -64,11 +60,7 @@ class TestWhatsAppCalendarAutomation(unittest.TestCase):
         )
         self.assertTrue(event_res["success"])
         self.assertIn("Team Sync & Review", event_res["title"])
-        if 'logger' in globals() or 'logger' in locals():
-            logger.info(f"{ f"[Test] Calendar Event Created: #{event_res['event_id']} '{event_res['title']}' on {event_res['start_time']}" }" if isinstance(f"[Test] Calendar Event Created: #{event_res['event_id']} '{event_res['title']}' on {event_res['start_time']}", str) else f"[Test] Calendar Event Created: #{event_res['event_id']} '{event_res['title']}' on {event_res['start_time']}")
-        else:
-            import logging
-            logging.getLogger(__name__).info(f"{ f"[Test] Calendar Event Created: #{event_res['event_id']} '{event_res['title']}' on {event_res['start_time']}" }" if isinstance(f"[Test] Calendar Event Created: #{event_res['event_id']} '{event_res['title']}' on {event_res['start_time']}", str) else f"[Test] Calendar Event Created: #{event_res['event_id']} '{event_res['title']}' on {event_res['start_time']}")
+        logger.info(f"[Test] Calendar Event Created: #{event_res['event_id']} '{event_res['title']}' on {event_res['start_time']}")
 
     def test_04_calendar_listing_and_searching(self):
         """Test listing and searching calendar events."""
@@ -79,11 +71,7 @@ class TestWhatsAppCalendarAutomation(unittest.TestCase):
         search_matches = cal.search_events("Sync")
         self.assertGreater(len(search_matches), 0)
         self.assertEqual(search_matches[0]["title"], "Team Sync & Review")
-        if 'logger' in globals() or 'logger' in locals():
-            logger.info(f"{ f"[Test] Calendar Search for 'Sync' found {len(search_matches)} matches." }" if isinstance(f"[Test] Calendar Search for 'Sync' found {len(search_matches)} matches.", str) else f"[Test] Calendar Search for 'Sync' found {len(search_matches)} matches.")
-        else:
-            import logging
-            logging.getLogger(__name__).info(f"{ f"[Test] Calendar Search for 'Sync' found {len(search_matches)} matches." }" if isinstance(f"[Test] Calendar Search for 'Sync' found {len(search_matches)} matches.", str) else f"[Test] Calendar Search for 'Sync' found {len(search_matches)} matches.")
+        logger.info(f"[Test] Calendar Search for 'Sync' found {len(search_matches)} matches.")
 
     def test_05_workflow_integration_whatsapp_calendar(self):
         """Test multi-step macro workflow execution with WhatsApp and Calendar steps."""
@@ -104,15 +92,14 @@ class TestWhatsAppCalendarAutomation(unittest.TestCase):
         res = engine.run_workflow_script(steps)
         self.assertTrue(res["success"])
         self.assertEqual(res["step_count"], 2)
-        if 'logger' in globals() or 'logger' in locals():
-            logger.info(f"{ f"[Test] Workflow script execution output: {res['results']}" }" if isinstance(f"[Test] Workflow script execution output: {res['results']}", str) else f"[Test] Workflow script execution output: {res['results']}")
-        else:
-            import logging
-            logging.getLogger(__name__).info(f"{ f"[Test] Workflow script execution output: {res['results']}" }" if isinstance(f"[Test] Workflow script execution output: {res['results']}", str) else f"[Test] Workflow script execution output: {res['results']}")
+        logger.info(f"[Test] Workflow script execution output: {res['results']}")
 
     def test_06_tool_registry_execution(self):
         """Test executing WhatsApp and Calendar tools via tool registry."""
+        from tools.registry import _import_plugins
+        _import_plugins(full=True)
         tools_to_test = [
+
             "send_whatsapp",
             "schedule_whatsapp_message",
             "manage_whatsapp_contacts",
@@ -129,11 +116,7 @@ class TestWhatsAppCalendarAutomation(unittest.TestCase):
 
         out_cal = execute_tool("list_calendar_events", {"days": 7})
         self.assertIn("Team Sync & Review", out_cal)
-        if 'logger' in globals() or 'logger' in locals():
-            logger.info(f"{ f"[Test] Tool 'list_calendar_events' output:\n{out_cal}" }" if isinstance(f"[Test] Tool 'list_calendar_events' output:\n{out_cal}", str) else f"[Test] Tool 'list_calendar_events' output:\n{out_cal}")
-        else:
-            import logging
-            logging.getLogger(__name__).info(f"{ f"[Test] Tool 'list_calendar_events' output:\n{out_cal}" }" if isinstance(f"[Test] Tool 'list_calendar_events' output:\n{out_cal}", str) else f"[Test] Tool 'list_calendar_events' output:\n{out_cal}")
+        logger.info(f"[Test] Tool 'list_calendar_events' output:\n{out_cal}")
 
 
 if __name__ == "__main__":

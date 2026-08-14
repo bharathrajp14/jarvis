@@ -207,7 +207,12 @@ class TaskMemoryRouter:
         task: str,
         working_memory_tokens: int = 0,
         max_context_tokens: int = 100_000,
+        max_tokens: int | None = None,
+        **kwargs,
     ) -> MemoryMode:
+        if max_tokens is not None:
+            max_context_tokens = max_tokens
+
         """
         Classify a task and return the appropriate MemoryMode.
 

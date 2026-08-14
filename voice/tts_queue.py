@@ -5,12 +5,15 @@ cancellation, and priority dispatch (URGENT / NORMAL / BACKGROUND).
 """
 from __future__ import annotations
 
+import logging
 import queue
 import threading
 import time
 from dataclasses import dataclass, field
 from enum import IntEnum
 from typing import Callable, Optional
+
+logger = logging.getLogger(__name__)
 
 
 class SpeechPriority(IntEnum):
@@ -83,29 +86,17 @@ class TTSQueueManager:
                 try:
                     item.on_start()
                 except Exception as e:
-                    if 'logger' in globals() or 'logger' in locals():
-                        logger.debug('Suppressed exception: %s', e)
-                    else:
-                        import logging
-                        logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                    logger.debug('Suppressed exception: %s', e)
             if self._speak_handler:
                 try:
                     self._speak_handler(item.text)
                 except Exception as e:
-                    if 'logger' in globals() or 'logger' in locals():
-                        logger.debug('Suppressed exception: %s', e)
-                    else:
-                        import logging
-                        logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                    logger.debug('Suppressed exception: %s', e)
             if item.on_finish:
                 try:
                     item.on_finish()
                 except Exception as e:
-                    if 'logger' in globals() or 'logger' in locals():
-                        logger.debug('Suppressed exception: %s', e)
-                    else:
-                        import logging
-                        logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                    logger.debug('Suppressed exception: %s', e)
             self._current_item = None
             self._queue.task_done()
 

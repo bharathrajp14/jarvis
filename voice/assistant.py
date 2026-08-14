@@ -65,11 +65,7 @@ except ImportError:
                 self.mic_energy_level = 0.0
 
             def write_log(self, msg: str) -> None:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.info(f"{ f"[UI] {msg}" }" if isinstance(f"[UI] {msg}", str) else f"[UI] {msg}")
-                else:
-                    import logging
-                    logging.getLogger(__name__).info(f"{ f"[UI] {msg}" }" if isinstance(f"[UI] {msg}", str) else f"[UI] {msg}")
+                logger.info(f"[UI] {msg}")
 
             def set_state(self, state: str) -> None:
                 self._state = state
@@ -278,11 +274,7 @@ class BRVoiceAssistant:
         from voice.tts import clean_for_speech
         log_text = clean_for_speech(text)
         if log_text:
-            if 'logger' in globals() or 'logger' in locals():
-                logger.info(f"{ f"[JARVIS] 🗣 Speak: {log_text[:200]}" }" if isinstance(f"[JARVIS] 🗣 Speak: {log_text[:200]}", str) else f"[JARVIS] 🗣 Speak: {log_text[:200]}")
-            else:
-                import logging
-                logging.getLogger(__name__).info(f"{ f"[JARVIS] 🗣 Speak: {log_text[:200]}" }" if isinstance(f"[JARVIS] 🗣 Speak: {log_text[:200]}", str) else f"[JARVIS] 🗣 Speak: {log_text[:200]}")
+            logger.info(f"[JARVIS] 🗣 Speak: {log_text[:200]}")
 
         def on_start():
             self.ui.speaking = True
@@ -443,11 +435,7 @@ class BRVoiceAssistant:
                         )
                     )
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.warning(f"{ f"[Voice] Local Whisper transcription failed: {e}" }" if isinstance(f"[Voice] Local Whisper transcription failed: {e}", str) else f"[Voice] Local Whisper transcription failed: {e}")
-                else:
-                    import logging
-                    logging.getLogger(__name__).warning(f"{ f"[Voice] Local Whisper transcription failed: {e}" }" if isinstance(f"[Voice] Local Whisper transcription failed: {e}", str) else f"[Voice] Local Whisper transcription failed: {e}")
+                logger.warning(f"[Voice] Local Whisper transcription failed: {e}")
 
         # 2. Try configured default backend (if it has transcribe method)
         if not text and hasattr(self, "backends") and self.backends:
@@ -681,11 +669,7 @@ class BRVoiceAssistant:
                         lambda c=startup_cmd: custom_command_engine.execute({"actions": [c]}, {}, speak_callback=self.speak)
                     )
         except Exception as e:
-            if 'logger' in globals() or 'logger' in locals():
-                logger.warning(f"{ f"[Voice] Startup commands error: {e}" }" if isinstance(f"[Voice] Startup commands error: {e}", str) else f"[Voice] Startup commands error: {e}")
-            else:
-                import logging
-                logging.getLogger(__name__).warning(f"{ f"[Voice] Startup commands error: {e}" }" if isinstance(f"[Voice] Startup commands error: {e}", str) else f"[Voice] Startup commands error: {e}")
+            logger.warning(f"[Voice] Startup commands error: {e}")
 
         if not mic_available or not self.r or not mic:
             self.ui.write_log("SYS: Keyboard text control operational.")
@@ -857,18 +841,10 @@ class BRVoiceAssistant:
                     except RuntimeError as e:
                         if "shutdown" in str(e).lower() or "closed" in str(e).lower():
                             break
-                        if 'logger' in globals() or 'logger' in locals():
-                            logger.warning(f"{ f"[Voice Loop Error]: {e}" }" if isinstance(f"[Voice Loop Error]: {e}", str) else f"[Voice Loop Error]: {e}")
-                        else:
-                            import logging
-                            logging.getLogger(__name__).warning(f"{ f"[Voice Loop Error]: {e}" }" if isinstance(f"[Voice Loop Error]: {e}", str) else f"[Voice Loop Error]: {e}")
+                        logger.warning(f"[Voice Loop Error]: {e}")
                         await asyncio.sleep(0.3)
                     except Exception as e:
-                        if 'logger' in globals() or 'logger' in locals():
-                            logger.warning(f"{ f"[Voice Loop Error]: {e}" }" if isinstance(f"[Voice Loop Error]: {e}", str) else f"[Voice Loop Error]: {e}")
-                        else:
-                            import logging
-                            logging.getLogger(__name__).warning(f"{ f"[Voice Loop Error]: {e}" }" if isinstance(f"[Voice Loop Error]: {e}", str) else f"[Voice Loop Error]: {e}")
+                        logger.warning(f"[Voice Loop Error]: {e}")
                         await asyncio.sleep(0.3)
 
         except Exception as e:

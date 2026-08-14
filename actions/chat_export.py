@@ -4,10 +4,14 @@ Exports conversation history to multiple formats: PDF, Markdown, HTML, Plain Tex
 """
 from __future__ import annotations
 
+import logging
 import json
+import re
 import os
 from datetime import datetime
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 
 def _output_dir() -> Path:
@@ -207,8 +211,4 @@ def _export_pdf(history: list[dict], path: Path):
             import shutil
             shutil.copy(str(html_path), str(path))
         except Exception as e:
-            if 'logger' in globals() or 'logger' in locals():
-                logger.debug('Suppressed exception: %s', e)
-            else:
-                import logging
-                logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+            logger.debug('Suppressed exception: %s', e)

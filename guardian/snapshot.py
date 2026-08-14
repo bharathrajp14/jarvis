@@ -4,12 +4,15 @@ Manages pre-upgrade git commits, database backups, and rolling snapshot retentio
 """
 from __future__ import annotations
 
+import logging
 import json
 import os
 import shutil
 import subprocess
 import time
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 SNAPSHOT_DIR = Path("workspace/snapshots")
 
@@ -49,11 +52,7 @@ class SnapshotManager:
                 git_hash = res.stdout.strip()
                 (snap_path / "git_hash.txt").write_text(git_hash, encoding="utf-8")
         except Exception as e:
-            if 'logger' in globals() or 'logger' in locals():
-                logger.exception('Boot critical exception encountered in guardian/snapshot.py')
-            else:
-                import logging
-                logging.getLogger(__name__).exception('Boot critical exception')
+            logger.exception('Boot critical exception encountered in guardian/snapshot.py')
             raise e
         info = {
             "snapshot_id": snapshot_id,
@@ -84,9 +83,5 @@ class SnapshotManager:
                 try:
                     shutil.rmtree(s)
                 except Exception as e:
-                    if 'logger' in globals() or 'logger' in locals():
-                        logger.exception('Boot critical exception encountered in guardian/snapshot.py')
-                    else:
-                        import logging
-                        logging.getLogger(__name__).exception('Boot critical exception')
+                    logger.exception('Boot critical exception encountered in guardian/snapshot.py')
                     raise e

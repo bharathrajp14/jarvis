@@ -2,11 +2,15 @@
 System Monitor — background metric checks with voice alert support.
 Zero subprocess calls on all platforms — uses ctypes/pynvml/psutil/wmi only.
 """
+
+import logging
 import ctypes
 import platform
 import time
 
 import psutil
+
+logger = logging.getLogger(__name__)
 
 _OS = platform.system()  # "Windows" | "Darwin" | "Linux"
 
@@ -77,11 +81,7 @@ def _get_gpu_usage() -> float:
         h = pynvml.nvmlDeviceGetHandleByIndex(0)
         return float(pynvml.nvmlDeviceGetUtilizationRates(h).gpu)
     except Exception as e:
-        if 'logger' in globals() or 'logger' in locals():
-            logger.debug('Suppressed exception: %s', e)
-        else:
-            import logging
-            logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+        logger.debug('Suppressed exception: %s', e)
     return _nvml_gpu()
 
 
@@ -97,11 +97,7 @@ def _get_cpu_temp() -> float:
             if entries:
                 return entries[0].current
     except Exception as e:
-        if 'logger' in globals() or 'logger' in locals():
-            logger.debug('Suppressed exception: %s', e)
-        else:
-            import logging
-            logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+        logger.debug('Suppressed exception: %s', e)
     # Windows: wmi module (pure Python COM, zero subprocess)
     if _OS == "Windows":
         try:
@@ -111,11 +107,7 @@ def _get_cpu_temp() -> float:
             if tz:
                 return (tz[0].CurrentTemperature / 10.0) - 273.15
         except Exception as e:
-            if 'logger' in globals() or 'logger' in locals():
-                logger.debug('Suppressed exception: %s', e)
-            else:
-                import logging
-                logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+            logger.debug('Suppressed exception: %s', e)
     return -1.0
 
 

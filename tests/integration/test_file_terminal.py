@@ -1,9 +1,12 @@
 # tests/integration/test_file_terminal.py — Scenarios 10 to 12: File and Terminal Tool Integration
 from __future__ import annotations
 
+import logging
 import os
 import pytest
 from tools.registry import execute_tool
+
+logger = logging.getLogger(__name__)
 
 os.environ["JARVIS_PERMISSION_MODE"] = "allow_all"
 
@@ -30,11 +33,7 @@ def test_scenario_10_file_operations():
         if file_to_del.exists():
             file_to_del.unlink()
     except Exception as e:
-        if 'logger' in globals() or 'logger' in locals():
-            logger.debug('Suppressed exception: %s', e)
-        else:
-            import logging
-            logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+        logger.debug('Suppressed exception: %s', e)
 def test_scenario_11_12_terminal_and_git():
     """Scenarios 11 & 12: Run terminal shell command and check output."""
     # Test simple echo via cli_controller

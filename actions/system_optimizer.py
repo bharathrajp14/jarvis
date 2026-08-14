@@ -6,12 +6,15 @@ and optimizes process memory footprints.
 """
 from __future__ import annotations
 
+import logging
 import gc
 import os
 import sys
 import psutil
 import tempfile
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 
 def optimize_system_resources() -> dict:
@@ -39,17 +42,9 @@ def optimize_system_resources() -> dict:
                     f.unlink(missing_ok=True)
                     pruned_files += 1
                 except Exception as e:
-                    if 'logger' in globals() or 'logger' in locals():
-                        logger.debug('Suppressed exception: %s', e)
-                    else:
-                        import logging
-                        logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                    logger.debug('Suppressed exception: %s', e)
     except Exception as e:
-        if 'logger' in globals() or 'logger' in locals():
-            logger.debug('Suppressed exception: %s', e)
-        else:
-            import logging
-            logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+        logger.debug('Suppressed exception: %s', e)
     mem_after_mb = process.memory_info().rss / (1024 * 1024)
     freed_mb = max(0.0, mem_before_mb - mem_after_mb)
 

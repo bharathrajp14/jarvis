@@ -297,11 +297,7 @@ class FilesystemConnector(BaseConnector):
                                         match_context = f"  Line {i}: {line.strip()[:100]}"
                                         break
                         except Exception as e:
-                            if 'logger' in globals() or 'logger' in locals():
-                                logger.debug('Suppressed exception: %s', e)
-                            else:
-                                import logging
-                                logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                            logger.debug('Suppressed exception: %s', e)
                 if matched:
                     matches.append((f, match_context))
 

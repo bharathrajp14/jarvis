@@ -70,7 +70,7 @@ class CognitiveWorkspaceEngine:
 
     def _init_sqlite_db(self):
         """Initialize workspace metadata and knowledge graph tables."""
-        conn = sqlite3.connect(self.db_path)
+        conn = sqlite3.connect(self.db_path, timeout=15.0)
         cur = conn.cursor()
 
         cur.execute("""
@@ -139,7 +139,7 @@ class CognitiveWorkspaceEngine:
         """Record an event in the timeline event stream."""
         import uuid
         event_id = f"evt_{uuid.uuid4().hex[:12]}"
-        conn = sqlite3.connect(self.db_path)
+        conn = sqlite3.connect(self.db_path, timeout=15.0)
         cur = conn.cursor()
         cur.execute(
             "INSERT INTO workspace_timeline (event_id, event_type, project_name, description, metadata_json) VALUES (?, ?, ?, ?, ?)",
@@ -154,7 +154,7 @@ class CognitiveWorkspaceEngine:
         Finds files by keywords, topics, project name, or date without exact paths.
         """
         clean = query.lower().strip()
-        conn = sqlite3.connect(self.db_path)
+        conn = sqlite3.connect(self.db_path, timeout=15.0)
         cur = conn.cursor()
 
         # 1. Direct filename search in database

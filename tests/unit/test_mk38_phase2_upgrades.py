@@ -5,7 +5,7 @@ import time
 from pathlib import Path
 
 from memory.temporal_kg import TemporalKnowledgeGraph, TemporalEdge
-from workspace.code_graph import WorkspaceCodeGraph, SymbolDefinition
+from core.code_graph import WorkspaceCodeGraph, SymbolDefinition
 
 
 def test_temporal_knowledge_graph():

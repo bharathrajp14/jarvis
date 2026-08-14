@@ -1,6 +1,7 @@
 # screen_server/ws_server.py — Asyncio WebSocket Server for JARVIS MK37 Screen Sharing
 from __future__ import annotations
 
+import logging
 import asyncio
 import json
 import os
@@ -13,6 +14,8 @@ try:
     _ws_available = True
 except ImportError:
     _ws_available = False
+
+logger = logging.getLogger(__name__)
 
 
 class ScreenShareServer:
@@ -98,11 +101,7 @@ class ScreenShareServer:
             **kwargs
         )
         protocol = "wss" if self.ssl_context else "ws"
-        if 'logger' in globals() or 'logger' in locals():
-            logger.info(f"{ f"[ScreenShare] WebSocket server listening on {protocol}://{self.host}:{self.port}" }" if isinstance(f"[ScreenShare] WebSocket server listening on {protocol}://{self.host}:{self.port}", str) else f"[ScreenShare] WebSocket server listening on {protocol}://{self.host}:{self.port}")
-        else:
-            import logging
-            logging.getLogger(__name__).info(f"{ f"[ScreenShare] WebSocket server listening on {protocol}://{self.host}:{self.port}" }" if isinstance(f"[ScreenShare] WebSocket server listening on {protocol}://{self.host}:{self.port}", str) else f"[ScreenShare] WebSocket server listening on {protocol}://{self.host}:{self.port}")
+        logger.info(f"[ScreenShare] WebSocket server listening on {protocol}://{self.host}:{self.port}")
 
     async def stop(self) -> None:
         """Stop the WebSocket server and disconnect all viewers."""
@@ -121,11 +120,7 @@ class ScreenShareServer:
             except Exception:
                 pass
 
-        if 'logger' in globals() or 'logger' in locals():
-            logger.info("[ScreenShare] WebSocket server stopped")
-        else:
-            import logging
-            logging.getLogger(__name__).info("[ScreenShare] WebSocket server stopped")
+        logger.info("[ScreenShare] WebSocket server stopped")
 
     async def broadcast(self, frame_data: bytes) -> None:
         """Send a JPEG frame to all connected viewers."""

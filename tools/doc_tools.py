@@ -6,6 +6,7 @@ Includes robust method alias protection on Document instances (addpagebreak, add
 """
 from __future__ import annotations
 
+import logging
 import json
 import os
 import re
@@ -33,6 +34,8 @@ try:
     _FPDF_AVAILABLE = True
 except ImportError:
     _FPDF_AVAILABLE = False
+
+logger = logging.getLogger(__name__)
 
 
 def _get_workspace_dir() -> Path:
@@ -549,11 +552,7 @@ def document_creator(args: dict) -> str:
         try:
             subprocess.Popen(["cmd", "/c", "start", "", str(saved_path)], shell=False)
         except Exception as e:
-            if 'logger' in globals() or 'logger' in locals():
-                logger.debug('Suppressed exception: %s', e)
-            else:
-                import logging
-                logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+            logger.debug('Suppressed exception: %s', e)
     return f"⚡ Created Executive Document ({fmt.upper()}): '{saved_path}' and launched viewer."
 
 
@@ -698,10 +697,6 @@ def generate_walkthrough(args: dict) -> str:
         try:
             subprocess.Popen(["cmd", "/c", "start", "", str(out_path)], shell=False)
         except Exception as e:
-            if 'logger' in globals() or 'logger' in locals():
-                logger.debug('Suppressed exception: %s', e)
-            else:
-                import logging
-                logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+            logger.debug('Suppressed exception: %s', e)
     file_uri = out_path.as_uri()
     return f"⚡ Generated Walkthrough document successfully: [{filename}]({file_uri})"

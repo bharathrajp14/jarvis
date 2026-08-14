@@ -5,6 +5,7 @@ Safe initialization, standardized error handling, and text streaming.
 """
 from __future__ import annotations
 
+import logging
 import json
 import os
 from typing import Generator
@@ -12,6 +13,8 @@ from typing import Generator
 import requests
 
 from backends.base import BaseBackend
+
+logger = logging.getLogger(__name__)
 
 
 class OllamaBackend(BaseBackend):
@@ -65,11 +68,7 @@ class OllamaBackend(BaseBackend):
 
             return data["message"]["content"]
         except Exception as e:
-            if 'logger' in globals() or 'logger' in locals():
-                logger.warning(f"{ f"[Ollama] Error: {e}" }" if isinstance(f"[Ollama] Error: {e}", str) else f"[Ollama] Error: {e}")
-            else:
-                import logging
-                logging.getLogger(__name__).warning(f"{ f"[Ollama] Error: {e}" }" if isinstance(f"[Ollama] Error: {e}", str) else f"[Ollama] Error: {e}")
+            logger.warning(f"[Ollama] Error: {e}")
             raise
 
     def stream(self, messages: list, system: str = "") -> Generator[str, None, None]:

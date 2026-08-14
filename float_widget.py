@@ -23,6 +23,7 @@ Usage:
 
 from __future__ import annotations
 
+import logging
 import os
 import sys
 import threading
@@ -60,6 +61,8 @@ try:
     _HAS_QT = True
 except ImportError:
     _HAS_QT = False
+
+logger = logging.getLogger(__name__)
 
 C = {}
 if _HAS_QT:
@@ -568,11 +571,7 @@ def create_float_widget(orchestrator=None):
         widget.show()
         return widget
     except Exception as e:
-        if 'logger' in globals() or 'logger' in locals():
-            logger.warning("[FloatWidget] Qt init error: %s", e)
-        else:
-            import logging
-            logging.getLogger(__name__).warning("[FloatWidget] Qt init error: %s", e)
+        logger.warning("[FloatWidget] Qt init error: %s", e)
         return HeadlessFloat()
 
 
@@ -590,11 +589,7 @@ if __name__ == "__main__":
         pass
 
     if not _HAS_QT:
-        if 'logger' in globals() or 'logger' in locals():
-            logger.warning("ERROR: PySide6 required. Run: pip install PySide6")
-        else:
-            import logging
-            logging.getLogger(__name__).warning("ERROR: PySide6 required. Run: pip install PySide6")
+        logger.warning("ERROR: PySide6 required. Run: pip install PySide6")
         sys.exit(1)
 
     app = QApplication.instance() or QApplication(sys.argv)
@@ -607,26 +602,14 @@ if __name__ == "__main__":
             from core.bootstrap import build_assistant_runtime
             rt = build_assistant_runtime()
             orchestrator = rt.orchestrator
-            if 'logger' in globals() or 'logger' in locals():
-                logger.info("[Float] JARVIS Core ready")
-            else:
-                import logging
-                logging.getLogger(__name__).info("[Float] JARVIS Core ready")
+            logger.info("[Float] JARVIS Core ready")
         except Exception as e:
-            if 'logger' in globals() or 'logger' in locals():
-                logger.warning("[Float] Core failed (%s) -- API-only mode", e)
-            else:
-                import logging
-                logging.getLogger(__name__).warning("[Float] Core failed (%s) -- API-only mode", e)
+            logger.warning("[Float] Core failed (%s) -- API-only mode", e)
 
     widget = JarvisFloat(orchestrator=orchestrator)
     widget.write_log("JARVIS MK38 Float Widget online")
     widget.set_state("LISTENING")
     widget.show()
 
-    if 'logger' in globals() or 'logger' in locals():
-        logger.info("JARVIS Float Widget running. Alt+Space to toggle. Right-click tray to quit.")
-    else:
-        import logging
-        logging.getLogger(__name__).info("JARVIS Float Widget running. Alt+Space to toggle. Right-click tray to quit.")
+    logger.info("JARVIS Float Widget running. Alt+Space to toggle. Right-click tray to quit.")
     sys.exit(app.exec())

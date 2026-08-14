@@ -93,11 +93,7 @@ def _launch_windows(app_name: str) -> bool:
             time.sleep(1.5)
             return True
         except Exception as e:
-            if 'logger' in globals() or 'logger' in locals():
-                logger.warning(f"{ f"[open_app] subprocess failed: {e}" }" if isinstance(f"[open_app] subprocess failed: {e}", str) else f"[open_app] subprocess failed: {e}")
-            else:
-                import logging
-                logging.getLogger(__name__).warning(f"{ f"[open_app] subprocess failed: {e}" }" if isinstance(f"[open_app] subprocess failed: {e}", str) else f"[open_app] subprocess failed: {e}")
+            logger.warning(f"[open_app] subprocess failed: {e}")
 
     if ":" in app_name:
         try:
@@ -136,11 +132,7 @@ def _launch_windows(app_name: str) -> bool:
         time.sleep(2.5)
         return True
     except Exception as e:
-        if 'logger' in globals() or 'logger' in locals():
-            logger.warning(f"{ f"[open_app] Start Menu search failed: {e}" }" if isinstance(f"[open_app] Start Menu search failed: {e}", str) else f"[open_app] Start Menu search failed: {e}")
-        else:
-            import logging
-            logging.getLogger(__name__).warning(f"{ f"[open_app] Start Menu search failed: {e}" }" if isinstance(f"[open_app] Start Menu search failed: {e}", str) else f"[open_app] Start Menu search failed: {e}")
+        logger.warning(f"[open_app] Start Menu search failed: {e}")
 
     return False
 
@@ -282,11 +274,7 @@ def open_app(
         return f"Unsupported operating system: {_SYSTEM}"
 
     normalized = _normalize(app_name)
-    if 'logger' in globals() or 'logger' in locals():
-        logger.info(f"{ f"[open_app] Launching: '{app_name}' → '{normalized}' ({_SYSTEM})" }" if isinstance(f"[open_app] Launching: '{app_name}' → '{normalized}' ({_SYSTEM})", str) else f"[open_app] Launching: '{app_name}' → '{normalized}' ({_SYSTEM})")
-    else:
-        import logging
-        logging.getLogger(__name__).info(f"{ f"[open_app] Launching: '{app_name}' → '{normalized}' ({_SYSTEM})" }" if isinstance(f"[open_app] Launching: '{app_name}' → '{normalized}' ({_SYSTEM})", str) else f"[open_app] Launching: '{app_name}' → '{normalized}' ({_SYSTEM})")
+    logger.info(f"[open_app] Launching: '{app_name}' → '{normalized}' ({_SYSTEM})")
 
     if player:
         player.write_log(f"[open_app] {app_name}")
@@ -302,9 +290,5 @@ def open_app(
             f"It may still be loading, or it might not be installed."
         )
     except Exception as e:
-        if 'logger' in globals() or 'logger' in locals():
-            logger.warning(f"{ f"[open_app] Error: {e}" }" if isinstance(f"[open_app] Error: {e}", str) else f"[open_app] Error: {e}")
-        else:
-            import logging
-            logging.getLogger(__name__).warning(f"{ f"[open_app] Error: {e}" }" if isinstance(f"[open_app] Error: {e}", str) else f"[open_app] Error: {e}")
+        logger.warning(f"[open_app] Error: {e}")
         return f"Failed to open {app_name}: {e}"

@@ -129,11 +129,7 @@ class WhatsAppAutomation:
             whatsapp_url = f"https://web.whatsapp.com/send?phone={clean_num}&text={encoded_text}"
             whatsapp_uri = f"whatsapp://send?phone={clean_num}&text={encoded_text}"
 
-            if 'logger' in globals() or 'logger' in locals():
-                logger.info(f"{ f"[WhatsApp] Sending message to {display_name} ({clean_num}): '{message_text[:40]}...'" }" if isinstance(f"[WhatsApp] Sending message to {display_name} ({clean_num}): '{message_text[:40]}...'", str) else f"[WhatsApp] Sending message to {display_name} ({clean_num}): '{message_text[:40]}...'")
-            else:
-                import logging
-                logging.getLogger(__name__).info(f"{ f"[WhatsApp] Sending message to {display_name} ({clean_num}): '{message_text[:40]}...'" }" if isinstance(f"[WhatsApp] Sending message to {display_name} ({clean_num}): '{message_text[:40]}...'", str) else f"[WhatsApp] Sending message to {display_name} ({clean_num}): '{message_text[:40]}...'")
+            logger.info(f"[WhatsApp] Sending message to {display_name} ({clean_num}): '{message_text[:40]}...'")
 
             if open_browser:
                 try:
@@ -248,11 +244,7 @@ class WhatsAppAutomation:
                 for item in due_items:
                     # Ignore old stale items (older than 5 minutes)
                     if (now - item.get("target_ts", 0)) < 300:
-                        if 'logger' in globals() or 'logger' in locals():
-                            logger.info(f"{ f"[WhatsApp Scheduler] ⏰ Triggering scheduled message to {item['recipient']}" }" if isinstance(f"[WhatsApp Scheduler] ⏰ Triggering scheduled message to {item['recipient']}", str) else f"[WhatsApp Scheduler] ⏰ Triggering scheduled message to {item['recipient']}")
-                        else:
-                            import logging
-                            logging.getLogger(__name__).info(f"{ f"[WhatsApp Scheduler] ⏰ Triggering scheduled message to {item['recipient']}" }" if isinstance(f"[WhatsApp Scheduler] ⏰ Triggering scheduled message to {item['recipient']}", str) else f"[WhatsApp Scheduler] ⏰ Triggering scheduled message to {item['recipient']}")
+                        logger.info(f"[WhatsApp Scheduler] ⏰ Triggering scheduled message to {item['recipient']}")
                         self.send_message(item["recipient"], item["message_text"])
 
             time.sleep(10)

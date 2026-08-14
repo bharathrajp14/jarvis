@@ -106,6 +106,24 @@ MODES = {
 
 MAX_REACT_STEPS = 20
 
+# Per-tool cyclic-loop thresholds.
+# High-frequency tools that are legitimately called many times (e.g., by
+# parallel sub-agents each making one call) get a higher limit.  Risky or
+# stateful tools keep the conservative default of 3.
+_CYCLIC_THRESHOLDS: dict[str, int] = {
+    "run_code":        6,
+    "scratchpad_eval": 6,
+    "scratchpad_write": 6,
+    "file_read":       6,
+    "file_write":      6,
+    "file_controller": 6,
+    "web_search":      5,
+    "fetch_page":      5,
+    "fetch_raw":       5,
+    "code_helper":     5,
+}
+_DEFAULT_CYCLIC_THRESHOLD: int = 3
+
 
 def _format_clean_tool_summary(tool_name: str, tool_args: dict) -> str:
     """Format a clean, human-readable summary of executed tools without raw code/JSON dumps."""
@@ -543,10 +561,18 @@ class JarvisOrchestrator:
                     _consecutive_tool = {"name": tool_name, "args_str": args_str, "count": 1}
 
                 # ── Cyclic loop check ──
+                # Use a per-tool threshold so high-frequency-but-legitimate tools
+                # (e.g. run_code called once by each of N parallel sub-agents) are
+                # not killed too early, while risky tools keep the strict limit.
                 call_sig = f"{tool_name}:{args_str}"
                 tool_call_counts[call_sig] = tool_call_counts.get(call_sig, 0) + 1
-                if tool_call_counts[call_sig] >= 3:
-                    msg = f"⛔ Cyclic-loop protection: Tool '{tool_name}' called {tool_call_counts[call_sig]} times during this session. Terminating execution to prevent token burn."
+                _cyclic_limit = _CYCLIC_THRESHOLDS.get(tool_name, _DEFAULT_CYCLIC_THRESHOLD)
+                if tool_call_counts[call_sig] >= _cyclic_limit:
+                    msg = (
+                        f"⛔ Cyclic-loop protection: Tool '{tool_name}' called "
+                        f"{tool_call_counts[call_sig]} times during this session "
+                        f"(limit={_cyclic_limit}). Terminating execution to prevent token burn."
+                    )
                     logger.warning(f"[Orchestrator] {msg}")
                     if stream:
                         yield f"\n[JARVIS] {msg}\n"
@@ -736,7 +762,7 @@ class JarvisOrchestrator:
             _mem_mode = _mem_router.classify(
                 user_input,
                 working_memory_tokens=_wm_tokens,
-                max_tokens=120_000,
+                max_context_tokens=120_000,
             )
             logger.debug("[MemoryRouter] Mode: %s for '%s'", _mem_mode.value, user_input[:40])
         except Exception as _mr_err:
@@ -820,7 +846,7 @@ class JarvisOrchestrator:
             _mem_mode = _mem_router.classify(
                 user_input,
                 working_memory_tokens=_wm_tokens,
-                max_tokens=120_000,
+                max_context_tokens=120_000,
             )
         except Exception as _mr_err:
             _mem_mode = MemoryMode.LOAD_RELEVANT

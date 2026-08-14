@@ -8,7 +8,8 @@ from __future__ import annotations
 import json
 from typing import Any, Dict, List
 from tools.registry import register_tool
-from actions.automation_engine import get_automation_engine
+# NOTE: get_automation_engine is imported lazily inside each handler to prevent a
+# missing/broken actions.automation_engine from silently killing all tool registrations.
 
 
 @register_tool(
@@ -26,6 +27,7 @@ from actions.automation_engine import get_automation_engine
 )
 def tool_automate_app(args: dict) -> str:
     """Perform application control action."""
+    from actions.automation_engine import get_automation_engine  # lazy import
     action = str(args.get("action", "")).strip().lower()
     app_name = str(args.get("app_name", "")).strip()
     url = str(args.get("url", "")).strip()
@@ -62,6 +64,7 @@ def tool_automate_app(args: dict) -> str:
 )
 def tool_run_automation_workflow(args: dict) -> str:
     """Execute a multi-step macro workflow script."""
+    from actions.automation_engine import get_automation_engine  # lazy import
     raw_steps = args.get("steps", [])
 
     if isinstance(raw_steps, str):
@@ -99,6 +102,7 @@ def tool_run_automation_workflow(args: dict) -> str:
 )
 def tool_execute_system_automation(args: dict) -> str:
     """Execute system command automation."""
+    from actions.automation_engine import get_automation_engine  # lazy import
     command = str(args.get("command", "")).strip()
     timeout = args.get("timeout", 30)
 

@@ -6,11 +6,14 @@ Cross-platform: Windows, Linux, macOS.
 """
 from __future__ import annotations
 
+import logging
 import subprocess
 import sys
 import tempfile
 import os
 import platform
+
+logger = logging.getLogger(__name__)
 
 _OS = platform.system()
 
@@ -71,11 +74,7 @@ class CodeSandbox:
             try:
                 os.unlink(fname)
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
     def _ext(self, lang):
         return {
             "python": ".py",

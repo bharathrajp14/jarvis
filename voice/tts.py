@@ -339,11 +339,7 @@ class NeuralTTS:
                             if fname.lower() in desc.lower():
                                 self._sapi_speaker.Voice = tokens.Item(i)
                                 onecore_loaded = True
-                                if 'logger' in globals() or 'logger' in locals():
-                                    logger.info(f"{ f"[JARVIS] ✅ HD Offline Female Natural Voice loaded: '{desc}'" }" if isinstance(f"[JARVIS] ✅ HD Offline Female Natural Voice loaded: '{desc}'", str) else f"[JARVIS] ✅ HD Offline Female Natural Voice loaded: '{desc}'")
-                                else:
-                                    import logging
-                                    logging.getLogger(__name__).info(f"{ f"[JARVIS] ✅ HD Offline Female Natural Voice loaded: '{desc}'" }" if isinstance(f"[JARVIS] ✅ HD Offline Female Natural Voice loaded: '{desc}'", str) else f"[JARVIS] ✅ HD Offline Female Natural Voice loaded: '{desc}'")
+                                logger.info(f"[JARVIS] ✅ HD Offline Female Natural Voice loaded: '{desc}'")
                                 break
                         if onecore_loaded:
                             break
@@ -351,11 +347,7 @@ class NeuralTTS:
                     if not onecore_loaded:
                         self._sapi_speaker.Voice = tokens.Item(0)
                         onecore_loaded = True
-                        if 'logger' in globals() or 'logger' in locals():
-                            logger.info(f"{ f"[JARVIS] ✅ HD Offline Natural Voice loaded: '{tokens.Item(0).GetDescription()}'" }" if isinstance(f"[JARVIS] ✅ HD Offline Natural Voice loaded: '{tokens.Item(0).GetDescription()}'", str) else f"[JARVIS] ✅ HD Offline Natural Voice loaded: '{tokens.Item(0).GetDescription()}'")
-                        else:
-                            import logging
-                            logging.getLogger(__name__).info(f"{ f"[JARVIS] ✅ HD Offline Natural Voice loaded: '{tokens.Item(0).GetDescription()}'" }" if isinstance(f"[JARVIS] ✅ HD Offline Natural Voice loaded: '{tokens.Item(0).GetDescription()}'", str) else f"[JARVIS] ✅ HD Offline Natural Voice loaded: '{tokens.Item(0).GetDescription()}'")
+                        logger.info(f"[JARVIS] ✅ HD Offline Natural Voice loaded: '{tokens.Item(0).GetDescription()}'")
             except Exception:
                 pass
 
@@ -381,11 +373,7 @@ class NeuralTTS:
     def _init_linux_tts(self):
         """Initialize Linux speech dispatcher or espeak fallback."""
         if shutil.which("spd-say") or shutil.which("espeak") or shutil.which("espeak-ng"):
-            if 'logger' in globals() or 'logger' in locals():
-                logger.info("[JARVIS] Linux native CLI TTS engine ready.")
-            else:
-                import logging
-                logging.getLogger(__name__).info("[JARVIS] Linux native CLI TTS engine ready.")
+            logger.info("[JARVIS] Linux native CLI TTS engine ready.")
 
     def stop(self):
         """Instantly stop all active speech output and cancel pre-fetched queues."""
@@ -442,11 +430,7 @@ class NeuralTTS:
             full_text = text_collector()
             self.speak_async(full_text, on_start=on_start, on_finish=on_finish)
         except Exception as e:
-            if 'logger' in globals() or 'logger' in locals():
-                logger.warning(f"{ f"[JARVIS] speak_stream error: {e}" }" if isinstance(f"[JARVIS] speak_stream error: {e}", str) else f"[JARVIS] speak_stream error: {e}")
-            else:
-                import logging
-                logging.getLogger(__name__).warning(f"{ f"[JARVIS] speak_stream error: {e}" }" if isinstance(f"[JARVIS] speak_stream error: {e}", str) else f"[JARVIS] speak_stream error: {e}")
+            logger.warning(f"[JARVIS] speak_stream error: {e}")
             if on_finish:
                 on_finish()
 
@@ -549,11 +533,7 @@ class NeuralTTS:
                     self._play_and_wait(audio_type)
 
         except Exception as e:
-            if 'logger' in globals() or 'logger' in locals():
-                logger.warning(f"{ f"[JARVIS] TTS streaming error: {e}" }" if isinstance(f"[JARVIS] TTS streaming error: {e}", str) else f"[JARVIS] TTS streaming error: {e}")
-            else:
-                import logging
-                logging.getLogger(__name__).warning(f"{ f"[JARVIS] TTS streaming error: {e}" }" if isinstance(f"[JARVIS] TTS streaming error: {e}", str) else f"[JARVIS] TTS streaming error: {e}")
+            logger.warning(f"[JARVIS] TTS streaming error: {e}")
             traceback.print_exc()
         finally:
             self._is_speaking = False
@@ -595,11 +575,7 @@ class NeuralTTS:
                         time.sleep(0.001)
                     return
                 except Exception as e:
-                    if 'logger' in globals() or 'logger' in locals():
-                        logger.info(f"{ f"[JARVIS] SAPI5 async speak notice: {e}" }" if isinstance(f"[JARVIS] SAPI5 async speak notice: {e}", str) else f"[JARVIS] SAPI5 async speak notice: {e}")
-                    else:
-                        import logging
-                        logging.getLogger(__name__).info(f"{ f"[JARVIS] SAPI5 async speak notice: {e}" }" if isinstance(f"[JARVIS] SAPI5 async speak notice: {e}", str) else f"[JARVIS] SAPI5 async speak notice: {e}")
+                    logger.info(f"[JARVIS] SAPI5 async speak notice: {e}")
 
             import win32com.client
             local_speaker = win32com.client.Dispatch("SAPI.SpVoice")
@@ -620,11 +596,7 @@ class NeuralTTS:
                     return
                 time.sleep(0.001)
         except Exception as e:
-            if 'logger' in globals() or 'logger' in locals():
-                logger.warning(f"{ f"[JARVIS] SAPI5 speak error: {e}" }" if isinstance(f"[JARVIS] SAPI5 speak error: {e}", str) else f"[JARVIS] SAPI5 speak error: {e}")
-            else:
-                import logging
-                logging.getLogger(__name__).warning(f"{ f"[JARVIS] SAPI5 speak error: {e}" }" if isinstance(f"[JARVIS] SAPI5 speak error: {e}", str) else f"[JARVIS] SAPI5 speak error: {e}")
+            logger.warning(f"[JARVIS] SAPI5 speak error: {e}")
 
     def _speak_linux_fallback(self, text: str):
         """Speak using espeak or spd-say (Linux CLI)."""
@@ -648,3 +620,18 @@ class NeuralTTS:
                     time.sleep(0.02)
             except Exception:
                 pass
+
+
+class TextToSpeechEngine(NeuralTTS):
+    """Alias & wrapper class for NeuralTTS for backwards compatibility and API server endpoints."""
+
+    def speak_to_file(self, text: str) -> str | None:
+        """Synthesize text to an audio file and return the filepath."""
+        clean = clean_for_speech(text)
+        if not clean:
+            return None
+        res_file, _ = self._synth_sentence(clean)
+        if res_file and res_file != "sapi5" and Path(res_file).exists():
+            return res_file
+        return None
+

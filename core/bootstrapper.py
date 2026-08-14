@@ -6,6 +6,7 @@ and runtime singleton construction across all entry points.
 """
 from __future__ import annotations
 
+import logging
 import json
 import os
 import platform
@@ -20,6 +21,8 @@ except ImportError:
     pass
 
 from core.bootstrap import AssistantRuntime, build_assistant_runtime
+
+logger = logging.getLogger(__name__)
 
 
 class CoreBootstrapper:
@@ -43,11 +46,7 @@ class CoreBootstrapper:
                 if hasattr(sys.stderr, "reconfigure"):
                     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.exception('Boot critical exception encountered in core/bootstrapper.py')
-                else:
-                    import logging
-                    logging.getLogger(__name__).exception('Boot critical exception')
+                logger.exception('Boot critical exception encountered in core/bootstrapper.py')
                 raise e
         env_file = cls._base_dir / ".env"
         if env_file.exists():
@@ -78,11 +77,7 @@ class CoreBootstrapper:
                 if cfg.get("gemini_api_key"):
                     api_keys["Gemini"] = True
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.exception('Boot critical exception encountered in core/bootstrapper.py')
-                else:
-                    import logging
-                    logging.getLogger(__name__).exception('Boot critical exception')
+                logger.exception('Boot critical exception encountered in core/bootstrapper.py')
                 raise e
         return {
             "initialized": cls._initialized,

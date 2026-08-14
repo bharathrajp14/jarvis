@@ -1,0 +1,195 @@
+Metadata-Version: 2.4
+Name: brjarvis
+Version: 38.5.0
+Summary: BRJARVIS — Cognitive Multi-Modal AI Operating System & Autonomous Controller
+Author-email: Bharath Raj <bharathraj14120@gmail.com>
+License: MIT
+Project-URL: Homepage, https://github.com/bharthraj1412/BrJarvis
+Project-URL: Repository, https://github.com/bharthraj1412/BrJarvis.git
+Keywords: ai-assistant,voice-assistant,python,gemini,local-first,autonomous-agent,desktop-automation
+Requires-Python: <=3.14,>=3.11
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: google-genai>=1.0.0
+Requires-Dist: python-dotenv>=1.0.0
+Requires-Dist: fastapi>=0.111.0
+Requires-Dist: uvicorn>=0.30.0
+Requires-Dist: rich>=13.7.0
+Requires-Dist: psutil>=5.9.0
+Requires-Dist: pyyaml>=6.0
+Requires-Dist: requests>=2.31.0
+Requires-Dist: httpx>=0.27.0
+Requires-Dist: pydantic>=2.0.0
+Provides-Extra: voice
+Requires-Dist: sounddevice>=0.5.0; extra == "voice"
+Requires-Dist: SpeechRecognition>=3.10.0; extra == "voice"
+Requires-Dist: edge-tts>=7.0.0; extra == "voice"
+Requires-Dist: numpy>=1.26.0; extra == "voice"
+Requires-Dist: faster-whisper>=1.0.0; extra == "voice"
+Provides-Extra: automation
+Requires-Dist: pyperclip>=1.8.2; extra == "automation"
+Requires-Dist: pyautogui>=0.9.54; extra == "automation"
+Requires-Dist: pillow>=10.0.0; extra == "automation"
+Requires-Dist: mss>=10.0.0; extra == "automation"
+Requires-Dist: opencv-python>=4.9.0; extra == "automation"
+Requires-Dist: PySide6>=6.6.0; extra == "automation"
+Provides-Extra: web
+Requires-Dist: duckduckgo-search>=6.0.0; extra == "web"
+Requires-Dist: beautifulsoup4>=4.12.0; extra == "web"
+Requires-Dist: playwright>=1.44.0; extra == "web"
+Requires-Dist: youtube-transcript-api>=0.6.0; extra == "web"
+Requires-Dist: websockets>=14.0; extra == "web"
+Provides-Extra: documents
+Requires-Dist: python-docx>=1.1.0; extra == "documents"
+Requires-Dist: fpdf2>=2.7.0; extra == "documents"
+Requires-Dist: openpyxl>=3.1.0; extra == "documents"
+Requires-Dist: pypdf>=4.0.0; extra == "documents"
+Requires-Dist: PyMuPDF>=1.24.0; extra == "documents"
+Provides-Extra: memory
+Requires-Dist: chromadb>=0.5.0; extra == "memory"
+Provides-Extra: llm-backends
+Requires-Dist: openai>=1.30.0; extra == "llm-backends"
+Requires-Dist: anthropic>=0.30.0; extra == "llm-backends"
+Requires-Dist: mistralai>=2.4.0; extra == "llm-backends"
+Provides-Extra: windows
+Requires-Dist: pygetwindow; extra == "windows"
+Requires-Dist: comtypes; extra == "windows"
+Requires-Dist: pycaw; extra == "windows"
+Requires-Dist: win10toast; extra == "windows"
+Requires-Dist: pywinauto; extra == "windows"
+Requires-Dist: send2trash; extra == "windows"
+Provides-Extra: all
+Requires-Dist: brjarvis[automation,documents,llm-backends,memory,voice,web,windows]; extra == "all"
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0.0; extra == "dev"
+Requires-Dist: pytest-timeout>=2.0.0; extra == "dev"
+Requires-Dist: ruff>=0.4.0; extra == "dev"
+Dynamic: license-file
+
+# 🤖 BR JARVIS — Your Autonomous Local AI Assistant
+
+[![CI](https://github.com/bharthraj1412/BrJarvis/actions/workflows/ci.yml/badge.svg)](https://github.com/bharthraj1412/BrJarvis/actions)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Tests](https://img.shields.io/badge/tests-136%2F136%20passing-brightgreen.svg)]()
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg)]()
+
+> **BR JARVIS** is your personal, voice-controlled AI assistant that lives directly on your computer. Unlike basic chatbots, JARVIS can actually **see your screen**, **listen to your voice**, **control your apps**, **search your files**, and **do real work on your computer automatically**.
+
+---
+
+## ⚔️ How BR JARVIS Compares to Other Assistants
+
+| Feature | ChatGPT Desktop | Claude Desktop | Cursor / Windsurf | Siri / Windows Copilot | **BR JARVIS** |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| **🎙️ Voice Command Perception** | ✅ | ❌ | ❌ | ✅ | **✅ (Advanced Noise Gate + Pre-Roll)** |
+| **👁️ Reads & Sees Your Screen** | ❌ | ❌ | ❌ | ❌ | **✅ (Real-Time Vision & OCR)** |
+| **🖱️ Controls Apps & Desktop** | ❌ | ❌ | ❌ | ⚠️ Limited | **✅ (Full Keyboard, Mouse, & Window Control)** |
+| **📂 Searches Your Local Files** | ❌ | ❌ | ✅ Code Only | ⚠️ Basic | **✅ (Natural Language File Finder)** |
+| **🩺 Self-Healing Code Doctor** | ❌ | ❌ | ⚠️ Basic | ❌ | **✅ (Auto-Fixes Project Errors)** |
+| **💻 Monitors Computer Health** | ❌ | ❌ | ❌ | ❌ | **✅ (Live CPU, RAM, & Battery Telemetry)** |
+| **🔒 100% Private & Local** | ❌ Cloud Only | ❌ Cloud Only | ❌ Cloud Only | ❌ Cloud Only | **✅ (Your Data Stays on Your PC)** |
+
+---
+
+## ✨ What Can BR JARVIS Do For You?
+
+| Feature | What JARVIS Does For You |
+| :--- | :--- |
+| **🎙️ Voice Assistant** | Speak naturally to your computer. JARVIS listens, filters background noise, and speaks back in a clear human voice. |
+| **👁️ Sees Your Screen** | Reads text on your screen, spots buttons, and understands what app you have open. |
+| **🖱️ Controls Apps & Desktop** | Switches windows, opens apps, clicks buttons, types text, and copies items to your clipboard for you. |
+| **📂 Smart File Finder** | Find any document or project by just describing it (e.g. *"Find my voice assistant setup script"*). |
+| **🌐 Web Article Reader** | Fetches web pages, strips clutter, and gives you instant key summaries. |
+| **💻 System Health Check** | Monitors your computer's CPU speed, RAM memory, storage, and battery level. |
+| **🔒 100% Private & Safe** | Your private data stays local on your machine with built-in safety controls. |
+
+---
+
+## 🎯 Example Commands You Can Say To JARVIS
+
+Simply speak or type commands like:
+
+- 🎙️ **"JARVIS, switch to Google Chrome."**
+- 📂 **"JARVIS, find my Python configuration file."**
+- 💻 **"JARVIS, check my computer's battery and CPU health."**
+- 🌐 **"JARVIS, summarize this article for me."**
+- 🩺 **"JARVIS, run the code doctor and fix any errors in my project."**
+- 🛡️ **"JARVIS, run a security audit on my workspace."**
+
+---
+
+## 💡 How It Works (Simple Overview)
+
+```mermaid
+graph LR
+    A[🗣️ You Speak or Type] --> B[🧠 JARVIS Understands Your Goal]
+    B --> C[⚙️ Picks the Best Tools & Apps]
+    C --> D[💻 Executes Work on Your Computer]
+    D --> E[🔊 Speaks & Displays Results to You]
+```
+
+1. **You Ask**: Speak into your microphone or type a message.
+2. **JARVIS Reasons**: Analyzes your request and picks the fastest, safest steps to solve it.
+3. **JARVIS Takes Action**: Opens apps, searches files, or writes code safely on your PC.
+4. **JARVIS Responds**: Gives you instant spoken and visual updates.
+
+---
+
+## ⚡ Easy 3-Step Setup Guide
+
+You don't need to be an expert programmer to run BR JARVIS! Just follow these 3 steps:
+
+### Step 1: Download & Install
+Open your terminal or Command Prompt and run:
+```bash
+git clone https://github.com/bharthraj1412/BrJarvis.git
+cd BrJarvis
+pip install -r requirements.txt
+```
+
+### Step 2: Set Your Free Gemini API Key
+JARVIS uses Google's Gemini AI engine. Get a free API key from [Google AI Studio](https://ai.google.dev/) and set it:
+
+* **Windows PowerShell**:
+  ```powershell
+  $env:GEMINI_API_KEY="your-api-key-here"
+  ```
+* **Linux / Mac**:
+  ```bash
+  export GEMINI_API_KEY="your-api-key-here"
+  ```
+
+### Step 3: Launch JARVIS!
+Start your AI assistant:
+```bash
+python start.py
+```
+
+---
+
+## ❓ Frequently Asked Questions (FAQ)
+
+### Is BR JARVIS free to use?
+Yes! BR JARVIS is 100% open-source software under the MIT License.
+
+### Does JARVIS respect my privacy?
+Absolutely. JARVIS processes audio filtering, file search, and app control locally on your machine. Your personal files remain private on your computer.
+
+### Can JARVIS run offline?
+Yes! JARVIS includes built-in support for offline local AI models (such as Ollama and local Whisper audio recognition).
+
+---
+
+## 🛠️ For Developers & Technical Users
+
+If you want to inspect the architecture, build plugins, or contribute to the project:
+
+- **System Architecture Blueprint**: Read the comprehensive [v2 Architecture Blueprint](br_architecture/README.md).
+- **Automated Test Suite**: Run `python -m pytest tests/` to verify all **136 unit and integration tests**.
+- **Plugin Platform**: Register custom tool handlers inside `tools/registry.py`.
+
+---
+
+## 📜 License
+
+Distributed under the **MIT License**. Created by [bharthraj1412](https://github.com/bharthraj1412).

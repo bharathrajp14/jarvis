@@ -6,6 +6,7 @@ custom header themes, auto-column sizing, summary formulas, and automatic Excel 
 """
 from __future__ import annotations
 
+import logging
 import json
 import os
 import sys
@@ -22,6 +23,8 @@ try:
     _OPENPYXL_AVAILABLE = True
 except ImportError:
     _OPENPYXL_AVAILABLE = False
+
+logger = logging.getLogger(__name__)
 
 
 def _get_workspace_dir() -> Path:
@@ -118,11 +121,7 @@ def create_excel_sheet(args: dict) -> str:
         try:
             subprocess.Popen(["cmd", "/c", "start", "", str(out_path)], shell=False)
         except Exception as e:
-            if 'logger' in globals() or 'logger' in locals():
-                logger.debug('Suppressed exception: %s', e)
-            else:
-                import logging
-                logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+            logger.debug('Suppressed exception: %s', e)
     return f"Successfully created Excel spreadsheet: {out_path} ({len(rows)} rows written)."
 
 
@@ -166,11 +165,7 @@ def analyze_project_to_excel(args: dict) -> str:
                         content = path.read_text(encoding="utf-8", errors="ignore")
                         lines = len(content.splitlines())
                     except Exception as e:
-                        if 'logger' in globals() or 'logger' in locals():
-                            logger.debug('Suppressed exception: %s', e)
-                        else:
-                            import logging
-                            logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                        logger.debug('Suppressed exception: %s', e)
                 # Categorize Subsystem
                 category = "Other Root Files"
                 if rel_path.startswith("core/"):
@@ -201,11 +196,7 @@ def analyze_project_to_excel(args: dict) -> str:
                 total_bytes += size_b
                 category_counts[category] = category_counts.get(category, 0) + 1
             except Exception as e:
-                if 'logger' in globals() or 'logger' in locals():
-                    logger.debug('Suppressed exception: %s', e)
-                else:
-                    import logging
-                    logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+                logger.debug('Suppressed exception: %s', e)
     wb = openpyxl.Workbook()
 
     # Style Tokens
@@ -318,9 +309,5 @@ def analyze_project_to_excel(args: dict) -> str:
         try:
             subprocess.Popen(["cmd", "/c", "start", "", str(out_path)], shell=False)
         except Exception as e:
-            if 'logger' in globals() or 'logger' in locals():
-                logger.debug('Suppressed exception: %s', e)
-            else:
-                import logging
-                logging.getLogger(__name__).debug('Suppressed exception: %s', e)
+            logger.debug('Suppressed exception: %s', e)
     return f"⚡ [JARVIS Excel Analysis Complete]: Exported {len(file_records)} files ({total_loc:,} total lines of code) to '{out_path}'."

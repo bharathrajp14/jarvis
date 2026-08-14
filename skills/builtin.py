@@ -4,7 +4,11 @@ Built-in skills that ship with JARVIS MK37.
 Importing this module registers all built-in skills into the loader.
 """
 from __future__ import annotations
+
+import logging
 from skills.loader import SkillDef, register_builtin_skill
+
+logger = logging.getLogger(__name__)
 
 
 # ── /commit ────────────────────────────────────────────────────────────────
@@ -331,11 +335,7 @@ def _register_builtins() -> None:
         for c_skill in load_builtin_connector_skills():
             register_builtin_skill(c_skill)
     except Exception as ex:
-        if 'logger' in globals() or 'logger' in locals():
-            logger.info(f"{ f"[Skills] Warning loading connector skills: {ex}" }" if isinstance(f"[Skills] Warning loading connector skills: {ex}", str) else f"[Skills] Warning loading connector skills: {ex}")
-        else:
-            import logging
-            logging.getLogger(__name__).info(f"{ f"[Skills] Warning loading connector skills: {ex}" }" if isinstance(f"[Skills] Warning loading connector skills: {ex}", str) else f"[Skills] Warning loading connector skills: {ex}")
+        logger.info(f"[Skills] Warning loading connector skills: {ex}")
 
 
 _register_builtins()

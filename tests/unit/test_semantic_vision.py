@@ -1,6 +1,7 @@
 # tests/test_semantic_vision.py — Unit & Integration Test Suite for Semantic Vision OS
 from __future__ import annotations
 
+import logging
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -14,6 +15,8 @@ from vision.screen_analyst import ScreenAnalyst
 from vision.types import ScreenBoundingBox, SemanticUIGraph, SemanticUINode, UIRole
 from computer.semantic_operator import SemanticTarget, get_semantic_operator
 from computer.recovery import get_self_healing_engine
+
+logger = logging.getLogger(__name__)
 
 
 def test_semantic_types():
@@ -84,19 +87,11 @@ def test_self_healing_engine_init():
 
 
 if __name__ == "__main__":
-    if 'logger' in globals() or 'logger' in locals():
-        logger.info("Running test_semantic_vision.py...")
-    else:
-        import logging
-        logging.getLogger(__name__).info("Running test_semantic_vision.py...")
+    logger.info("Running test_semantic_vision.py...")
     test_semantic_types()
     test_accessibility_bridge()
     test_ocr_engine_lru_cache()
     test_hybrid_vision_pipeline()
     test_semantic_operator_resolution()
     test_self_healing_engine_init()
-    if 'logger' in globals() or 'logger' in locals():
-        logger.info("All Semantic Vision OS tests passed successfully!")
-    else:
-        import logging
-        logging.getLogger(__name__).info("All Semantic Vision OS tests passed successfully!")
+    logger.info("All Semantic Vision OS tests passed successfully!")

@@ -13,6 +13,7 @@ import os
 import time
 import traceback
 from datetime import datetime
+from pathlib import Path
 import logging
 
 logger = logging.getLogger("JARVIS.ImageGen")
@@ -76,11 +77,7 @@ def generate_image(
                 result["prompt"] = prompt
                 return result
         except Exception as e:
-            if 'logger' in globals() or 'logger' in locals():
-                logger.warning(f"{ f"[ImageGen] {prov} failed: {e}" }" if isinstance(f"[ImageGen] {prov} failed: {e}", str) else f"[ImageGen] {prov} failed: {e}")
-            else:
-                import logging
-                logging.getLogger(__name__).warning(f"{ f"[ImageGen] {prov} failed: {e}" }" if isinstance(f"[ImageGen] {prov} failed: {e}", str) else f"[ImageGen] {prov} failed: {e}")
+            logger.warning(f"[ImageGen] {prov} failed: {e}")
             traceback.print_exc()
             continue
 
