@@ -22,23 +22,22 @@ logger = logging.getLogger("JARVIS.TaskState")
 
 
 class TaskStatus(str, Enum):
-    CREATED = "created"
+    PENDING = "pending"
+    CREATED = "pending"
     PLANNING = "planning"
-    WAITING_FOR_APPROVAL = "waiting_for_approval"
     RUNNING = "running"
+    PAUSED = "paused"
+    WAITING_APPROVAL = "waiting_approval"
+    WAITING_FOR_APPROVAL = "waiting_approval"
     WAITING_FOR_DEVICE = "waiting_for_device"
     WAITING_FOR_AUTH = "waiting_for_auth"
     WAITING_FOR_USER = "waiting_for_user"
-    PAUSED = "paused"
     RECOVERING = "recovering"
     VERIFYING = "verifying"
     COMPLETED = "completed"
     PARTIAL = "partial"
     FAILED = "failed"
     CANCELLED = "cancelled"
-    # Legacy aliases
-    PENDING = "pending"
-    WAITING_APPROVAL = "waiting_for_approval"
 
 
 @dataclass
@@ -129,13 +128,17 @@ class TaskState:
 class TaskStateManager:
     """SQLite WAL-backed manager for persistent task states, steps, and checkpoints."""
 
-    def __init__(self, db_manager=None):
-        self.db_manager = db_manager or get_canonical_db()
+    def __init__(self, db_manager=None, db_path: Optional[Path | str] = None):
+        if db_path is not None:
+            from memory.canonical_db import CanonicalDatabaseManager
+            self.db_manager = CanonicalDatabaseManager(db_path=Path(db_path))
+        else:
+            self.db_manager = db_manager or get_canonical_db()
 
     def _get_conn(self) -> sqlite3.Connection:
         return self.db_manager.get_connection()
 
-    def create_task(self, goal: str, active_devices: Optional[List[str]] = None, task_id: Optional[str] = None) -> TaskState:
+    def create_task(self, goal: str, total_steps: int = 0, active_devices: Optional[List[str]] = None, task_id: Optional[str] = None) -> TaskState:
         """Initialize and persist a new autonomous task."""
         tid = task_id or f"task_{uuid.uuid4().hex[:12]}"
         now = time.time()
@@ -144,7 +147,8 @@ class TaskStateManager:
         state = TaskState(
             task_id=tid,
             goal=goal,
-            status=TaskStatus.CREATED,
+            status=TaskStatus.PENDING,
+            total_steps=total_steps,
             active_devices=devices,
             created_at=now,
             updated_at=now
@@ -174,6 +178,18 @@ class TaskStateManager:
         logger.info("Created Task [%s]: '%s'", state.task_id, goal[:60])
         return state
 
+    def record_action(self, task_id: str, action: TaskAction) -> None:
+        """Record an executed action to the task history."""
+        task = self.get_task(task_id)
+        if task:
+            task.actions.append(action)
+            task.current_step = max(task.current_step, action.step_index)
+            self.save_task(task)
+
+    def update_status(self, task_id: str, status: TaskStatus, error_info: Optional[Dict[str, Any]] = None) -> Optional[TaskState]:
+        """Update overall task status with timestamp and optional error payload."""
+        return self.update_task_status(task_id, status, error_info)
+
     def update_task_status(self, task_id: str, status: TaskStatus, error_info: Optional[Dict[str, Any]] = None) -> Optional[TaskState]:
         """Update overall task status with timestamp and optional error payload."""
         state = self.get_task(task_id)
@@ -186,7 +202,7 @@ class TaskStateManager:
             state.error_info = error_info
 
         self.save_task(state)
-        logger.info("Task [%s] transition -> %s", task_id, status.value)
+        logger.info("Task [%s] transition -> %s", task_id, status.value if hasattr(status, 'value') else status)
         return state
 
     def save_task(self, state: TaskState) -> None:
