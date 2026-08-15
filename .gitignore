@@ -18,6 +18,9 @@ memory_db/
 .jarvis/
 .jarvis_pid
 .jarvis.pid
+.jarvis_server.pid
+*.pid
+
 
 # OS generated files
 .DS_Store
