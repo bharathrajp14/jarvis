@@ -91,3 +91,83 @@ def reset_assistant_runtime() -> None:
     global _runtime_instance
     with _runtime_lock:
         _runtime_instance = None
+
+
+class CoreBootstrapper:
+    """Unified System Bootstrapper Singleton for BR JARVIS."""
+
+    _initialized: bool = False
+
+    @classmethod
+    def setup_environment(cls) -> dict:
+        """Configure platform encoding, environment variables, and return status."""
+        import json
+        import platform
+        import sys
+        from pathlib import Path
+
+        if cls._initialized:
+            return cls.get_status()
+
+        # Fix Windows terminal UTF-8 encoding
+        if sys.platform == "win32":
+            os.environ["PYTHONIOENCODING"] = "utf-8"
+            try:
+                if hasattr(sys.stdout, "reconfigure"):
+                    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+                if hasattr(sys.stderr, "reconfigure"):
+                    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+            except Exception:
+                pass
+
+        base_dir = Path(__file__).resolve().parent.parent
+        env_file = base_dir / ".env"
+        if env_file.exists():
+            try:
+                from dotenv import load_dotenv  # type: ignore[import-not-found]
+                load_dotenv(env_file)
+            except ImportError:
+                pass
+
+        cls._initialized = True
+        return cls.get_status()
+
+    @classmethod
+    def get_status(cls) -> dict:
+        """Get diagnostic status of system environment and keys."""
+        import json
+        import platform
+        import sys
+        from pathlib import Path
+
+        base_dir = Path(__file__).resolve().parent.parent
+        config_path = base_dir / "config" / "api_keys.json"
+        api_keys = {
+            "Gemini": bool(os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")),
+            "Claude": bool(os.environ.get("ANTHROPIC_API_KEY")),
+            "GPT": bool(os.environ.get("OPENAI_API_KEY")),
+            "Mistral": bool(os.environ.get("MISTRAL_API_KEY")),
+            "NVIDIA": bool(os.environ.get("NVIDIA_API_KEY")),
+        }
+
+        if config_path.exists():
+            try:
+                cfg = json.loads(config_path.read_text(encoding="utf-8"))
+                if cfg.get("gemini_api_key"):
+                    api_keys["Gemini"] = True
+            except Exception:
+                pass
+        return {
+            "initialized": cls._initialized,
+            "platform": platform.system(),
+            "python_version": sys.version.split()[0],
+            "base_dir": str(base_dir),
+            "api_keys": api_keys,
+        }
+
+    @classmethod
+    def initialize_runtime(cls, *, use_vector_memory: bool = True) -> AssistantRuntime:
+        """Setup environment and build the AssistantRuntime singleton."""
+        cls.setup_environment()
+        return build_assistant_runtime(use_vector_memory=use_vector_memory)
+

@@ -269,6 +269,28 @@ def open_app(
     if not app_name:
         return "No application name provided."
 
+    # Sandbox Artifact Interception Gateway
+    low = app_name.lower().replace("\\", "/")
+    if "jarvis_sandbox_jails" in low or "/jail_" in low or "\\jail_" in app_name.lower():
+        try:
+            from agent.artifacts import get_artifact_manager
+            mgr = get_artifact_manager()
+            parts = app_name.split(maxsplit=1)
+            if len(parts) == 2 and any(b in parts[0].lower() for b in ("chrome", "msedge", "edge", "brave", "firefox", "start", "open")):
+                prefix, target_path = parts[0], parts[1].strip("\"'")
+                success, resolved_target, _ = mgr.ensure_host_artifact(target_path)
+                if not success:
+                    return f"Artifact created, but could not export it to the user workspace: {resolved_target}"
+                app_name = f"{prefix} {resolved_target}"
+            else:
+                target_clean = app_name.strip("\"'")
+                success, resolved_target, _ = mgr.ensure_host_artifact(target_clean)
+                if not success:
+                    return f"Artifact created, but could not export it to the user workspace: {resolved_target}"
+                app_name = resolved_target
+        except Exception as e:
+            logger.debug("Artifact interception note: %s", e)
+
     launcher = _OS_LAUNCHERS.get(_SYSTEM)
     if launcher is None:
         return f"Unsupported operating system: {_SYSTEM}"

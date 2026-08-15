@@ -181,3 +181,83 @@ def tool_native_proc_telemetry(args: dict) -> str:
     kb = proc_memory_kb(pid)
     return json.dumps({"pid": pid, "memory_kb": kb, "memory_mb": round(kb / 1024.0, 2)})
 
+
+@register_tool(
+    name="system_cleanup",
+    description="Clean temporary cache files, old log files, and build artifacts to reclaim disk space.",
+    parameters={
+        "type": "object",
+        "properties": {
+            "clean_temp": {"type": "boolean", "default": True},
+            "clean_pycache": {"type": "boolean", "default": True},
+            "clean_logs": {"type": "boolean", "default": False}
+        }
+    }
+)
+def tool_system_cleanup(args: dict) -> str:
+    try:
+        from actions.system_cleanup import execute_system_cleanup
+        return execute_system_cleanup(
+            clean_temp=args.get("clean_temp", True),
+            clean_pycache=args.get("clean_pycache", True),
+            clean_logs=args.get("clean_logs", False)
+        )
+    except Exception:
+        import shutil
+        import tempfile
+        from pathlib import Path
+        reclaimed_bytes = 0
+        removed_count = 0
+        if args.get("clean_pycache", True):
+            for p in Path(".").rglob("__pycache__"):
+                try:
+                    reclaimed_bytes += sum(f.stat().st_size for f in p.rglob('*') if f.is_file())
+                    shutil.rmtree(p)
+                    removed_count += 1
+                except Exception:
+                    pass
+        if args.get("clean_temp", True):
+            temp_dir = Path(tempfile.gettempdir())
+            try:
+                for item in temp_dir.iterdir():
+                    if item.is_file() and item.name.startswith("tmp"):
+                        try:
+                            reclaimed_bytes += item.stat().st_size
+                            item.unlink()
+                            removed_count += 1
+                        except Exception:
+                            pass
+            except Exception:
+                pass
+        return f"Cleaned {removed_count} temporary items ({reclaimed_bytes / (1024*1024):.2f} MB freed)."
+
+
+@register_tool(
+    name="system_optimizer",
+    description="Analyze and optimize CPU, RAM, and background task consumption.",
+    parameters={
+        "type": "object",
+        "properties": {
+            "aggressive": {"type": "boolean", "default": False}
+        }
+    }
+)
+def tool_system_optimizer(args: dict) -> str:
+    try:
+        from actions.system_optimizer import optimize_system_resources
+        res = optimize_system_resources()
+        if isinstance(res, dict):
+            return f"System Optimized: Freed {res.get('freed_mb', 0)} MB RAM, collected {res.get('collected_objects', 0)} GC objects."
+        return str(res)
+    except Exception:
+        import gc
+        import psutil
+        proc = psutil.Process(os.getpid())
+        mem_before = proc.memory_info().rss / (1024 * 1024)
+        collected = gc.collect()
+        mem_after = proc.memory_info().rss / (1024 * 1024)
+        freed = max(0.0, mem_before - mem_after)
+        return f"System Optimized: Freed {freed:.2f} MB RAM ({collected} objects collected)."
+
+
+

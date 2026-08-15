@@ -1,69 +1,71 @@
-# Environment variables
+# Environment variables & secrets
 .env
+.env.*
+!.env.template
 config/api_keys.json
-config/models.json
-current_scope.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
+*.pyd
+
+# Personal data & transient storage
+memory/contacts.json
+memory/contacts.enc
+memory/processed_messages.db
+memory_db/
+.jarvis/
+.jarvis_pid
+.jarvis.pid
 
 # OS generated files
 .DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
 Thumbs.db
+ehthumbs.db
 
 # Virtual environments
 venv/
+.venv/
 env/
-ENV/
-env.bak/
-venv.bak/
 
 # Database files
-memory_db/
 *.sqlite3
 *.db
+*.db-wal
+*.db-shm
 
-# Backup directories
-_backup_pre_fix/
-
-# Build artifacts
+# Build artifacts & packages
 build/
 dist/
-logs/
-.vscode/
+*.egg-info/
 *.spec
+
+# Logs & scratch & screenshots
+logs/
+*.log
+scratch/
+workspace/
+captures/
+reports/
+BR_WORKSPACE/
+
+# Office / export artifacts in root
 *.xlsx
 *.docx
 *.pdf
-.jarvis.pid
 
-# Guardian state
+# Guardian runtime state
 .guardian_hashes.json
 guardian/PAUSED
 
-# Native binaries
+# Native compiled binaries
 native/*.dll
 native/*.so
 native/*.dylib
 
-# Generated reports
-reports/
-
-# Scratch / workspace
-scratch/
-workspace/
-workspace/snapshots/
-.jarvis/
-BR_WORKSPACE/
-captures/
-*.txt
-!requirements_mk37.txt
-~$*
+# Browser profiles and security keys
+workspace/browser_user_data/
+*.key
+.jarvis/*.key
 

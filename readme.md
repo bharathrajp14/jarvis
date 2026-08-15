@@ -1,127 +1,112 @@
-# 🤖 BR JARVIS — Your Autonomous Local AI Assistant
+# ⚡ BR JARVIS — Autonomous Personal AI Operating Runtime
 
 [![CI](https://github.com/bharthraj1412/BrJarvis/actions/workflows/ci.yml/badge.svg)](https://github.com/bharthraj1412/BrJarvis/actions)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-136%2F136%20passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-325%2B%20passing-brightgreen.svg)]()
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg)]()
 
-> **BR JARVIS** is your personal, voice-controlled AI assistant that lives directly on your computer. Unlike basic chatbots, JARVIS can actually **see your screen**, **listen to your voice**, **control your apps**, **search your files**, and **do real work on your computer automatically**.
+> **BR JARVIS** is an autonomous personal AI operating runtime designed for pair programming, system automation, multimodal vision, hands-free voice control, and verifiable task execution.
 
 ---
 
-## ⚔️ How BR JARVIS Compares to Other Assistants
-
-| Feature | ChatGPT Desktop | Claude Desktop | Cursor / Windsurf | Siri / Windows Copilot | **BR JARVIS** |
-| :--- | :---: | :---: | :---: | :---: | :---: |
-| **🎙️ Voice Command Perception** | ✅ | ❌ | ❌ | ✅ | **✅ (Advanced Noise Gate + Pre-Roll)** |
-| **👁️ Reads & Sees Your Screen** | ❌ | ❌ | ❌ | ❌ | **✅ (Real-Time Vision & OCR)** |
-| **🖱️ Controls Apps & Desktop** | ❌ | ❌ | ❌ | ⚠️ Limited | **✅ (Full Keyboard, Mouse, & Window Control)** |
-| **📂 Searches Your Local Files** | ❌ | ❌ | ✅ Code Only | ⚠️ Basic | **✅ (Natural Language File Finder)** |
-| **🩺 Self-Healing Code Doctor** | ❌ | ❌ | ⚠️ Basic | ❌ | **✅ (Auto-Fixes Project Errors)** |
-| **💻 Monitors Computer Health** | ❌ | ❌ | ❌ | ❌ | **✅ (Live CPU, RAM, & Battery Telemetry)** |
-| **🔒 100% Private & Local** | ❌ Cloud Only | ❌ Cloud Only | ❌ Cloud Only | ❌ Cloud Only | **✅ (Your Data Stays on Your PC)** |
-
----
-
-## ✨ What Can BR JARVIS Do For You?
-
-| Feature | What JARVIS Does For You |
-| :--- | :--- |
-| **🎙️ Voice Assistant** | Speak naturally to your computer. JARVIS listens, filters background noise, and speaks back in a clear human voice. |
-| **👁️ Sees Your Screen** | Reads text on your screen, spots buttons, and understands what app you have open. |
-| **🖱️ Controls Apps & Desktop** | Switches windows, opens apps, clicks buttons, types text, and copies items to your clipboard for you. |
-| **📂 Smart File Finder** | Find any document or project by just describing it (e.g. *"Find my voice assistant setup script"*). |
-| **🌐 Web Article Reader** | Fetches web pages, strips clutter, and gives you instant key summaries. |
-| **💻 System Health Check** | Monitors your computer's CPU speed, RAM memory, storage, and battery level. |
-| **🔒 100% Private & Safe** | Your private data stays local on your machine with built-in safety controls. |
-
----
-
-## 🎯 Example Commands You Can Say To JARVIS
-
-Simply speak or type commands like:
-
-- 🎙️ **"JARVIS, switch to Google Chrome."**
-- 📂 **"JARVIS, find my Python configuration file."**
-- 💻 **"JARVIS, check my computer's battery and CPU health."**
-- 🌐 **"JARVIS, summarize this article for me."**
-- 🩺 **"JARVIS, run the code doctor and fix any errors in my project."**
-- 🛡️ **"JARVIS, run a security audit on my workspace."**
-
----
-
-## 💡 How It Works (Simple Overview)
+## 🏛️ Canonical Architecture
 
 ```mermaid
-graph LR
-    A[🗣️ You Speak or Type] --> B[🧠 JARVIS Understands Your Goal]
-    B --> C[⚙️ Picks the Best Tools & Apps]
-    C --> D[💻 Executes Work on Your Computer]
-    D --> E[🔊 Speaks & Displays Results to You]
-```
+graph TD
+    CLI[CLI REPL Interface] --> Runtime[ApplicationRuntime]
+    VoiceUI[Voice & Floating UI] --> Runtime
+    WebUI[Web PWA & Mobile Dashboard] --> Runtime
+    
+    subgraph "Canonical Core"
+        Runtime --> Config[ConfigManager]
+        Runtime --> EventBus[EventBus & Telemetry]
+        Runtime --> Security[SecurityPolicyEngine & Guardian]
+        Runtime --> Artifacts[ArtifactLifecycleManager]
+    end
 
-1. **You Ask**: Speak into your microphone or type a message.
-2. **JARVIS Reasons**: Analyzes your request and picks the fastest, safest steps to solve it.
-3. **JARVIS Takes Action**: Opens apps, searches files, or writes code safely on your PC.
-4. **JARVIS Responds**: Gives you instant spoken and visual updates.
+    subgraph "Cognitive Execution Engine"
+        Runtime --> Cognitive[CognitiveEngine]
+        Cognitive --> Intent[Intent & Task Decomposer]
+        Intent --> DAG[TaskDAG & Recovery Engine]
+        DAG --> Gateway[ModelGateway & Smart Router]
+        DAG --> ToolRuntime[ToolRuntime & ToolRegistry]
+        DAG --> Verifier[ActionVerifier]
+    end
+
+    subgraph "Perception & Memory"
+        Runtime --> Memory[UnifiedMemoryManager]
+        Runtime --> Voice[VoicePipeline (VAD + STT + Barge-In + TTS)]
+        Runtime --> Vision[HierarchicalVision (OCR + DOM + VLM)]
+    end
+```
 
 ---
 
-## ⚡ Easy 3-Step Setup Guide
+## 🚀 Quick Start
 
-You don't need to be an expert programmer to run BR JARVIS! Just follow these 3 steps:
-
-### Step 1: Download & Install
-Open your terminal or Command Prompt and run:
-```bash
+### 1. Installation
+```powershell
 git clone https://github.com/bharthraj1412/BrJarvis.git
 cd BrJarvis
 pip install -r requirements.txt
 ```
 
-### Step 2: Set Your Free Gemini API Key
-JARVIS uses Google's Gemini AI engine. Get a free API key from [Google AI Studio](https://ai.google.dev/) and set it:
+### 2. Environment Configuration
+Copy the template and configure your API keys:
+```powershell
+Copy-Item .env.template .env
+```
 
-* **Windows PowerShell**:
-  ```powershell
-  $env:GEMINI_API_KEY="your-api-key-here"
-  ```
-* **Linux / Mac**:
-  ```bash
-  export GEMINI_API_KEY="your-api-key-here"
-  ```
-
-### Step 3: Launch JARVIS!
-Start your AI assistant:
-```bash
+### 3. Launch Sequences
+```powershell
+# Interactive Launcher Menu
 python start.py
+
+# Direct CLI REPL
+python start.py cli
+
+# Hands-Free Voice Assistant HUD
+python start.py voice
+
+# Frameless Floating Voice Widget
+python start.py floating
+
+# Web PWA & Mobile Server
+python start.py server
+
+# Subsystem Diagnostic Matrix
+python start.py status
+
+# Startup Sanity Verification
+python start.py smoke
 ```
 
 ---
 
-## ❓ Frequently Asked Questions (FAQ)
+## 🛡️ Key Guarantees
 
-### Is BR JARVIS free to use?
-Yes! BR JARVIS is 100% open-source software under the MIT License.
-
-### Does JARVIS respect my privacy?
-Absolutely. JARVIS processes audio filtering, file search, and app control locally on your machine. Your personal files remain private on your computer.
-
-### Can JARVIS run offline?
-Yes! JARVIS includes built-in support for offline local AI models (such as Ollama and local Whisper audio recognition).
+1. **Deterministic Postcondition Verification**: JARVIS never fabricates success. Actions (file writes, process spawns, browser URLs, document exports) are verified against environmental state.
+2. **Authoritative Artifact Export**: Sandbox files are verified, checked for path traversal, and exported to host before opening in a browser, eliminating `ERR_FILE_NOT_FOUND`.
+3. **Quarantined Personal Data**: User contacts and private databases reside in `~/.jarvis/` and are never committed to Git.
+4. **Active Barge-In**: Real-time Silero VAD immediately halts TTS playback and clears audio queues when you speak.
+5. **Provider-Neutral Gateway**: Supports Gemini, OpenAI, Claude, DeepSeek, Mistral, NVIDIA NIM, and local Ollama with typed diagnostic error classification.
 
 ---
 
-## 🛠️ For Developers & Technical Users
+## 🧪 Testing & Verification
 
-If you want to inspect the architecture, build plugins, or contribute to the project:
+Run the full automated test suite:
+```powershell
+pytest tests/unit/ -v
+```
 
-- **System Architecture Blueprint**: Read the comprehensive [v2 Architecture Blueprint](br_architecture/README.md).
-- **Automated Test Suite**: Run `python -m pytest tests/` to verify all **136 unit and integration tests**.
-- **Plugin Platform**: Register custom tool handlers inside `tools/registry.py`.
+Run startup smoke check:
+```powershell
+python start.py smoke
+```
 
 ---
 
-## 📜 License
-
-Distributed under the **MIT License**. Created by [bharthraj1412](https://github.com/bharthraj1412).
+## 📜 Documentation Index
+- [`docs/FILE_AUDIT.md`](docs/FILE_AUDIT.md) — Comprehensive forensic inventory of every repository file.
+- [`docs/MODERNIZATION_LEDGER.md`](docs/MODERNIZATION_LEDGER.md) — Architectural modernization ledger across all 18 phases.

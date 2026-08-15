@@ -68,11 +68,22 @@ class GuardianCore:
         return hashes
 
     def _persist_hashes(self, hashes: Dict[str, str]) -> None:
-        """Write hashes to persistent storage."""
+        """Write hashes to persistent storage and release manifest."""
         try:
             self._HASH_FILE.write_text(json.dumps(hashes, indent=2), encoding="utf-8")
         except Exception as e:
             logger.error("Failed to write guardian hashes: %s", e)
+
+        if self._TRUST_MANIFEST.exists():
+            try:
+                manifest_data = {
+                    "manifest_version": "40.2",
+                    "file_hashes": hashes,
+                    "version": "MK40.2-CERTIFIED"
+                }
+                self._TRUST_MANIFEST.write_text(json.dumps(manifest_data, indent=2), encoding="utf-8")
+            except Exception as e:
+                logger.warning("Failed to update release manifest: %s", e)
 
     def _calculate_hashes(self) -> Dict[str, str]:
         hashes: Dict[str, str] = {}

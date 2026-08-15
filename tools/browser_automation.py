@@ -139,38 +139,83 @@ async def _close_browser():
 
 @register_tool(
     name="browser_open_url",
-    description="Open a website in the interactive browser (e.g. Gmail, Microsoft 365, Outlook). Reuses logged-in sessions.",
+    description="Open a website in the interactive browser (e.g. Gmail, Microsoft 365, Outlook, or verified host HTML reports). Reuses logged-in sessions.",
     parameters={
         "type": "object",
         "properties": {
-            "url": {"type": "string", "description": "URL to open (e.g. https://mail.google.com or https://www.office.com)"},
+            "url": {"type": "string", "description": "URL or host artifact path to open (e.g. https://mail.google.com or C:/Users/.../report.html)"},
             "headless": {"type": "boolean", "description": "Run in background without opening window (default false)"}
         },
         "required": ["url"]
     }
 )
 def browser_open_url(args: dict) -> str:
-    """Open a URL in the persistent browser."""
+    """Open a URL or verified host artifact in the persistent browser."""
+    from agent.artifacts import get_artifact_manager
+    mgr = get_artifact_manager()
+
     if isinstance(args, str):
-        url = args.strip()
+        raw_url = args.strip()
         headless = False
     else:
-        url = str(args.get("url") or args.get("uri") or args.get("link") or args.get("target") or "").strip()
+        raw_url = str(args.get("url") or args.get("uri") or args.get("link") or args.get("target") or args.get("path") or "").strip()
         headless = args.get("headless", False)
 
-    if not url:
+    if not raw_url:
         return "Browser Open Error: 'url' parameter is required."
+
+    # Sandbox / Host Artifact Interception Gateway
+    success, resolved_target, rec = mgr.ensure_host_artifact(raw_url)
+    if not success:
+        logger.warning("Browser open handoff rejected: %s", resolved_target)
+        mgr.record_browser_result(raw_url, opened=False, observed=False, browser_verified=False, error=resolved_target)
+        return f"Browser Open Error: {resolved_target}"
+
+    # Convert local host paths to file:// URI for browser navigation
+    if not (resolved_target.startswith("http://") or resolved_target.startswith("https://") or resolved_target.startswith("about:")):
+        host_p = Path(resolved_target).resolve()
+        nav_url = host_p.as_uri()
+    else:
+        nav_url = resolved_target
 
     async def _open():
         page = await _get_or_create_page(headless=headless)
-        await page.goto(url, wait_until="domcontentloaded", timeout=30000)
+        try:
+            resp = await page.goto(nav_url, wait_until="domcontentloaded", timeout=30000)
+        except Exception as nav_err:
+            mgr.record_browser_result(resolved_target, opened=True, observed=True, browser_verified=False, error=str(nav_err))
+            return f"Browser Open Error: Could not navigate to '{nav_url}': {nav_err}"
+
+        # Capture browser state and inspect for error screens
         title = await page.title()
-        return f"⚡ Opened '{title}' at {page.url}"
+        content = ""
+        try:
+            content = (await page.content()).lower()
+        except Exception:
+            pass
+
+        err_indicators = [
+            "err_file_not_found",
+            "file not found",
+            "it may have been moved, edited, or deleted",
+            "err_access_denied",
+            "access denied"
+        ]
+
+        for ind in err_indicators:
+            if ind in content or ind in title.lower():
+                mgr.record_browser_result(resolved_target, opened=True, observed=True, browser_verified=False, error=f"Browser error indicator '{ind}' detected.")
+                return f"Browser Open Error: {ind.upper()} - The browser could not open the target file."
+
+        # Verification succeeded
+        mgr.record_browser_result(resolved_target, opened=True, observed=True, browser_verified=True)
+        return f"⚡ Opened '{title}' at {page.url} (Host Artifact Verified: {resolved_target})"
 
     try:
         return _run_async(_open())
     except Exception as e:
-        return f"Browser Open Error: {e}"
+        mgr.record_browser_result(resolved_target, opened=False, observed=False, browser_verified=False, error=str(e))
+        return f"Browser Open Error: Artifact exported successfully, but the browser could not open it: {e}"
 
 
 @register_tool(

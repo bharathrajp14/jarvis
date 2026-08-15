@@ -28,12 +28,14 @@ def _normalize_url(url: str) -> str:
     """
     Bare words like "instagram" → "https://instagram.com"
     Domains like "instagram.com" → "https://instagram.com"
-    Full URLs pass through unchanged.
+    Full URLs and local file paths pass through unchanged.
     """
     url = url.strip()
     if not url:
         return "about:blank"
     if "://" in url:
+        return url
+    if "\\" in url or (len(url) > 1 and url[1] == ":") or (url.startswith("/") and not url.startswith("//")):
         return url
     # No dot at all → assume .com  (e.g. "instagram" → "instagram.com")
     if "." not in url:
@@ -383,6 +385,20 @@ def _open_native(url: str, browser_name: Optional[str]) -> str:
     if url == "about:blank":
         url = ""
 
+    # Sandbox / Host Artifact Interception Gateway
+    if url:
+        try:
+            from agent.artifacts import get_artifact_manager
+            mgr = get_artifact_manager()
+            success, resolved_url, rec = mgr.ensure_host_artifact(url)
+            if not success and ("jarvis_sandbox_jails" in url.lower() or "jail_" in url.lower()):
+                logger.warning("Browser open handoff failed: %s", resolved_url)
+                return f"Browser Open Error: Artifact created, but could not export it to the user workspace: {resolved_url}"
+            if success:
+                url = resolved_url
+        except Exception as e:
+            logger.debug("Artifact interception note in browser_control: %s", e)
+
     name = None
     if browser_name:
         name = _ALIASES.get(browser_name.lower().strip(), browser_name.lower().strip())
@@ -426,22 +442,44 @@ def _open_native(url: str, browser_name: Optional[str]) -> str:
     # Default browser via the OS — exactly like the user clicking a link.
     try:
         if _OS == "Windows":
-            os.startfile(url)                       # ShellExecute → default browser
+            clean = url.strip()
+            if clean.startswith("file:///"):
+                clean_target = clean[8:]
+            elif clean.startswith("file://"):
+                clean_target = clean[7:]
+            else:
+                clean_target = clean
+
+            clean_p = Path(clean_target)
+            if clean_p.exists():
+                os.startfile(str(clean_p.resolve()))
+                return f"Opened in your default browser: {clean_p.resolve()}"
+            else:
+                os.startfile(url)                       # ShellExecute → default browser
+                return f"Opened in your default browser: {url}"
         elif _OS == "Darwin":
             subprocess.run(["open", url], check=True, timeout=10)
+            return f"Opened in your default browser: {url}"
         else:
             subprocess.Popen(
                 ["xdg-open", url],
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
             )
-        return f"Opened in your default browser: {url}"
-    except Exception:
+            return f"Opened in your default browser: {url}"
+    except Exception as start_err:
         try:
+            if _OS == "Windows":
+                # Fallback to cmd start command for reliable Windows file opening
+                clean = url.replace("file:///", "").replace("file://", "")
+                if Path(clean).exists():
+                    subprocess.Popen(["cmd.exe", "/c", "start", '""', str(Path(clean).resolve())], shell=True)
+                    return f"Opened in your default browser: {Path(clean).resolve()}"
             if webbrowser.open(url):
                 return f"Opened in your default browser: {url}"
         except Exception:
             pass
-        return f"Could not open a browser for: {url}"
+        return f"Could not open a browser for: {url} ({start_err})"
+
 
 
 class _BrowserSession:

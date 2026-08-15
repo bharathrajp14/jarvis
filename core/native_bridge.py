@@ -122,6 +122,9 @@ def fast_hash(data: bytes) -> int:
     return int(hashlib.md5(data).hexdigest()[:16], 16)
 
 
+hash_fnv1a = fast_hash
+
+
 def fast_cosine_distance(v1: list[float], v2: list[float]) -> float:
     """Calculate fast cosine distance (1.0 - cosine_similarity)."""
     if not v1 or not v2 or len(v1) != len(v2):

@@ -1,2 +1,0 @@
-# Backward-compatible requirements alias.
--r requirements.txt

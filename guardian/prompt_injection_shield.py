@@ -20,8 +20,9 @@ logger = logging.getLogger("JARVIS.PromptShield")
 
 # High-risk indirect injection patterns
 INJECTION_SIGNATURES: List[Tuple[re.Pattern, str]] = [
-    (re.compile(r"(?i)ignore\s+(all\s+)?(previous|prior|above)\s+instructions"), "System override pattern"),
-    (re.compile(r"(?i)disregard\s+(all\s+)?(previous|prior|above)\s+rules"), "Rule disregard pattern"),
+    (re.compile(r"(?i)ignore\s+(all\s+)?(previous|prior|above|other)?\s*instructions"), "System override pattern"),
+    (re.compile(r"(?i)ignore\s+all\s+instructions"), "System override pattern"),
+    (re.compile(r"(?i)disregard\s+(all\s+)?(previous|prior|above|system)?\s*(rules|instructions|prompts)?"), "Rule disregard pattern"),
     (re.compile(r"(?i)you\s+are\s+now\s+(in\s+developer\s+mode|dan|unrestricted)"), "Persona switch / jailbreak"),
     (re.compile(r"(?i)system\s*:\s*you\s+must"), "Fake system prompt injection"),
     (re.compile(r"(?i)<\|im_start\|>|<\|im_end\|>|<\|message\|>"), "ChatML delimiter injection"),
@@ -89,6 +90,14 @@ class PromptInjectionShield:
             f'{escaped_content}\n'
             f'</untrusted_content>'
         )
+
+
+def check_prompt_injection(text: str) -> Tuple[bool, str]:
+    """Public helper to scan text and return (is_injected, threat_label)."""
+    scan_res = PromptInjectionShield.scan(text)
+    if not scan_res.is_safe:
+        return True, ", ".join(scan_res.threats_detected)
+    return False, ""
 
 
 def quarantine_untrusted_data(text: str, source: str = "external") -> str:

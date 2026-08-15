@@ -159,6 +159,36 @@ class SandboxedProcessRunner:
             self.jail_root = Path(tempfile.gettempdir()) / "jarvis_sandbox_jails"
         self.jail_root.mkdir(parents=True, exist_ok=True)
 
+    def _export_jail_artifacts(self, jail_dir: Path, task_id: str = "default") -> List[Dict[str, Any]]:
+        """Discover and securely export all user-facing artifacts generated inside jail before destruction."""
+        try:
+            from agent.artifacts import get_artifact_manager
+            mgr = get_artifact_manager()
+            exported = []
+            if not jail_dir.exists():
+                return exported
+
+            internal_scripts = {"main.py", "main.js", "main.sh", "main.ps1"}
+
+            for p in jail_dir.rglob("*"):
+                if p.is_file() and p.name not in internal_scripts:
+                    allowed, _ = mgr.is_allowed_artifact(p)
+                    if allowed:
+                        rec = mgr.export_sandbox_artifact(p, task_id=task_id)
+                        if rec.exported:
+                            exported.append(rec.to_dict())
+            return exported
+        except Exception as e:
+            logger.debug("Artifact auto-export note: %s", e)
+            return []
+
+    def export_jail_artifact(self, sandbox_file: Union[str, Path], task_id: str = "default") -> Optional[Any]:
+        """Manually export a specific file from a sandbox jail to the host directory."""
+        from agent.artifacts import get_artifact_manager
+        mgr = get_artifact_manager()
+        rec = mgr.export_sandbox_artifact(sandbox_file, task_id=task_id)
+        return rec if rec.exported else None
+
     def execute(
         self,
         code: str,
@@ -166,6 +196,7 @@ class SandboxedProcessRunner:
         timeout: int = _DEFAULT_TIMEOUT,
         allowed_dirs: Optional[List[str]] = None,
         extra_env: Optional[Dict[str, str]] = None,
+        auto_export_artifacts: bool = True,
     ) -> Dict[str, Any]:
         lang = lang.lower().strip()
         if lang not in self.ALLOWED_LANGS:
@@ -230,12 +261,21 @@ class SandboxedProcessRunner:
 
             stdout_data, stderr_data = proc.communicate(timeout=max(1, min(timeout, 60)))
 
+            # Auto-export user artifacts before cleaning up ephemeral jail directory
+            exported_artifacts = []
+            if auto_export_artifacts:
+                exported_artifacts = self._export_jail_artifacts(jail_dir, task_id=jail_id)
+
+            host_artifacts = [a["host_path"] for a in exported_artifacts if a.get("host_path")]
+
             return {
                 "success": proc.returncode == 0,
                 "stdout": stdout_data,
                 "stderr": stderr_data,
                 "returncode": proc.returncode,
-                "jail_id": jail_id
+                "jail_id": jail_id,
+                "artifacts": exported_artifacts,
+                "host_artifacts": host_artifacts,
             }
 
         except subprocess.TimeoutExpired:

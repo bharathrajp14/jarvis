@@ -23,7 +23,7 @@ def _get_subagent_manager():
     name="spawn_agent",
     description=(
         "Spawn a sub-agent to handle a task autonomously. "
-        "NOTE: only available in CLI mode (main_mk37.py). "
+        "NOTE: available in CLI mode (start.py cli). "
         "Types: general-purpose, coder, reviewer, researcher, tester, editor, sysadmin, devops."
     ),
     parameters={
@@ -41,8 +41,8 @@ def tool_spawn_agent(args: dict) -> str:
     orch = get_orchestrator_ref()
     if orch is None:
         return (
-            "Sub-agent spawning is not available in voice mode. "
-            "Use the CLI interface (main_mk37.py) for this feature."
+            "Sub-agent spawning requires active orchestrator reference. "
+            "Use the CLI interface (start.py cli) for this feature."
         )
 
     mgr = _get_subagent_manager()

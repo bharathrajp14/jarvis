@@ -87,6 +87,8 @@ ALWAYS_ALLOWED: FrozenSet[str] = frozenset({
     "fetch_page",
     "fetch_raw",
     "web_search",
+    "artifact_export",
+    "artifact_list",
 })
 
 

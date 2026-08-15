@@ -17,6 +17,77 @@ from permissions import check_permission
 logger = logging.getLogger("JARVIS.ToolRuntime")
 
 
+import uuid
+from enum import Enum
+from dataclasses import dataclass, field
+
+from core.runtime import get_runtime
+from events.bus import get_event_bus
+from events.types import ToolExecutionEvent
+from memory.unified_memory import get_unified_memory
+from permissions import check_permission
+
+logger = logging.getLogger("JARVIS.ToolRuntime")
+
+
+class ToolExecutionStatus(str, Enum):
+    SUCCESS = "SUCCESS"
+    PARTIAL = "PARTIAL"
+    FAILED = "FAILED"
+    DENIED = "DENIED"
+    TIMEOUT = "TIMEOUT"
+    CANCELLED = "CANCELLED"
+    UNSUPPORTED = "UNSUPPORTED"
+    NOT_FOUND = "NOT_FOUND"
+    RETRYABLE_FAILURE = "RETRYABLE_FAILURE"
+
+
+@dataclass
+class Observation:
+    """Standardized physical state observation returned by tool execution."""
+    subject: str
+    state: str
+    evidence: str = ""
+    confidence: float = 1.0
+    source: str = "tool_execution"
+    timestamp: float = field(default_factory=time.time)
+
+
+@dataclass
+class ToolResult:
+    """Canonical unified result contract returned by all tool invocations."""
+    tool_name: str
+    invocation_id: str = field(default_factory=lambda: str(uuid.uuid4())[:8])
+    status: ToolExecutionStatus = ToolExecutionStatus.SUCCESS
+    data: Any = None
+    error_code: Optional[str] = None
+    message: str = ""
+    evidence: str = ""
+    execution_ms: float = 0.0
+    verified: bool = False
+    metadata: Dict[str, Any] = field(default_factory=dict)
+    observation: Optional[Observation] = None
+
+    @property
+    def success(self) -> bool:
+        return self.status == ToolExecutionStatus.SUCCESS
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "tool_name": self.tool_name,
+            "invocation_id": self.invocation_id,
+            "status": self.status.value,
+            "success": self.success,
+            "data": self.data,
+            "error_code": self.error_code,
+            "message": self.message,
+            "evidence": self.evidence,
+            "execution_ms": self.execution_ms,
+            "verified": self.verified,
+            "metadata": self.metadata,
+        }
+
+
 @dataclass
 class ToolDefinition:
     name: str
@@ -24,9 +95,42 @@ class ToolDefinition:
     parameters: Dict[str, Any] = field(default_factory=dict)
     is_read_only: bool = False
     permission_required: str = "DEFAULT"
+    risk_level: str = "LOW"
+    timeout_sec: float = 30.0
+    idempotent: bool = True
+    parallel_safe: bool = True
+    category: str = "General"
+
+
+class ArgumentNormalizer:
+    """Deterministic argument normalizer for paths, URLs, app names, booleans, and timeouts."""
+
+    @classmethod
+    def normalize_args(cls, tool_name: str, args: Dict[str, Any]) -> Dict[str, Any]:
+        normalized = dict(args)
+        for k, v in list(normalized.items()):
+            if isinstance(v, str):
+                v_str = v.strip()
+                # Normalize boolean strings
+                if v_str.lower() in ("true", "yes", "1"):
+                    if k.startswith("is_") or k.startswith("use_") or k.endswith("_enabled") or k == "force":
+                        normalized[k] = True
+                elif v_str.lower() in ("false", "no", "0"):
+                    if k.startswith("is_") or k.startswith("use_") or k.endswith("_enabled") or k == "force":
+                        normalized[k] = False
+                # Normalize path separators for filesystem args
+                elif k in ("path", "file_path", "target_path", "dir_path", "source_path", "destination_path"):
+                    normalized[k] = v_str.replace("\\", "/")
+                # Normalize URL protocols
+                elif k in ("url", "target_url", "link"):
+                    if not v_str.startswith(("http://", "https://", "file://", "ws://", "wss://")):
+                        if "." in v_str and not v_str.startswith("/"):
+                            normalized[k] = f"https://{v_str}"
+        return normalized
 
 
 class ToolRuntimeEngine:
+
     """Universal Tool Runtime Engine with sandboxed execution, caching, permissions, and telemetry."""
 
     def __init__(self):
@@ -71,20 +175,24 @@ class ToolRuntimeEngine:
         tool_def = self._tools[name]
         handler = self._handlers[name]
 
+        # 0. Deterministic Argument Normalization
+        args = ArgumentNormalizer.normalize_args(name, args)
+
         # 1. Security & Permission Validation
+
         if not check_permission(tool_def.permission_required, args):
             err_msg = f"Permission denied for tool '{name}' (Action: {tool_def.permission_required})"
             logger.warning(f"🔒 {err_msg}")
             raise PermissionError(err_msg)
 
-        # 1b. RedTeam Prompt Injection Audit for untrusted input parameters
+        # 1b. Prompt Injection Security Audit for untrusted input parameters
         try:
-            from tools.redteam_tools import audit_prompt_security
+            from guardian.prompt_injection_shield import check_prompt_injection
             for arg_k, arg_v in args.items():
                 if isinstance(arg_v, str) and len(arg_v) > 20:
-                    sec_res = audit_prompt_security({"content": arg_v})
-                    if isinstance(sec_res, str) and "INJECTION DETECTED" in sec_res:
-                        logger.warning(f"🛡️ RedTeam Security Alert: Injection detected in tool '{name}' arg '{arg_k}'")
+                    is_injected, reason = check_prompt_injection(arg_v)
+                    if is_injected:
+                        logger.warning(f"🛡️ Security Alert: Injection detected in tool '{name}' arg '{arg_k}': {reason}")
                         raise ValueError(f"Security Alert: Prompt injection pattern detected in argument '{arg_k}'")
         except ValueError:
             raise

@@ -40,7 +40,9 @@ class GeminiBackend(BaseBackend):
     """
 
     FALLBACK_MODELS = [
+        "gemini-3.6-flash-high",
         "gemini-2.5-flash",
+        "gemini-3-flash",
         "gemini-2.5-pro",
         "gemini-2.0-flash",
         "gemini-1.5-pro-latest",
@@ -91,7 +93,7 @@ class GeminiBackend(BaseBackend):
         try:
             from config.models import get_model
             cfg_model = get_model("gemini")
-            if cfg_model:
+            if cfg_model and cfg_model != "gemini-3.5-flash":
                 return cfg_model
         except Exception:
             pass
@@ -102,7 +104,10 @@ class GeminiBackend(BaseBackend):
             return self._explicit_model
         try:
             from config.complexity_router import select_model_for_prompt
-            return select_model_for_prompt(messages=messages, system=system)
+            chosen = select_model_for_prompt(messages=messages, system=system)
+            if chosen == "gemini-3.5-flash":
+                return "gemini-3.6-flash-high"
+            return chosen
         except Exception:
             return self.model
 

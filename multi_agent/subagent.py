@@ -197,8 +197,8 @@ class SubAgentManager:
         if orchestrator is None:
             task.status = "failed"
             task.result = (
-                "Sub-agent requires an orchestrator reference. "
-                "This feature is only available in the CLI (main_mk37.py) mode."
+                "Sub-agent requires an active orchestrator reference. "
+                "Ensure runtime is booted via CLI (start.py cli) or core runtime."
             )
             return task
 

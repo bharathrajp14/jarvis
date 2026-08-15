@@ -104,23 +104,50 @@ class SessionStore:
     # ── Connection management ─────────────────────────────────────────────
 
     def _ensure_db(self) -> None:
-        """Create the database and tables if they don't exist."""
+        """Create the database and tables if they don't exist and run column migrations."""
         self._db_path.parent.mkdir(parents=True, exist_ok=True)
-        conn = self._get_conn()
-        try:
-            cols = [r["name"] for r in conn.execute("PRAGMA table_info(sessions)").fetchall()]
-            if cols and "last_active_ts" not in cols:
-                conn.execute("ALTER TABLE sessions ADD COLUMN last_active_ts INTEGER NOT NULL DEFAULT 0")
-        except Exception as e:
-            logger.debug('Suppressed exception: %s', e)
-        conn.executescript(_SCHEMA_SQL)
+        with self._lock:
+            conn = self._get_conn()
+            # Fast check if sessions table exists
+            table_check = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='sessions'").fetchone()
+            if not table_check:
+                conn.executescript(_SCHEMA_SQL)
+                try:
+                    conn.executescript(_FTS_SQL)
+                    conn.executescript(_FTS_TRIGGER_SQL)
+                except sqlite3.OperationalError:
+                    pass
+                conn.commit()
+                return
 
-        try:
-            conn.executescript(_FTS_SQL)
-            conn.executescript(_FTS_TRIGGER_SQL)
-        except sqlite3.OperationalError:
-            pass  # FTS5 not available — fall back to LIKE search
-        conn.commit()
+            # Table exists — run safe migrations for any missing columns
+            try:
+                cols = [r["name"] for r in conn.execute("PRAGMA table_info(sessions)").fetchall()]
+                if cols:
+                    if "last_active_ts" not in cols:
+                        conn.execute("ALTER TABLE sessions ADD COLUMN last_active_ts INTEGER NOT NULL DEFAULT 0")
+                    if "turn_count" not in cols:
+                        conn.execute("ALTER TABLE sessions ADD COLUMN turn_count INTEGER NOT NULL DEFAULT 0")
+                    if "total_tokens" not in cols:
+                        conn.execute("ALTER TABLE sessions ADD COLUMN total_tokens INTEGER NOT NULL DEFAULT 0")
+                    if "summary" not in cols:
+                        conn.execute("ALTER TABLE sessions ADD COLUMN summary TEXT")
+
+                turn_cols = [r["name"] for r in conn.execute("PRAGMA table_info(turns)").fetchall()]
+                if turn_cols:
+                    if "tool_name" not in turn_cols:
+                        conn.execute("ALTER TABLE turns ADD COLUMN tool_name TEXT")
+                    if "tool_args" not in turn_cols:
+                        conn.execute("ALTER TABLE turns ADD COLUMN tool_args TEXT")
+                    if "tool_result" not in turn_cols:
+                        conn.execute("ALTER TABLE turns ADD COLUMN tool_result TEXT")
+                    if "backend" not in turn_cols:
+                        conn.execute("ALTER TABLE turns ADD COLUMN backend TEXT")
+                    if "latency_ms" not in turn_cols:
+                        conn.execute("ALTER TABLE turns ADD COLUMN latency_ms INTEGER")
+                conn.commit()
+            except Exception as e:
+                logger.debug('SessionStore migration exception: %s', e)
 
     def _get_conn(self) -> sqlite3.Connection:
         """Return a thread-local connection (reuses if already open)."""
@@ -128,10 +155,11 @@ class SessionStore:
             self._conn = sqlite3.connect(
                 str(self._db_path),
                 check_same_thread=False,
-                timeout=10,
+                timeout=30.0,
             )
             self._conn.row_factory = sqlite3.Row
             self._conn.execute("PRAGMA journal_mode=WAL")
+            self._conn.execute("PRAGMA busy_timeout=30000")
             self._conn.execute("PRAGMA foreign_keys=ON")
         return self._conn
 
@@ -153,13 +181,21 @@ class SessionStore:
         """Create a new session and return its ID."""
         session_id = uuid.uuid4().hex[:16]
         now = int(time.time())
-        with self._lock:
-            conn = self._get_conn()
-            conn.execute(
-                "INSERT INTO sessions (id, start_ts, last_active_ts, mode, backend) VALUES (?, ?, ?, ?, ?)",
-                (session_id, now, now, mode, backend),
-            )
-            conn.commit()
+        for attempt in range(5):
+            try:
+                with self._lock:
+                    conn = self._get_conn()
+                    conn.execute(
+                        "INSERT INTO sessions (id, start_ts, last_active_ts, mode, backend) VALUES (?, ?, ?, ?, ?)",
+                        (session_id, now, now, mode, backend),
+                    )
+                    conn.commit()
+                return session_id
+            except sqlite3.OperationalError as e:
+                if attempt == 4:
+                    logger.warning("[SessionStore] Database locked during new_session: %s", e)
+                    return session_id
+                time.sleep(0.2 * (2 ** attempt))
         return session_id
 
     def add_turn(
@@ -191,20 +227,35 @@ class SessionStore:
 
         result_str = str(tool_result)[:5000] if tool_result is not None else None
 
-        with self._lock:
-            conn = self._get_conn()
-            cur = conn.execute(
-                """INSERT INTO turns
-                   (session_id, ts, role, content, tool_name, tool_args, tool_result, backend, latency_ms)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                (session_id, now, role, content[:10000], tool_name, args_str, result_str, backend, latency_ms),
-            )
-            conn.execute(
-                "UPDATE sessions SET turn_count = turn_count + 1, last_active_ts = ?, total_tokens = total_tokens + ? WHERE id = ?",
-                (now, tokens_used, session_id),
-            )
-            conn.commit()
-            return cur.lastrowid  # type: ignore[return-value]
+        for attempt in range(5):
+            try:
+                with self._lock:
+                    conn = self._get_conn()
+                    cur = conn.execute(
+                        """INSERT INTO turns
+                           (session_id, ts, role, content, tool_name, tool_args, tool_result, backend, latency_ms)
+                           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                        (session_id, now, role, content[:10000], tool_name, args_str, result_str, backend, latency_ms),
+                    )
+                    conn.execute(
+                        "UPDATE sessions SET turn_count = turn_count + 1, last_active_ts = ?, total_tokens = total_tokens + ? WHERE id = ?",
+                        (now, tokens_used, session_id),
+                    )
+                    conn.commit()
+                    return cur.lastrowid or 0
+            except sqlite3.OperationalError as e:
+                err_str = str(e).lower()
+                if "no such column" in err_str:
+                    try:
+                        self._ensure_db()
+                        continue
+                    except Exception:
+                        pass
+                if attempt == 4:
+                    logger.warning("[SessionStore] Operational error during add_turn: %s", e)
+                    return 0
+                time.sleep(0.2 * (2 ** attempt))
+        return 0
 
     def close_session(self, session_id: str, summary: str | None = None) -> None:
         """Mark a session as ended, optionally with an AI-generated summary."""

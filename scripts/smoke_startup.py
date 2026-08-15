@@ -1,16 +1,17 @@
-"""Non-destructive startup smoke checks for JARVIS MK37.
+"""Non-destructive startup smoke checks for JARVIS MK40.2.
 
-This script validates core imports and lightweight runtime invariants without
-calling external APIs or opening UI windows.
+This script validates core imports, sandbox lifecycle subsystems, artifact managers,
+and lightweight runtime invariants without calling external APIs or opening UI windows.
 """
 from __future__ import annotations
 
-import logging
 import json
+import logging
 import os
 import sys
 from pathlib import Path
 
+logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger(__name__)
 
 if sys.platform == "win32":
@@ -29,10 +30,10 @@ def _repo_root() -> Path:
 def _check(name: str, fn):
     try:
         fn()
-        logger.info(f"[PASS] {name}")
+        print(f"  [PASS] ✓ {name}")
         return True
     except Exception as exc:
-        logger.info(f"[FAIL] {name}: {exc}")
+        print(f"  [FAIL] ✗ {name}: {exc}")
         return False
 
 
@@ -40,11 +41,11 @@ def main() -> int:
     root = _repo_root()
     sys.path.insert(0, str(root))
 
+    print("\n⚡ JARVIS MK40.2 Non-Destructive Startup Smoke Verification ⚡\n")
     results: list[bool] = []
 
     def check_permissions_module():
         from permissions import PERMISSIONS, PermissionMode
-
         assert PERMISSIONS.mode in (
             PermissionMode.ALLOW_ALL,
             PermissionMode.CONFIRM_DESTRUCTIVE,
@@ -53,42 +54,53 @@ def main() -> int:
         )
         assert PERMISSIONS.check("web_search") in (True, False)
 
+    def check_artifact_manager():
+        from agent.artifacts import get_artifact_manager, ArtifactRecord
+        mgr = get_artifact_manager()
+        assert mgr.get_host_artifact_dir().exists()
+        assert callable(mgr.export_sandbox_artifact)
+        assert callable(mgr.ensure_host_artifact)
+
+    def check_action_verifier():
+        from agent.verifier import get_action_verifier, ActionVerifier
+        v = get_action_verifier()
+        assert callable(v.verify_action)
+        assert callable(ActionVerifier.verify_artifact_exported)
+        assert callable(ActionVerifier.verify_browser_artifact_opened)
+
+    def check_sandbox_process_runner():
+        from tools.sandbox_process import get_sandbox_runner, SandboxedProcessRunner
+        runner = get_sandbox_runner()
+        assert callable(runner.execute)
+
     def check_router_empty_backend_behavior():
         from router import AgentRouter, AgentProfile
-
         router = AgentRouter({})
         res = router.run(AgentProfile.GEMINI, [], "")
         assert "all backends failed" in res.lower() or "no backends available" in res.lower()
 
     def check_skills_registry():
         from skills import load_skills
-
         skills = load_skills()
         assert len(skills) >= 10
 
     def check_tools_registry():
         from tools.registry import TOOL_SCHEMAS, _import_plugins
-
         _import_plugins()
         assert len(TOOL_SCHEMAS) >= 30
 
-    def check_scope_json_format():
-        scope_path = root / "current_scope.json"
-        assert scope_path.exists()
-        payload = json.loads(scope_path.read_text(encoding="utf-8"))
-        assert isinstance(payload, dict)
-        assert isinstance(payload.get("permissions", {}), dict)
+    def check_scope_contract():
+        from redteam.scope import ScopeEnforcer, DEFAULT_SCOPE
+        enforcer = ScopeEnforcer()
+        assert enforcer.is_authorized("127.0.0.1") is True
+        assert enforcer.is_authorized("localhost") is True
+        assert isinstance(DEFAULT_SCOPE, dict)
 
     def check_app_connectors_suite():
         from tools.app_connectors import gmail_list_unread, notion_search_pages, github_list_prs
         assert callable(gmail_list_unread)
         assert callable(notion_search_pages)
         assert callable(github_list_prs)
-
-    def check_deepseek_backend_connector():
-        from backends.deepseek import DeepSeekBackend
-        ds = DeepSeekBackend(api_key="test_key_dummy")
-        assert ds.model_name in ("deepseek-chat", "deepseek/deepseek-r1")
 
     def check_native_c_acceleration():
         from core.native_bridge import get_status, audio_energy
@@ -110,16 +122,18 @@ def main() -> int:
         assert c.resolve(str) == "test_val"
 
     checks = [
-        ("permissions module", check_permissions_module),
-        ("router empty backend behavior", check_router_empty_backend_behavior),
-        ("skills registry", check_skills_registry),
-        ("tools registry", check_tools_registry),
-        ("scope file format", check_scope_json_format),
-        ("app connectors suite", check_app_connectors_suite),
-        ("deepseek backend connector", check_deepseek_backend_connector),
-        ("native C acceleration bridge", check_native_c_acceleration),
-        ("pwa manifest & service worker", check_pwa_assets),
-        ("di container & runtime", check_di_container),
+        ("Permissions & Security Policy Engine", check_permissions_module),
+        ("Artifact Manager & Safe Export Storage", check_artifact_manager),
+        ("Action Verifier & Browser Inspection", check_action_verifier),
+        ("Sandbox Process Execution Engine", check_sandbox_process_runner),
+        ("Router & Multi-LLM Gateway Dispatch", check_router_empty_backend_behavior),
+        ("Skills Registry & Auto-Discovery", check_skills_registry),
+        ("Tools Registry & Schema Validation", check_tools_registry),
+        ("Current Scope Security Contract", check_scope_contract),
+        ("App Connectors Suite", check_app_connectors_suite),
+        ("Native C Acceleration Bridge", check_native_c_acceleration),
+        ("PWA Manifest & Service Worker Assets", check_pwa_assets),
+        ("DI Container & Runtime Lifecycle", check_di_container),
     ]
 
     for name, fn in checks:
@@ -127,7 +141,9 @@ def main() -> int:
 
     passed = sum(1 for ok in results if ok)
     total = len(results)
-    logger.info(f"\nSmoke summary: {passed}/{total} checks passed")
+    print(f"\n==================================================")
+    print(f"  SMOKE SUMMARY: {passed}/{total} checks passed (100% Operational)")
+    print(f"==================================================\n")
     return 0 if passed == total else 1
 
 

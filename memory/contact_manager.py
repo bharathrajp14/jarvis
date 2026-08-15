@@ -41,9 +41,12 @@ def get_base_dir() -> Path:
 
 
 BASE_DIR = get_base_dir()
-CONTACTS_JSON_PATH = BASE_DIR / "memory" / "contacts.json"
-CONTACTS_ENC_PATH = BASE_DIR / "memory" / "contacts.enc"
-KEY_PATH = BASE_DIR / ".jarvis" / "contacts.key"
+USER_JARVIS_DIR = Path.home() / ".jarvis"
+CONTACTS_DIR = USER_JARVIS_DIR / "contacts"
+CONTACTS_DIR.mkdir(parents=True, exist_ok=True)
+CONTACTS_JSON_PATH = CONTACTS_DIR / "contacts.json"
+CONTACTS_ENC_PATH = CONTACTS_DIR / "contacts.enc"
+KEY_PATH = USER_JARVIS_DIR / "contacts.key"
 PRIMARY_VCF_PATH = Path.home() / "Documents" / "contacts.vcf"
 
 _lock = RLock()

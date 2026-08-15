@@ -776,6 +776,24 @@ class JarvisOrchestrator:
         if instant:
             return instant
 
+        # ── Composite Stage Decomposition ─────────────────────────────────────
+        try:
+            from agent.stage_decomposer import StageDecomposer, StageExecutionEngine
+            if StageDecomposer.is_composite_task(user_input):
+                logger.info("[Orchestrator] Multi-step composite task detected. Decomposing into bounded stages...")
+                stages = StageDecomposer.decompose(user_input, parent_task_id=self._session_id)
+                engine = StageExecutionEngine(self)
+                res_ctx = engine.execute_stages(stages, user_input)
+                spoken = res_ctx.get("spoken_summary")
+                if spoken:
+                    self._record_turn("user", user_input)
+                    self._record_turn("assistant", spoken)
+                    self.working_memory.add("user", user_input)
+                    self.working_memory.add("assistant", spoken)
+                    return spoken
+        except Exception as decomposer_err:
+            logger.warning("[Orchestrator] Stage decomposition fallback note: %s", decomposer_err)
+
         # ── Adaptive Memory Classification (TaskMemoryRouter) ─────────────────
         # Classify task before building context to avoid injecting stale memory
         # into fresh, independent tasks (saves tokens + prevents contamination).

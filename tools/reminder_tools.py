@@ -4,6 +4,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 from tools.registry import register_tool
 from actions.reminder import reminder
+from actions.reminders import reminder_tool_action, get_reminder_manager
 
 
 @register_tool(
@@ -22,3 +23,28 @@ from actions.reminder import reminder
 def tool_schedule_reminder(date_str: str, time_str: str, message: str) -> str:
     params = {"date": date_str, "time": time_str, "message": message}
     return reminder(params)
+
+
+@register_tool(
+    name="manage_reminders",
+    description="Add, list, or check pending smart desktop reminders with audio alerts.",
+    parameters={
+        "type": "object",
+        "properties": {
+            "action": {"type": "string", "enum": ["add", "list"], "description": "Action to perform ('add' or 'list')."},
+            "text": {"type": "string", "description": "Reminder message text (required for 'add')."},
+            "delay_seconds": {"type": "integer", "description": "Delay in seconds from now."},
+            "time_str": {"type": "string", "description": "Target time string (e.g. '9:00 AM', '14:30', 'tomorrow 9am')."}
+        },
+        "required": ["action"]
+    }
+)
+def tool_manage_reminders(action: str = "add", text: str = "", delay_seconds: int = 0, time_str: str = "") -> str:
+    return reminder_tool_action(action=action, text=text, delay_seconds=delay_seconds, time_str=time_str)
+
+
+__all__ = [
+    "tool_schedule_reminder",
+    "tool_manage_reminders",
+    "get_reminder_manager",
+]

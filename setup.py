@@ -14,14 +14,14 @@ if __name__ == "__main__":
     else:
         setup(
             name="brjarvis",
-            version="38.5.0",
-            description="BRJARVIS Autonomous AI OS",
-            py_modules=["brjarvis", "start", "ui_mark", "float_widget", "server", "main_mk37"],
+            version="40.2.0",
+            description="BR JARVIS Autonomous AI Operating System",
+            py_modules=["brjarvis", "start", "main", "ui_mark", "float_widget", "server"],
             packages=find_packages(),
             entry_points={
                 "console_scripts": [
-                    "brjarvis=brjarvis:main",
-                    "jarvis=brjarvis:main",
+                    "brjarvis=start:main",
+                    "jarvis=start:main",
                 ],
             },
         )

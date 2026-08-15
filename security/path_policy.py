@@ -151,6 +151,31 @@ class PathSecurityPolicy:
         tier = self.get_tier(path_input)
         return tier != PathTier.TIER_2_CRITICAL_SECRETS
 
+    def is_sandbox_internal_path(self, path_input: Union[str, Path]) -> bool:
+        """Check if path is located inside temporary sandbox process jail directories."""
+        if not path_input:
+            return False
+        p_str = str(path_input).replace("\\", "/").lower()
+        return "jarvis_sandbox_jails" in p_str or "sandbox_jails" in p_str or "/jail_" in p_str or "\\jail_" in str(path_input).lower()
+
+    def validate_artifact_export_path(self, source: Union[str, Path], destination: Union[str, Path], host_root: Union[str, Path]) -> bool:
+        """Ensure exported artifact destination is strictly confined inside host_root without traversal or junction escapes."""
+        try:
+            dest_res = Path(destination).resolve(strict=False)
+            root_res = Path(host_root).resolve(strict=False)
+            dest_res.relative_to(root_res)
+            return self.is_safe_resource(dest_res)
+        except Exception:
+            return False
+
+
+def is_sandbox_internal_path(path_input: Union[str, Path]) -> bool:
+    """Module-level helper to detect sandbox internal jail paths."""
+    if not path_input:
+        return False
+    p_str = str(path_input).replace("\\", "/").lower()
+    return "jarvis_sandbox_jails" in p_str or "sandbox_jails" in p_str or "/jail_" in p_str or "\\jail_" in str(path_input).lower()
+
 
 _GLOBAL_PATH_POLICY: Optional[PathSecurityPolicy] = None
 
@@ -160,3 +185,4 @@ def get_path_policy() -> PathSecurityPolicy:
     if _GLOBAL_PATH_POLICY is None:
         _GLOBAL_PATH_POLICY = PathSecurityPolicy()
     return _GLOBAL_PATH_POLICY
+

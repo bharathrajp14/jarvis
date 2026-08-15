@@ -580,6 +580,24 @@ class BRVoiceAssistant:
                 return
             if not response or not str(response).strip():
                 response = "I am ready, sir. Please specify a single task or command."
+
+            # Check for structured diagnostic failure
+            if "TASK_EXECUTION_FAILED" in response or "All backends failed" in response:
+                logger.error("[Voice] STT_SUCCESS_BACKEND_FAILURE encountered for prompt: %s", text_clean[:80])
+                self.ui.write_log("SYS: [STT_SUCCESS_BACKEND_FAILURE] AI execution failed — diagnostic trace generated.")
+
+                # Extract user-friendly portion if present
+                if "[BR JARVIS:" in response and "]" in response:
+                    user_part = response.split("[BR JARVIS:")[-1].split("]")[0].strip()
+                    spoken_summary = f"I couldn't complete the planning stage because all compatible AI providers failed. {user_part}"
+                else:
+                    spoken_summary = "I was unable to complete the AI planning stage because all compatible model providers failed. Please check connectivity or proxy status."
+                
+                self.ui.write_log(f"JARVIS: {response[:500]}")
+                self.speak(spoken_summary)
+                self.ui.set_state("LISTENING")
+                return
+
             # Log clean version to UI
             from voice.tts import clean_for_speech, summarize_for_speech
             clean_log = clean_for_speech(response)
@@ -852,3 +870,19 @@ class BRVoiceAssistant:
             self.ui.write_log("SYS: Keyboard text control operational.")
             while True:
                 await asyncio.sleep(1.0)
+
+
+_global_voice_assistant: Optional[BRVoiceAssistant] = None
+_voice_assistant_lock = threading.Lock()
+
+
+def get_voice_assistant(ui_instance: Optional[Any] = None) -> BRVoiceAssistant:
+    """Return the global BRVoiceAssistant singleton (thread-safe)."""
+    global _global_voice_assistant
+    if _global_voice_assistant is not None:
+        return _global_voice_assistant
+    with _voice_assistant_lock:
+        if _global_voice_assistant is None:
+            _global_voice_assistant = BRVoiceAssistant(ui_instance=ui_instance)
+    return _global_voice_assistant
+

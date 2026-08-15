@@ -95,9 +95,9 @@ dev = [
 ]
 
 [project.scripts]
-brjarvis = "brjarvis:main"
-jarvis = "brjarvis:main"
-jarvis-cli = "main_mk37:main"
+brjarvis = "start:main"
+jarvis = "start:main"
+jarvis-cli = "core.cli:main"
 jarvis-server = "server:main"
 
 [tool.setuptools.packages.find]

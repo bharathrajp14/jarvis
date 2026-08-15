@@ -52,16 +52,26 @@ def register_tool(name: str, description: str, parameters: dict | None = None) -
             "parameters": parameters or {}
         }
         with _REGISTRY_LOCK:
-            # Warn if overwriting an existing tool registration
-            if name in TOOL_REGISTRY and TOOL_REGISTRY[name] is not func:
-                logger.warning(
-                    f"[ToolRegistry] Tool '{name}' is being re-registered by "
-                    f"{func.__module__}.{func.__qualname__} (was {TOOL_REGISTRY[name].__qualname__})"
-                )
-            # Avoid duplicate schemas
-            if not any(s["name"] == name for s in TOOL_SCHEMAS):
+            existing = TOOL_REGISTRY.get(name)
+            if existing is not None and existing is not func:
+                existing_name = getattr(existing, "__qualname__", str(existing))
+                # If replacing a lazy wrapper with the real native implementation, log at debug
+                if "_lazy_wrapper" in existing_name or "_lazy_register_tool" in existing_name:
+                    logger.debug(f"[ToolRegistry] Resolved lazy tool '{name}' -> {func.__module__}.{func.__qualname__}")
+                else:
+                    logger.warning(
+                        f"[ToolRegistry] Tool '{name}' is being re-registered by "
+                        f"{func.__module__}.{func.__qualname__} (was {existing_name})"
+                    )
+            # Update schema in-place or append
+            for idx, s in enumerate(TOOL_SCHEMAS):
+                if s.get("name") == name:
+                    TOOL_SCHEMAS[idx] = schema
+                    break
+            else:
                 TOOL_SCHEMAS.append(schema)
             TOOL_REGISTRY[name] = func
+
 
         # Also register in the unified ToolRuntimeEngine
         try:
@@ -277,7 +287,16 @@ def execute_tool(name: str, args: dict) -> str:
     # Map aliases for ReAct loop execution
     if name in ("browser_control", "open_browser", "web_browser"):
         name = "open_app"
-        url = args.get("url") or args.get("query") or args.get("app_name") or ""
+        url = args.get("url") or args.get("query") or args.get("app_name") or args.get("path") or ""
+        if url:
+            try:
+                from agent.artifacts import get_artifact_manager
+                mgr = get_artifact_manager()
+                success, resolved_url, _ = mgr.ensure_host_artifact(url)
+                if success:
+                    url = resolved_url
+            except Exception as e:
+                logger.debug("Artifact interception note in registry: %s", e)
         args = {"app_name": f"chrome {url}".strip() if url else "chrome"}
     elif name in ("system_control", "desktop_type"):
         name = "computer_settings"
@@ -344,6 +363,9 @@ def execute_tool(name: str, args: dict) -> str:
             "stop_multichannel_listener": "tools.proactive_listener_tools",
             "get_pending_channel_actions": "tools.proactive_listener_tools",
             "respond_channel_action": "tools.proactive_listener_tools",
+            # Artifacts
+            "artifact_export": "tools.export_tools",
+            "artifact_list": "tools.export_tools",
         }
 
         if name in tool_to_module:
@@ -473,72 +495,7 @@ _lazy_register_tool(
     }
 )
 
-_lazy_register_tool(
-    name="system_optimizer",
-    description="Run automated RAM, garbage collection, and temporary file cache optimization. Returns memory stats.",
-    module_path="actions.system_optimizer",
-    func_name="system_optimizer_action",
-    parameters={
-        "type": "object",
-        "properties": {
-            "action": {"type": "string", "enum": ["optimize"]}
-        }
-    }
-)
 
-_lazy_register_tool(
-    name="window_manager",
-    description="Inspect visible desktop window titles and focus/switch applications. Args: 'action' ('list' or 'focus'), 'title' (optional application window title).",
-    module_path="tools.window_manager",
-    func_name="window_manager_action",
-    parameters={
-        "type": "object",
-        "properties": {
-            "action": {"type": "string", "enum": ["list", "focus"]},
-            "title": {"type": "string", "description": "Title or partial title of window to focus"}
-        },
-        "required": ["action"]
-    }
-)
-
-_lazy_register_tool(
-    name="web_extractor",
-    description="Extract clean text content, headers, and main article text from any web URL. Args: 'url' (webpage URL).",
-    module_path="tools.web_extractor",
-    func_name="web_extractor_action",
-    parameters={
-        "type": "object",
-        "properties": {
-            "url": {"type": "string", "description": "Target webpage URL to fetch and extract"}
-        },
-        "required": ["url"]
-    }
-)
-
-_lazy_register_tool(
-    name="system_health",
-    description="Retrieve system health metrics including CPU load, RAM usage, storage, and battery state.",
-    module_path="tools.system_health",
-    func_name="system_health_action",
-    parameters={
-        "type": "object",
-        "properties": {}
-    }
-)
-
-_lazy_register_tool(
-    name="file_search_semantic",
-    description="Fast natural language semantic file search across workspace files. Args: 'query' (search term or file description).",
-    module_path="tools.file_search_semantic",
-    func_name="file_search_semantic_action",
-    parameters={
-        "type": "object",
-        "properties": {
-            "query": {"type": "string", "description": "Natural language file description or keywords"}
-        },
-        "required": ["query"]
-    }
-)
 
 
 def parse_tool_call(text: str) -> tuple[str | None, dict | None]:

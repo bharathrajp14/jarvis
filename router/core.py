@@ -203,61 +203,175 @@ class AgentRouter:
 
         return self.default
 
-    def run(self, profile: AgentProfile, messages: list[dict], system: str) -> str:
-        """Run completion through selected profile with privacy-aware fallback."""
-        tried: list[tuple[str, str]] = []
+    def run(
+        self,
+        profile: AgentProfile,
+        messages: list[dict],
+        system: str,
+        task_id: str = "",
+        goal: str = "",
+    ) -> str:
+        """Run completion through selected profile with privacy-aware fallback and structured diagnostics."""
+        from router.diagnostics import (
+            BackendAttempt,
+            FailureType,
+            TaskExecutionDiagnostic,
+            classify_exception,
+            TRANSIENT_FAILURE_TYPES,
+            sanitize_diagnostic_text,
+        )
+        import uuid
+
+        trace_id = str(uuid.uuid4())[:8]
+        effective_task_id = task_id or f"task_{trace_id}"
+        effective_goal = goal or (messages[-1].get("content", "") if messages else "")
+
+        diagnostic = TaskExecutionDiagnostic(
+            trace_id=trace_id,
+            task_id=effective_task_id,
+            goal=str(effective_goal),
+        )
 
         is_local_requested = (
             self.privacy_mode == PrivacyMode.LOCAL_ONLY or
             profile == AgentProfile.OLLAMA
         )
 
-        # Primary attempt
+        # ── Primary backend attempt with bounded retry for transient errors ──
         backend = self.backends.get(profile)
         if backend and backend.available:
-            try:
-                res = backend.complete(messages, system)
-                if res and not res.startswith("ERROR:"):
-                    return res
-            except Exception as exc:
-                tried.append((profile.value, str(exc)))
-                logger.warning("[Router] Primary backend '%s' failed: %s", profile.value, exc)
+            max_retries = 2
+            for attempt_idx in range(max_retries):
+                t_start = time.monotonic()
+                try:
+                    res = backend.complete(messages, system)
+                    latency = int((time.monotonic() - t_start) * 1000)
+                    if res and not res.startswith("ERROR:"):
+                        return res
+
+                    # Backend returned error string
+                    err_msg = res if res else "Empty response returned"
+                    fail_type, clean_err = classify_exception(Exception(err_msg))
+                    diagnostic.add_attempt(BackendAttempt(
+                        provider=getattr(backend, "name", profile.value),
+                        model=getattr(backend, "model_name", profile.value),
+                        status="FAILED",
+                        stage="provider_request",
+                        error_type=fail_type,
+                        error=clean_err,
+                        latency_ms=latency,
+                    ))
+
+                    if fail_type not in TRANSIENT_FAILURE_TYPES or attempt_idx >= max_retries - 1:
+                        break
+                    time.sleep(1.0 * (2 ** attempt_idx))
+
+                except Exception as exc:
+                    latency = int((time.monotonic() - t_start) * 1000)
+                    fail_type, clean_err = classify_exception(exc)
+                    diagnostic.add_attempt(BackendAttempt(
+                        provider=getattr(backend, "name", profile.value),
+                        model=getattr(backend, "model_name", profile.value),
+                        status="FAILED",
+                        stage="provider_request",
+                        error_type=fail_type,
+                        error=clean_err,
+                        latency_ms=latency,
+                    ))
+                    logger.warning("[Router] Primary backend '%s' attempt %d failed: %s", profile.value, attempt_idx + 1, clean_err)
+
+                    if fail_type not in TRANSIENT_FAILURE_TYPES or attempt_idx >= max_retries - 1:
+                        break
+                    time.sleep(1.0 * (2 ** attempt_idx))
+        else:
+            diagnostic.add_attempt(BackendAttempt(
+                provider=profile.value,
+                model=getattr(backend, "model_name", profile.value) if backend else "unconfigured",
+                status="FAILED",
+                stage="model_routing",
+                error_type=FailureType.MODEL_UNAVAILABLE,
+                error=f"Backend profile '{profile.value}' is not configured or unavailable in active router.",
+                latency_ms=0,
+            ))
 
         # Strict Privacy Check: Do NOT fall back to cloud if local-only mode is active
         if self.privacy_mode == PrivacyMode.LOCAL_ONLY:
+            diagnostic.final_reason = "LOCAL_ONLY_PRIVACY_BLOCKED"
+            diagnostic.recovery_action = "Switch to cloud_optional privacy mode or ensure local Ollama daemon is running."
             logger.error("[Router] All local backends failed. Cloud fallback blocked by LOCAL_ONLY privacy mode.")
-            return f"[BR JARVIS: Local backend(s) unavailable. Cloud fallback prohibited under active LOCAL_ONLY privacy policy. Attempted: {tried}]"
+            return (
+                f"TASK_EXECUTION_FAILED\n\n"
+                f"{diagnostic.format_developer_trace()}\n\n"
+                f"[BR JARVIS: Local backend(s) unavailable. Cloud fallback prohibited under active LOCAL_ONLY privacy policy. Final reason: all backends failed.]"
+            )
 
         # Build deduplicated fallback chain
-        raw_chain = [self.default, AgentProfile.GEMINI] + list(self.backends.keys())
+        raw_chain = [self.default, AgentProfile.GEMINI, AgentProfile.GPT] + list(self.backends.keys())
         fallback_chain = list(dict.fromkeys(raw_chain))
+
+        tried_profiles = {a.provider.lower() for a in diagnostic.attempts}
 
         for f_profile in fallback_chain:
             if f_profile == profile:
                 continue
-            if f_profile.value in {t[0] for t in tried}:
+            if f_profile.value.lower() in tried_profiles:
                 continue
 
             f_backend = self.backends.get(f_profile)
             if f_backend and f_backend.available:
-                # If local was strictly required, skip non-local backends
                 if is_local_requested and not getattr(f_backend, "is_local", False):
                     continue
 
+                t_start = time.monotonic()
                 try:
                     res = f_backend.complete(messages, system)
+                    latency = int((time.monotonic() - t_start) * 1000)
                     if res and not res.startswith("ERROR:"):
                         self.fallback_history.append({
                             "requested": profile.value,
                             "used": f_profile.value,
                             "time": time.time(),
                         })
-                        logger.info("[Router] Fell back from '%s' to '%s'", profile.value, f_profile.value)
+                        logger.info("[Router] Fell back from '%s' to '%s' (Latency: %dms)", profile.value, f_profile.value, latency)
                         return res
-                except Exception as exc:
-                    tried.append((f_profile.value, str(exc)))
 
-        return f"[BR JARVIS: All backends failed. Attempted: {tried}]"
+                    err_msg = res if res else "Empty response returned"
+                    fail_type, clean_err = classify_exception(Exception(err_msg))
+                    diagnostic.add_attempt(BackendAttempt(
+                        provider=getattr(f_backend, "name", f_profile.value),
+                        model=getattr(f_backend, "model_name", f_profile.value),
+                        status="FAILED",
+                        stage="provider_request",
+                        error_type=fail_type,
+                        error=clean_err,
+                        latency_ms=latency,
+                    ))
+                except Exception as exc:
+                    latency = int((time.monotonic() - t_start) * 1000)
+                    fail_type, clean_err = classify_exception(exc)
+                    diagnostic.add_attempt(BackendAttempt(
+                        provider=getattr(f_backend, "name", f_profile.value),
+                        model=getattr(f_backend, "model_name", f_profile.value),
+                        status="FAILED",
+                        stage="provider_request",
+                        error_type=fail_type,
+                        error=clean_err,
+                        latency_ms=latency,
+                    ))
+
+        # All backends failed — return full structured diagnostic output
+        diagnostic.final_reason = "ALL_BACKENDS_FAILED"
+        diagnostic.recovery_action = "Verify API keys in .env, check local gateway proxy (:8045), and ensure model quota is available."
+        diagnostic.user_friendly_message = diagnostic.format_user_facing_summary()
+
+        dev_trace = diagnostic.format_developer_trace()
+        logger.error("[Router] Execution halted: %s\n%s", diagnostic.final_reason, dev_trace)
+
+        return (
+            f"TASK_EXECUTION_FAILED\n\n"
+            f"{dev_trace}\n\n"
+            f"[BR JARVIS: All backends failed. {diagnostic.user_friendly_message}]"
+        )
 
     def get_status(self) -> dict[str, Any]:
         status = {}

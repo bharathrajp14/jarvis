@@ -1,13 +1,11 @@
-# start.py — JARVIS MK37 Unified Launcher (v3)
+# start.py — JARVIS MK40.2 Unified Launcher & System Orchestrator
 from __future__ import annotations
 """
-Production-grade launcher mapping to the complete suite.
-Features Rich TUI for Windows-compatible colorization.
+Production-grade launcher and diagnostic orchestrator for BR JARVIS MK40.2.
+Features Rich TUI, Artifact Lifecycle Subsystem, Policy Engine Diagnostics, and Multi-Sequence Booting.
 """
 
 import warnings
-# FIXED: Removed blanket warnings.simplefilter('ignore') which silenced ALL
-# Python warnings globally, hiding real bugs. Only suppress known-harmless ones.
 warnings.filterwarnings("ignore", category=DeprecationWarning, module="pkg_resources")
 warnings.filterwarnings("ignore", message=".*imp module.*", category=DeprecationWarning)
 warnings.filterwarnings("ignore", message=".*audioop.*", category=DeprecationWarning)
@@ -27,10 +25,9 @@ import threading
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, TextIO, TypedDict, cast, Callable
+from typing import Any, TextIO, TypedDict, cast, Callable, Optional
 
-
-# ── Auto-reroute from Python 3.14 alpha to stable Python 3.12 ────────────────
+# ── Auto-reroute from Python 3.14 alpha to stable Python 3.12 if available ────
 if __name__ == "__main__" and sys.version_info >= (3, 14) and sys.platform == "win32" and not os.environ.get("JARVIS_IGNORE_PY314"):
     import shutil
     _py_cmd = shutil.which("py")
@@ -49,12 +46,12 @@ try:
 except ImportError:
     pass
 
-# Validate presence of primary API keys
+# Validate presence of primary API keys or Local Gateway Proxy
 _primary_keys = ["GEMINI_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY", "DEEPSEEK_API_KEY"]
 _found_keys = [k for k in _primary_keys if os.environ.get(k) and not os.environ.get(k).startswith("your_")]
-if not _found_keys:
-    print("[WARNING] JARVIS MK38 Security Alert: No active API keys found in environment or .env!")
-    print("           Please configure your key in .env or environment variables (GEMINI_API_KEY, OPENAI_API_KEY, etc.)")
+if not _found_keys and not os.environ.get("OPENAI_BASE_URL"):
+    print("[WARNING] JARVIS MK40.2 Security Alert: No active API keys or proxy gateway found in environment or .env!")
+    print("           Please configure your key in .env (GEMINI_API_KEY, OPENAI_API_KEY, etc.)")
 
 
 # Fix terminal encoding & Qt DLL plugin paths on Windows
@@ -97,22 +94,21 @@ try:
     from rich.prompt import Prompt  # type: ignore[import-not-found]
     console = Console()
 except ImportError:
-    # Very basic fallback if rich isn't installed (though it should be for JARVIS)
     print("Oops! 'rich' module is missing. Please run: pip install rich")
     sys.exit(1)
 
 # ── Constants ────────────────────────────────────────────────────────────────
 
-VERSION = "38.0.0"
-BUILD   = "2026-07-31"
-CODENAME = "MARK XXXVIII"
+VERSION = "40.2.0"
+BUILD   = "2026-08-15"
+CODENAME = "MARK XL.2"
 
 BASE_DIR = Path(__file__).resolve().parent
 PYTHON   = sys.executable
 LOG_DIR  = BASE_DIR / "logs"
 PID_FILE = BASE_DIR / ".jarvis.pid"
 
-# FIXED: Register PID file cleanup via atexit so stale PIDs never block restart
+
 def _cleanup_pid_file():
     try:
         if PID_FILE.exists():
@@ -129,10 +125,10 @@ def _banner():
     console.clear()
     now = datetime.now().strftime("%A, %B %d, %Y — %I:%M %p")
     text = Text(justify="center")
-    text.append("⚡ BR JARVIS — AI OPERATING SYSTEM ⚡\n", style="bold cyan")
-    text.append("Cognitive Multi-Modal Neural Assistant & Autonomous OS Controller\n\n", style="dim")
+    text.append("⚡ BR JARVIS — ADVANCED AI OPERATING SYSTEM ⚡\n", style="bold cyan")
+    text.append("Autonomous Cognitive Agent Architecture & Isolated Sandbox Lifecycle Engine\n\n", style="dim")
     text.append(f"Version: {VERSION}  │  Build: {BUILD}  │  Codename: {CODENAME}\n", style="bold green")
-    text.append(f"Python: {sys.version.split()[0]}  │  Platform: {platform.system()}  │  Guardian: ACTIVE 🛡️\n", style="cyan")
+    text.append(f"Python: {sys.version.split()[0]}  │  Platform: {platform.system()}  │  Security: FAIL-CLOSED 🛡️\n", style="cyan")
     text.append(now, style="dim")
     
     panel = Panel(text, border_style="bold cyan", padding=(0, 2))
@@ -145,10 +141,20 @@ class EnvStatus(TypedDict):
     env_file: bool
     config_file: bool
     api_keys: dict[str, bool]
+    gateway_proxy: bool
+    artifacts_dir: str
+    permission_mode: str
 
 def _check_env() -> EnvStatus:
     """Check environment configuration and return status dict."""
-    status: EnvStatus = {"env_file": False, "config_file": False, "api_keys": {}}
+    status: EnvStatus = {
+        "env_file": False,
+        "config_file": False,
+        "api_keys": {},
+        "gateway_proxy": False,
+        "artifacts_dir": "",
+        "permission_mode": "confirm_destructive",
+    }
     env_file    = BASE_DIR / ".env"
     config_file = BASE_DIR / "config" / "api_keys.json"
 
@@ -166,22 +172,24 @@ def _check_env() -> EnvStatus:
         "GEMINI_API_KEY":    "Gemini",
         "GOOGLE_API_KEY":    "Gemini (alt)",
         "ANTHROPIC_API_KEY": "Claude",
-        "OPENAI_API_KEY":    "GPT",
+        "OPENAI_API_KEY":    "GPT / Local Gateway",
         "MISTRAL_API_KEY":   "Mistral",
         "NVIDIA_API_KEY":    "NVIDIA NIM",
+        "GROQ_API_KEY":      "Groq",
     }
     for env_key, label in key_map.items():
         val = os.environ.get(env_key, "")
-        status["api_keys"][label] = bool(val and len(val) > 5)
+        status["api_keys"][label] = bool(val and len(val) > 5 and not val.startswith("your_"))
 
-    if config_file.exists():
-        try:
-            with open(config_file, "r") as f:
-                cfg = json.load(f)
-            if cfg.get("gemini_api_key") and len(cfg["gemini_api_key"]) > 5:
-                status["api_keys"]["Gemini"] = True
-        except Exception:
-            pass
+    status["gateway_proxy"] = bool(os.environ.get("OPENAI_BASE_URL"))
+    status["permission_mode"] = os.environ.get("JARVIS_PERMISSION_MODE", "allow_all")
+
+    try:
+        from agent.artifacts import get_artifact_manager
+        mgr = get_artifact_manager()
+        status["artifacts_dir"] = str(mgr.get_host_artifact_dir())
+    except Exception:
+        status["artifacts_dir"] = str(Path.home() / "Documents" / "BR-JARVIS" / "artifacts")
 
     return status
 
@@ -202,71 +210,79 @@ def show_status():
     env = _check_env()
 
     # Environment
-    table_env = Table(title="Environment", title_style="bold magenta", show_header=False, box=None)
+    table_env = Table(title="Environment & Architecture", title_style="bold magenta", show_header=False, box=None)
     table_env.add_column("Property", style="bold")
     table_env.add_column("Value")
     table_env.add_row("Base Dir", str(BASE_DIR))
     table_env.add_row("Python Exec", sys.executable)
     venv = hasattr(sys, "real_prefix") or (hasattr(sys, "base_prefix") and sys.base_prefix != sys.prefix)
     table_env.add_row("Virtual Env", "[green]Active[/]" if venv else "[yellow]Not detected[/]")
-    table_env.add_row("Env File", "[green]✓ Found[/]" if env["env_file"] else "[red]✗ MISSING[/]")
-    
+    table_env.add_row("Env File", "[green]✓ Found (.env)[/]" if env["env_file"] else "[red]✗ MISSING[/]")
+    table_env.add_row("Permission Mode", f"[bold green]{env['permission_mode'].upper()}[/]")
+    table_env.add_row("Host Artifacts Dir", f"[cyan]{env['artifacts_dir']}[/]")
+
     # Backends
-    table_be = Table(title="Backends", title_style="bold magenta", show_header=False, box=None)
+    table_be = Table(title="AI Backends & Gateway Routing", title_style="bold magenta", show_header=False, box=None)
     has_any = False
     for label, ok in env["api_keys"].items():
         if "alt" in label and not ok: continue
         table_be.add_row(f"[green]✓ {label}[/]" if ok else f"[dim]○ {label}[/]", "[green]Configured[/]" if ok else "[dim]Not Configured[/]")
         if ok: has_any = True
 
+    proxy_url = os.environ.get("OPENAI_BASE_URL", "http://localhost:8045/v1")
+    if env["gateway_proxy"]:
+        table_be.add_row("[bold green]✓ Local Proxy Gateway[/]", f"[cyan]{proxy_url}[/]")
+        has_any = True
+
     ollama_host = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
     try:
         import urllib.request
         req = urllib.request.Request(f"{ollama_host}/api/tags", method="GET")
         with urllib.request.urlopen(req, timeout=1):
-            table_be.add_row(f"[green]✓ Ollama[/]", f"[green]Running[/] at {ollama_host}")
+            table_be.add_row(f"[green]✓ Ollama (Offline LLM)[/]", f"[green]Running[/] at {ollama_host}")
             has_any = True
     except Exception:
-        table_be.add_row(f"[dim]○ Ollama[/]", f"[dim]Not Running ({ollama_host})[/]")
+        table_be.add_row(f"[dim]○ Ollama (Offline LLM)[/]", f"[dim]Not Running ({ollama_host})[/]")
 
     # Modules
-    table_mod = Table(title="Core Modules", title_style="bold magenta", show_header=False, box=None)
+    table_mod = Table(title="Core Engine Modules", title_style="bold magenta", show_header=False, box=None)
     core_modules = [
-        ("google.genai", "Google GenAI SDK"), ("sounddevice", "Audio I/O"), 
-        ("requests", "HTTP Client"), ("httpx", "Async HTTP"),
-        ("PIL", "Image Processing"), ("numpy", "Numerics"), ("psutil", "System Monitor")
+        ("google.genai", "Google GenAI SDK"), ("openai", "OpenAI Client / Gateway"),
+        ("sounddevice", "Audio Hardware I/O"), ("requests", "HTTP Client"),
+        ("httpx", "Async HTTP Engine"), ("PIL", "Image / Vision Processing"),
+        ("numpy", "Numerics & Audio Math"), ("psutil", "System Resource Monitor"),
+        ("playwright", "Browser Automation Engine"), ("docx", "Microsoft Word Engine"),
+        ("fpdf", "PDF Document Generator"), ("openpyxl", "Excel Multi-Tab Engine")
     ]
-    core_ok = 0
     for mod_name, label in core_modules:
         ok, ver = _check_module(mod_name)
         if ok:
             table_mod.add_row(f"[green]✓ {label}[/]", f"[dim]{ver}[/]")
-            core_ok += 1
         else:
             table_mod.add_row(f"[red]✗ {label}[/]", "[red]MISSING[/]")
             
-    table_sys = Table(title="System & Memory", title_style="bold magenta", show_header=False, box=None)
+    table_sys = Table(title="Subsystems & Registries", title_style="bold magenta", show_header=False, box=None)
     try:
         sys.path.insert(0, str(BASE_DIR))
         from skills import load_skills
-        table_sys.add_row("[green]✓ Skills Loaded[/]", str(len([s for s in load_skills() if s.user_invocable])))
+        table_sys.add_row("[green]✓ Skills Loaded[/]", str(len([s for s in load_skills() if getattr(s, 'user_invocable', True)])))
         
         from multi_agent.subagent import load_agent_definitions
-        table_sys.add_row("[green]✓ Agent Types[/]", str(len(load_agent_definitions())))
+        table_sys.add_row("[green]✓ Specialized Subagents[/]", str(len(load_agent_definitions())))
         
         from tools.registry import TOOL_SCHEMAS, _import_plugins
         _import_plugins()
         tool_schemas = cast(list[dict[str, Any]], TOOL_SCHEMAS)
-        table_sys.add_row("[green]✓ Tools Registered[/]", str(len(tool_schemas)))
-    except Exception:
-        pass
-        
-    try:
-        from memory.vector_store import VectorMemory
-        vm = VectorMemory()
-        table_sys.add_row("[green]✓ Vector Memory[/]" if vm.available else "[yellow]⚠ Vector Memory[/]", "[green]Operational[/]" if vm.available else "[yellow]Degraded[/]")
-    except Exception:
-        pass
+        table_sys.add_row("[green]✓ Registered Tools[/]", str(len(tool_schemas)))
+
+        from agent.artifacts import get_artifact_manager
+        mgr = get_artifact_manager()
+        table_sys.add_row("[green]✓ Artifact Manager[/]", f"Safe Host Storage ({len(mgr.list_artifacts())} tracked)")
+
+        from agent.verifier import get_action_verifier
+        table_sys.add_row("[green]✓ ActionVerifier[/]", "Active (Host & Browser Validation)")
+    except Exception as e:
+        table_sys.add_row("[yellow]⚠ Subsystems Note[/]", str(e))
 
     console.print(table_env)
     console.print()
@@ -282,7 +298,7 @@ def show_status():
 # ── Dependencies Doctor ────────────────────────────────────────────────────────
 
 def _auto_install_package(pkg: str, import_name: str) -> bool:
-    """Multi-method robust installer trying 6 fallback methods for missing Python packages."""
+    """Multi-method robust installer trying fallback methods for missing Python packages."""
     methods = [
         ("Standard pip", [PYTHON, "-m", "pip", "install", pkg, "--quiet"]),
         ("Upgraded pip", [PYTHON, "-m", "pip", "install", "--upgrade", pkg, "--quiet"]),
@@ -300,7 +316,7 @@ def _auto_install_package(pkg: str, import_name: str) -> bool:
         except Exception:
             pass
 
-    # Bulk requirements fallback if single package install methods failed
+    # Bulk requirements fallback
     req_files = [BASE_DIR / "requirements_mk37.txt", BASE_DIR / "requirements.txt"]
     for req in req_files:
         if req.exists():
@@ -333,7 +349,7 @@ def _install_playwright_browsers():
 
 def doctor(auto_confirm: bool = False):
     _banner()
-    console.print("[bold magenta]⚡ JARVIS MK38 Advanced System Doctor & Self-Healing Repair Engine ⚡[/]\n")
+    console.print("[bold magenta]⚡ JARVIS MK40.2 Advanced System Doctor & Self-Healing Repair Engine ⚡[/]\n")
 
     if not sys.stdin.isatty():
         auto_confirm = True
@@ -363,7 +379,6 @@ def doctor(auto_confirm: bool = False):
         "beautifulsoup4": "bs4",
         "playwright": "playwright",
         "youtube-transcript-api": "youtube_transcript_api",
-        "chromadb": "chromadb",
         "anthropic": "anthropic",
         "python-docx": "docx",
         "pypdf": "pypdf",
@@ -444,7 +459,7 @@ def doctor(auto_confirm: bool = False):
     console.print(table_sys)
     console.print()
 
-    # 3. Native C Extension Audit
+    # 3. Hardware Acceleration & Native Extension Audit
     native_lib_path = BASE_DIR / "native" / ("libjarvis_native.dll" if sys.platform == "win32" else "libjarvis_native.so")
     native_ok = False
     try:
@@ -461,8 +476,16 @@ def doctor(auto_confirm: bool = False):
         console.print(f"  [green]✓ Native Acceleration Active:[/] pure-Python fallbacks (hashlib FNV-1a / math VAD)")
     console.print()
 
-    # 4. Storage, Configuration & Web PWA Assets Audit
-    console.print("[bold cyan]4. Workspace Directories & Web PWA Audit[/]")
+    # 4. Storage, Artifacts & Web PWA Assets Audit
+    console.print("[bold cyan]4. Storage, Artifacts & Web Dashboard Audit[/]")
+    try:
+        from agent.artifacts import get_artifact_manager
+        art_mgr = get_artifact_manager()
+        art_dir = art_mgr.get_host_artifact_dir()
+        console.print(f"  [green]✓ Safe Host Artifact Storage:[/] [cyan]{art_dir}[/]")
+    except Exception as e:
+        console.print(f"  [yellow]⚠ Artifact Storage Warning: {e}[/]")
+
     dirs_to_check = [
         BASE_DIR / "logs",
         Path.home() / ".jarvis" / "memory",
@@ -497,9 +520,16 @@ def doctor(auto_confirm: bool = False):
     console.print("[bold cyan]5. Guardian System & Security Policy Audit[/]")
     try:
         from permissions import PERMISSIONS
-        console.print(f"  [green]✓ Tool Permission Policy Mode:[/] [bold green]{PERMISSIONS.mode.value}[/]")
+        console.print(f"  [green]✓ Tool Permission Policy Mode:[/] [bold green]{PERMISSIONS.mode.value.upper()}[/]")
     except Exception as pe:
         console.print(f"  [yellow]⚠ Permission Policy Engine note: {pe}[/]")
+
+    try:
+        from agent.verifier import get_action_verifier
+        v = get_action_verifier()
+        console.print(f"  [green]✓ ActionVerifier Ready:[/] File, Process & Browser Verification active")
+    except Exception as ve:
+        console.print(f"  [yellow]⚠ Verifier note: {ve}[/]")
 
     hashes_file = BASE_DIR / ".guardian_hashes.json"
     if hashes_file.exists():
@@ -532,19 +562,6 @@ def doctor(auto_confirm: bool = False):
     except Exception as tl_err:
         console.print(f"  [yellow]⚠ Tool Registry note: {tl_err}[/]")
 
-    try:
-        from memory.contact_manager import get_contact_store
-        c_store = get_contact_store()
-        console.print(f"  [green]✓ Mobile Contacts Store:[/] {c_store.get_count()} contacts loaded (.vcf/.csv parser active)")
-    except Exception as cs_err:
-        console.print(f"  [yellow]⚠ Mobile Contacts Store note: {cs_err}[/]")
-
-    try:
-        from actions.file_importer import import_file_to_knowledge
-        console.print(f"  [green]✓ Multi-File Knowledge Importer:[/] Ingestion engine active (.pdf, .docx, .txt, .md, .csv, .vcf)")
-    except Exception as fi_err:
-        console.print(f"  [yellow]⚠ Knowledge Importer note: {fi_err}[/]")
-
     console.print()
 
     # 7. AI Backends & Gateway Health Audit
@@ -571,17 +588,7 @@ def doctor(auto_confirm: bool = False):
     console.print(table_ai)
     console.print()
 
-    # 8. OS Auto-Startup & System Integration Audit
-    console.print("[bold cyan]8. OS Auto-Startup & System Integration Audit[/]")
-    try:
-        from scripts.install_startup import status as check_autostart
-        check_autostart()
-    except Exception as se:
-        console.print(f"  [yellow]⚠ Auto-Startup Check Note: {se}[/]")
-
-    console.print()
-
-    # 9. Fix & Auto-Repair Phase
+    # 8. Fix & Auto-Repair Phase
     if not missing_pip:
         console.print("[bold green]========================================================[/]")
         console.print("[bold green]  DOCTOR DIAGNOSIS: SYSTEM IS 100% HEALTHY & OPERATIONAL!  [/]")
@@ -603,10 +610,10 @@ def doctor(auto_confirm: bool = False):
                 else:
                     console.print("[red]FAILED[/]")
 
-            # Install Playwright browser binaries via multi-method
+            # Install Playwright browser binaries
             _install_playwright_browsers()
 
-    # Compile Native C Library (Auto-installing compiler if missing)
+    # Compile Native C Library
     if not native_ok:
         console.print("\n[bold yellow]Compiling C Native Shared Extension (Auto-installing compiler if missing)...[/]")
         try:
@@ -620,13 +627,6 @@ def doctor(auto_confirm: bool = False):
                 console.print(f"  [yellow]⚠ Native C build note: {clean_msg}[/]")
         except Exception as e:
             console.print(f"  [yellow]⚠ Native C build note: {e}[/]")
-
-    # System Linux setup script offer
-    if sys.platform == "linux" and missing_sys_groups:
-        setup_sh = BASE_DIR / "setup_linux.sh"
-        if setup_sh.exists():
-            if auto_confirm or (sys.stdin.isatty() and Prompt.ask("\nRun system package installer (setup_linux.sh) for system dependencies?", choices=["y", "n"], default="y") == "y"):
-                subprocess.run(["bash", str(setup_sh)], cwd=str(BASE_DIR))
 
     console.print("\n[bold green]Doctor auto-repair sequence completed![/]")
 
@@ -663,9 +663,9 @@ def _clear_pid():
 
 def _pre_launch_check() -> bool:
     env = _check_env()
-    if not any(env["api_keys"].values()):
-        console.print("\n[bold yellow]⚠ No API keys detected![/]")
-        console.print("  Duplicate [cyan].env.template[/] as [cyan].env[/] and insert your Gemini API Key.")
+    if not any(env["api_keys"].values()) and not env["gateway_proxy"]:
+        console.print("\n[bold yellow]⚠ No API keys or Proxy Gateway detected![/]")
+        console.print("  Duplicate [cyan].env.template[/] as [cyan].env[/] and configure your GEMINI_API_KEY or OPENAI_BASE_URL.")
         if Prompt.ask("Continue anyway?", choices=["y", "n"], default="n") != "y":
             return False
     return True
@@ -699,11 +699,8 @@ def launch_floating_voice():
 def launch_cli():
     console.print("\n[bold cyan]▶ Starting CLI Orchestrator[/]")
     console.print("[dim]Type /quit to exit.[/]\n")
-    if getattr(sys, "frozen", False):
-        from main_mk37 import main as cli_main
-        _run_script("main_mk37.py", cli_main)
-    else:
-        _run_script("main_mk37.py", None)
+    from core.cli import run_cli
+    run_cli()
 
 def _wait_for_server_ready(port: int, timeout: float = 12.0) -> bool:
     import socket
@@ -716,7 +713,6 @@ def _wait_for_server_ready(port: int, timeout: float = 12.0) -> bool:
             time.sleep(0.3)
     return False
 
-
 def launch_web_server(open_url: str = None):
     port = int(os.environ.get("PORT", os.environ.get("BR_SERVER_PORT", "8000")))
     target_url = open_url or f"http://127.0.0.1:{port}"
@@ -728,9 +724,13 @@ def launch_web_server(open_url: str = None):
     def _async_open():
         if _wait_for_server_ready(port):
             try:
+                from agent.artifacts import get_artifact_manager
+                mgr = get_artifact_manager()
+                success, resolved_url, _ = mgr.ensure_host_artifact(target_url)
+                nav_url = resolved_url if success else target_url
                 import webbrowser
-                webbrowser.open(target_url)
-                console.print(f"[bold green]✓ Interface opened in browser: {target_url}[/]")
+                webbrowser.open(nav_url)
+                console.print(f"[bold green]✓ Interface opened in browser: {nav_url}[/]")
             except Exception as e:
                 console.print(f"[yellow]⚠ Open browser manually at: {target_url} ({e})[/]")
 
@@ -763,13 +763,14 @@ def launch_both():
     if getattr(sys, "frozen", False):
         try:
             from ui_mark import JarvisUI
-            from main_mk37 import main as cli_main
+            from core.cli import run_cli
             app = JarvisUI()
             threading.Thread(target=app.root.mainloop if hasattr(app, "root") else lambda: None, daemon=True).start()
-            cli_main()
+            run_cli()
         except Exception:
             _run_script("ui_mark.py", None)
-            _run_script("main_mk37.py", None)
+            from core.cli import run_cli
+            run_cli()
     else:
         _ensure_log_dir()
         voice_log = LOG_DIR / f"voice_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
@@ -787,8 +788,11 @@ def launch_both():
             _write_pid(vproc.pid, "voice+cli")
             
             console.print("\n  [cyan]Launching CLI...[/]\n")
-            try: subprocess.run([PYTHON, str(BASE_DIR / "main_mk37.py")], cwd=str(BASE_DIR))
-            except KeyboardInterrupt: console.print("\n[dim]CLI closed.[/]")
+            try:
+                from core.cli import run_cli
+                run_cli()
+            except KeyboardInterrupt:
+                console.print("\n[dim]CLI closed.[/]")
             finally:
                 console.print(f"  [dim]Shutting down Voice GUI (PID: {vproc.pid})...[/]", end=" ")
                 try:
@@ -824,7 +828,6 @@ def launch_silent():
         except Exception:
             pass
 
-
 def launch_smoke():
     console.print("\n[bold cyan]▶ Running startup smoke checks[/]")
     script = BASE_DIR / "scripts" / "smoke_startup.py"
@@ -835,7 +838,6 @@ def launch_smoke():
         subprocess.run([PYTHON, str(script)], cwd=str(BASE_DIR), check=False)
     except KeyboardInterrupt:
         console.print("\n[dim]Smoke checks interrupted.[/]")
-
 
 def show_audio_status():
     _banner()
@@ -979,7 +981,7 @@ def launch_live_os():
     if not goal:
         console.print("[red]No goal specified.[/]")
         return
-    max_steps = 0  # Automatic Conscious Step Allocation
+    max_steps = 0
 
     if is_bg:
         from actions.live_os_control import launch_live_os_background
@@ -989,7 +991,6 @@ def launch_live_os():
         from actions.live_os_control import live_os_control_action
         res = live_os_control_action({"goal": goal, "max_steps": max_steps})
         console.print(f"\n[bold green]{res}[/]")
-
 
 def launch_galaxy():
     _banner()
@@ -1006,7 +1007,6 @@ def main():
     if len(sys.argv) > 1:
         mode = sys.argv[1].lower().strip().lstrip("-")
     elif not sys.stdin.isatty():
-        # Non-interactive / autostart environment: launch Voice Assistant automatically
         mode = "voice"
     else:
         _banner()
@@ -1021,8 +1021,8 @@ def main():
         table.add_row("2", "CLI", "ReAct Terminal Orchestrator (Multi-LLM & Skills)")
         table.add_row("3", "BOTH", "Dual Execution: Voice Assistant + CLI Orchestrator")
         table.add_row("4", "WEB CORE", "Launch Glassmorphic Web Server & PWA Dashboard")
-        table.add_row("5", "STATUS", "Subsystem Diagnostic Matrix & Backend Connectivity")
-        table.add_row("6", "DOCTOR", "Auto-Install & Repair Python & System Dependencies")
+        table.add_row("5", "STATUS", "Subsystem Diagnostic Matrix, Artifacts & Gateway")
+        table.add_row("6", "DOCTOR", "Auto-Install & Repair Python, System & Artifact Dirs")
         table.add_row("7", "SMOKE", "Run 10-Point Non-Destructive Startup Sanity Verification")
         table.add_row("8", "AUDIO", "Audio Hardware Meter & Native C RMS Signal Diagnostics")
         table.add_row("9", "LIVE OS", "Autonomous Visual Computer Control ('Antigravity Mode')")
