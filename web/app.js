@@ -1,11 +1,11 @@
-// web/app.js — BR JARVIS AI Operating System Client Engine (Hardened Production Build)
+// web/app.js — BR JARVIS AI Operating System Client Engine v38.5.0
 document.addEventListener('DOMContentLoaded', () => {
     const host = window.location.host;
     const protocol = window.location.protocol === 'https:' ? 'https' : 'http';
     const wsProtocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
     const API_BASE = `${protocol}://${host}`;
 
-    // Helper: Safe HTML escaping to prevent XSS
+    // ── HELPER: Safe HTML escaping to prevent XSS ──
     function escapeHTML(str) {
         if (!str) return '';
         return String(str)
@@ -16,14 +16,21 @@ document.addEventListener('DOMContentLoaded', () => {
             .replace(/'/g, '&#039;');
     }
 
-    window.apiFetch = function(url, options = {}) {
+    function debounce(func, delay = 250) {
+        let timer = null;
+        return function (...args) {
+            clearTimeout(timer);
+            timer = setTimeout(() => func.apply(this, args), delay);
+        };
+    }
+
+    window.apiFetch = function (url, options = {}) {
         const opts = Object.assign({}, options);
         opts.headers = Object.assign({}, opts.headers || {});
-        // In session mode, credentials / cookies or headers are sent automatically
         return fetch(url, opts);
     };
 
-    // DOM Elements
+    // ── DOM ELEMENTS ──
     const networkLatencyEl = document.getElementById('network-latency');
     const backendSelector = document.getElementById('backendSelector');
     const roleSelector = document.getElementById('roleSelector');
@@ -44,6 +51,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const ramValue = document.getElementById('ram-value');
     const diskValue = document.getElementById('disk-value');
 
+    // Mobile Menu Toggle
+    const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+    const sidebarNav = document.getElementById('sidebarNav');
+    if (mobileMenuToggle && sidebarNav) {
+        mobileMenuToggle.addEventListener('click', () => {
+            sidebarNav.classList.toggle('mobile-open');
+        });
+    }
+
     let socket = null;
 
     // ── ROLE & MODEL CHANGE NOTIFIERS ──
@@ -55,7 +71,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (backendSelector) {
         backendSelector.addEventListener('change', (e) => {
-            window.showToast('Model Switched', `Active model set to '${escapeHTML(e.target.options[e.target.selectedIndex].text)}'`, 'info');
+            const selectedText = e.target.options[e.target.selectedIndex].text;
+            const backendVal = e.target.value;
+            window.apiFetch(`${API_BASE}/api/backend/switch`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ backend: backendVal })
+            }).catch(() => {});
+            window.showToast('Model Switched', `Active model set to '${escapeHTML(selectedText)}'`, 'info');
         });
     }
 
@@ -95,7 +118,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ── VIEW SWITCHER ──
-    window.switchView = function(viewId) {
+    window.switchView = function (viewId) {
         navItems.forEach(item => {
             if (item.dataset.view === viewId) item.classList.add('active');
             else item.classList.remove('active');
@@ -104,6 +127,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (container.id === viewId) container.classList.add('active');
             else container.classList.remove('active');
         });
+
+        if (sidebarNav && sidebarNav.classList.contains('mobile-open')) {
+            sidebarNav.classList.remove('mobile-open');
+        }
 
         if (viewId === 'contactsView') window.fetchContacts();
         if (viewId === 'connectorsView') window.fetchConnectors();
@@ -118,28 +145,18 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // ── TOAST NOTIFICATIONS ──
-    window.showToast = function(title, message, type = 'info') {
+    window.showToast = function (title, message, type = 'info') {
         const container = document.getElementById('toastContainer');
         if (!container) return;
         const toast = document.createElement('div');
         toast.className = `toast-item ${type}`;
-        toast.style.cssText = `
-            background: var(--bg-card);
-            border: 1px solid var(--border-accent);
-            border-radius: var(--radius-md);
-            padding: 10px 14px;
-            color: #fff;
-            min-width: 240px;
-            box-shadow: var(--glow-cyan);
-            transition: all 0.3s ease;
-        `;
-        
+
         const titleEl = document.createElement('div');
         titleEl.style.cssText = "font-weight: bold; font-size: 0.82rem; color: var(--accent-cyan);";
         titleEl.textContent = title;
 
         const msgEl = document.createElement('div');
-        msgEl.style.cssText = "font-size: 0.75rem; color: var(--text-secondary);";
+        msgEl.style.cssText = "font-size: 0.75rem; color: var(--text-secondary); margin-top: 2px;";
         msgEl.textContent = message;
 
         toast.appendChild(titleEl);
@@ -148,21 +165,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
         setTimeout(() => {
             toast.style.opacity = '0';
-            toast.style.transform = 'translateX(50px)';
+            toast.style.transform = 'translateX(40px)';
             setTimeout(() => toast.remove(), 300);
-        }, 3500);
+        }, 4000);
     };
 
     // ── SECURE WEBSOCKET CONNECTION ENGINE (TICKET-BASED) ──
     let wsReconnectDelay = 1000;
     let wsReconnectTimer = null;
-    let wsConnected = false;
 
     function _setWsStatus(connected) {
-        wsConnected = connected;
         document.querySelectorAll('.ws-status-dot').forEach(el => {
             el.style.background = connected ? 'var(--accent-green, #00dfa2)' : '#ff4444';
-            el.title = connected ? 'Connected' : 'Disconnected — reconnecting...';
+            el.title = connected ? 'WebSocket Connected' : 'WebSocket Disconnected — Reconnecting...';
         });
     }
 
@@ -222,7 +237,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ── CONNECTOR HUB STATUS ──
     function fetchConnectorStatus() {
-        window.apiFetch(`${API_BASE}/api/connector/status`)
+        window.apiFetch(`${API_BASE}/api/connectors`)
             .then(r => r.json())
             .then(data => {
                 if (!data || !data.connectors) return;
@@ -236,10 +251,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!panel) return;
         panel.innerHTML = '';
         connectors.forEach(c => {
+            const isConfigured = c.configured || c.status === 'CONNECTED';
             const badge = document.createElement('div');
-            badge.className = `connector-badge ${c.configured ? 'active' : 'inactive'}`;
-            badge.style.cursor = 'pointer';
-            badge.title = `${c.name}: ${c.tools ? c.tools.length : 0} tools`;
+            badge.className = `connector-badge ${isConfigured ? 'active' : ''}`;
+            badge.title = `${c.name}: ${c.tools ? c.tools.length : 0} tools (${c.status || (isConfigured ? 'CONNECTED' : 'NOT_CONFIGURED')})`;
             badge.onclick = () => window.switchView('connectorsView');
 
             const iconSpan = document.createElement('span');
@@ -251,7 +266,7 @@ document.addEventListener('DOMContentLoaded', () => {
             nameSpan.textContent = String(c.name || '').split(' ')[0];
 
             const dotSpan = document.createElement('span');
-            dotSpan.className = `connector-dot ${c.configured ? 'green' : 'grey'}`;
+            dotSpan.className = `connector-dot ${isConfigured ? 'green' : 'grey'}`;
 
             badge.appendChild(iconSpan);
             badge.appendChild(nameSpan);
@@ -323,26 +338,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function updateWebTaskCard(taskId, name, status, progress, result) {
-        let taskList = document.getElementById('webAgentTaskList');
-        if (!taskList) {
-            const sidebar = document.querySelector('.left-panel .nav-section') || document.body;
-            taskList = document.createElement('div');
-            taskList.id = 'webAgentTaskList';
-            taskList.className = 'web-agent-task-panel';
-            const navTitle = document.createElement('div');
-            navTitle.className = 'nav-title';
-            navTitle.style.marginTop = '10px';
-            navTitle.textContent = '⚡ LIVE SUB-AGENTS';
-            taskList.appendChild(navTitle);
-            sidebar.appendChild(taskList);
-        }
+        const container = document.getElementById('subAgentCardsContainer');
+        if (!container) return;
+        const idleMsg = container.querySelector('.subagent-idle-msg');
+        if (idleMsg) idleMsg.remove();
+
         let card = document.getElementById(`task-card-${taskId}`);
         if (!card) {
             card = document.createElement('div');
             card.id = `task-card-${taskId}`;
             card.className = 'connector-card';
             card.style.padding = '8px 12px';
-            taskList.appendChild(card);
+            container.appendChild(card);
         }
         const st = (status || 'running').toUpperCase();
         const pct = Math.min(100, Math.max(0, Math.round((progress || 0) * 100)));
@@ -350,10 +357,10 @@ document.addEventListener('DOMContentLoaded', () => {
         card.innerHTML = `
             <div style="display: flex; justify-content: space-between; font-size: 0.72rem; font-family: var(--font-code);">
                 <span style="color: var(--accent-cyan);">🤖 ${escapeHTML(name || taskId)}</span>
-                <span style="color: var(--accent-green);">${escapeHTML(st)}</span>
+                <span style="color: ${st === 'COMPLETED' ? 'var(--accent-green)' : 'var(--accent-amber)'};">${escapeHTML(st)}</span>
             </div>
-            <div style="background: rgba(255,255,255,0.1); height: 4px; border-radius: 2px; margin-top: 4px; overflow: hidden;">
-                <div style="background: var(--accent-cyan); width: ${pct}%; height: 100%;"></div>
+            <div style="background: rgba(255,255,255,0.1); height: 4px; border-radius: 2px; margin-top: 6px; overflow: hidden;">
+                <div style="background: var(--accent-cyan); width: ${pct}%; height: 100%; transition: width 0.3s ease;"></div>
             </div>
         `;
     }
@@ -361,6 +368,10 @@ document.addEventListener('DOMContentLoaded', () => {
     function removeWebTaskCard(taskId) {
         const card = document.getElementById(`task-card-${taskId}`);
         if (card) card.remove();
+        const container = document.getElementById('subAgentCardsContainer');
+        if (container && container.children.length === 0) {
+            container.innerHTML = '<div class="subagent-idle-msg">No active background sub-agents</div>';
+        }
     }
 
     function transmitChat() {
@@ -371,25 +382,28 @@ document.addEventListener('DOMContentLoaded', () => {
         appendChatMessage('User', text, 'user');
         chatInput.value = '';
 
+        const activeBackend = backendSelector ? backendSelector.value : 'gemini';
+        const activeRole = roleSelector ? roleSelector.value : 'general';
+
         if (socket && socket.readyState === WebSocket.OPEN) {
             socket.send(JSON.stringify({
                 type: 'chat_prompt',
                 prompt: text,
-                backend: backendSelector ? backendSelector.value : 'gemini',
-                role: roleSelector ? roleSelector.value : 'general'
+                backend: activeBackend,
+                role: activeRole
             }));
         } else {
             window.apiFetch(`${API_BASE}/api/chat`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message: text })
+                body: JSON.stringify({ message: text, backend: activeBackend, role: activeRole })
             })
             .then(res => res.json())
             .then(data => {
-                appendChatMessage('JARVIS', data.response || data.result, 'system');
+                appendChatMessage('JARVIS', data.response || data.result || 'Done.', 'system');
             })
             .catch(err => {
-                appendChatMessage('JARVIS', `Error: ${err}`, 'system');
+                appendChatMessage('JARVIS', `Error communicating with JARVIS Core: ${err}`, 'system');
             });
         }
     }
@@ -405,7 +419,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!chatWindow) return;
         const bubble = document.createElement('div');
         bubble.className = `msg-bubble ${type}`;
-        
+
         const authorEl = document.createElement('div');
         authorEl.className = 'msg-author';
         authorEl.textContent = author;
@@ -420,7 +434,7 @@ document.addEventListener('DOMContentLoaded', () => {
         chatWindow.scrollTop = chatWindow.scrollHeight;
     }
 
-    window.copyCodeToClipboard = function(btn) {
+    window.copyCodeToClipboard = function (btn) {
         const codeEl = btn.parentElement ? btn.parentElement.querySelector('code') : null;
         if (codeEl) {
             navigator.clipboard.writeText(codeEl.innerText)
@@ -429,16 +443,40 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    // ── ROBUST MARKDOWN FORMATTING ──
     function formatMarkdown(text) {
         if (!text) return '';
-        let escaped = escapeHTML(text);
+        const codeBlocks = [];
 
-        escaped = escaped.replace(/```([\s\S]*?)```/g, (match, code) => {
-            return `<div class="code-block" style="position: relative;"><button class="btn btn-secondary" style="position: absolute; top: 6px; right: 6px; font-size: 0.65rem; padding: 2px 8px; background: rgba(255,255,255,0.1);" onclick="copyCodeToClipboard(this)">📋 Copy Code</button><pre><code>${code}</code></pre></div>`;
+        // 1. Extract code blocks safely
+        let formatted = text.replace(/```([a-zA-Z0-9_-]*)\n([\s\S]*?)```/g, (match, lang, code) => {
+            const placeholder = `__CODE_BLOCK_${codeBlocks.length}__`;
+            const escapedCode = escapeHTML(code);
+            codeBlocks.push(
+                `<div class="code-block"><button class="code-copy-btn" onclick="copyCodeToClipboard(this)">📋 Copy</button><pre><code class="${lang}">${escapedCode}</code></pre></div>`
+            );
+            return placeholder;
         });
-        escaped = escaped.replace(/`([^`]+)`/g, '<code>$1</code>');
-        escaped = escaped.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-        return escaped.replace(/\n/g, '<br>');
+
+        // 2. Escape non-code HTML
+        formatted = escapeHTML(formatted);
+
+        // 3. Format inline elements
+        formatted = formatted
+            .replace(/`([^`]+)`/g, '<code>$1</code>')
+            .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+            .replace(/^### (.*$)/gim, '<h3 style="color: var(--accent-cyan); margin: 8px 0 4px;">$1</h3>')
+            .replace(/^## (.*$)/gim, '<h2 style="color: var(--accent-cyan); margin: 10px 0 6px;">$1</h2>')
+            .replace(/^# (.*$)/gim, '<h1 style="color: var(--accent-cyan); margin: 12px 0 8px;">$1</h1>')
+            .replace(/\n/g, '<br>');
+
+        // 4. Restore code blocks without injected <br>
+        codeBlocks.forEach((block, idx) => {
+            formatted = formatted.replace(`__CODE_BLOCK_${idx}__`, block);
+        });
+
+        return formatted;
     }
 
     // ── COMMAND PALETTE (Ctrl+K) ──
@@ -447,7 +485,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const cmdPaletteInput = document.getElementById('cmdPaletteInput');
     const cmdPaletteResults = document.getElementById('cmdPaletteResults');
 
-    window.openCommandPalette = function() {
+    window.openCommandPalette = function () {
         if (cmdPaletteModal) {
             cmdPaletteModal.classList.add('active');
             if (cmdPaletteInput) {
@@ -458,7 +496,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    window.closeCommandPalette = function() {
+    window.closeCommandPalette = function () {
         if (cmdPaletteModal) cmdPaletteModal.classList.remove('active');
     };
 
@@ -469,7 +507,13 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             window.openCommandPalette();
         }
-        if (e.key === 'Escape') window.closeCommandPalette();
+        if (e.key === 'Escape') {
+            window.closeCommandPalette();
+            window.closeGoogleAuthModal();
+            window.closeContactImportModal();
+            window.closeAddContactModal();
+            window.closeConnectorConfigModal();
+        }
     });
 
     if (cmdPaletteInput) {
@@ -483,11 +527,12 @@ document.addEventListener('DOMContentLoaded', () => {
             { label: '🏠 Switch to Dashboard', action: () => window.switchView('dashboardView') },
             { label: '💬 Open Dialogue Workspace', action: () => window.switchView('chatView') },
             { label: '🎙️ Open Hands-Free Voice', action: () => window.switchView('voiceView') },
-            { label: '🔗 Open App Connectors', action: () => window.switchView('connectorsView') },
+            { label: '🔗 Open App Connectors Hub', action: () => window.switchView('connectorsView') },
             { label: '📱 Open Contacts Store', action: () => window.switchView('contactsView') },
             { label: '⚡ Open Skills Library', action: () => window.switchView('skillsView') },
-            { label: '🧠 Open Knowledge RAG', action: () => window.switchView('knowledgeView') },
-            { label: '🔑 Open Google Auth', action: () => window.openGoogleAuthModal() },
+            { label: '🧠 Open Knowledge Base & RAG', action: () => window.switchView('knowledgeView') },
+            { label: '🌌 Open 3D Knowledge Galaxy', action: () => window.open('/web/galaxy.html', '_blank') },
+            { label: '🔑 Open Google Auth Modal', action: () => window.openGoogleAuthModal() },
             { label: '👤 Add New Contact', action: () => window.openAddContactModal() }
         ];
 
@@ -506,7 +551,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ── CONNECTORS & SKILLS LOADERS ──
-    window.runConnectorAction = function(name, actionType = 'default') {
+    window.runConnectorAction = function (name, actionType = 'default') {
         if (actionType === 'browse_contacts') {
             window.switchView('contactsView');
             return;
@@ -547,7 +592,7 @@ document.addEventListener('DOMContentLoaded', () => {
         window.showToast('Connector Selected', `Populated command for ${name}. Complete parameters and press Enter.`, 'info');
     };
 
-    window.openConnectorConfigModal = function(name) {
+    window.openConnectorConfigModal = function (name) {
         const modal = document.getElementById('connectorConfigModal');
         const title = document.getElementById('configModalTitle');
         const inputHidden = document.getElementById('configConnectorName');
@@ -558,11 +603,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (modal) modal.classList.add('active');
     };
 
-    window.closeConnectorConfigModal = function() {
+    window.closeConnectorConfigModal = function () {
         document.getElementById('connectorConfigModal')?.classList.remove('active');
     };
 
-    window.submitConnectorConfig = function() {
+    window.submitConnectorConfig = function () {
         const name = (document.getElementById('configConnectorName') || {}).value || '';
         const key = (document.getElementById('configApiKeyInput') || {}).value || '';
         if (!key.trim()) {
@@ -583,7 +628,7 @@ document.addEventListener('DOMContentLoaded', () => {
         .catch(err => window.showToast('Error', `Failed saving key: ${err}`, 'error'));
     };
 
-    window.fetchConnectors = function() {
+    window.fetchConnectors = function () {
         window.apiFetch(`${API_BASE}/api/connectors`)
             .then(res => res.json())
             .then(data => {
@@ -591,8 +636,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!grid || !data.connectors) return;
                 grid.innerHTML = '';
                 data.connectors.forEach(c => {
-                    const st = (c.status || 'NOT_CONFIGURED').toUpperCase();
-                    const isConnected = st === 'CONNECTED';
+                    const isConnected = c.configured || c.status === 'CONNECTED';
+                    const st = isConnected ? 'CONNECTED' : 'NOT_CONFIGURED';
                     const card = document.createElement('div');
                     card.className = 'connector-card';
 
@@ -625,6 +670,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     actBtn.onclick = () => window.runConnectorAction(c.name);
                     actDiv.appendChild(actBtn);
 
+                    const cfgBtn = document.createElement('button');
+                    cfgBtn.className = 'btn btn-secondary';
+                    cfgBtn.textContent = '⚙ Configure';
+                    cfgBtn.onclick = () => window.openConnectorConfigModal(c.name);
+                    actDiv.appendChild(cfgBtn);
+
                     card.appendChild(topRow);
                     card.appendChild(titleH4);
                     card.appendChild(descP);
@@ -636,7 +687,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     let allSkills = [];
-    window.fetchSkills = function(query = '') {
+    window.fetchSkills = function (query = '') {
         window.apiFetch(`${API_BASE}/api/skills`)
             .then(res => res.json())
             .then(skills => {
@@ -694,7 +745,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    window.runSkill = function(skillName) {
+    window.runSkill = function (skillName) {
         window.switchView('chatView');
         if (chatInput) {
             chatInput.value = `/${skillName} `;
@@ -705,11 +756,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const skillSearchInput = document.getElementById('skillSearchInput');
     if (skillSearchInput) {
-        skillSearchInput.addEventListener('input', (e) => renderSkills(allSkills, e.target.value.trim()));
+        skillSearchInput.addEventListener('input', debounce((e) => renderSkills(allSkills, e.target.value.trim()), 200));
     }
 
     // ── CONTACTS HUB ──
-    window.fetchContacts = function(query = '') {
+    window.fetchContacts = function (query = '') {
         const url = query ? `${API_BASE}/api/contacts?query=${encodeURIComponent(query)}` : `${API_BASE}/api/contacts`;
         window.apiFetch(url)
             .then(res => res.json())
@@ -745,7 +796,7 @@ document.addEventListener('DOMContentLoaded', () => {
             nameEl.textContent = c.name;
             const subEl = document.createElement('div');
             subEl.style.cssText = "font-size: 11px; color: var(--text-muted);";
-            subEl.textContent = c.phone_number || c.email || '';
+            subEl.textContent = c.phone_number || c.email || (c.aliases ? c.aliases.join(', ') : '');
 
             info.appendChild(nameEl);
             info.appendChild(subEl);
@@ -758,19 +809,43 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const contactSearchInput = document.getElementById('contactSearchInput');
     if (contactSearchInput) {
-        contactSearchInput.addEventListener('input', (e) => window.fetchContacts(e.target.value.trim()));
+        contactSearchInput.addEventListener('input', debounce((e) => window.fetchContacts(e.target.value.trim()), 200));
     }
 
     // ── FILE IMPORT & RAG MEMORY ──
-    window.triggerFileImport = function(type = 'universal') {
-        const input = document.getElementById('fileImportInput');
-        if (input) {
-            input.value = '';
-            input.click();
+    const fileImportInput = document.getElementById('fileImportInput');
+    const knowledgeDropZone = document.getElementById('knowledgeDropZone');
+
+    window.triggerFileImport = function () {
+        if (fileImportInput) {
+            fileImportInput.value = '';
+            fileImportInput.click();
         }
     };
 
-    window.uploadKnowledgeFiles = function(files) {
+    if (knowledgeDropZone) {
+        knowledgeDropZone.addEventListener('click', window.triggerFileImport);
+        knowledgeDropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            knowledgeDropZone.classList.add('dragover');
+        });
+        knowledgeDropZone.addEventListener('dragleave', () => knowledgeDropZone.classList.remove('dragover'));
+        knowledgeDropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            knowledgeDropZone.classList.remove('dragover');
+            if (e.dataTransfer && e.dataTransfer.files) {
+                window.uploadKnowledgeFiles(e.dataTransfer.files);
+            }
+        });
+    }
+
+    if (fileImportInput) {
+        fileImportInput.addEventListener('change', (e) => {
+            if (e.target.files) window.uploadKnowledgeFiles(e.target.files);
+        });
+    }
+
+    window.uploadKnowledgeFiles = function (files) {
         if (!files || !files.length) return;
         for (let i = 0; i < files.length; i++) {
             const file = files[i];
@@ -779,12 +854,18 @@ document.addEventListener('DOMContentLoaded', () => {
             window.showToast('Uploading', `Ingesting '${file.name}' into RAG memory...`, 'info');
             window.apiFetch(`${API_BASE}/api/import/file`, { method: 'POST', body: formData })
                 .then(res => res.json())
-                .then(data => window.showToast('Success', data.message || 'File ingested.', 'success'))
+                .then(data => window.showToast('Success', data.message || `File '${file.name}' ingested.`, 'success'))
                 .catch(err => window.showToast('Error', `Failed uploading ${file.name}`, 'error'));
         }
     };
 
-    // ── MODAL HELPERS ──
+    // ── MODAL HELPERS & SECURE CREDENTIAL DISPATCH ──
+    const openImportBtn = document.getElementById('openImportContactBtn');
+    const openAddBtn = document.getElementById('openAddContactBtn');
+
+    if (openImportBtn) openImportBtn.addEventListener('click', () => window.openContactImportModal());
+    if (openAddBtn) openAddBtn.addEventListener('click', () => window.openAddContactModal());
+
     window.openContactImportModal = () => document.getElementById('contactImportModal')?.classList.add('active');
     window.closeContactImportModal = () => document.getElementById('contactImportModal')?.classList.remove('active');
     window.openGoogleAuthModal = () => document.getElementById('googleAuthModal')?.classList.add('active');
@@ -792,21 +873,22 @@ document.addEventListener('DOMContentLoaded', () => {
     window.openAddContactModal = () => document.getElementById('addContactModal')?.classList.add('active');
     window.closeAddContactModal = () => document.getElementById('addContactModal')?.classList.remove('active');
 
-    window.toggleGoogleAuthMode = function() {
-        const sel = document.getElementById('googleAuthMode');
-        const appGroup = document.getElementById('googleAppPasswordGroup');
-        const btn = document.getElementById('submitGoogleAuthBtn');
-        if (!sel) return;
-        if (sel.value === 'credentials') {
-            if (appGroup) appGroup.style.display = 'block';
-            if (btn) btn.textContent = 'SAVE CREDENTIALS';
-        } else {
-            if (appGroup) appGroup.style.display = 'none';
-            if (btn) btn.textContent = 'INITIATE GOOGLE LOGIN';
-        }
-    };
+    const googleAuthModeSel = document.getElementById('googleAuthMode');
+    if (googleAuthModeSel) {
+        googleAuthModeSel.addEventListener('change', () => {
+            const appGroup = document.getElementById('googleAppPasswordGroup');
+            const btn = document.getElementById('submitGoogleAuthBtn');
+            if (googleAuthModeSel.value === 'credentials') {
+                if (appGroup) appGroup.style.display = 'block';
+                if (btn) btn.textContent = 'SAVE CREDENTIALS';
+            } else {
+                if (appGroup) appGroup.style.display = 'none';
+                if (btn) btn.textContent = 'INITIATE GOOGLE LOGIN';
+            }
+        });
+    }
 
-    window.submitGoogleAuth = function() {
+    window.submitGoogleAuth = function () {
         const sel = document.getElementById('googleAuthMode');
         const mode = sel ? sel.value : 'credentials';
         if (mode === 'credentials') {
@@ -816,21 +898,33 @@ document.addEventListener('DOMContentLoaded', () => {
                 window.showToast('Fields Required', 'Please provide both Gmail address and App Password.', 'error');
                 return;
             }
-            if (chatInput) {
-                chatInput.value = `gmail_login mode='credentials' email='${email}' app_password='${pwd}'`;
-                transmitChat();
-            }
+            window.apiFetch(`${API_BASE}/api/connector/config`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    connector: 'Gmail / Google Account',
+                    api_key: pwd.trim(),
+                    settings: { email: email.trim(), mode: 'credentials' }
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                window.showToast('Google Auth Saved', data.message || 'Credentials securely stored.', 'success');
+                window.closeGoogleAuthModal();
+                fetchConnectorStatus();
+            })
+            .catch(err => window.showToast('Auth Error', `Failed storing credentials: ${err}`, 'error'));
         } else {
+            window.switchView('chatView');
             if (chatInput) {
                 chatInput.value = `gmail_login mode='browser'`;
                 transmitChat();
             }
+            window.closeGoogleAuthModal();
         }
-        window.closeGoogleAuthModal();
-        window.showToast('Google Auth', 'Google login request sent to JARVIS.', 'info');
     };
 
-    window.submitNewContactFromForm = function() {
+    window.submitNewContactFromForm = function () {
         const name = (document.getElementById('addContactName') || {}).value || '';
         const phone = (document.getElementById('addContactPhone') || {}).value || '';
         const email = (document.getElementById('addContactEmail') || {}).value || '';
@@ -853,7 +947,7 @@ document.addEventListener('DOMContentLoaded', () => {
         .catch(() => window.showToast('Error', 'Failed saving contact', 'error'));
     };
 
-    window.submitContactImportByPath = function() {
+    window.submitContactImportByPath = function () {
         const pathInput = document.getElementById('contactFilePathInput');
         if (!pathInput || !pathInput.value.trim()) return;
         const formData = new FormData();
@@ -868,12 +962,94 @@ document.addEventListener('DOMContentLoaded', () => {
             .catch(err => window.showToast('Import Error', `${err}`, 'error'));
     };
 
-    // ── VOICE AUDIO CANVAS ──
+    // ── REAL WEB SPEECH STT & AUDIO VISUALIZER ──
+    let isVoiceListening = false;
+    let recognition = null;
     let voiceAnimFrameId = null;
-    window.triggerVoiceDictation = function() {
+
+    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRec) {
+        recognition = new SpeechRec();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = 'en-US';
+
+        recognition.onresult = (event) => {
+            let interimTranscript = '';
+            let finalTranscript = '';
+
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                if (event.results[i].isFinal) {
+                    finalTranscript += event.results[i][0].transcript;
+                } else {
+                    interimTranscript += event.results[i][0].transcript;
+                }
+            }
+
+            const box = document.getElementById('liveVoiceTranscript');
+            if (box) {
+                box.textContent = `"${finalTranscript || interimTranscript || 'Listening...'}"`;
+            }
+
+            if (finalTranscript.trim()) {
+                window.switchView('chatView');
+                if (chatInput) {
+                    chatInput.value = finalTranscript.trim();
+                    transmitChat();
+                }
+            }
+        };
+
+        recognition.onerror = (event) => {
+            console.warn('Speech recognition error:', event.error);
+            const badge = document.getElementById('voiceStatusBadge');
+            if (badge) badge.textContent = `STATUS: ERROR (${event.error})`;
+        };
+
+        recognition.onend = () => {
+            if (isVoiceListening) {
+                try { recognition.start(); } catch (e) {}
+            }
+        };
+    }
+
+    const toggleVoiceBtn = document.getElementById('toggleVoiceBtn');
+    if (toggleVoiceBtn) {
+        toggleVoiceBtn.addEventListener('click', toggleVoiceDictation);
+    }
+
+    function toggleVoiceDictation() {
         window.switchView('voiceView');
-        initVoiceAudioVisualizer();
-    };
+        const badge = document.getElementById('voiceStatusBadge');
+        const transcriptBox = document.getElementById('liveVoiceTranscript');
+
+        if (!isVoiceListening) {
+            isVoiceListening = true;
+            if (badge) {
+                badge.textContent = 'STATUS: LISTENING (ACTIVE)';
+                badge.style.borderColor = 'var(--accent-green)';
+                badge.style.color = 'var(--accent-green)';
+            }
+            if (transcriptBox) transcriptBox.textContent = '"Listening for speech..."';
+            if (recognition) {
+                try { recognition.start(); } catch (e) {}
+            }
+            initVoiceAudioVisualizer();
+            window.showToast('Voice Active', 'Listening for speech input...', 'info');
+        } else {
+            isVoiceListening = false;
+            if (badge) {
+                badge.textContent = 'STATUS: IDLE';
+                badge.style.borderColor = 'var(--border-accent)';
+                badge.style.color = 'var(--accent-cyan)';
+            }
+            if (recognition) {
+                try { recognition.stop(); } catch (e) {}
+            }
+            if (voiceAnimFrameId !== null) cancelAnimationFrame(voiceAnimFrameId);
+            window.showToast('Voice Idle', 'Microphone paused.', 'info');
+        }
+    }
 
     function initVoiceAudioVisualizer() {
         const cvs = document.getElementById('voiceCanvas');
@@ -887,19 +1063,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
         function drawWave() {
             ctx.clearRect(0, 0, width, height);
-            phase += 0.05;
+            phase += isVoiceListening ? 0.08 : 0.02;
+            const amplitude = isVoiceListening ? 32 : 8;
+
             ctx.beginPath();
             ctx.lineWidth = 3;
-            ctx.strokeStyle = '#00f2fe';
+            ctx.strokeStyle = isVoiceListening ? '#00dfa2' : '#00f2fe';
             for (let x = 0; x < width; x++) {
-                const y = height / 2 + Math.sin(x * 0.02 + phase) * 25 * Math.sin(x * 0.005);
+                const y = height / 2 + Math.sin(x * 0.025 + phase) * amplitude * Math.sin(x * 0.006);
                 if (x === 0) ctx.moveTo(x, y);
                 else ctx.lineTo(x, y);
             }
             ctx.stroke();
             voiceAnimFrameId = requestAnimationFrame(drawWave);
         }
-        voiceAnimFrameId = requestAnimationFrame(drawWave);
+        drawWave();
     }
 
     // ── DYNAMIC PARTICLE CANVAS ──
@@ -916,12 +1094,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         const particles = [];
-        for (let i = 0; i < 40; i++) {
+        for (let i = 0; i < 35; i++) {
             particles.push({
                 x: Math.random() * width,
                 y: Math.random() * height,
-                vx: (Math.random() - 0.5) * 0.4,
-                vy: (Math.random() - 0.5) * 0.4,
+                vx: (Math.random() - 0.5) * 0.35,
+                vy: (Math.random() - 0.5) * 0.35,
                 radius: Math.random() * 2 + 1,
             });
         }
@@ -937,7 +1115,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 ctx.beginPath();
                 ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-                ctx.fillStyle = 'rgba(0, 242, 254, 0.4)';
+                ctx.fillStyle = 'rgba(0, 242, 254, 0.35)';
                 ctx.fill();
             }
             requestAnimationFrame(render);
@@ -945,6 +1123,14 @@ document.addEventListener('DOMContentLoaded', () => {
         requestAnimationFrame(render);
     }
 
+    // ── PWA SERVICE WORKER REGISTRATION ──
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/web/sw.js')
+            .then(() => console.log('[PWA] Service Worker registered.'))
+            .catch(err => console.debug('[PWA] Service worker registration error:', err));
+    }
+
+    // Initial Engine Bootstrap
     window.fetchConnectors();
     window.fetchSkills();
     initParticleCanvas();

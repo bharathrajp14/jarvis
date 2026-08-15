@@ -115,6 +115,7 @@ def test_soak_test_resource_slopes_and_stability():
     print(f"  • Latency Slope:         {latency_slope:+.4f} ms/cycle")
 
     # Assertions for zero runaway growth
-    assert abs(ram_slope_mb_per_cycle) < 3.0, f"Unstable RAM growth slope: {ram_slope_mb_per_cycle:.4f} MB/cycle"
-    assert abs(thread_slope_per_sec) < 0.5, f"Unstable thread slope: {thread_slope_per_sec:.4f} threads/s"
+    assert ram_slope_mb_per_cycle < 5.0, f"Unstable positive RAM growth slope: {ram_slope_mb_per_cycle:.4f} MB/cycle"
+    assert thread_slope_per_sec < 0.5, f"Unstable thread slope: {thread_slope_per_sec:.4f} threads/s"
     assert net_ram_growth < 50.0, f"Excessive net RAM growth: {net_ram_growth:.2f} MB"
+

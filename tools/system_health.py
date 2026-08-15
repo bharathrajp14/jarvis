@@ -42,10 +42,22 @@ def get_system_health() -> Dict[str, Any]:
     return health
 
 
-def system_health_action(args: Dict[str, Any]) -> str:
+from tools.registry import register_tool
+
+
+@register_tool(
+    name="system_health",
+    description="Retrieve system health metrics including CPU load, RAM usage, storage, and battery state.",
+    parameters={
+        "type": "object",
+        "properties": {}
+    }
+)
+def system_health_action(args: Dict[str, Any] = None) -> str:
     """Main tool handler for system health monitoring."""
     info = get_system_health()
     lines = ["💻 System Health & Performance Diagnostics:"]
     for k, v in info.items():
         lines.append(f"  • {k}: {v}")
     return "\n".join(lines)
+

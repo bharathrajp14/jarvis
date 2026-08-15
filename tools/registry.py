@@ -366,6 +366,23 @@ def execute_tool(name: str, args: dict) -> str:
             # Artifacts
             "artifact_export": "tools.export_tools",
             "artifact_list": "tools.export_tools",
+            # System & Health & Inspection
+            "system_health": "tools.system_health",
+            "web_extractor": "tools.web_extractor",
+            "semantic_file_search": "tools.file_search_semantic",
+            "file_search_semantic": "tools.file_search_semantic",
+            "pdf_tool": "tools.pdf_tools",
+            "window_manager": "tools.window_manager",
+            "system_optimizer": "tools.system_tools",
+            "system_cleanup": "tools.system_tools",
+            "port_scan": "tools.redteam_tools",
+            "dns_enum": "tools.recon_tools",
+            "headers_audit": "tools.recon_tools",
+            "whois_lookup": "tools.recon_tools",
+            "nmap_scan": "tools.pentest_tools",
+            "generate_report": "tools.reporting_tools",
+            "run_skill": "tools.skill_runner",
+            "list_skills": "tools.skill_runner",
         }
 
         if name in tool_to_module:

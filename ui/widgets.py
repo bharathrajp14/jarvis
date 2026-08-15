@@ -137,11 +137,16 @@ class _SysMetrics:
         # Windows: wmi module (pure Python COM, zero subprocess)
         if _OS == "Windows":
             try:
-                import wmi  # type: ignore
-                w = wmi.WMI(namespace="root/wmi")
-                tz = w.MSAcpi_ThermalZoneTemperature()
-                if tz:
-                    return (tz[0].CurrentTemperature / 10.0) - 273.15
+                import pythoncom  # type: ignore
+                pythoncom.CoInitialize()
+                try:
+                    import wmi  # type: ignore
+                    w = wmi.WMI(namespace="root/wmi")
+                    tz = w.MSAcpi_ThermalZoneTemperature()
+                    if tz:
+                        return (tz[0].CurrentTemperature / 10.0) - 273.15
+                finally:
+                    pythoncom.CoUninitialize()
             except Exception:
                 pass
 
@@ -400,6 +405,9 @@ class HudCanvas(QWidget):
         elif self.state == "LISTENING":
             sym = "●" if self._blink else "○"
             txt, col = f"{sym}  LISTENING",  qcol(C.GREEN)
+        elif self.state == "ERROR":
+            sym = "✖" if self._blink else "✕"
+            txt, col = f"{sym}  ERROR",      qcol(C.RED)
         else:
             sym = "●" if self._blink else "○"
             txt, col = f"{sym}  {self.state}", qcol(C.PRI)
@@ -534,17 +542,21 @@ class LogWidget(QTextEdit):
         self._pos    = 0
         tl = self._text.lower()
         _ai_pfx = f"{self._ai_name_lc}:"
-        if   tl.startswith("you:"):                              self._tag = "you"
-        elif tl.startswith(_ai_pfx) or tl.startswith("jarvis:"): self._tag = "ai"
-        elif tl.startswith("file:"):                             self._tag = "file"
-        elif "err" in tl:                                        self._tag = "err"
-        else:                                                    self._tag = "sys"
-        self._tmr.start(6)
+        if   tl.startswith("you:"):                                                    self._tag = "you"
+        elif tl.startswith(_ai_pfx) or tl.startswith("jarvis:") or tl.startswith("br:"): self._tag = "ai"
+        elif tl.startswith("file:"):                                                   self._tag = "file"
+        elif tl.startswith("err:") or tl.startswith("error:") or "[error]" in tl or "[err]" in tl: self._tag = "err"
+        else:                                                                          self._tag = "sys"
+        self._tmr.start(4)
 
     def _step(self):
         try:
             if self._pos < len(self._text):
-                ch  = self._text[self._pos]
+                # Adaptive typing: type faster if queue is backed up or string is long
+                chunk_len = 1
+                if len(self._queue) > 1 or len(self._text) > 400:
+                    chunk_len = max(3, len(self._text) // 80)
+                chunk = self._text[self._pos:self._pos + chunk_len]
                 cur = self.textCursor()
                 fmt = cur.charFormat()
                 col = {
@@ -556,10 +568,10 @@ class LogWidget(QTextEdit):
                 }.get(self._tag, qcol(C.TEXT))
                 fmt.setForeground(QBrush(col))
                 cur.movePosition(cur.MoveOperation.End)
-                cur.insertText(ch, fmt)
+                cur.insertText(chunk, fmt)
                 self.setTextCursor(cur)
                 self.ensureCursorVisible()
-                self._pos += 1
+                self._pos += len(chunk)
             else:
                 self._tmr.stop()
                 cur = self.textCursor()
@@ -567,7 +579,8 @@ class LogWidget(QTextEdit):
                 cur.insertText("\n")
                 self.setTextCursor(cur)
                 self.ensureCursorVisible()
-                QTimer.singleShot(20, self._next)
+                delay = 5 if self._queue else 20
+                QTimer.singleShot(delay, self._next)
         except Exception:
             pass
 
@@ -623,11 +636,12 @@ class SubAgentTaskWidget(QWidget):
         self.pbar.setValue(int(progress * 100))
         layout.addWidget(self.pbar)
 
-        if result:
-            self.result_label = QLabel(result[:60])
-            self.result_label.setFont(QFont("Segoe UI", 8))
-            self.result_label.setStyleSheet(f"color: {C.TEXT_DIM}; border: none;")
-            layout.addWidget(self.result_label)
+        self.result_label = QLabel(result[:60] if result else "")
+        self.result_label.setFont(QFont("Segoe UI", 8))
+        self.result_label.setStyleSheet(f"color: {C.TEXT_DIM}; border: none;")
+        if not result:
+            self.result_label.hide()
+        layout.addWidget(self.result_label)
 
     def _update_badge_style(self, status: str):
         st = status.lower()
@@ -654,11 +668,14 @@ class SubAgentTaskWidget(QWidget):
             padding: 1px 4px;
         """)
 
-    def update_task(self, name: str, status: str, progress: float, result: str):
+    def update_task(self, name: str, status: str, progress: float, result: str = ""):
         self.title_label.setText(f"🤖 {name[:30]}")
         self.status_badge.setText(status.upper())
         self._update_badge_style(status)
         self.pbar.setValue(int(progress * 100))
+        if result:
+            self.result_label.setText(result[:60])
+            self.result_label.show()
 
 
 class SubAgentTaskPanel(QWidget):
@@ -802,7 +819,9 @@ class FileDropZone(QWidget):
         return self._current_file
 
     def clear_file(self):
-        self._current_file = None; self._canvas.update()
+        self._current_file = None
+        self._canvas.update()
+        self.file_selected.emit("")
 
     def _browse(self):
         path, _ = QFileDialog.getOpenFileName(

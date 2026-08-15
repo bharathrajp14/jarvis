@@ -96,7 +96,7 @@ except ImportError:
     except ImportError:
         print(
             "[ui_mark] ❌ Neither PySide6 nor PyQt6 is installed.\n"
-            "         Run: py -3.14 -m pip install PySide6",
+            "         Run: py -3.12 -m pip install PySide6",
             file=sys.stderr,
         )
 
@@ -215,6 +215,47 @@ def _start_backend_server() -> threading.Thread:
 # ─────────────────────────────────────────────────────────────────────────────
 # 9.  Background voice-assistant thread
 # ─────────────────────────────────────────────────────────────────────────────
+def _generate_remote_credentials() -> tuple[str, str, str, str] | None:
+    """Generate local dashboard connection URLs and access token for phone pairing."""
+    import secrets
+    port = _server_port()
+
+    # Determine local LAN IP
+    local_ip = "127.0.0.1"
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            s.connect(("8.8.8.8", 80))
+            local_ip = s.getsockname()[0]
+    except Exception:
+        pass
+
+    key = os.environ.get("JARVIS_SERVER_API_KEY")
+    api_file = _ROOT / "config" / "api_keys.json"
+    if not key and api_file.exists():
+        try:
+            cfg = json.loads(api_file.read_text(encoding="utf-8"))
+            key = cfg.get("server_api_key")
+        except Exception:
+            pass
+
+    if not key:
+        key = secrets.token_hex(4).upper()
+        try:
+            cfg = {}
+            if api_file.exists():
+                cfg = json.loads(api_file.read_text(encoding="utf-8"))
+            cfg["server_api_key"] = key
+            api_file.parent.mkdir(parents=True, exist_ok=True)
+            api_file.write_text(json.dumps(cfg, indent=4), encoding="utf-8")
+        except Exception:
+            pass
+
+    base_url = f"http://{local_ip}:{port}"
+    auto_url = f"{base_url}/?token={key}"
+    manual_url = base_url
+    return (base_url, key, auto_url, manual_url)
+
+
 def _start_voice_worker(ui: JarvisUI | HeadlessJarvisUI) -> threading.Thread:
     """
     Launch BRVoiceAssistant in a daemon thread using a fresh asyncio event loop.
@@ -228,6 +269,7 @@ def _start_voice_worker(ui: JarvisUI | HeadlessJarvisUI) -> threading.Thread:
         try:
             from voice.assistant import BRVoiceAssistant
             assistant = BRVoiceAssistant(ui)
+            ui.on_interrupt = assistant.stop_speech
             asyncio.run(assistant.run())
         except ImportError as e:
             print(f"[Voice] Import error — voice engine unavailable: {e}")
@@ -308,6 +350,7 @@ def run_voice_ui() -> None:
     _srv_thread = _start_backend_server()
 
     # ── Voice engine ──────────────────────────────────────────────────────────
+    ui.on_remote_clicked = _generate_remote_credentials
     _voice_thread = _start_voice_worker(ui)
 
     # ── Register cleanup ──────────────────────────────────────────────────────

@@ -55,7 +55,19 @@ def semantic_file_search(query: str, root_dir: Optional[Path] = None, max_result
         "required": ["query"]
     }
 )
+@register_tool(
+    name="file_search_semantic",
+    description="Search workspace files by natural language keywords, filename patterns, or extensions.",
+    parameters={
+        "type": "object",
+        "properties": {
+            "query": {"type": "string", "description": "Search query or file pattern"}
+        },
+        "required": ["query"]
+    }
+)
 def file_search_semantic_action(args: Dict[str, Any]) -> str:
+
     """Main tool handler for semantic file search."""
     if isinstance(args, str):
         query = args.strip()

@@ -165,9 +165,10 @@ class BRVoiceAssistant:
         if barge_in_enabled:
             self._start_persistent_barge_in()
 
-        # Bind manual text command submission from UI if available
+        # Bind manual text command submission and interrupt from UI if available
         if self.ui:
             self.ui.on_text_command = self._on_text_command
+            self.ui.on_interrupt = self.stop_speech
 
         # Start Global Hotkeys System
         try:
@@ -298,11 +299,18 @@ class BRVoiceAssistant:
 
 
     def stop_speech(self):
-        """Halt active neural TTS speech playback immediately for barge-in interruption."""
+        """Halt active neural TTS speech playback immediately for barge-in interruption or user cancel."""
         if hasattr(self, "tts") and self.tts:
             self.tts.stop()
+        if hasattr(self, "_current_task") and self._current_task and not self._current_task.done():
+            try:
+                self._current_task.cancel()
+            except Exception:
+                pass
         if self.ui:
             self.ui.speaking = False
+            if not getattr(self.ui, "muted", False):
+                self.ui.set_state("LISTENING")
 
     def _play_listening_chime(self):
         """Play ascending dual-tone acoustic activation chime when wake word is recognized."""
@@ -883,6 +891,6 @@ def get_voice_assistant(ui_instance: Optional[Any] = None) -> BRVoiceAssistant:
         return _global_voice_assistant
     with _voice_assistant_lock:
         if _global_voice_assistant is None:
-            _global_voice_assistant = BRVoiceAssistant(ui_instance=ui_instance)
+            _global_voice_assistant = BRVoiceAssistant(ui=ui_instance)
     return _global_voice_assistant
 

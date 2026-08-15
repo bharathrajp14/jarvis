@@ -24,14 +24,17 @@ else:
 
 # ── Qt backend detection (PySide6 preferred, PyQt6 fallback) ─────────────────
 _USE_PYSIDE6 = False
+_HAS_QT = False
 try:
     import PySide6  # type: ignore[import-not-found]  # noqa: F401
     _USE_PYSIDE6 = True
+    _HAS_QT = True
 except ImportError:
     try:
         import PyQt6  # type: ignore[import-not-found]  # noqa: F401
+        _HAS_QT = True
     except ImportError:
-        pass  # Headless mode — GUI not available
+        _HAS_QT = False  # Headless mode — GUI not available
 
 # ── Qt Imports ────────────────────────────────────────────────────────────────
 if _USE_PYSIDE6:
@@ -49,7 +52,7 @@ if _USE_PYSIDE6:
         QMainWindow, QPushButton, QScrollArea, QSizePolicy, QSplitter,
         QStackedWidget, QTextEdit, QVBoxLayout, QWidget, QProgressBar,
     )
-else:
+elif _HAS_QT:
     from PyQt6.QtCore import (  # type: ignore[import-not-found]
         QEasingCurve, QMimeData, QObject, QPointF, QRectF, QSize, Qt,
         QTimer, QUrl, pyqtSignal,
@@ -64,6 +67,23 @@ else:
         QMainWindow, QPushButton, QScrollArea, QSizePolicy, QSplitter,
         QStackedWidget, QTextEdit, QVBoxLayout, QWidget, QProgressBar,
     )
+else:
+    # Minimal dummy stubs for headless mode without Qt installed
+    class _DummyQt:
+        def __getattr__(self, name: str):
+            return self
+        def __call__(self, *args, **kwargs):
+            return self
+
+    _dummy = _DummyQt()
+    QEasingCurve = QMimeData = QObject = QPointF = QRectF = QSize = Qt = _dummy
+    QTimer = QUrl = pyqtSignal = _dummy
+    QBrush = QColor = QConicalGradient = QDragEnterEvent = QDropEvent = QFont = _dummy
+    QFontDatabase = QKeySequence = QLinearGradient = QPainter = QPainterPath = _dummy
+    QPen = QPixmap = QRadialGradient = QShortcut = _dummy
+    QApplication = QFileDialog = QFrame = QHBoxLayout = QLabel = QLineEdit = _dummy
+    QMainWindow = QPushButton = QScrollArea = QSizePolicy = QSplitter = _dummy
+    QStackedWidget = QTextEdit = QVBoxLayout = QWidget = QProgressBar = _dummy
 
 __all__ = [
     "_USE_PYSIDE6", "_WIN_HIDE",

@@ -26,19 +26,20 @@
         <!-- ── OS HEADER BAR ── -->
         <header class="os-header">
             <div class="brand-area">
+                <button class="mobile-menu-toggle" id="mobileMenuToggle" title="Toggle Navigation Sidebar">☰</button>
                 <div class="brand-logo">
                     <span class="status-pulse"></span>
                     <span class="brand-title">BRJARVIS</span>
                 </div>
                 <span class="os-badge">AIOS v38.5</span>
                 <span class="guardian-badge" id="guardianBadge">GUARDIAN ACTIVE 🛡️</span>
-                <a href="/web/galaxy.html" target="_blank" class="galaxy-btn">🌌 3D GALAXY</a>
+                <a href="/web/galaxy.html" target="_blank" class="galaxy-btn" rel="noopener">🌌 3D GALAXY</a>
             </div>
 
             <div class="header-controls">
                 <!-- Role Persona Switcher -->
                 <div class="ctrl-group">
-                    <span class="ctrl-lbl">ROLE</span>
+                    <label for="roleSelector" class="ctrl-lbl">ROLE</label>
                     <select id="roleSelector" class="os-select" title="Switch Persona Role">
                         <option value="general">⚡ GENERAL</option>
                         <option value="coder">💻 CODER</option>
@@ -51,7 +52,7 @@
 
                 <!-- Backend Model Switcher -->
                 <div class="ctrl-group">
-                    <span class="ctrl-lbl">MODEL</span>
+                    <label for="backendSelector" class="ctrl-lbl">MODEL</label>
                     <select id="backendSelector" class="os-select" title="Active AI Model Backend">
                         <option value="gemini">Gemini 3.5 Flash</option>
                         <option value="claude">Claude 3.5 Sonnet</option>
@@ -68,13 +69,13 @@
 
                 <!-- System Telemetry & Time -->
                 <div class="sys-metrics">
-                    <div class="metric-item">
+                    <div class="metric-item" title="Network Roundtrip Latency">
                         <span class="lbl">LATENCY</span>
                         <span class="val green" id="network-latency">12ms</span>
                     </div>
-                    <div class="metric-item" title="WebSocket connection status">
+                    <div class="metric-item" title="WebSocket Connection Status">
                         <span class="lbl">WS</span>
-                        <span class="ws-status-dot" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#ff4444;vertical-align:middle;"></span>
+                        <span class="ws-status-dot"></span>
                     </div>
                     <div class="system-time" id="system-time">00:00:00</div>
                 </div>
@@ -84,7 +85,7 @@
         <!-- ── OS MAIN 3-PANEL LAYOUT ── -->
         <main class="os-body">
             <!-- LEFT PANEL: Navigation Sidebar -->
-            <aside class="left-panel">
+            <aside class="left-panel" id="sidebarNav">
                 <div class="nav-section">
                     <div class="nav-title">CORE INTERFACES</div>
                     <nav class="nav-menu">
@@ -110,6 +111,13 @@
                             <span class="icon">🧠</span> Knowledge RAG
                         </button>
                     </nav>
+                </div>
+                <!-- Sub-Agent Task Panel Container -->
+                <div id="webAgentTaskList" class="web-agent-task-panel">
+                    <div class="nav-title" style="margin-top: 10px;">⚡ LIVE SUB-AGENTS</div>
+                    <div id="subAgentCardsContainer" class="subagent-cards-container">
+                        <div class="subagent-idle-msg">No active background sub-agents</div>
+                    </div>
                 </div>
             </aside>
 
@@ -161,6 +169,7 @@
                     </div>
 
                     <!-- Connector Hub Top Bar -->
+                    <div class="panel-section-title">INTEGRATED CONNECTORS</div>
                     <div id="connectorPanel" class="connector-panel"></div>
                 </div>
 
@@ -175,7 +184,7 @@
 
                     <div id="chatWindow" class="chat-window">
                         <div class="msg-bubble system">
-                            <span class="msg-author">JARVIS AI CORE</span>
+                            <div class="msg-author">JARVIS AI CORE</div>
                             <div class="msg-body">JARVIS Cognitive Core online. How may I assist you today?</div>
                         </div>
                     </div>
@@ -200,8 +209,8 @@
                         <div class="voice-canvas-container">
                             <canvas id="voiceCanvas" style="width: 100%; height: 140px;"></canvas>
                         </div>
-                        <p id="liveVoiceTranscript" style="font-family: var(--font-code); color: var(--accent-cyan); font-size: 1rem; min-height: 24px;">"Listening for speech..."</p>
-                        <button class="btn btn-secondary" onclick="triggerVoiceDictation()">🎙️ Toggle Voice Listening</button>
+                        <p id="liveVoiceTranscript" class="voice-transcript-box">"Listening for speech..."</p>
+                        <button id="toggleVoiceBtn" class="btn btn-secondary" style="padding: 10px 20px; font-size: 0.95rem;">🎙️ Toggle Voice Listening</button>
                     </div>
                 </div>
 
@@ -223,7 +232,10 @@
                             <h1 class="view-title">Contacts Store</h1>
                             <p class="view-subtitle">Manage phone numbers, emails, and nicknames for automated dispatch.</p>
                         </div>
-                        <button class="btn btn-secondary" onclick="openAddContactModal()">+ Add Contact</button>
+                        <div style="display: flex; gap: 8px;">
+                            <button id="openImportContactBtn" class="btn btn-secondary">📥 Import</button>
+                            <button id="openAddContactBtn" class="btn btn-secondary">+ Add Contact</button>
+                        </div>
                     </div>
                     <input type="text" id="contactSearchInput" class="cmd-input" placeholder="🔍 Search contacts by name, phone, or alias...">
                     <div id="contactsGrid" class="cards-grid"></div>
@@ -248,12 +260,13 @@
                             <h1 class="view-title">Knowledge Base & RAG Memory</h1>
                             <p class="view-subtitle">Ingest documents and inspect vector memory stores.</p>
                         </div>
+                        <a href="/web/galaxy.html" target="_blank" class="galaxy-btn" rel="noopener">🌌 View 3D Galaxy</a>
                     </div>
-                    <div class="connector-card" style="text-align: center; padding: 40px; cursor: pointer;" onclick="triggerFileImport('knowledge')">
+                    <div id="knowledgeDropZone" class="connector-card file-dropzone" style="text-align: center; padding: 40px; cursor: pointer;">
                         <span style="font-size: 48px;">📄</span>
-                        <h3>Drop Files or Click to Ingest</h3>
+                        <h3 style="color: #fff; font-family: var(--font-heading); margin-top: 8px;">Drop Files or Click to Ingest</h3>
                         <p style="color: var(--text-secondary); font-size: 0.85rem;">Supports PDF, TXT, CSV, Python, and Markdown files</p>
-                        <input type="file" id="fileImportInput" style="display: none;" onchange="uploadKnowledgeFiles(this.files)" multiple>
+                        <input type="file" id="fileImportInput" style="display: none;" multiple>
                     </div>
                 </div>
             </section>
@@ -261,7 +274,7 @@
     </div>
 
     <!-- ── TOAST NOTIFICATIONS CONTAINER ── -->
-    <div id="toastContainer" style="position: fixed; bottom: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 8px;"></div>
+    <div id="toastContainer" class="toast-container"></div>
 
     <!-- ── COMMAND PALETTE MODAL (Ctrl+K) ── -->
     <div id="cmdPaletteModal" class="modal-overlay">
@@ -275,61 +288,72 @@
     <!-- ── MODAL: GOOGLE AUTH ── -->
     <div id="googleAuthModal" class="modal-overlay">
         <div class="modal-box">
-            <h3 style="color: var(--accent-cyan);">🔑 Google Account Authentication</h3>
-            <p style="font-size: 0.8rem; color: var(--text-secondary);">Connect your Gmail / Google account for inbox management and email sending.</p>
-            <select id="googleAuthMode" class="os-select" title="Google Authentication Method" onchange="toggleGoogleAuthMode()">
-                <option value="credentials">Gmail App Password (Recommended)</option>
-                <option value="browser">OAuth Browser Login</option>
-            </select>
-            <div id="googleAppPasswordGroup">
-                <input type="text" id="googleEmail" class="cmd-input" placeholder="Gmail address (e.g. user@gmail.com)">
-                <input type="password" id="googleAppPassword" class="cmd-input" placeholder="16-character App Password" style="margin-top: 8px;">
-            </div>
-            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 10px;">
-                <button class="btn btn-secondary" onclick="closeGoogleAuthModal()">Cancel</button>
-                <button id="submitGoogleAuthBtn" class="btn" style="background: var(--accent-cyan); color: #000;" onclick="submitGoogleAuth()">SAVE CREDENTIALS</button>
-            </div>
+            <form id="googleAuthForm" onsubmit="event.preventDefault(); window.submitGoogleAuth();">
+                <h3 style="color: var(--accent-cyan); font-family: var(--font-heading);">🔑 Google Account Authentication</h3>
+                <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 6px 0 12px;">Connect your Gmail / Google account for inbox management and email sending.</p>
+                <select id="googleAuthMode" class="os-select" style="width: 100%; margin-bottom: 10px;" title="Google Authentication Method">
+                    <option value="credentials">Gmail App Password (Recommended)</option>
+                    <option value="browser">OAuth Browser Login</option>
+                </select>
+                <div id="googleAppPasswordGroup">
+                    <input type="email" id="googleEmail" class="cmd-input" placeholder="Gmail address (e.g. user@gmail.com)">
+                    <input type="password" id="googleAppPassword" class="cmd-input" placeholder="16-character App Password" style="margin-top: 8px;">
+                </div>
+                <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 14px;">
+                    <button type="button" class="btn btn-secondary" onclick="window.closeGoogleAuthModal()">Cancel</button>
+                    <button type="submit" id="submitGoogleAuthBtn" class="btn" style="background: var(--accent-cyan); color: #000; font-weight: bold;">SAVE CREDENTIALS</button>
+                </div>
+            </form>
         </div>
     </div>
 
     <!-- ── MODAL: CONTACT IMPORT ── -->
     <div id="contactImportModal" class="modal-overlay">
         <div class="modal-box">
-            <h3 style="color: var(--accent-cyan);">📥 Import Contacts (.vcf / .csv)</h3>
-            <input type="text" id="contactFilePathInput" class="cmd-input" placeholder="Full file path on system (e.g. C:\contacts.vcf)">
-            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 10px;">
-                <button class="btn btn-secondary" onclick="closeContactImportModal()">Cancel</button>
-                <button class="btn" style="background: var(--accent-cyan); color: #000;" onclick="submitContactImportByPath()">IMPORT PATH</button>
-            </div>
+            <form id="contactImportForm" onsubmit="event.preventDefault(); window.submitContactImportByPath();">
+                <h3 style="color: var(--accent-cyan); font-family: var(--font-heading);">📥 Import Contacts (.vcf / .csv)</h3>
+                <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 6px 0 12px;">Provide full system path to your contacts file.</p>
+                <input type="text" id="contactFilePathInput" class="cmd-input" placeholder="Full file path on system (e.g. C:\contacts.vcf)" required>
+                <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 14px;">
+                    <button type="button" class="btn btn-secondary" onclick="window.closeContactImportModal()">Cancel</button>
+                    <button type="submit" class="btn" style="background: var(--accent-cyan); color: #000; font-weight: bold;">IMPORT PATH</button>
+                </div>
+            </form>
         </div>
     </div>
 
     <!-- ── MODAL: ADD CONTACT ── -->
     <div id="addContactModal" class="modal-overlay">
         <div class="modal-box">
-            <h3 style="color: var(--accent-cyan);">👤 Add New Contact</h3>
-            <input type="text" id="addContactName" class="cmd-input" placeholder="Full Name *">
-            <input type="text" id="addContactPhone" class="cmd-input" placeholder="Phone Number (e.g. +1234567890)">
-            <input type="text" id="addContactEmail" class="cmd-input" placeholder="Email Address">
-            <input type="text" id="addContactAlias" class="cmd-input" placeholder="Nickname / Alias (e.g. Mom)">
-            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 10px;">
-                <button class="btn btn-secondary" onclick="closeAddContactModal()">Cancel</button>
-                <button class="btn" style="background: var(--accent-cyan); color: #000;" onclick="submitNewContactFromForm()">SAVE CONTACT</button>
-            </div>
+            <form id="addContactForm" onsubmit="event.preventDefault(); window.submitNewContactFromForm();">
+                <h3 style="color: var(--accent-cyan); font-family: var(--font-heading);">👤 Add New Contact</h3>
+                <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 8px;">
+                    <input type="text" id="addContactName" class="cmd-input" placeholder="Full Name *" required>
+                    <input type="tel" id="addContactPhone" class="cmd-input" placeholder="Phone Number (e.g. +1234567890)">
+                    <input type="email" id="addContactEmail" class="cmd-input" placeholder="Email Address">
+                    <input type="text" id="addContactAlias" class="cmd-input" placeholder="Nickname / Alias (e.g. Mom)">
+                </div>
+                <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 14px;">
+                    <button type="button" class="btn btn-secondary" onclick="window.closeAddContactModal()">Cancel</button>
+                    <button type="submit" class="btn" style="background: var(--accent-cyan); color: #000; font-weight: bold;">SAVE CONTACT</button>
+                </div>
+            </form>
         </div>
     </div>
 
     <!-- ── MODAL: CONNECTOR CONFIG KEY ── -->
     <div id="connectorConfigModal" class="modal-overlay">
         <div class="modal-box">
-            <h3 style="color: var(--accent-cyan);" id="configModalTitle">🔑 Configure Connector Key</h3>
-            <p style="font-size: 0.8rem; color: var(--text-secondary);" id="configModalDesc">Provide API token or access key to activate integration.</p>
-            <input type="hidden" id="configConnectorName">
-            <input type="password" id="configApiKeyInput" class="cmd-input" placeholder="Paste API Key / Token here...">
-            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 10px;">
-                <button class="btn btn-secondary" onclick="closeConnectorConfigModal()">Cancel</button>
-                <button class="btn" style="background: var(--accent-cyan); color: #000;" onclick="submitConnectorConfig()">SAVE KEY</button>
-            </div>
+            <form id="connectorConfigForm" onsubmit="event.preventDefault(); window.submitConnectorConfig();">
+                <h3 style="color: var(--accent-cyan); font-family: var(--font-heading);" id="configModalTitle">🔑 Configure Connector Key</h3>
+                <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 6px 0 12px;" id="configModalDesc">Provide API token or access key to activate integration.</p>
+                <input type="hidden" id="configConnectorName">
+                <input type="password" id="configApiKeyInput" class="cmd-input" placeholder="Paste API Key / Token here..." required>
+                <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 14px;">
+                    <button type="button" class="btn btn-secondary" onclick="window.closeConnectorConfigModal()">Cancel</button>
+                    <button type="submit" class="btn" style="background: var(--accent-cyan); color: #000; font-weight: bold;">SAVE KEY</button>
+                </div>
+            </form>
         </div>
     </div>
 

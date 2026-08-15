@@ -1,11 +1,13 @@
-// web/sw.js — BR JARVIS Progressive Web App Service Worker
-const CACHE_NAME = "br-jarvis-v37.6";
+// web/sw.js — BR JARVIS Progressive Web App Service Worker v38.5.0
+const CACHE_NAME = "br-jarvis-v38.5.0";
 const ASSETS_TO_CACHE = [
   "/",
   "/web/index.html",
   "/web/style.css",
   "/web/app.js",
-  "/web/manifest.json"
+  "/web/manifest.json",
+  "/web/galaxy.html",
+  "/web/graph-data.js"
 ];
 
 self.addEventListener("install", (event) => {
@@ -35,15 +37,36 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("fetch", (event) => {
-  if (event.request.method !== "GET") return;
-  
+  const url = new URL(event.request.url);
+
+  // Always bypass Service Worker cache for API routes, WebSockets, health, and dynamic endpoints
+  if (
+    event.request.method !== "GET" ||
+    url.pathname.startsWith("/api/") ||
+    url.pathname.startsWith("/v1/") ||
+    url.pathname.startsWith("/ws") ||
+    url.pathname.startsWith("/mobile/") ||
+    url.pathname === "/health" ||
+    event.request.headers.get("Accept")?.includes("text/event-stream")
+  ) {
+    return; // Pass through to network natively
+  }
+
+  // Handle static assets & navigation
   event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
+    caches.match(event.request, { ignoreSearch: true }).then((cachedResponse) => {
       if (cachedResponse) {
         return cachedResponse;
       }
-      return fetch(event.request).catch(() => {
-        return caches.match("/web/index.html");
+      return fetch(event.request).catch((err) => {
+        // Only return index.html fallback for navigation HTML requests
+        if (
+          event.request.mode === "navigate" ||
+          (event.request.headers.get("Accept") && event.request.headers.get("Accept").includes("text/html"))
+        ) {
+          return caches.match("/web/index.html", { ignoreSearch: true });
+        }
+        throw err;
       });
     })
   );

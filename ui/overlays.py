@@ -198,8 +198,8 @@ class HueWheel(QWidget):
     def _hue_from_pos(self, pos: QPointF) -> float:
         c  = QRectF(self.rect()).center()
         dx = pos.x() - c.x()
-        dy = c.y() - pos.y()          # ekran y'si aşağı — matematiksel eksene çevir
-        ang = math.atan2(dy, dx)      # [-π, π], saat yönünün tersi
+        dy = pos.y() - c.y()          # Qt screen coordinates (downward is positive clockwise)
+        ang = math.atan2(dy, dx)      # [-π, π], clockwise matching QConicalGradient
         return (ang / (2 * math.pi)) % 1.0
 
     # ── çizim ────────────────────────────────────────────────────────────────
@@ -223,11 +223,11 @@ class HueWheel(QWidget):
         p.setBrush(QBrush(preview))
         p.drawEllipse(inner)
 
-        # sürüklenen tutamaç
+        # sürüklenen tutamaç (clockwise with Qt screen coordinates)
         r   = rect.width() / 2
         ang = self._hue * 2 * math.pi
         hx  = center.x() + r * math.cos(ang)
-        hy  = center.y() - r * math.sin(ang)
+        hy  = center.y() + r * math.sin(ang)
         p.setPen(QPen(QColor("#00060a"), 2))
         p.setBrush(QBrush(QColor("#ffffff")))
         p.drawEllipse(QPointF(hx, hy), 7.5, 7.5)

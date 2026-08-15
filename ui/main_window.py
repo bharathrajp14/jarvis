@@ -541,12 +541,12 @@ class MainWindow(QMainWindow):
         Never opens a terminal, console, or PowerShell window on any platform.
         """
         import stat as _stat
-        script  = Path(__file__).resolve().parent / "start.py"
+        script  = BASE_DIR / "start.py"
         python  = Path(sys.executable)
         desktop = self._get_desktop_dir()
 
         # Arc-reactor icon (.ico — also exported as .png for Linux/macOS)
-        ico_path = Path(__file__).resolve().parent / "config" / "jarvis.ico"
+        ico_path = CONFIG_DIR / "jarvis.ico"
         if not ico_path.exists():
             self._build_jarvis_icon(ico_path)
 
@@ -982,29 +982,44 @@ class MainWindow(QMainWindow):
         return w
 
     def _on_file_selected(self, path: str):
-        """Asynchronously ingest dropped/selected file into RAG memory & knowledge store."""
+        """Handle file selection: update UI, notify voice assistant, and ingest into knowledge store."""
         if not path:
+            self._current_file = None
             self._file_hint.setText("No file loaded — drop or click above to upload")
+            self._log.append_log("FILE: Cleared active file.")
             return
 
-        file_name = Path(path).name
-        self._file_hint.setText(f"Ingesting '{file_name}'...")
-        self._log.append_log(f"SYS: Ingesting '{file_name}' into knowledge base...")
+        self._current_file = path
+        p = Path(path)
+        cat = _file_category(p)
+        icon, _ = _FILE_ICONS.get(cat, _FILE_ICONS["unknown"])
+        size = _fmt_size(p.stat().st_size)
+        self._file_hint.setText(f"{icon}  {p.name}  ·  {size}  ·  Tell {self._assistant_name} what to do with it")
+        self._log.append_log(f"FILE: {p.name} ({size}) loaded")
 
-        def _worker():
+        if self.on_text_command:
+            msg = (
+                f"[FILE_UPLOADED] path={path} | name={p.name} | "
+                f"type={p.suffix.lstrip('.')} | size={size} | "
+                f"Briefly tell the user you can see the file '{p.name}' "
+                f"({size}) has been uploaded and ask what they'd like to do with it."
+            )
+            threading.Thread(target=self.on_text_command, args=(msg,), daemon=True).start()
+
+        def _ingest_worker():
             try:
                 self._state_sig.emit("THINKING")
                 from actions.file_importer import import_file_to_knowledge
                 res = import_file_to_knowledge(path)
-                msg = res.get("message", f"Imported '{file_name}' successfully.")
+                msg = res.get("message", f"Imported '{p.name}' successfully.")
                 self._log_sig.emit(f"SYS: {msg}")
-                self._content_sig.emit(f"KNOWLEDGE INGESTED: {file_name}", msg)
+                self._content_sig.emit(f"KNOWLEDGE INGESTED: {p.name}", msg)
             except Exception as e:
-                self._log_sig.emit(f"ERR: Ingestion failed for '{file_name}' — {e}")
+                self._log_sig.emit(f"ERR: Ingestion failed for '{p.name}' — {e}")
             finally:
                 self._state_sig.emit("LISTENING")
 
-        threading.Thread(target=_worker, daemon=True).start()
+        threading.Thread(target=_ingest_worker, daemon=True).start()
 
 
     def _build_quick_drawer(self) -> QWidget:
@@ -1260,27 +1275,10 @@ class MainWindow(QMainWindow):
             l.setStyleSheet(f"color: {color}; background: transparent;")
             return l
 
-        lay.addWidget(_fl("[F4] Mute  ·  [F11] Fullscreen"))
+        lay.addWidget(_fl("[F4] Mute  ·  [F11] Fullscreen  ·  [ESC] Interrupt"))
         lay.addStretch()
-        lay.addWidget(_fl("By FatihMakes", C.PRI_DIM))
+        lay.addWidget(_fl(f"BR JARVIS MK49 · {self._assistant_name.upper()}", C.PRI_DIM))
         return w
-
-    def _on_file_selected(self, path: str):
-        self._current_file = path
-        p    = Path(path)
-        cat  = _file_category(p)
-        icon, _ = _FILE_ICONS.get(cat, _FILE_ICONS["unknown"])
-        size = _fmt_size(p.stat().st_size)
-        self._file_hint.setText(f"{icon}  {p.name}  ·  {size}  ·  Tell {self._assistant_name} what to do with it")
-        self._log.append_log(f"FILE: {p.name} ({size}) loaded")
-        if self.on_text_command:
-            msg = (
-                f"[FILE_UPLOADED] path={path} | name={p.name} | "
-                f"type={p.suffix.lstrip('.')} | size={size} | "
-                f"Briefly tell the user you can see the file '{p.name}' "
-                f"({size}) has been uploaded and ask what they'd like to do with it."
-            )
-            threading.Thread(target=self.on_text_command, args=(msg,), daemon=True).start()
 
     def notify_phone_connected(self) -> None:
         if self._remote_overlay and self._remote_overlay.isVisible():
@@ -1342,7 +1340,7 @@ class MainWindow(QMainWindow):
     def _toggle_autostart(self):
         currently_on = self._check_autostart()
         try:
-            script = str(Path(__file__).resolve().parent / "start.py")
+            script = str(BASE_DIR / "start.py")
             if _OS == "Windows":
                 import winreg
                 reg = winreg.OpenKey(winreg.HKEY_CURRENT_USER,
@@ -1518,7 +1516,8 @@ class MainWindow(QMainWindow):
     def _on_clipboard_changed(self):
         try:
             text = QApplication.clipboard().text().strip()
-            if len(text) >= 10:
+            if len(text) >= 10 and text != getattr(self, "_last_clipboard_text", None):
+                self._last_clipboard_text = text
                 self._clipboard_sig.emit(text)
         except Exception:
             pass
@@ -1624,8 +1623,11 @@ class MainWindow(QMainWindow):
 
     def _on_setup_done(self, key: str, os_name: str):
         os.makedirs(CONFIG_DIR, exist_ok=True)
+        data = _read_full_config()
+        data["gemini_api_key"] = key
+        data["os_system"] = os_name
         API_FILE.write_text(
-            json.dumps({"gemini_api_key": key, "os_system": os_name}, indent=4),
+            json.dumps(data, indent=4),
             encoding="utf-8",
         )
         self._ready = True
@@ -1633,7 +1635,7 @@ class MainWindow(QMainWindow):
             self._overlay.hide()
             self._overlay = None
         self._apply_state("LISTENING")
-        self._assistant_name = _read_full_config().get("assistant_name", "JARVIS") or "JARVIS"
+        self._assistant_name = data.get("assistant_name", "JARVIS") or "JARVIS"
         self._log.append_log(f"SYS: Initialised. OS={os_name.upper()}. {self._assistant_name} online.")
 
     def closeEvent(self, event):

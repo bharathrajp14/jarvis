@@ -76,15 +76,45 @@ setup_qt_paths()
 #   →  ui.colors  →  ui.__init__    (would be circular if done at module level)
 #
 def __getattr__(name: str):
-    """Lazy re-export: resolve ui.JarvisUI, ui._RootShim, etc. on first access."""
-    _public = {
+    """Lazy re-export: resolve ui.JarvisUI, ui._RootShim, ui.MainWindow, ui.C, etc. on first access."""
+    _app_public = {
         "JarvisUI", "HeadlessJarvisUI", "is_gui_available", "_RootShim",
     }
-    if name in _public:
+    if name in _app_public:
         import ui.app as _app  # noqa: PLC0415
         val = getattr(_app, name, None)
         if val is not None:
-            globals()[name] = val  # cache for subsequent accesses
+            globals()[name] = val
+            return val
+
+    _window_public = {
+        "MainWindow", "JARVISMainWindow",
+    }
+    if name in _window_public:
+        import ui.main_window as _win  # noqa: PLC0415
+        val = getattr(_win, name, None)
+        if val is not None:
+            globals()[name] = val
+            return val
+
+    _colors_public = {
+        "C", "apply_ui_accent", "current_palette", "retheme_all_widgets", "qcol", "DEFAULT_UI_COLOR",
+    }
+    if name in _colors_public:
+        import ui.colors as _col  # noqa: PLC0415
+        val = getattr(_col, name, None)
+        if val is not None:
+            globals()[name] = val
+            return val
+
+    _widgets_public = {
+        "HudCanvas", "MetricBar", "LogWidget", "SubAgentTaskWidget", "SubAgentTaskPanel", "FileDropZone",
+    }
+    if name in _widgets_public:
+        import ui.widgets as _wid  # noqa: PLC0415
+        val = getattr(_wid, name, None)
+        if val is not None:
+            globals()[name] = val
             return val
 
     raise AttributeError(f"module 'ui' has no attribute {name!r}")

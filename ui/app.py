@@ -65,6 +65,9 @@ def is_gui_available() -> bool:
     import os
     import sys
     import subprocess
+    from ui._qt import _HAS_QT, _USE_PYSIDE6
+    if not _HAS_QT:
+        return False
     if os.environ.get("JARVIS_HEADLESS", "").lower() in ("true", "1"):
         return False
     if sys.platform != "win32" and not os.environ.get("DISPLAY"):
@@ -184,8 +187,14 @@ class HeadlessJarvisUI:
     def stop_speaking(self):
         self._speaking = False
 
-    def update_agent_task(self, name: str, status: str, progress: float = 0.0):
-        logger.debug("[UI Task] %s: %s (%.0f%%)", name, status, progress * 100)
+    def update_agent_task(self, task_id: str, name: str = "", status: str = "running", progress: float = 0.0, result: str = "") -> None:
+        self._agent_tasks[task_id] = {
+            "name": name or task_id,
+            "status": status,
+            "progress": progress,
+            "result": result
+        }
+        logger.debug("[UI Task] %s: %s (%.0f%%) %s", name or task_id, status, progress * 100, result)
 
     def remove_agent_task(self, task_id: str) -> None:
         if task_id in self._agent_tasks:
@@ -193,6 +202,10 @@ class HeadlessJarvisUI:
 
     def clear_agent_tasks(self) -> None:
         self._agent_tasks.clear()
+
+    def mainloop(self):
+        """Standard mainloop entry point matching Tkinter/Qt shim for headless mode."""
+        self.run_headless_loop()
 
     def run_headless_loop(self):
         logger.info("Headless Voice Assistant is active. Speak 'Hey Jarvis' or type standard commands.")

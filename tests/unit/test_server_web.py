@@ -6,10 +6,17 @@ from fastapi.testclient import TestClient
 from server import app
 
 
+from api.state import SERVER_API_KEY
+
+
 @pytest.fixture
 def client():
-    with TestClient(app) as c:
+    headers = {}
+    if SERVER_API_KEY:
+        headers["Authorization"] = f"Bearer {SERVER_API_KEY}"
+    with TestClient(app, headers=headers) as c:
         yield c
+
 
 
 def test_api_connector_config(client):
