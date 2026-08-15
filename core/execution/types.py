@@ -36,6 +36,18 @@ class ExecutionStatus(str, Enum):
         return self == ExecutionStatus.SUCCESS_VERIFIED
 
 
+class ApplicationStatus(str, Enum):
+    """Explicit multi-level lifecycle status for desktop applications and document viewers."""
+    LAUNCH_NOT_ATTEMPTED = "LAUNCH_NOT_ATTEMPTED"
+    LAUNCH_REQUESTED     = "LAUNCH_REQUESTED"
+    PROCESS_STARTED      = "PROCESS_STARTED"
+    WINDOW_FOUND         = "WINDOW_FOUND"
+    APPLICATION_READY    = "APPLICATION_READY"
+    DOCUMENT_LOADED      = "DOCUMENT_LOADED"
+    OPEN_VERIFIED        = "OPEN_VERIFIED"
+    OPEN_FAILED          = "OPEN_FAILED"
+
+
 class RepairPolicy(str, Enum):
     """Governance policy for automated runtime repair."""
     AUTO_REPAIR_SAFE   = "AUTO_REPAIR_SAFE"

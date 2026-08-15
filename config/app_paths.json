@@ -169,7 +169,7 @@
   },
   "olk": {
     "name": "olk.exe",
-    "path": "C:\\Program Files\\WindowsApps\\Microsoft.OutlookForWindows_1.2026.713.100_x64__8wekyb3d8bbwe\\olk.exe",
+    "path": "C:\\Program Files\\WindowsApps\\Microsoft.OutlookForWindows_1.2026.728.100_x64__8wekyb3d8bbwe\\olk.exe",
     "type": "executable",
     "source": "Registry App Paths"
   },

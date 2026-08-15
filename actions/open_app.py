@@ -82,7 +82,32 @@ def _normalize(raw: str) -> str:
 
 def _launch_windows(app_name: str) -> bool:
     import os
+    from pathlib import Path
 
+    # 1. If target is a file on disk, launch via native os.startfile or ShellExecute
+    clean_target = app_name.strip("\"'")
+    p = Path(clean_target)
+    if not p.is_absolute():
+        p = Path.cwd() / p
+    if p.exists():
+        try:
+            if hasattr(os, "startfile"):
+                os.startfile(str(p.resolve()))
+                time.sleep(1.5)
+                return True
+        except Exception as e:
+            logger.debug("[open_app] os.startfile failed: %s", e)
+
+        try:
+            import ctypes
+            ret = ctypes.windll.shell32.ShellExecuteW(None, "open", str(p.resolve()), None, None, 1)
+            if ret > 32:
+                time.sleep(1.5)
+                return True
+        except Exception as e:
+            logger.debug("[open_app] ShellExecuteW failed: %s", e)
+
+    # 2. Executable in PATH
     if shutil.which(app_name) or shutil.which(app_name.split(".")[0]):
         try:
             subprocess.Popen(
@@ -95,32 +120,22 @@ def _launch_windows(app_name: str) -> bool:
         except Exception as e:
             logger.warning(f"[open_app] subprocess failed: {e}")
 
-    if ":" in app_name:
-        try:
-            if hasattr(os, "startfile"):
-                os.startfile(app_name)
-            else:
-                subprocess.Popen(["cmd.exe", "/c", "start", "", app_name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            time.sleep(1.0)
-            return True
-        except Exception:
-            pass
-
-    # Try native Windows start command or os.startfile
+    # 3. Native start command
     try:
         if hasattr(os, "startfile"):
             try:
                 os.startfile(app_name)
-                time.sleep(1.0)
+                time.sleep(1.5)
                 return True
             except Exception:
                 pass
         subprocess.Popen(["cmd.exe", "/c", "start", "", app_name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        time.sleep(1.0)
+        time.sleep(1.5)
         return True
     except Exception:
         pass
 
+    # 4. Start menu fallback
     try:
         import pyautogui
         pyautogui.PAUSE = 0.1
@@ -327,16 +342,18 @@ def open_app(
 
         # Verify process and window actually started
         try:
-            from agent.verifier import ActionVerifier
+            from core.execution.verifier import ApplicationVerifier
             proc_name = normalized.split()[0] if " " in normalized else normalized
-            vres = ActionVerifier.verify_window_open(app_name=proc_name, window_title_keyword=app_name)
+            vres = ApplicationVerifier.verify_window_open(app_name=proc_name, window_title_keyword=app_name)
             if vres.verified:
-                return f"[SUCCESS_VERIFIED] '{app_name}' launched successfully. {vres.evidence}"
+                return f"[OPEN_VERIFIED] '{app_name}' launched and verified active. {vres.evidence}"
+            elif vres.observed_state and vres.observed_state.get("process_name"):
+                return f"[PROCESS_STARTED] Process '{vres.observed_state['process_name']}' is active for '{app_name}'. {vres.details}"
             else:
                 return f"[SUCCESS_UNVERIFIED] Launch command sent for '{app_name}'. {vres.details}"
         except Exception as ver_err:
             return f"[SUCCESS_UNVERIFIED] Launch command sent for '{app_name}' (verification note: {ver_err})."
     except Exception as e:
         logger.warning(f"[open_app] Error: {e}")
-        return f"[FAILED] Failed to open {app_name}: {e}"
+        return f"[OPEN_FAILED] Failed to open {app_name}: {e}"
 

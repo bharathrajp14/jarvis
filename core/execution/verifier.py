@@ -294,8 +294,25 @@ class ApplicationVerifier:
             WNDENUMPROC = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
             ctypes.windll.user32.EnumWindows(WNDENUMPROC(enum_windows_proc), 0)
 
-            kw = (window_title_keyword or app_name or "").lower().strip()
-            if kw:
+            target_raw = (window_title_keyword or app_name or "").strip()
+            kw_list = []
+            if target_raw:
+                kw_list.append(target_raw.lower())
+                # If target is a file path, extract name and stem
+                if "/" in target_raw or "\\" in target_raw or "." in target_raw:
+                    p = Path(target_raw)
+                    if p.name:
+                        kw_list.append(p.name.lower())
+                    if p.stem:
+                        kw_list.append(p.stem.lower())
+                    # Also replace underscores with spaces
+                    if "_" in p.stem:
+                        kw_list.append(p.stem.replace("_", " ").lower())
+
+            # Check window title matches
+            for kw in kw_list:
+                if not kw or len(kw) < 3:
+                    continue
                 matches = [t for t in titles if kw in t.lower()]
                 if matches:
                     return VerificationOutcome(
@@ -307,16 +324,41 @@ class ApplicationVerifier:
                         observed_state={"window_title": matches[0], "all_matches": matches},
                     )
 
+            # Check candidate viewer processes if target is a document
+            doc_ext = Path(target_raw).suffix.lower()
+            viewer_map = {
+                ".pdf": ["msedge.exe", "chrome.exe", "acrobat.exe", "acrord32.exe", "foxitpdfreader.exe", "brave.exe", "firefox.exe"],
+                ".docx": ["winword.exe", "soffice.bin", "wordpad.exe", "wps.exe"],
+                ".doc": ["winword.exe", "soffice.bin", "wordpad.exe", "wps.exe"],
+                ".xlsx": ["excel.exe", "soffice.bin", "et.exe"],
+                ".txt": ["notepad.exe", "code.exe", "notepad++.exe"],
+                ".png": ["photosapp.exe", "mspaint.exe", "dllhost.exe", "microsoft.photos.exe"],
+                ".jpg": ["photosapp.exe", "mspaint.exe", "dllhost.exe", "microsoft.photos.exe"],
+            }
+            if doc_ext in viewer_map:
+                for candidate in viewer_map[doc_ext]:
+                    p_res = ApplicationVerifier.verify_process_running(candidate)
+                    if p_res.verified:
+                        return VerificationOutcome(
+                            verified=True,
+                            verifier_name="ApplicationVerifier",
+                            status=ExecutionStatus.SUCCESS_VERIFIED,
+                            evidence=f"Active viewer process detected for {doc_ext}: '{candidate}'.",
+                            details=f"Viewer process '{candidate}' is running on host.",
+                            observed_state={"process_name": candidate},
+                        )
+
             if app_name:
                 p_res = ApplicationVerifier.verify_process_running(app_name)
                 if p_res.verified:
                     return p_res
 
+            search_desc = kw_list[1] if len(kw_list) > 1 else (target_raw or app_name or "")
             return VerificationOutcome(
                 verified=False,
                 verifier_name="ApplicationVerifier",
                 status=ExecutionStatus.SUCCESS_UNVERIFIED,
-                details=f"No visible window detected matching '{kw or app_name}'.",
+                details=f"No visible window detected matching '{search_desc}'.",
                 error="WINDOW_NOT_FOUND",
             )
         except Exception as e:

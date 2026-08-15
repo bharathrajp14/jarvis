@@ -120,14 +120,19 @@ class TaskCompletionGate:
                 else:
                     completed_unverified += 1
             elif tool in ("open_app", "launch_app"):
-                args = step.get("parameters") or step.get("args") or {}
-                app_name = args.get("app_name") or args.get("name") or ""
-                app_res = self.verifier.verify_window(app_name=app_name)
-                if app_res.verified:
-                    gate.verified_side_effects.append(f"Application '{app_name}' verified active.")
-                    completed_verified += 1
-                else:
+                if raw_status in (ExecutionStatus.SUCCESS_UNVERIFIED.value, "SUCCESS_UNVERIFIED", "unverified"):
                     completed_unverified += 1
+                    gate.degraded_steps.append(f"Step {step_id} [{tool}] application launch command sent, but window was unverified.")
+                else:
+                    args = step.get("parameters") or step.get("args") or {}
+                    app_name = args.get("app_name") or args.get("name") or ""
+                    app_res = self.verifier.verify_window(app_name=app_name)
+                    if app_res.verified:
+                        gate.verified_side_effects.append(f"Application '{app_name}' verified active on screen.")
+                        completed_verified += 1
+                    else:
+                        completed_unverified += 1
+                        gate.degraded_steps.append(f"Step {step_id} [{tool}] application launch command sent, but window was not verified on screen.")
             else:
                 if raw_status in (ExecutionStatus.SUCCESS_VERIFIED.value, "SUCCESS_VERIFIED", "completed"):
                     completed_verified += 1
@@ -142,17 +147,17 @@ class TaskCompletionGate:
                 f"Task failed completion gate. {failed_critical}/{total_steps} critical steps failed. "
                 f"Reasons: {'; '.join(gate.blocking_reasons)}"
             )
-        elif failed_non_critical > 0 or completed_unverified > 0:
+        elif completed_unverified > 0 or failed_non_critical > 0:
             gate.is_approved = True
-            gate.final_status = ExecutionStatus.PARTIAL_SUCCESS if failed_non_critical > 0 else (
-                ExecutionStatus.SUCCESS_VERIFIED if completed_verified > 0 else ExecutionStatus.SUCCESS_UNVERIFIED
-            )
+            gate.final_status = ExecutionStatus.PARTIAL_SUCCESS
             evidence_parts = []
             if gate.verified_artifacts:
                 evidence_parts.append(f"Verified Artifacts: {', '.join(gate.verified_artifacts)}")
             if gate.verified_side_effects:
                 evidence_parts.append(f"Verified Side Effects: {', '.join(gate.verified_side_effects)}")
-            evidence_parts.append(f"Completed {completed_verified + completed_unverified}/{total_steps} steps.")
+            if gate.degraded_steps:
+                evidence_parts.append(f"Unverified Items: {'; '.join(gate.degraded_steps)}")
+            evidence_parts.append(f"Verified {completed_verified}/{total_steps} steps.")
             gate.evidence_summary = " | ".join(evidence_parts)
         else:
             gate.is_approved = True

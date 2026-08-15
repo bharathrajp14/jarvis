@@ -19,27 +19,49 @@ from typing import Any, Callable, Dict, List, Optional
 from memory.canonical_db import get_canonical_db
 
 logger = logging.getLogger("JARVIS.TaskState")
-
-
 class TaskStatus(str, Enum):
-    PENDING = "pending"
-    CREATED = "created"
-    VALIDATING = "validating"
-    PLANNING = "planning"
-    RUNNING = "running"
-    PAUSED = "paused"
-    WAITING_APPROVAL = "waiting_approval"
-    WAITING_FOR_APPROVAL = "waiting_approval"
-    WAITING_FOR_DEVICE = "waiting_for_device"
-    WAITING_FOR_AUTH = "waiting_for_auth"
-    WAITING_FOR_USER = "waiting_for_user"
-    RECOVERING = "recovering"
-    RETRYING = "retrying"
-    VERIFYING = "verifying"
-    COMPLETED = "completed"
-    PARTIAL = "partial"
-    FAILED = "failed"
-    CANCELLED = "cancelled"
+    CREATED              = "CREATED"
+    UNDERSTANDING        = "UNDERSTANDING"
+    PLANNING             = "PLANNING"
+    PREFLIGHT            = "PREFLIGHT"
+    WAITING_FOR_USER     = "WAITING_FOR_USER"
+    WAITING_FOR_APPROVAL = "WAITING_FOR_APPROVAL"
+    RUNNING              = "RUNNING"
+    RECOVERING           = "RECOVERING"
+    PARTIAL_SUCCESS      = "PARTIAL_SUCCESS"
+    FAILED               = "FAILED"
+    CANCELLED            = "CANCELLED"
+    COMPLETED_UNVERIFIED = "COMPLETED_UNVERIFIED"
+    SUCCESS_VERIFIED     = "SUCCESS_VERIFIED"
+    
+    # Backwards-compatible aliases
+    PENDING              = "CREATED"
+    VALIDATING           = "PREFLIGHT"
+    PAUSED               = "WAITING_FOR_USER"
+    WAITING_APPROVAL     = "WAITING_FOR_APPROVAL"
+    WAITING_FOR_DEVICE   = "WAITING_FOR_APPROVAL"
+    WAITING_FOR_AUTH     = "WAITING_FOR_APPROVAL"
+    RETRYING             = "RECOVERING"
+    VERIFYING            = "RUNNING"
+    COMPLETED            = "SUCCESS_VERIFIED"
+    PARTIAL              = "PARTIAL_SUCCESS"
+
+
+@dataclass
+class TaskCriterion:
+    """Discrete requirement criterion (e.g. C1 = PDF generated, C6 = Application window verified)."""
+    criterion_id: str
+    description: str
+    required: bool = True
+    status: str = "PENDING"  # PENDING, VERIFIED, FAILED, UNVERIFIED
+    evidence: str = ""
+
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> TaskCriterion:
+        return cls(**{k: v for k, v in data.items() if k in cls.__dataclass_fields__})
 
 
 @dataclass
@@ -88,14 +110,36 @@ class ApprovalRequest:
 
 @dataclass
 class TaskState:
+    """Authoritative Single Source of Truth for Autonomous Task State."""
     task_id: str
-    goal: str
+    session_id: str = ""
+    user_request: str = ""
+    normalized_request: str = ""
+    goal: str = ""  # alias for user_request
+    current_phase: str = "CREATED"
+    current_step: int = 0
+    total_steps: int = 0
+    status: TaskStatus = TaskStatus.CREATED
+    planned_steps: List[Dict[str, Any]] = field(default_factory=list)
+    completed_steps: List[Dict[str, Any]] = field(default_factory=list)
+    failed_steps: List[Dict[str, Any]] = field(default_factory=list)
+    blocked_steps: List[Dict[str, Any]] = field(default_factory=list)
+    pending_steps: List[Dict[str, Any]] = field(default_factory=list)
+    tool_calls: List[Dict[str, Any]] = field(default_factory=list)
+    tool_results: Dict[str, Any] = field(default_factory=dict)
+    verification_results: List[Dict[str, Any]] = field(default_factory=list)
+    artifacts: List[Dict[str, Any]] = field(default_factory=list)
+    applications: List[Dict[str, Any]] = field(default_factory=list)
+    memory_updates: List[Dict[str, Any]] = field(default_factory=list)
+    questions: List[Dict[str, Any]] = field(default_factory=list)
+    approvals: List[ApprovalRequest] = field(default_factory=list)
+    recovery_actions: List[Dict[str, Any]] = field(default_factory=list)
+    criteria: List[TaskCriterion] = field(default_factory=list)
+    final_status: TaskStatus = TaskStatus.CREATED
+    completion_evidence: str = ""
     request_id: str = ""
     parent_task_id: str = ""
     cancellation_requested: bool = False
-    status: TaskStatus = TaskStatus.CREATED
-    current_step: int = 0
-    total_steps: int = 0
     plan: Dict[str, Any] = field(default_factory=dict)
     active_agents: List[str] = field(default_factory=list)
     active_devices: List[str] = field(default_factory=lambda: ["pc"])
@@ -110,7 +154,10 @@ class TaskState:
     def to_dict(self) -> Dict[str, Any]:
         d = asdict(self)
         d["status"] = self.status.value if isinstance(self.status, TaskStatus) else str(self.status)
+        d["final_status"] = self.final_status.value if isinstance(self.final_status, TaskStatus) else str(self.final_status)
         d["actions"] = [a.to_dict() if isinstance(a, TaskAction) else a for a in self.actions]
+        d["criteria"] = [c.to_dict() if isinstance(c, TaskCriterion) else c for c in self.criteria]
+        d["approvals"] = [a.to_dict() if isinstance(a, ApprovalRequest) else a for a in self.approvals]
         if self.approval_request:
             d["approval_request"] = self.approval_request.to_dict() if isinstance(self.approval_request, ApprovalRequest) else self.approval_request
         return d
@@ -120,11 +167,20 @@ class TaskState:
         raw = dict(data)
         if "status" in raw and isinstance(raw["status"], str):
             try:
-                raw["status"] = TaskStatus(raw["status"])
-            except ValueError:
-                raw["status"] = TaskStatus.RUNNING if raw["status"] == "running" else TaskStatus.CREATED
+                raw["status"] = TaskStatus[raw["status"].upper()] if raw["status"].upper() in TaskStatus.__members__ else TaskStatus(raw["status"].upper())
+            except Exception:
+                raw["status"] = TaskStatus.RUNNING if "RUN" in raw["status"].upper() else TaskStatus.CREATED
+        if "final_status" in raw and isinstance(raw["final_status"], str):
+            try:
+                raw["final_status"] = TaskStatus[raw["final_status"].upper()] if raw["final_status"].upper() in TaskStatus.__members__ else TaskStatus(raw["final_status"].upper())
+            except Exception:
+                raw["final_status"] = TaskStatus.CREATED
         if "actions" in raw and isinstance(raw["actions"], list):
             raw["actions"] = [TaskAction.from_dict(a) if isinstance(a, dict) else a for a in raw["actions"]]
+        if "criteria" in raw and isinstance(raw["criteria"], list):
+            raw["criteria"] = [TaskCriterion.from_dict(c) if isinstance(c, dict) else c for c in raw["criteria"]]
+        if "approvals" in raw and isinstance(raw["approvals"], list):
+            raw["approvals"] = [ApprovalRequest.from_dict(a) if isinstance(a, dict) else a for a in raw["approvals"]]
         if "approval_request" in raw and isinstance(raw["approval_request"], dict):
             raw["approval_request"] = ApprovalRequest.from_dict(raw["approval_request"])
         return cls(**{k: v for k, v in raw.items() if k in cls.__dataclass_fields__})

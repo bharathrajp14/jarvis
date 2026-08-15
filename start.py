@@ -43,6 +43,9 @@ if __name__ == "__main__" and sys.version_info >= (3, 14) and sys.platform == "w
 try:
     from dotenv import load_dotenv  # type: ignore[import-not-found]
     load_dotenv()
+    # Normalize Google/Gemini key to prevent duplicate-key warning from Google GenAI SDK
+    if os.environ.get("GEMINI_API_KEY") and os.environ.get("GOOGLE_API_KEY"):
+        os.environ.pop("GOOGLE_API_KEY", None)
 except ImportError:
     pass
 

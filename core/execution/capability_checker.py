@@ -83,7 +83,7 @@ class CapabilityChecker:
         
         req_map = {
             "docx": (["docx"], []),
-            "pdf": (["pypdf", "fpdf"], []),
+            "pdf": (["pypdf"], []),
             "xlsx": (["openpyxl"], []),
             "pptx": (["pptx"], []),
             "html": ([], []),

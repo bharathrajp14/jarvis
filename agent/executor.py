@@ -141,11 +141,13 @@ class AgentExecutor:
                 gate = get_task_completion_gate().evaluate_task(goal, completed_steps, step_results)
                 
                 if gate.is_approved:
-                    summary = self._summarize(goal, completed_steps, step_results, speak)
+                    summary = self._summarize(goal, completed_steps, step_results, speak, gate_result=gate)
                     state = state_mgr.get_task(task_id)
                     if state:
-                        state.status = TaskStatus.COMPLETED if gate.final_status.value == "SUCCESS_VERIFIED" else TaskStatus.PARTIAL
+                        state.status = TaskStatus.SUCCESS_VERIFIED if gate.final_status.value == "SUCCESS_VERIFIED" else TaskStatus.PARTIAL_SUCCESS
+                        state.final_status = state.status
                         state.final_report = summary
+                        state.completion_evidence = gate.evidence_summary
                         state_mgr.save_task(state)
                     return summary
                 else:
@@ -433,11 +435,16 @@ class AgentExecutor:
 
     def _summarize(
         self, goal: str, completed_steps: list,
-        step_results: dict, speak: Callable | None
+        step_results: dict, speak: Callable | None,
+        gate_result: Optional[Any] = None,
     ) -> str:
-        """Generate a natural summary of what was accomplished."""
+        """Generate a natural, truthful summary of what was accomplished and verified."""
+        is_verified = bool(gate_result and getattr(gate_result, "final_status", None) and gate_result.final_status.value == "SUCCESS_VERIFIED")
+        
         fallback = (
-            f"All done, sir. Completed {len(completed_steps)} steps for: {goal[:60]}."
+            f"Sir, I have completed all operations for '{goal[:60]}' with verified evidence."
+            if is_verified
+            else f"Sir, I have executed your request for '{goal[:60]}' with partial verification ({gate_result.evidence_summary if gate_result else 'some operations unverified'})."
         )
 
         try:
@@ -454,13 +461,19 @@ class AgentExecutor:
                 for k, v in list(step_results.items())[:3]
             )
 
+            status_instruction = (
+                "All operations were fully verified."
+                if is_verified
+                else f"Execution was partial. Note any unverified or pending operations truthfully without claiming full window opening or complete execution: {gate_result.evidence_summary if gate_result else ''}."
+            )
+
             prompt = (
                 f'User goal: "{goal}"\n'
                 f"Completed {len(completed_steps)} steps:\n{steps_str}\n\n"
                 f"Key results:\n{results_str}\n\n"
+                f"Verification status: {status_instruction}\n"
                 "Write ONE natural sentence summary of what was accomplished. "
-                "Address the user as 'sir'. Be direct and positive. "
-                "Include the most important result if available."
+                "Address the user as 'sir'. Be direct, factual, and strictly truthful."
             )
 
             summary = gemini.quick(prompt)
