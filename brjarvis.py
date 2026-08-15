@@ -5,9 +5,9 @@ brjarvis.py — BRJARVIS Global Unified Command Line Tool & Entry Point
 =====================================================================
 Supports:
   brjarvis ask "What is quantum computing?"
-  brjarvis "Tell me a joke"
-  brjarvis voice
+  brjarvis "Create a snake game in Python" --mode coder
   brjarvis cli
+  brjarvis voice
   brjarvis web
   brjarvis floating
   brjarvis status
@@ -15,7 +15,6 @@ Supports:
 """
 from __future__ import annotations
 
-import asyncio
 import os
 import sys
 from pathlib import Path
@@ -33,17 +32,6 @@ if sys.platform == "win32":
         pass
 
 
-try:
-    from rich.console import Console
-    from rich.markdown import Markdown
-    from rich.panel import Panel
-    console = Console()
-    HAS_RICH = True
-except ImportError:
-    HAS_RICH = False
-    console = None
-
-
 def main() -> int:
     args = sys.argv[1:]
     if not args:
@@ -54,14 +42,25 @@ def main() -> int:
 
     first_cmd = args[0].lower().strip().lstrip("-")
 
+    if first_cmd in ("help", "h"):
+        from core.terminal.renderer import TerminalRenderer
+        renderer = TerminalRenderer()
+        renderer.render_header()
+        renderer.render_welcome()
+        return 0
+
     if first_cmd in ("voice", "gui", "hud"):
         from start import launch_voice
         launch_voice()
         return 0
 
     if first_cmd in ("cli", "terminal", "repl"):
-        from start import launch_cli
-        launch_cli()
+        from core.cli import run_cli
+        # Extract optional mode flag if passed
+        mode = "general"
+        if len(args) > 2 and args[1] in ("-m", "--mode"):
+            mode = args[2]
+        run_cli(mode=mode)
         return 0
 
     if first_cmd in ("web", "webserver", "server"):
@@ -84,44 +83,33 @@ def main() -> int:
         doctor()
         return 0
 
-    # One-shot query mode: e.g. brjarvis ask "query" or brjarvis "query"
-    query_terms = args[1:] if first_cmd == "ask" else args
-    query_text = " ".join(query_terms).strip()
+    # Parse flags like --mode
+    mode = "general"
+    clean_args = []
+    i = 0
+    while i < len(args):
+        if args[i] in ("-m", "--mode") and i + 1 < len(args):
+            mode = args[i + 1]
+            i += 2
+        else:
+            clean_args.append(args[i])
+            i += 1
+
+    if clean_args and clean_args[0].lower().strip().lstrip("-") == "ask":
+        clean_args = clean_args[1:]
+
+    query_text = " ".join(clean_args).strip()
 
     if not query_text:
-        if HAS_RICH and console:
-            console.print("[yellow]Usage: brjarvis ask \"<question>\" or brjarvis voice | cli | web | floating | status[/yellow]")
-        else:
-            print("Usage: brjarvis ask \"<question>\" or brjarvis voice | cli | web | floating | status")
+        try:
+            from rich.console import Console
+            Console().print("[yellow]Usage: brjarvis ask \"<question>\" [-m <mode>] or brjarvis cli | voice | web | floating | status | doctor[/yellow]")
+        except ImportError:
+            print("Usage: brjarvis ask \"<question>\" [-m <mode>] or brjarvis cli | voice | web | floating | status | doctor")
         return 1
 
-    if HAS_RICH and console:
-        console.print(f"[bold cyan]⚡ BRJARVIS Querying:[bold cyan] [dim]{query_text}[/dim]")
-
-    try:
-        from core.bootstrap import build_assistant_runtime
-        if HAS_RICH and console:
-            with console.status("[bold cyan]BRJARVIS Thinking...[/bold cyan]"):
-                runtime = build_assistant_runtime()
-                response = runtime.orchestrator.chat(query_text)
-                if asyncio.iscoroutine(response):
-                    response = asyncio.run(response)
-            console.print("\n[bold green]BRJARVIS Response:[/bold green]")
-            console.print(Markdown(str(response)))
-        else:
-            runtime = build_assistant_runtime()
-            response = runtime.orchestrator.chat(query_text)
-            if asyncio.iscoroutine(response):
-                response = asyncio.run(response)
-            print(f"\nBRJARVIS: {response}")
-    except Exception as e:
-        if HAS_RICH and console:
-            console.print(f"[bold red]❌ BRJARVIS Execution Error:[bold red] {e}")
-        else:
-            print(f"BRJARVIS Error: {e}")
-        return 1
-
-    return 0
+    from core.terminal import run_query
+    return run_query(query_text, mode=mode)
 
 
 if __name__ == "__main__":

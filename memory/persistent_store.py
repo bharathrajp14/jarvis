@@ -168,6 +168,10 @@ def _backup_version(file_path: Path):
 
 def save_memory(entry: MemoryEntry, scope: str = "user") -> None:
     """Write/update a memory file, backup previous version, sync to SQLite/Vector, and rebuild index."""
+    from memory.memory_types import redact_secrets
+    entry.content = redact_secrets(entry.content)
+    entry.description = redact_secrets(entry.description)
+
     mem_dir = get_memory_dir(scope)
     mem_dir.mkdir(parents=True, exist_ok=True)
     slug = _slugify(entry.name)
@@ -339,7 +343,8 @@ def search_memory(query: str, scope: str = "all") -> list[MemoryEntry]:
             continue
         matches = 0
         for w in q_words:
-            if re.search(r'\b' + re.escape(w) + r'\b', haystack):
+            stem = w.rstrip("s").rstrip("ing").rstrip("tion").rstrip("ed")
+            if (len(w) >= 3 and w in haystack) or (len(stem) >= 3 and stem in haystack):
                 matches += 1
         if matches > 0:
             scored_results.append((matches, entry))

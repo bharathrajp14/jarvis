@@ -288,8 +288,8 @@ def _execute_generated_code(code: str, player=None) -> str:
         _safe_ast_execute(code, scope)
         fn = scope.get("run_desktop_task")
         if callable(fn):
-            fn()
-            return "Task completed successfully."
+            res = fn()
+            return str(res) if res is not None else "Task executed successfully."
         return "Script executed."
     except Exception as e:
         logger.error("Exec error: %s\nCode:\n%s", e, code[:300])

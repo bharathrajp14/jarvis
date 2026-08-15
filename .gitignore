@@ -71,4 +71,8 @@ native/*.dylib
 workspace/browser_user_data/
 *.key
 .jarvis/*.key
+credentials.json
+config/credentials.json
+token.json
+token.pickle
 

@@ -119,21 +119,29 @@ def _run_async(coro):
         exception_holder = []
 
         def worker():
+            new_loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(new_loop)
             try:
-                new_loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(new_loop)
                 res = new_loop.run_until_complete(coro)
                 result_holder.append(res)
-                new_loop.close()
             except Exception as e:
                 exception_holder.append(e)
+            finally:
+                # ISSUE-3 FIX: Always close the loop — prevents resource leak even on timeout/exception
+                try:
+                    new_loop.close()
+                except Exception:
+                    pass
 
-        thread = threading.Thread(target=worker, name="jarvis_async_bridge")
+        # ISSUE-3 FIX: daemon=True so abandoned (timed-out) threads are reaped by Python GC
+        # on process exit instead of accumulating as zombies consuming memory + sockets
+        thread = threading.Thread(target=worker, name="jarvis_async_bridge", daemon=True)
         thread.start()
         thread.join(timeout=60.0)
 
         if thread.is_alive():
-            raise TimeoutError("Async tool call timed out after 60 seconds")
+            # Thread exceeded timeout — it will be cleaned up when process exits (daemon)
+            raise TimeoutError("Async tool call timed out after 60 seconds — operation abandoned")
 
         if exception_holder:
             raise exception_holder[0]
@@ -141,6 +149,7 @@ def _run_async(coro):
         return result_holder[0] if result_holder else None
     else:
         return asyncio.run(coro)
+
 
 
 
@@ -204,11 +213,19 @@ def get_pruned_tool_prompt_block(user_prompt: str = "") -> str:
             ("whatsapp", "watsapp", "wp"): ["tools.whatsapp_tools"],
             ("calendar", "event", "schedule"): ["tools.calendar_tools"],
             ("email", "gmail", "mail"): ["tools.gmail_auth_tools", "tools.smart_email_tools"],
-            ("excel", "xlsx"): ["tools.excel_tools"],
-            ("git", "repo", "github"): ["tools.git_repo_tool"],
-            ("diagnostic", "diagnostic_tool"): ["tools.system_diagnostic_tool"],
+            ("excel", "xlsx", "sheet", "spreadsheet"): ["tools.excel_tools"],
+            ("git", "repo", "github", "codebase", "repository"): ["tools.git_repo_tool"],
+            ("doc", "document", "docx", "word", "pdf", "report", "walkthrough", "paper", "presentation", "manual"): ["tools.doc_tools", "tools.pdf_tools"],
+            ("diagnostic", "diagnostic_tool", "health", "system_health"): ["tools.system_diagnostic_tool", "tools.system_health"],
             ("screen", "see", "look", "click", "capture"): ["tools.image_tools"],
             ("flight", "ticket", "airline", "fly"): ["tools.legacy_actions_tools"],
+            ("contact", "contacts", "vcf", "phone", "addressbook"): ["tools.contact_tools"],
+            ("connector", "hub", "notion", "slack", "rss", "wikipedia"): ["tools.connector_tools"],
+            ("reminder", "alarm", "schedule_reminder"): ["tools.reminder_tools"],
+            ("scratchpad", "scratch", "snippet", "eval"): ["tools.scratchpad_tools"],
+            ("background_monitor", "monitor_topic", "topic_monitor", "news_monitor"): ["tools.background_monitor_tools"],
+            ("import_file", "ingest", "file_processor"): ["tools.file_import_tools", "tools.file_processor_tools"],
+            ("remember_that", "recall"): ["tools.recall_tools"],
         }
         for keywords, plugins in keyword_to_plugins.items():
             if any(kw in low for kw in keywords):
@@ -225,13 +242,16 @@ def get_pruned_tool_prompt_block(user_prompt: str = "") -> str:
     essential_tools = {
         "open_app", "web_search", "file_read", "file_write", "run_code", "computer_settings", "window_manager",
         "list_installed_applications", "list_running_applications", "send_whatsapp", "create_calendar_event",
-        "list_calendar_events", "send_email", "gmail_login", "automate_app", "run_automation_workflow"
+        "list_calendar_events", "send_email", "gmail_login", "automate_app", "run_automation_workflow",
+        "create_word_document", "create_pdf_document", "document_creator"
     }
     
     # Domain keyword matching for targeted tool inclusion
     domain_map = {
         ("search", "google", "find", "who is", "what is", "news", "price", "weather"): {"web_search", "fetch_page"},
-        ("file", "read", "write", "save", "folder", "directory", "document", "txt", "csv", "json", "pdf", "docx"): {"file_read", "file_write", "file_list", "file_delete", "file_search"},
+        ("file", "read", "write", "save", "folder", "directory", "txt", "csv", "json"): {"file_read", "file_write", "file_list", "file_delete", "file_search"},
+        ("doc", "docx", "word", "document", "report", "pdf", "walkthrough", "paper", "compare", "comparison", "recommendation"): {"create_word_document", "create_pdf_document", "document_creator", "generate_walkthrough", "file_read", "file_write"},
+        ("git", "repo", "github", "repository", "codebase", "branch", "commit"): {"git_repo_mgr", "file_read", "file_write", "file_list"},
         ("app", "open", "launch", "close", "brave", "chrome", "edge", "notepad", "calculator", "window", "process", "installed", "running"): {"open_app", "computer_settings", "window_manager", "list_installed_applications", "list_running_applications", "search_applications", "get_app_launch_history", "get_app_usage_statistics"},
         ("whatsapp", "watsapp", "whats app", "wats app", "wapp", "wp", "chat", "message", "contact", "text", "send", "say", "tell", "hii", "hiii", "hello"): {"send_whatsapp", "schedule_whatsapp_message", "manage_whatsapp_contacts"},
         ("calendar", "event", "schedule", "task", "meeting", "reminder"): {"create_calendar_event", "list_calendar_events", "search_calendar_events", "delete_calendar_event"},
@@ -239,11 +259,18 @@ def get_pruned_tool_prompt_block(user_prompt: str = "") -> str:
         ("automate", "workflow", "macro", "script", "system"): {"automate_app", "run_automation_workflow", "execute_system_automation"},
         ("screen", "see", "look", "click", "vision", "ocr", "capture", "display"): {"screen_find", "screen_click", "smart_click"},
         ("code", "python", "script", "execute", "eval", "debug", "run"): {"run_code", "scratchpad_write", "scratchpad_eval"},
-        ("system", "volume", "brightness", "wifi", "battery", "restart", "shutdown", "diagnostic", "cpu", "ram"): {"computer_settings", "system_diagnostic"},
+        ("system", "volume", "brightness", "wifi", "battery", "restart", "shutdown", "diagnostic", "health", "cpu", "ram", "audit"): {"computer_settings", "system_diagnostic", "system_health"},
         ("youtube", "video", "play"): {"youtube_video"},
         ("flight", "ticket", "airline", "fly"): {"flight_finder"},
         ("game", "steam", "epic"): {"game_updater"},
         ("agent", "task", "subagent", "multi"): {"agent_task"},
+        ("memory", "remember", "forget", "recall", "preference", "fact", "note"): {"memory_save", "memory_get", "memory_search", "memory_delete", "memory_forget", "memory_list", "memory_stats", "memory_reindex", "remember_that"},
+        ("contact", "contacts", "vcf", "phone", "addressbook", "call"): {"import_contacts", "manage_contacts", "resolve_contact"},
+        ("connector", "connectors", "hub", "notion", "slack", "rss", "wikipedia"): {"connector_status", "connector_call", "connector_search", "connector_add_mcp", "connector_list_tools"},
+        ("reminder", "alarm", "schedule_reminder"): {"schedule_reminder", "manage_reminders", "reminder"},
+        ("scratchpad", "scratch", "snippet"): {"scratchpad_write", "scratchpad_read", "scratchpad_eval", "scratchpad_list", "scratchpad_clear"},
+        ("monitor", "background_monitor", "topic"): {"add_background_monitor", "remove_background_monitor", "list_monitored_topics", "check_monitored_topics"},
+        ("import_file", "ingest", "file_processor", "ocr", "convert"): {"import_file_to_knowledge", "process_universal_file"},
     }
 
     selected_names = set(essential_tools)
@@ -327,6 +354,10 @@ def execute_tool(name: str, args: dict) -> str:
         name = "screen_find"
         desc = args.get("description") or args.get("query") or args.get("text") or "screen"
         args = {"description": str(desc)}
+    elif name in ("doc_creator", "make_document", "create_doc", "generate_doc"):
+        name = "document_creator"
+    elif name in ("git", "git_tool", "git_repo"):
+        name = "git_repo_mgr"
     elif name == "window_control":  # keep only the non-registered alias
         name = "window_manager"
         args = {"action": args.get("action", "list"), "title": args.get("title", "")}
@@ -349,14 +380,22 @@ def execute_tool(name: str, args: dict) -> str:
             "gmail_login": "tools.gmail_auth_tools",
             "gmail_logout": "tools.gmail_auth_tools",
             "get_gmail_auth_status": "tools.gmail_auth_tools",
-            # Document / Excel
+            # Document / PDF / Walkthrough / Excel
+            "create_word_document": "tools.doc_tools",
+            "create_pdf_document": "tools.doc_tools",
+            "document_creator": "tools.doc_tools",
+            "generate_walkthrough": "tools.doc_tools",
+            "generate_project_product_analysis": "tools.doc_tools",
+            "pdf_extract_text": "tools.pdf_tools",
             "excel_analyze": "tools.excel_tools",
             "flight_finder": "tools.legacy_actions_tools",
             "screen_find": "tools.image_tools",
             "screen_click": "tools.image_tools",
             "smart_click": "tools.image_tools",
             "git_repo_tool": "tools.git_repo_tool",
+            "git_repo_mgr": "tools.git_repo_tool",
             "system_diagnostic": "tools.system_diagnostic_tool",
+            "tool_health": "tools.system_diagnostic_tool",
             "mcp_connector": "tools.mcp_connector",
             "mcp_call_tool": "tools.mcp_connector",
             "start_multichannel_listener": "tools.proactive_listener_tools",
@@ -383,6 +422,29 @@ def execute_tool(name: str, args: dict) -> str:
             "generate_report": "tools.reporting_tools",
             "run_skill": "tools.skill_runner",
             "list_skills": "tools.skill_runner",
+            # Repaired Missing Tools
+            "add_background_monitor": "tools.background_monitor_tools",
+            "remove_background_monitor": "tools.background_monitor_tools",
+            "list_monitored_topics": "tools.background_monitor_tools",
+            "check_monitored_topics": "tools.background_monitor_tools",
+            "connector_status": "tools.connector_tools",
+            "connector_call": "tools.connector_tools",
+            "connector_search": "tools.connector_tools",
+            "connector_add_mcp": "tools.connector_tools",
+            "connector_list_tools": "tools.connector_tools",
+            "import_contacts": "tools.contact_tools",
+            "manage_contacts": "tools.contact_tools",
+            "resolve_contact": "tools.contact_tools",
+            "import_file_to_knowledge": "tools.file_import_tools",
+            "process_universal_file": "tools.file_processor_tools",
+            "remember_that": "tools.recall_tools",
+            "schedule_reminder": "tools.reminder_tools",
+            "manage_reminders": "tools.reminder_tools",
+            "scratchpad_write": "tools.scratchpad_tools",
+            "scratchpad_read": "tools.scratchpad_tools",
+            "scratchpad_eval": "tools.scratchpad_tools",
+            "scratchpad_list": "tools.scratchpad_tools",
+            "scratchpad_clear": "tools.scratchpad_tools",
         }
 
         if name in tool_to_module:
@@ -421,11 +483,38 @@ def execute_tool(name: str, args: dict) -> str:
 
         if inspect_is_coroutine(result):
             result = _run_async(result)
-        return str(result)
+        
+        str_res = str(result)
+        try:
+            from core.execution.verifier import get_universal_verifier
+            v_out = get_universal_verifier().verify_execution(name, args, str_res, return_code=0)
+            if not v_out.verified:
+                logger.warning("[ToolRegistry] Tool '%s' verification warning: %s", name, v_out.details)
+        except Exception:
+            pass
+
+        return str_res
     except PermissionError as e:
         return f"SCOPE VIOLATION: {e}"
     except Exception as e:
         tb = traceback.format_exc()
+        # Attempt auto-repair if ModuleNotFoundError / missing package
+        try:
+            from core.execution.recovery_manager import get_recovery_manager
+            from core.execution.types import ExecutionResult
+            rec_mgr = get_recovery_manager()
+            rep_action = rec_mgr.diagnose_failure(ExecutionResult(stderr=str(e) + "\n" + tb))
+            if rep_action and rec_mgr.execute_repair(rep_action):
+                func = TOOL_REGISTRY[name]
+                try:
+                    retry_res = func(args)
+                    if inspect_is_coroutine(retry_res):
+                        retry_res = _run_async(retry_res)
+                    return str(retry_res)
+                except Exception:
+                    pass
+        except Exception:
+            pass
         return f"TOOL ERROR ({name}): {e}\n{tb}"
 
 
@@ -676,6 +765,14 @@ def _import_plugins(*, full: bool = False, plugin_name: str | None = None):
         "tools.pdf_tools",
         "tools.proactive_listener_tools",
         "tools.browser_agent_v2",
+        "tools.background_monitor_tools",
+        "tools.connector_tools",
+        "tools.contact_tools",
+        "tools.file_import_tools",
+        "tools.file_processor_tools",
+        "tools.recall_tools",
+        "tools.reminder_tools",
+        "tools.scratchpad_tools",
     ]
 
 

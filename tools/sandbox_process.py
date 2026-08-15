@@ -37,8 +37,8 @@ _STRICT_SAFE_ENV_KEYS: Set[str] = {
 }
 
 
-def _build_strict_safe_env(extra_env: Optional[Dict[str, str]] = None) -> Dict[str, str]:
-    """Create a strictly sanitized environment dictionary containing only essential system keys."""
+def _build_strict_safe_env(extra_env: Optional[Dict[str, str]] = None, env_profile: Optional[Any] = None) -> Dict[str, str]:
+    """Create a sanitized environment dictionary containing system keys and virtualenv paths."""
     safe_env: Dict[str, str] = {}
     for key, value in os.environ.items():
         if key.upper() in _STRICT_SAFE_ENV_KEYS:
@@ -49,6 +49,21 @@ def _build_strict_safe_env(extra_env: Optional[Dict[str, str]] = None) -> Dict[s
     safe_env["PYTHONUTF8"] = "1"
     safe_env["PYTHONDONTWRITEBYTECODE"] = "1"
     safe_env["PYTHONUNBUFFERED"] = "1"
+
+    if env_profile and getattr(env_profile, "is_virtualenv", False) and env_profile.virtualenv_path:
+        venv_p = Path(env_profile.virtualenv_path)
+        scripts_dir = venv_p / ("Scripts" if sys.platform == "win32" else "bin")
+        safe_env["VIRTUAL_ENV"] = str(venv_p)
+        current_path = safe_env.get("PATH", "")
+        safe_env["PATH"] = f"{scripts_dir}{os.pathsep}{current_path}"
+        safe_env["PYTHONHOME"] = ""
+
+    if env_profile and getattr(env_profile, "project_root", None):
+        existing_pypath = safe_env.get("PYTHONPATH", "")
+        if existing_pypath:
+            safe_env["PYTHONPATH"] = f"{env_profile.project_root}{os.pathsep}{existing_pypath}"
+        else:
+            safe_env["PYTHONPATH"] = str(env_profile.project_root)
 
     if extra_env:
         for k, v in extra_env.items():
@@ -224,11 +239,19 @@ class SandboxedProcessRunner:
         script_file = jail_dir / f"main{ext_map[lang]}"
         script_file.write_text(clean_code, encoding="utf-8")
 
-        safe_env = _build_strict_safe_env(extra_env)
+        env_profile = None
+        if lang == "python":
+            try:
+                from core.execution.environment_resolver import get_environment_resolver
+                env_profile = get_environment_resolver().resolve_python()
+            except Exception:
+                pass
+
+        safe_env = _build_strict_safe_env(extra_env, env_profile=env_profile)
         safe_env["TEMP"] = str(jail_dir)
         safe_env["TMP"] = str(jail_dir)
 
-        cmd = self._resolve_command(lang, script_file)
+        cmd = self._resolve_command(lang, script_file, env_profile=env_profile)
         job = WindowsJobObject(max_memory_bytes=_MAX_MEMORY_BYTES)
 
         proc = None
@@ -331,10 +354,11 @@ class SandboxedProcessRunner:
             except Exception:
                 pass
 
-    def _resolve_command(self, lang: str, script_path: Path) -> List[str]:
+    def _resolve_command(self, lang: str, script_path: Path, env_profile: Optional[Any] = None) -> List[str]:
         script_str = str(script_path)
         if lang == "python":
-            return [sys.executable, "-I", script_str]
+            py_exec = env_profile.executable if (env_profile and getattr(env_profile, "executable", None)) else sys.executable
+            return [py_exec, script_str]
         elif lang == "javascript":
             return ["node", script_str]
         elif lang == "bash":
@@ -344,7 +368,8 @@ class SandboxedProcessRunner:
             if _OS == "Windows":
                 return [ps, "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", script_str]
             return [ps, "-NoProfile", "-NonInteractive", "-File", script_str]
-        return [sys.executable, script_str]
+        py_exec = env_profile.executable if (env_profile and getattr(env_profile, "executable", None)) else sys.executable
+        return [py_exec, script_str]
 
 
 _GLOBAL_SANDBOX: Optional[SandboxedProcessRunner] = None

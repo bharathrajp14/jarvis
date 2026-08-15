@@ -27,7 +27,7 @@ except ImportError:
     sr = None
 
 from voice.tts import NeuralTTS
-from voice.stt import SounddeviceMicrophone
+from voice.audio_bus import AudioBusMicrophoneSource
 from voice.audio_processor import AudioProcessor
 from voice.shortcuts import match_voice_shortcut
 
@@ -97,7 +97,7 @@ class GeminiLiveVoiceLoop:
     def _run_duplex_loop(self):
         """Main duplex loop: Listen -> Transcribe -> Stream Answer -> Sentence-TTS -> Listen."""
         try:
-            with SounddeviceMicrophone() as source:
+            with AudioBusMicrophoneSource(subscriber_name="gemini_live_mic") as source:
                 while self.is_active and not self._stop_event.is_set():
                     try:
                         if self.ui:

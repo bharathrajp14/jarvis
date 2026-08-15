@@ -33,8 +33,15 @@ try:
 except ImportError:
     pass
 
-logger = logging.getLogger("JARVIS.Voice.STT")
+import enum
+from voice.audio_bus import AudioBus, AudioBusMicrophoneSource
 
+class STTConfidence(str, enum.Enum):
+    """Transcription confidence classification."""
+    HIGH_CONFIDENCE = "HIGH_CONFIDENCE"
+    MEDIUM_CONFIDENCE = "MEDIUM_CONFIDENCE"
+    LOW_CONFIDENCE = "LOW_CONFIDENCE"
+    UNKNOWN = "UNKNOWN"
 
 class SounddeviceMicrophone(_BaseAudioSource):
     """Zero-dependency SpeechRecognition-compatible Microphone class using sounddevice.

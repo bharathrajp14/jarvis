@@ -55,22 +55,22 @@ class WeatherConnector(BaseConnector):
         return [
             ConnectorTool(
                 name="current",
-                description="Get current weather conditions for any city",
+                description="Get current weather conditions for any city or location",
                 parameters={
                     "type": "object",
                     "properties": {
-                        "city": {"type": "string", "description": "City name (e.g. 'Chennai', 'London', 'New York')"},
+                        "city": {"type": "string", "description": "City or place name (e.g. 'Chennai', 'London', 'New York')"},
                     },
                     "required": ["city"],
                 },
             ),
             ConnectorTool(
                 name="forecast",
-                description="Get 7-day weather forecast for any city",
+                description="Get 7-day weather forecast for any city or location",
                 parameters={
                     "type": "object",
                     "properties": {
-                        "city": {"type": "string", "description": "City name"},
+                        "city": {"type": "string", "description": "City or place name"},
                         "days": {"type": "integer", "description": "Number of forecast days (1-7)", "default": 7},
                     },
                     "required": ["city"],
@@ -79,14 +79,24 @@ class WeatherConnector(BaseConnector):
         ]
 
     def call_tool(self, tool_name: str, args: Dict[str, Any]) -> Any:
-        city = str(args.get("city", "")).strip()
+        city = str(
+            args.get("city")
+            or args.get("location")
+            or args.get("place")
+            or args.get("query")
+            or args.get("q")
+            or ""
+        ).strip()
         if not city:
-            return "Please provide a city name."
-        if tool_name == "current":
+            return "Please provide a city or location name."
+
+        normalized_tool = tool_name.lower().replace("get_", "").replace("weather_", "")
+        if normalized_tool in ("current", "now", "condition", "conditions"):
             return self._current(city)
-        elif tool_name == "forecast":
-            return self._forecast(city, int(args.get("days", 7)))
-        return f"Unknown tool: {tool_name}"
+        elif normalized_tool in ("forecast", "weekly", "days"):
+            days = int(args.get("days") or args.get("num_days") or 7)
+            return self._forecast(city, days)
+        return f"Unknown tool: {tool_name}. Available tools: current, forecast"
 
     def _fetch(self, url: str) -> dict:
         req = urllib.request.Request(url, headers={"User-Agent": "JARVIS-ConnectorHub/1.0"})
@@ -141,9 +151,9 @@ class WeatherConnector(BaseConnector):
             params = urllib.parse.urlencode({
                 "latitude": lat,
                 "longitude": lon,
-                "daily": "temperature_2m_max,temperature_2m_min,weathercode,precipitation_sum",
-                "timezone": "auto",
+                "daily": "weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max",
                 "forecast_days": days,
+                "timezone": "auto",
             })
             data = self._fetch(f"{_WEATHER_URL}?{params}")
             daily = data.get("daily", {})
@@ -151,24 +161,24 @@ class WeatherConnector(BaseConnector):
             max_temps = daily.get("temperature_2m_max", [])
             min_temps = daily.get("temperature_2m_min", [])
             codes = daily.get("weathercode", [])
-            precip = daily.get("precipitation_sum", [])
+            precip = daily.get("precipitation_probability_max", [])
 
-            lines = [f"📅 **{days}-Day Forecast — {label}**\n"]
-            for i, date in enumerate(dates):
-                cond = _WMO_CODES.get(codes[i] if i < len(codes) else 0, "?")
+            lines = [f"🌤️ **{days}-Day Weather Forecast — {label}**"]
+            for i, d in enumerate(dates):
+                cond = _WMO_CODES.get(codes[i] if i < len(codes) else 0, "Clear")
                 hi = max_temps[i] if i < len(max_temps) else "?"
                 lo = min_temps[i] if i < len(min_temps) else "?"
-                rain = precip[i] if i < len(precip) else 0
-                rain_str = f", 🌧️ {rain}mm" if rain and float(rain) > 0 else ""
-                lines.append(f"• **{date}**: {cond} | High {hi}°C / Low {lo}°C{rain_str}")
+                rain = f" (🌧️ {precip[i]}%)" if i < len(precip) and precip[i] else ""
+                lines.append(f"• **{d}**: {cond} | High: {hi}°C, Low: {lo}°C{rain}")
 
+            lines.append("*(Powered by Open-Meteo — free, no API key)*")
             return "\n".join(lines)
         except Exception as e:
             return f"Forecast error for '{city}': {e}"
 
     def health_check(self) -> bool:
         try:
-            self._geocode("London")
+            self._fetch(f"{_WEATHER_URL}?latitude=0&longitude=0&current=temperature_2m")
             return True
         except Exception:
             return False

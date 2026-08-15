@@ -111,6 +111,12 @@ class ArtifactManager:
         self._host_artifacts_dir.mkdir(parents=True, exist_ok=True)
         return self._host_artifacts_dir
 
+    def get_sandbox_dir(self) -> Path:
+        """Returns the isolated sandbox directory for scratch artifact generation."""
+        sandbox = self._host_artifacts_dir / ".sandbox"
+        sandbox.mkdir(parents=True, exist_ok=True)
+        return sandbox
+
     @staticmethod
     def compute_sha256(filepath: Union[str, Path]) -> str:
         """Compute SHA-256 hex digest of a file."""

@@ -114,7 +114,14 @@ class SileroVAD:
                     logger.debug("ONNX inputs: %s, outputs: %s",
                                  self._onnx_input_names, self._onnx_output_names)
                     self._reset_states()
-                    logger.info("ONNX Neural VAD initialized (inputs: %s)", self._onnx_input_names)
+                    # Model Warmup pass to eliminate first-frame latency spike
+                    try:
+                        dummy_pcm = np.zeros(512, dtype=np.float32)
+                        self._onnx_infer(dummy_pcm, 0.5)
+                        self._reset_states()
+                    except Exception:
+                        pass
+                    logger.info("ONNX Neural VAD initialized and warmed up (inputs: %s)", self._onnx_input_names)
                     return
             except Exception as e:
                 logger.warning("ONNX load failed: %s", e)
@@ -128,6 +135,13 @@ class SileroVAD:
                     onnx=False,
                 )
                 self._torch_model = model
+                # Warmup
+                try:
+                    dummy_t = torch.zeros((1, 512), dtype=torch.float32)
+                    with torch.no_grad():
+                        self._torch_model(dummy_t, self.sample_rate)
+                except Exception:
+                    pass
                 logger.info("PyTorch Silero VAD loaded via Torch Hub")
                 return
             except Exception as e:
@@ -150,7 +164,7 @@ class SileroVAD:
 
     # ── Main Inference ────────────────────────────────────────────────────────
 
-    def is_speech(self, pcm_bytes: bytes) -> Tuple[bool, float, float]:
+    def is_speech(self, pcm_bytes: bytes, echo_gated: Optional[bool] = None) -> Tuple[bool, float, float]:
         """
         Evaluate raw PCM bytes (16-bit 16kHz mono) for speech probability.
 
@@ -173,6 +187,9 @@ class SileroVAD:
 
         # Get dynamic threshold (calibrator-based or adaptive)
         threshold = self._get_effective_threshold()
+        if echo_gated:
+            # Acoustic echo gating: require higher confidence & SNR while assistant speaks
+            threshold = max(threshold, 0.72)
 
         prob = 0.0
         is_speech_result = False

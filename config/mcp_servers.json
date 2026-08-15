@@ -1,0 +1,20 @@
+{
+    "servers": [],
+    "presets_available": [
+        {
+            "name": "sqlite",
+            "description": "Local SQLite Database Explorer",
+            "command": "npx -y @modelcontextprotocol/server-sqlite --db-path .jarvis/jarvis.db"
+        },
+        {
+            "name": "filesystem",
+            "description": "Secure Local Filesystem Access",
+            "command": "npx -y @modelcontextprotocol/server-filesystem ."
+        },
+        {
+            "name": "github",
+            "description": "GitHub MCP Server",
+            "command": "npx -y @modelcontextprotocol/server-github"
+        }
+    ]
+}

@@ -472,17 +472,28 @@ if _HAS_QT:
         def _refresh_connectors(self):
             def _fetch():
                 try:
-                    import os, requests
+                    import os, json, requests
+                    from pathlib import Path
                     p = os.environ.get("BR_SERVER_PORT", os.environ.get("PORT", "8000"))
                     hdrs = {}
-                    key = os.environ.get("JARVIS_SERVER_API_KEY")
-                    if key: hdrs["X-API-Key"] = key; hdrs["Authorization"] = f"Bearer {key}"
+                    key = os.environ.get("SERVER_API_KEY") or os.environ.get("JARVIS_SERVER_API_KEY")
+                    if not key:
+                        api_file = Path(__file__).resolve().parent / "config" / "api_keys.json"
+                        if api_file.exists():
+                            try:
+                                key = json.loads(api_file.read_text(encoding="utf-8")).get("server_api_key")
+                            except Exception:
+                                pass
+                    if key:
+                        hdrs["X-API-Key"] = str(key).strip()
+                        hdrs["Authorization"] = f"Bearer {str(key).strip()}"
                     r = requests.get(f"http://127.0.0.1:{p}/api/connector/status", headers=hdrs, timeout=3)
                     if r.status_code == 200:
                         self.connector_signal.emit(r.json().get("connectors", []))
                 except Exception:
                     pass
             threading.Thread(target=_fetch, daemon=True).start()
+
 
         def mousePressEvent(self, event):
             if event.button() == Qt.LeftButton:

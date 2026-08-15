@@ -1,4 +1,4 @@
-// web/app.js — BR JARVIS AI Operating System Client Engine v38.5.0
+// web/app.js — BR JARVIS AI Operating System Client Engine v40.2.0
 document.addEventListener('DOMContentLoaded', () => {
     const host = window.location.host;
     const protocol = window.location.protocol === 'https:' ? 'https' : 'http';
@@ -24,11 +24,134 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     }
 
-    window.apiFetch = function (url, options = {}) {
+    // ── AUTHENTICATION & API WRAPPER ──
+    let isAuthRequired = false;
+    let isAuthenticated = false;
+
+    window.getServerApiKey = function () {
+        return localStorage.getItem('jarvis_server_api_key') || localStorage.getItem('jarvis_api_key') || '';
+    };
+
+    window.setServerApiKey = function (key) {
+        if (key) {
+            localStorage.setItem('jarvis_server_api_key', key);
+            localStorage.setItem('jarvis_api_key', key);
+        } else {
+            localStorage.removeItem('jarvis_server_api_key');
+            localStorage.removeItem('jarvis_api_key');
+        }
+    };
+
+    window.apiFetch = async function (url, options = {}) {
         const opts = Object.assign({}, options);
         opts.headers = Object.assign({}, opts.headers || {});
-        return fetch(url, opts);
+        opts.credentials = 'include';
+
+        const apiKey = window.getServerApiKey();
+        if (apiKey && !opts.headers['Authorization'] && !opts.headers['X-API-Key']) {
+            opts.headers['Authorization'] = `Bearer ${apiKey}`;
+            opts.headers['X-API-Key'] = apiKey;
+        }
+
+        try {
+            const res = await fetch(url, opts);
+            if (res.status === 401 && !url.includes('/api/auth/status') && !url.includes('/api/auth/login')) {
+                isAuthenticated = false;
+                window.showServerAuthModal();
+            }
+            return res;
+        } catch (err) {
+            console.debug('Network fetch error:', url, err);
+            throw err;
+        }
     };
+
+    // ── SERVER AUTH MODAL ──
+    window.showServerAuthModal = function () {
+        const modal = document.getElementById('serverAuthModal');
+        if (modal) {
+            modal.style.display = 'flex';
+            const input = document.getElementById('serverApiKeyInput');
+            if (input) {
+                input.value = window.getServerApiKey();
+                setTimeout(() => input.focus(), 50);
+            }
+        }
+    };
+
+    window.closeServerAuthModal = function () {
+        const modal = document.getElementById('serverAuthModal');
+        if (modal) modal.style.display = 'none';
+    };
+
+    window.loginWithApiKey = async function (apiKey, showToast = true) {
+        if (!apiKey) return false;
+        try {
+            const res = await fetch(`${API_BASE}/api/auth/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ api_key: apiKey }),
+                credentials: 'include',
+            });
+            if (res.ok) {
+                isAuthenticated = true;
+                window.setServerApiKey(apiKey);
+                window.closeServerAuthModal();
+                if (showToast) window.showToast('Authenticated', 'Server session established.', 'success');
+                if (!socket || socket.readyState !== WebSocket.OPEN) {
+                    initWebSocket();
+                }
+                fetchConnectorStatus();
+                if (typeof window.fetchSkills === 'function') window.fetchSkills();
+                if (typeof window.fetchConnectors === 'function') window.fetchConnectors();
+                return true;
+            } else {
+                if (showToast) window.showToast('Auth Failed', 'Invalid Server API Key.', 'error');
+                return false;
+            }
+        } catch (e) {
+            console.error('Login error:', e);
+            return false;
+        }
+    };
+
+    window.submitServerAuth = function () {
+        const input = document.getElementById('serverApiKeyInput');
+        if (!input) return;
+        const key = input.value.trim();
+        if (key) {
+            window.loginWithApiKey(key, true);
+        }
+    };
+
+    async function checkAuthStatus() {
+        try {
+            const res = await fetch(`${API_BASE}/api/auth/status`, { credentials: 'include' });
+            if (res.ok) {
+                const data = await res.json();
+                isAuthRequired = !!data.auth_required;
+                isAuthenticated = !!data.authenticated;
+
+                if (isAuthRequired && !isAuthenticated) {
+                    const savedKey = window.getServerApiKey();
+                    if (savedKey) {
+                        const loggedIn = await window.loginWithApiKey(savedKey, false);
+                        if (loggedIn) return;
+                    }
+                    window.showServerAuthModal();
+                    return;
+                }
+            }
+        } catch (e) {
+            console.debug('Auth status check error:', e);
+        }
+
+        // Connect if authorized or not required
+        initWebSocket();
+        fetchConnectorStatus();
+        if (typeof window.fetchSkills === 'function') window.fetchSkills();
+        if (typeof window.fetchConnectors === 'function') window.fetchConnectors();
+    }
 
     // ── DOM ELEMENTS ──
     const networkLatencyEl = document.getElementById('network-latency');
@@ -61,6 +184,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     let socket = null;
+    let heartbeatInterval = null;
 
     // ── ROLE & MODEL CHANGE NOTIFIERS ──
     if (roleSelector) {
@@ -135,6 +259,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (viewId === 'contactsView') window.fetchContacts();
         if (viewId === 'connectorsView') window.fetchConnectors();
         if (viewId === 'skillsView') window.fetchSkills();
+        if (viewId === 'knowledgeView') window.fetchMemories();
     };
 
     navItems.forEach(item => {
@@ -149,14 +274,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const container = document.getElementById('toastContainer');
         if (!container) return;
         const toast = document.createElement('div');
-        toast.className = `toast-item ${type}`;
+        toast.className = `toast ${type}`;
 
         const titleEl = document.createElement('div');
-        titleEl.style.cssText = "font-weight: bold; font-size: 0.82rem; color: var(--accent-cyan);";
+        titleEl.className = 'toast-title';
         titleEl.textContent = title;
 
         const msgEl = document.createElement('div');
-        msgEl.style.cssText = "font-size: 0.75rem; color: var(--text-secondary); margin-top: 2px;";
+        msgEl.className = 'toast-msg';
         msgEl.textContent = message;
 
         toast.appendChild(titleEl);
@@ -164,13 +289,12 @@ document.addEventListener('DOMContentLoaded', () => {
         container.appendChild(toast);
 
         setTimeout(() => {
-            toast.style.opacity = '0';
-            toast.style.transform = 'translateX(40px)';
-            setTimeout(() => toast.remove(), 300);
+            toast.classList.add('fade-out');
+            setTimeout(() => toast.remove(), 400);
         }, 4000);
     };
 
-    // ── SECURE WEBSOCKET CONNECTION ENGINE (TICKET-BASED) ──
+    // ── SECURE WEBSOCKET CONNECTION ENGINE (TICKET-BASED + HEARTBEAT) ──
     let wsReconnectDelay = 1000;
     let wsReconnectTimer = null;
 
@@ -182,6 +306,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function getWsTicket() {
+        if (!isAuthenticated && !window.getServerApiKey()) {
+            return '';
+        }
         try {
             const res = await window.apiFetch(`${API_BASE}/api/auth/ws-ticket`, { method: 'POST' });
             if (res.ok) {
@@ -196,11 +323,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function initWebSocket() {
         if (socket && (socket.readyState === WebSocket.CONNECTING || socket.readyState === WebSocket.OPEN)) return;
+        const apiKey = window.getServerApiKey();
+
+        if (isAuthRequired && !isAuthenticated && !apiKey) {
+            window.showServerAuthModal();
+            return;
+        }
+
         try {
             const ticket = await getWsTicket();
-            const wsUrl = ticket ? `${wsProtocol}://${host}/ws?ticket=${encodeURIComponent(ticket)}` : `${wsProtocol}://${host}/ws`;
+
+            if (isAuthRequired && !ticket && !apiKey && !isAuthenticated) {
+                window.showServerAuthModal();
+                return;
+            }
+
+            let wsUrl = `${wsProtocol}://${host}/ws`;
+            if (ticket) {
+                wsUrl += `?ticket=${encodeURIComponent(ticket)}`;
+            } else if (apiKey) {
+                wsUrl += `?token=${encodeURIComponent(apiKey)}`;
+            }
 
             socket = new WebSocket(wsUrl);
+
 
             socket.onopen = () => {
                 wsReconnectDelay = 1000;
@@ -208,6 +354,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 window.showToast('Connected', 'JARVIS AI Core online.', 'success');
                 fetchTelemetry();
                 fetchConnectorStatus();
+
+                if (heartbeatInterval) clearInterval(heartbeatInterval);
+                heartbeatInterval = setInterval(() => {
+                    if (socket && socket.readyState === WebSocket.OPEN) {
+                        socket.send(JSON.stringify({ type: 'ping', timestamp: Date.now() }));
+                    }
+                }, 25000);
             };
 
             socket.onmessage = (event) => {
@@ -219,8 +372,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             };
 
-            socket.onclose = () => {
+            socket.onclose = (event) => {
                 _setWsStatus(false);
+                if (heartbeatInterval) clearInterval(heartbeatInterval);
+                if (event.code === 4001) {
+                    isAuthenticated = false;
+                    window.showServerAuthModal();
+                    return; // DO NOT retry in loop if unauthorized
+                }
                 if (wsReconnectTimer) clearTimeout(wsReconnectTimer);
                 wsReconnectTimer = setTimeout(() => initWebSocket(), wsReconnectDelay);
                 wsReconnectDelay = Math.min(wsReconnectDelay * 2, 30000);
@@ -237,13 +396,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ── CONNECTOR HUB STATUS ──
     function fetchConnectorStatus() {
+        if (isAuthRequired && !isAuthenticated && !window.getServerApiKey()) return;
         window.apiFetch(`${API_BASE}/api/connectors`)
-            .then(r => r.json())
+            .then(r => {
+                if (r && r.ok) return r.json();
+                return null;
+            })
             .then(data => {
                 if (!data || !data.connectors) return;
                 renderConnectorPanel(data.connectors);
             })
             .catch(() => {});
+    }
+
+    function _getCleanConnectorName(c) {
+        const id = (c.id || '').toLowerCase();
+        if (id === 'calendar') return 'Calendar';
+        if (id === 'gmail') return 'Gmail';
+        if (id === 'telegram') return 'Telegram';
+        if (id === 'web_search') return 'Search';
+        if (id === 'weather') return 'Weather';
+        if (id === 'wikipedia') return 'Wiki';
+        if (id === 'rss_news') return 'News';
+        if (id === 'github') return 'GitHub';
+        if (id === 'notion') return 'Notion';
+        if (id === 'slack') return 'Slack';
+        if (id === 'mcp_proxy') return 'MCP';
+        if (id === 'filesystem') return 'Files';
+        if (id === 'youtube') return 'YouTube';
+        return String(c.name || '').split(' ')[0];
     }
 
     function renderConnectorPanel(connectors) {
@@ -254,7 +435,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const isConfigured = c.configured || c.status === 'CONNECTED';
             const badge = document.createElement('div');
             badge.className = `connector-badge ${isConfigured ? 'active' : ''}`;
-            badge.title = `${c.name}: ${c.tools ? c.tools.length : 0} tools (${c.status || (isConfigured ? 'CONNECTED' : 'NOT_CONFIGURED')})`;
+            const toolCount = c.tools ? c.tools.length : 0;
+            badge.title = `${c.name}: ${toolCount} tools active (${c.status || (isConfigured ? 'CONNECTED' : 'NOT_CONFIGURED')})`;
             badge.onclick = () => window.switchView('connectorsView');
 
             const iconSpan = document.createElement('span');
@@ -263,7 +445,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const nameSpan = document.createElement('span');
             nameSpan.className = 'connector-name';
-            nameSpan.textContent = String(c.name || '').split(' ')[0];
+            nameSpan.textContent = _getCleanConnectorName(c);
 
             const dotSpan = document.createElement('span');
             dotSpan.className = `connector-dot ${isConfigured ? 'green' : 'grey'}`;
@@ -551,60 +733,111 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ── CONNECTORS & SKILLS LOADERS ──
-    window.runConnectorAction = function (name, actionType = 'default') {
-        if (actionType === 'browse_contacts') {
-            window.switchView('contactsView');
-            return;
-        }
+    let allConnectors = [];
+    let currentConnectorCategory = 'all';
+    let currentConnectorQuery = '';
+
+    window.runConnectorAction = function (name, toolName = '') {
         window.switchView('chatView');
         if (!chatInput) return;
-        let promptText = '';
         const n = String(name || '').toLowerCase();
 
-        if (n.includes('gmail')) {
-            promptText = actionType === 'send' ? 'send_email recipient="" subject="" body=""' : 'read_unread_emails';
+        let promptText = '';
+        if (toolName) {
+            promptText = `Use ${name} tool '${toolName}' to `;
+        } else if (n.includes('gmail') || n.includes('email')) {
+            promptText = 'Read my recent unread emails and summarize them';
         } else if (n.includes('github')) {
-            promptText = actionType === 'issue' ? 'github_create_issue owner="" repo="" title="" body=""' : 'github_list_prs owner="" repo=""';
+            promptText = 'Check the latest status of my GitHub repositories';
+        } else if (n.includes('telegram')) {
+            promptText = 'Send a test notification message to my Telegram';
         } else if (n.includes('notion')) {
-            promptText = actionType === 'create' ? 'notion_create_page title="" content=""' : 'notion_search_pages query=""';
+            promptText = 'Search my Notion workspace for recent notes';
         } else if (n.includes('calendar')) {
-            promptText = actionType === 'add' ? 'create_calendar_event summary="" start="" end=""' : 'list_calendar_events date="today"';
+            promptText = 'List my upcoming calendar events for this week';
         } else if (n.includes('whatsapp')) {
-            promptText = actionType === 'contacts' ? 'manage_whatsapp_contacts' : 'send_whatsapp recipient="" message=""';
+            promptText = 'Send a WhatsApp message to ';
         } else if (n.includes('wikipedia')) {
-            promptText = 'wikipedia_search query=""';
+            promptText = 'Look up Wikipedia article on ';
         } else if (n.includes('youtube')) {
-            promptText = 'youtube_search query=""';
+            promptText = 'Search YouTube for ';
         } else if (n.includes('weather')) {
-            promptText = 'get_weather city=""';
-        } else if (n.includes('rss')) {
-            promptText = 'fetch_rss_news topic="tech"';
+            promptText = 'What is the current weather forecast?';
+        } else if (n.includes('rss') || n.includes('news')) {
+            promptText = 'Get the latest tech news headlines from RSS feeds';
+        } else if (n.includes('search')) {
+            promptText = 'Search the web for ';
         } else if (n.includes('filesystem')) {
-            promptText = 'list_dir path="./"';
-        } else if (n.includes('mcp')) {
-            promptText = 'mcp_call tool="" params={}';
+            promptText = 'List the files in the workspace directory';
         } else {
-            promptText = `${n.replace(/[^a-z0-9]/g, '_')}_action `;
+            promptText = `Run action on ${name} `;
         }
 
         chatInput.value = promptText;
         chatInput.focus();
-        window.showToast('Connector Selected', `Populated command for ${name}. Complete parameters and press Enter.`, 'info');
+        window.showToast('Connector Prompt Loaded', `Prepared prompt for ${name}. Press Enter or customize.`, 'info');
     };
 
-    window.openConnectorConfigModal = function (name) {
+    window.openMcpServerModal = function () {
+        const modal = document.getElementById('mcpServerModal');
+        const urlInput = document.getElementById('mcpServerUrlInput');
+        const nameInput = document.getElementById('mcpServerNameInput');
+        const tokenInput = document.getElementById('mcpServerTokenInput');
+        if (urlInput) urlInput.value = 'http://localhost:3000';
+        if (nameInput) nameInput.value = '';
+        if (tokenInput) tokenInput.value = '';
+        if (modal) modal.style.display = 'flex';
+    };
+
+    window.closeMcpServerModal = function () {
+        const modal = document.getElementById('mcpServerModal');
+        if (modal) modal.style.display = 'none';
+    };
+
+    window.submitAddMcpServer = function () {
+        const url = (document.getElementById('mcpServerUrlInput') || {}).value || '';
+        const name = (document.getElementById('mcpServerNameInput') || {}).value || '';
+        const token = (document.getElementById('mcpServerTokenInput') || {}).value || '';
+        if (!url.trim()) {
+            window.showToast('URL Required', 'Please enter an MCP server URL (e.g. http://localhost:3000).', 'error');
+            return;
+        }
+
+        window.apiFetch(`${API_BASE}/api/connector/call`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                connector: 'mcp_proxy',
+                tool: 'add_server',
+                params: { url: url.trim(), name: name.trim(), api_key: token.trim() }
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            window.showToast('MCP Server Added', data.result || `Registered server at ${url}`, 'success');
+            window.closeMcpServerModal();
+            window.fetchConnectors();
+        })
+        .catch(err => window.showToast('Error', `Failed to connect MCP server: ${err}`, 'error'));
+    };
+
+    window.openConnectorConfigModal = function (name, authHint = '') {
         const modal = document.getElementById('connectorConfigModal');
         const title = document.getElementById('configModalTitle');
         const inputHidden = document.getElementById('configConnectorName');
         const apiKeyInput = document.getElementById('configApiKeyInput');
-        if (title) title.textContent = `🔑 Configure ${name} Key`;
+        if (title) title.textContent = `🔑 Configure ${name}`;
         if (inputHidden) inputHidden.value = name;
         if (apiKeyInput) apiKeyInput.value = '';
-        if (modal) modal.classList.add('active');
+        if (modal) modal.style.display = 'flex';
+        if (authHint) {
+            window.showToast('Setup Guide', authHint, 'info');
+        }
     };
 
     window.closeConnectorConfigModal = function () {
-        document.getElementById('connectorConfigModal')?.classList.remove('active');
+        const modal = document.getElementById('connectorConfigModal');
+        if (modal) modal.style.display = 'none';
     };
 
     window.submitConnectorConfig = function () {
@@ -628,63 +861,247 @@ document.addEventListener('DOMContentLoaded', () => {
         .catch(err => window.showToast('Error', `Failed saving key: ${err}`, 'error'));
     };
 
+    window.testConnector = function (connectorId, btnElement) {
+        const originalText = btnElement ? btnElement.innerHTML : '';
+        if (btnElement) {
+            btnElement.innerHTML = '⏳ Testing...';
+            btnElement.disabled = true;
+        }
+
+        window.apiFetch(`${API_BASE}/api/connector/test`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ connector: connectorId })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status === 'ok') {
+                window.showToast('✅ Connection Verified', `${data.display_name}: Verified in ${data.latency_ms}ms`, 'success');
+                if (btnElement) {
+                    btnElement.innerHTML = `✅ ${data.latency_ms}ms`;
+                    btnElement.style.borderColor = 'var(--accent-green)';
+                    btnElement.style.color = 'var(--accent-green)';
+                }
+            } else {
+                window.showToast('⚠️ Health Degraded', data.message || 'Connection check failed.', 'error');
+                if (btnElement) {
+                    btnElement.innerHTML = '❌ Degraded';
+                    btnElement.style.borderColor = 'var(--accent-amber)';
+                }
+            }
+        })
+        .catch(err => {
+            window.showToast('Test Failed', `Error: ${err.message || err}`, 'error');
+            if (btnElement) btnElement.innerHTML = '❌ Error';
+        })
+        .finally(() => {
+            setTimeout(() => {
+                if (btnElement) {
+                    btnElement.innerHTML = originalText;
+                    btnElement.disabled = false;
+                    btnElement.style.borderColor = '';
+                    btnElement.style.color = '';
+                }
+            }, 4000);
+        });
+    };
+
     window.fetchConnectors = function () {
         window.apiFetch(`${API_BASE}/api/connectors`)
             .then(res => res.json())
             .then(data => {
-                const grid = document.getElementById('connectorsGrid');
-                if (!grid || !data.connectors) return;
-                grid.innerHTML = '';
-                data.connectors.forEach(c => {
-                    const isConnected = c.configured || c.status === 'CONNECTED';
-                    const st = isConnected ? 'CONNECTED' : 'NOT_CONFIGURED';
-                    const card = document.createElement('div');
-                    card.className = 'connector-card';
-
-                    const topRow = document.createElement('div');
-                    topRow.style.cssText = "display: flex; align-items: center; justify-content: space-between;";
-                    const iconSpan = document.createElement('span');
-                    iconSpan.style.fontSize = '28px';
-                    iconSpan.textContent = c.icon || '🔌';
-                    const badgeSpan = document.createElement('span');
-                    badgeSpan.className = 'os-badge';
-                    badgeSpan.style.cssText = `background: ${isConnected ? 'rgba(0, 223, 162, 0.15)' : 'rgba(255, 183, 3, 0.15)'}; color: ${isConnected ? 'var(--accent-green)' : 'var(--accent-amber)'}; border-color: ${isConnected ? 'rgba(0, 223, 162, 0.4)' : 'rgba(255, 183, 3, 0.4)'};`;
-                    badgeSpan.textContent = st;
-                    topRow.appendChild(iconSpan);
-                    topRow.appendChild(badgeSpan);
-
-                    const titleH4 = document.createElement('h4');
-                    titleH4.style.cssText = "color: #fff; font-family: var(--font-heading); margin-top: 10px; font-size: 1.05rem;";
-                    titleH4.textContent = c.name;
-
-                    const descP = document.createElement('p');
-                    descP.style.cssText = "font-size: 0.78rem; color: var(--text-secondary); flex: 1; margin: 4px 0 12px;";
-                    descP.textContent = c.desc || '';
-
-                    const actDiv = document.createElement('div');
-                    actDiv.style.cssText = "display: flex; gap: 6px; flex-wrap: wrap;";
-
-                    const actBtn = document.createElement('button');
-                    actBtn.className = 'btn btn-secondary';
-                    actBtn.textContent = '⚡ Run Action';
-                    actBtn.onclick = () => window.runConnectorAction(c.name);
-                    actDiv.appendChild(actBtn);
-
-                    const cfgBtn = document.createElement('button');
-                    cfgBtn.className = 'btn btn-secondary';
-                    cfgBtn.textContent = '⚙ Configure';
-                    cfgBtn.onclick = () => window.openConnectorConfigModal(c.name);
-                    actDiv.appendChild(cfgBtn);
-
-                    card.appendChild(topRow);
-                    card.appendChild(titleH4);
-                    card.appendChild(descP);
-                    card.appendChild(actDiv);
-                    grid.appendChild(card);
-                });
+                allConnectors = Array.isArray(data.connectors) ? data.connectors : [];
+                renderConnectors(allConnectors, currentConnectorQuery, currentConnectorCategory);
             })
             .catch(() => {});
     };
+
+    function renderConnectors(connectors, query = '', category = 'all') {
+        const grid = document.getElementById('connectorsGrid');
+        if (!grid) return;
+
+        let filtered = connectors;
+
+        // Category filtering
+        if (category === 'active') {
+            filtered = filtered.filter(c => c.configured);
+        } else if (category === 'zero_auth') {
+            filtered = filtered.filter(c => !c.requires_auth);
+        } else if (category !== 'all') {
+            filtered = filtered.filter(c => c.category === category);
+        }
+
+        // Text query filtering
+        if (query) {
+            const q = query.toLowerCase();
+            filtered = filtered.filter(c =>
+                (c.name && c.name.toLowerCase().includes(q)) ||
+                (c.desc && c.desc.toLowerCase().includes(q)) ||
+                (c.id && c.id.toLowerCase().includes(q)) ||
+                (c.tools && c.tools.some(t => t.toLowerCase().includes(q)))
+            );
+        }
+
+        // Update live counters
+        const activeCount = connectors.filter(c => c.configured).length;
+        const activeSpan = document.getElementById('activeConnectorsCount');
+        const totalSpan = document.getElementById('totalConnectorsCount');
+        if (activeSpan) activeSpan.textContent = String(activeCount);
+        if (totalSpan) totalSpan.textContent = String(connectors.length);
+
+        grid.innerHTML = '';
+        if (filtered.length === 0) {
+            const empty = document.createElement('div');
+            empty.style.cssText = "grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 40px; font-size: 0.9rem;";
+            empty.textContent = 'No matching connectors found. Try a different filter or search term.';
+            grid.appendChild(empty);
+            return;
+        }
+
+        filtered.forEach(c => {
+            const isConnected = c.configured;
+            const card = document.createElement('div');
+            card.className = `connector-card ${isConnected ? 'active-connected' : ''}`;
+
+            // Top Header: Icon + Category + Status Badge
+            const topRow = document.createElement('div');
+            topRow.style.cssText = "display: flex; align-items: center; justify-content: space-between;";
+            
+            const leftMeta = document.createElement('div');
+            leftMeta.style.cssText = "display: flex; align-items: center; gap: 10px;";
+            const iconSpan = document.createElement('span');
+            iconSpan.style.fontSize = '26px';
+            iconSpan.textContent = c.icon || '🔌';
+            
+            const catBadge = document.createElement('span');
+            catBadge.style.cssText = "font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;";
+            catBadge.textContent = c.category || 'General';
+            leftMeta.appendChild(iconSpan);
+            leftMeta.appendChild(catBadge);
+
+            const badgeSpan = document.createElement('span');
+            badgeSpan.className = 'os-badge';
+            if (isConnected) {
+                badgeSpan.style.cssText = "background: rgba(0, 223, 162, 0.15); color: var(--accent-green); border-color: rgba(0, 223, 162, 0.4);";
+                badgeSpan.textContent = '● ACTIVE';
+            } else if (!c.requires_auth) {
+                badgeSpan.style.cssText = "background: rgba(0, 242, 254, 0.12); color: var(--accent-cyan); border-color: rgba(0, 242, 254, 0.3);";
+                badgeSpan.textContent = '✨ ZERO-SETUP';
+            } else {
+                badgeSpan.style.cssText = "background: rgba(255, 183, 3, 0.12); color: var(--accent-amber); border-color: rgba(255, 183, 3, 0.3);";
+                badgeSpan.textContent = '○ NEEDS KEY';
+            }
+
+            topRow.appendChild(leftMeta);
+            topRow.appendChild(badgeSpan);
+
+            // Middle: Name & Description
+            const midDiv = document.createElement('div');
+            const titleH4 = document.createElement('h4');
+            titleH4.style.cssText = "color: #fff; font-family: var(--font-heading); margin: 6px 0 4px; font-size: 1.02rem;";
+            titleH4.textContent = c.name;
+
+            const descP = document.createElement('p');
+            descP.style.cssText = "font-size: 0.78rem; color: var(--text-secondary); line-height: 1.4; margin: 0 0 8px;";
+            descP.textContent = c.desc || '';
+            midDiv.appendChild(titleH4);
+            midDiv.appendChild(descP);
+
+            // Tools Chips Drawer (if tools available)
+            if (c.tools && c.tools.length > 0) {
+                const toolsTitle = document.createElement('div');
+                toolsTitle.style.cssText = "font-size: 0.7rem; color: var(--text-muted); margin-top: 6px; font-weight: 600;";
+                toolsTitle.textContent = `TOOLS (${c.tools.length}):`;
+                midDiv.appendChild(toolsTitle);
+
+                const chipsDiv = document.createElement('div');
+                chipsDiv.className = 'tool-chips-container';
+                c.tools.slice(0, 5).forEach(t => {
+                    const chip = document.createElement('span');
+                    chip.className = 'tool-chip';
+                    chip.textContent = t;
+                    chip.title = `Click to run tool '${t}'`;
+                    chip.onclick = (e) => {
+                        e.stopPropagation();
+                        window.runConnectorAction(c.name, t);
+                    };
+                    chipsDiv.appendChild(chip);
+                });
+                if (c.tools.length > 5) {
+                    const moreChip = document.createElement('span');
+                    moreChip.className = 'tool-chip';
+                    moreChip.style.color = 'var(--text-muted)';
+                    moreChip.textContent = `+${c.tools.length - 5} more`;
+                    chipsDiv.appendChild(moreChip);
+                }
+                midDiv.appendChild(chipsDiv);
+            }
+
+            // Bottom Actions Row: Run Action + Test Ping + Config (if auth required or MCP)
+            const actDiv = document.createElement('div');
+            actDiv.style.cssText = "display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255, 255, 255, 0.05);";
+
+            const actBtn = document.createElement('button');
+            actBtn.className = 'btn btn-secondary';
+            actBtn.style.cssText = "padding: 6px 12px; font-size: 0.75rem;";
+            actBtn.textContent = '⚡ Run Action';
+            actBtn.onclick = () => window.runConnectorAction(c.name);
+            actDiv.appendChild(actBtn);
+
+            const testBtn = document.createElement('button');
+            testBtn.className = 'btn btn-secondary';
+            testBtn.style.cssText = "padding: 6px 10px; font-size: 0.75rem;";
+            testBtn.textContent = '🧪 Test';
+            testBtn.title = 'Test connection latency & live health';
+            testBtn.onclick = () => window.testConnector(c.id || c.name, testBtn);
+            actDiv.appendChild(testBtn);
+
+            if (c.id === 'mcp_proxy') {
+                const mcpBtn = document.createElement('button');
+                mcpBtn.className = 'btn btn-secondary';
+                mcpBtn.style.cssText = "padding: 6px 10px; font-size: 0.75rem; color: var(--accent-cyan); border-color: rgba(0, 242, 254, 0.3);";
+                mcpBtn.textContent = '+ Add Server';
+                mcpBtn.title = 'Connect an MCP tool server';
+                mcpBtn.onclick = () => window.openMcpServerModal();
+                actDiv.appendChild(mcpBtn);
+            } else if (c.requires_auth) {
+                const cfgBtn = document.createElement('button');
+                cfgBtn.className = 'btn btn-secondary';
+                cfgBtn.style.cssText = "padding: 6px 10px; font-size: 0.75rem;";
+                cfgBtn.textContent = '⚙ Key';
+                cfgBtn.title = 'Configure API Key';
+                cfgBtn.onclick = () => window.openConnectorConfigModal(c.name, c.auth_hint);
+                actDiv.appendChild(cfgBtn);
+            }
+
+            card.appendChild(topRow);
+            card.appendChild(midDiv);
+            card.appendChild(actDiv);
+            grid.appendChild(card);
+        });
+    }
+
+    // Attach search and filter pill handlers on DOM load
+    const connectorSearchEl = document.getElementById('connectorSearchInput');
+    if (connectorSearchEl) {
+        connectorSearchEl.addEventListener('input', (e) => {
+            currentConnectorQuery = e.target.value.trim();
+            renderConnectors(allConnectors, currentConnectorQuery, currentConnectorCategory);
+        });
+    }
+
+    const pillContainer = document.getElementById('connectorCategoryPills');
+    if (pillContainer) {
+        pillContainer.addEventListener('click', (e) => {
+            if (e.target.classList.contains('filter-pill')) {
+                pillContainer.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+                e.target.classList.add('active');
+                currentConnectorCategory = e.target.getAttribute('data-category') || 'all';
+                renderConnectors(allConnectors, currentConnectorQuery, currentConnectorCategory);
+            }
+        });
+    }
+
 
     let allSkills = [];
     window.fetchSkills = function (query = '') {
@@ -774,20 +1191,23 @@ document.addEventListener('DOMContentLoaded', () => {
         grid.innerHTML = '';
         if (!list || list.length === 0) {
             const empty = document.createElement('div');
-            empty.style.cssText = "grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 20px;";
-            empty.textContent = 'No contacts found.';
+            empty.style.cssText = "grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 40px; font-size: 0.9rem;";
+            empty.textContent = 'No saved contacts found. Import .vcf/.csv or click + Add Contact.';
             grid.appendChild(empty);
             return;
         }
-        list.slice(0, 60).forEach(c => {
+        list.slice(0, 80).forEach(c => {
             const card = document.createElement('div');
             card.className = 'contact-card';
 
-            const row = document.createElement('div');
-            row.style.cssText = "display: flex; align-items: center; gap: 10px;";
+            const topRow = document.createElement('div');
+            topRow.style.cssText = "display: flex; align-items: center; justify-content: space-between;";
+
+            const leftGroup = document.createElement('div');
+            leftGroup.style.cssText = "display: flex; align-items: center; gap: 10px;";
 
             const avatar = document.createElement('div');
-            avatar.style.cssText = "width: 36px; height: 36px; border-radius: 50%; background: var(--accent-purple); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: bold;";
+            avatar.style.cssText = "width: 38px; height: 38px; border-radius: 50%; background: linear-gradient(135deg, var(--accent-purple), var(--accent-cyan)); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 15px;";
             avatar.textContent = (c.name || '?')[0].toUpperCase();
 
             const info = document.createElement('div');
@@ -796,13 +1216,48 @@ document.addEventListener('DOMContentLoaded', () => {
             nameEl.textContent = c.name;
             const subEl = document.createElement('div');
             subEl.style.cssText = "font-size: 11px; color: var(--text-muted);";
-            subEl.textContent = c.phone_number || c.email || (c.aliases ? c.aliases.join(', ') : '');
+            subEl.textContent = c.phone_number || c.email || (c.aliases ? c.aliases.join(', ') : 'No details');
 
             info.appendChild(nameEl);
             info.appendChild(subEl);
-            row.appendChild(avatar);
-            row.appendChild(info);
-            card.appendChild(row);
+            leftGroup.appendChild(avatar);
+            leftGroup.appendChild(info);
+            topRow.appendChild(leftGroup);
+
+            // Action Buttons
+            const actRow = document.createElement('div');
+            actRow.style.cssText = "display: flex; gap: 6px; margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(255, 255, 255, 0.05);";
+
+            const msgBtn = document.createElement('button');
+            msgBtn.className = 'btn btn-secondary';
+            msgBtn.style.cssText = "padding: 4px 10px; font-size: 0.72rem; flex: 1;";
+            msgBtn.textContent = '💬 Message';
+            msgBtn.onclick = () => {
+                window.switchView('chatView');
+                if (chatInput) {
+                    chatInput.value = `Send a message to ${c.name}: `;
+                    chatInput.focus();
+                }
+            };
+            actRow.appendChild(msgBtn);
+
+            if (c.email) {
+                const emailBtn = document.createElement('button');
+                emailBtn.className = 'btn btn-secondary';
+                emailBtn.style.cssText = "padding: 4px 10px; font-size: 0.72rem; flex: 1;";
+                emailBtn.textContent = '📧 Email';
+                emailBtn.onclick = () => {
+                    window.switchView('chatView');
+                    if (chatInput) {
+                        chatInput.value = `Send an email to ${c.name} (${c.email}) about `;
+                        chatInput.focus();
+                    }
+                };
+                actRow.appendChild(emailBtn);
+            }
+
+            card.appendChild(topRow);
+            card.appendChild(actRow);
             grid.appendChild(card);
         });
     }
@@ -813,6 +1268,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // ── FILE IMPORT & RAG MEMORY ──
+    let allMemories = [];
     const fileImportInput = document.getElementById('fileImportInput');
     const knowledgeDropZone = document.getElementById('knowledgeDropZone');
 
@@ -854,10 +1310,115 @@ document.addEventListener('DOMContentLoaded', () => {
             window.showToast('Uploading', `Ingesting '${file.name}' into RAG memory...`, 'info');
             window.apiFetch(`${API_BASE}/api/import/file`, { method: 'POST', body: formData })
                 .then(res => res.json())
-                .then(data => window.showToast('Success', data.message || `File '${file.name}' ingested.`, 'success'))
+                .then(data => {
+                    window.showToast('Success', data.message || `File '${file.name}' ingested.`, 'success');
+                    window.fetchMemories();
+                })
                 .catch(err => window.showToast('Error', `Failed uploading ${file.name}`, 'error'));
         }
     };
+
+    window.fetchMemories = function (query = '') {
+        Promise.all([
+            window.apiFetch(`${API_BASE}/api/memory`).then(r => r.ok ? r.json() : { memories: [] }),
+            window.apiFetch(`${API_BASE}/api/galaxy/data`).then(r => r.ok ? r.json() : { nodes: [] })
+        ])
+        .then(([memData, galaxyData]) => {
+            allMemories = Array.isArray(memData.memories) ? memData.memories : [];
+            const nodes = Array.isArray(galaxyData.nodes) ? galaxyData.nodes : [];
+
+            const memCountSpan = document.getElementById('memoryCountBadge');
+            const galaxyCountSpan = document.getElementById('galaxyNodesBadge');
+            if (memCountSpan) memCountSpan.textContent = String(allMemories.length);
+            if (galaxyCountSpan) galaxyCountSpan.textContent = String(nodes.length);
+
+            renderMemories(allMemories, query);
+        })
+        .catch(() => {});
+    };
+
+    function renderMemories(memories, query = '') {
+        const grid = document.getElementById('memoriesGrid');
+        if (!grid) return;
+        let filtered = memories;
+        if (query) {
+            const q = query.toLowerCase();
+            filtered = memories.filter(m =>
+                (m.name && m.name.toLowerCase().includes(q)) ||
+                (m.description && m.description.toLowerCase().includes(q)) ||
+                (m.content && m.content.toLowerCase().includes(q))
+            );
+        }
+        grid.innerHTML = '';
+        if (filtered.length === 0) {
+            const empty = document.createElement('div');
+            empty.style.cssText = "grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 30px; font-size: 0.88rem;";
+            empty.textContent = query ? 'No matching memory notes found.' : 'No persistent memory notes recorded yet. Say "Remember that..." in chat to save.';
+            grid.appendChild(empty);
+            return;
+        }
+
+        filtered.forEach(m => {
+            const card = document.createElement('div');
+            card.className = 'connector-card';
+
+            const topRow = document.createElement('div');
+            topRow.style.cssText = "display: flex; align-items: center; justify-content: space-between;";
+
+            const typeBadge = document.createElement('span');
+            typeBadge.className = 'os-badge';
+            typeBadge.style.cssText = "background: rgba(0, 242, 254, 0.1); color: var(--accent-cyan); border-color: rgba(0, 242, 254, 0.3); font-size: 0.7rem;";
+            typeBadge.textContent = (m.type || 'NOTE').toUpperCase();
+
+            const dateSpan = document.createElement('span');
+            dateSpan.style.cssText = "font-size: 0.72rem; color: var(--text-muted);";
+            dateSpan.textContent = m.created || '';
+            topRow.appendChild(typeBadge);
+            topRow.appendChild(dateSpan);
+
+            const titleH4 = document.createElement('h4');
+            titleH4.style.cssText = "color: #fff; font-family: var(--font-heading); margin: 6px 0 2px; font-size: 0.95rem;";
+            titleH4.textContent = m.name;
+
+            const descP = document.createElement('p');
+            descP.style.cssText = "font-size: 0.75rem; color: var(--text-secondary); line-height: 1.4; margin: 0 0 6px;";
+            descP.textContent = m.description || m.content || '';
+
+            const actRow = document.createElement('div');
+            actRow.style.cssText = "display: flex; justify-content: flex-end; gap: 6px; margin-top: 8px; padding-top: 6px; border-top: 1px solid rgba(255, 255, 255, 0.05);";
+
+            const delBtn = document.createElement('button');
+            delBtn.className = 'btn btn-secondary';
+            delBtn.style.cssText = "padding: 3px 8px; font-size: 0.7rem; color: var(--accent-red);";
+            delBtn.textContent = '🗑️ Delete';
+            delBtn.onclick = () => window.deleteMemoryEntry(m.name, m.scope);
+            actRow.appendChild(delBtn);
+
+            card.appendChild(topRow);
+            card.appendChild(titleH4);
+            card.appendChild(descP);
+            card.appendChild(actRow);
+            grid.appendChild(card);
+        });
+    }
+
+    window.deleteMemoryEntry = function (name, scope = 'user') {
+        window.apiFetch(`${API_BASE}/api/memory/${encodeURIComponent(name)}?scope=${encodeURIComponent(scope)}`, {
+            method: 'DELETE'
+        })
+        .then(res => res.json())
+        .then(() => {
+            window.showToast('Deleted', `Memory '${name}' deleted.`, 'info');
+            window.fetchMemories();
+        })
+        .catch(err => window.showToast('Error', `Failed to delete memory: ${err}`, 'error'));
+    };
+
+    const memSearchEl = document.getElementById('memorySearchInput');
+    if (memSearchEl) {
+        memSearchEl.addEventListener('input', debounce((e) => renderMemories(allMemories, e.target.value.trim()), 200));
+    }
+
 
     // ── MODAL HELPERS & SECURE CREDENTIAL DISPATCH ──
     const openImportBtn = document.getElementById('openImportContactBtn');
@@ -1131,9 +1692,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Initial Engine Bootstrap
-    window.fetchConnectors();
-    window.fetchSkills();
     initParticleCanvas();
     setInterval(fetchTelemetry, 5000);
-    initWebSocket();
+    checkAuthStatus();
 });

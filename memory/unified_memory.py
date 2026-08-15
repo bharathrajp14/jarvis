@@ -94,17 +94,46 @@ class UnifiedMemoryManager:
         return entry
 
     def forget(self, name: str, scope: str = "user") -> None:
-        """Delete a memory from persistent storage and vector index."""
+        """Delete a memory from persistent storage, vector index, and caches."""
+        from memory.persistent_store import _SEARCH_CACHE
         delete_memory(name, scope=scope)
+        # Clear all search caches so recall() doesn't serve stale results
+        _SEARCH_CACHE.clear()
+        # Clear vector memory recall cache
+        try:
+            from memory.vector_store import VectorMemory
+            VectorMemory._RECALL_CACHE.clear()
+            # Also try to remove by doc_id from chromadb if available
+            if self.vector and self.vector._collection is not None:
+                try:
+                    self.vector._collection.delete(where={"name": name})
+                except Exception:
+                    pass
+            # Remove from fallback text store
+            if self.vector and self.vector._fallback is not None:
+                self.vector._fallback.entries = [
+                    e for e in self.vector._fallback.entries
+                    if name.lower() not in e.get("text", "").lower()[:len(name)+5]
+                ]
+                self.vector._fallback._save()
+        except Exception as ve:
+            logger.debug("Vector cache clear on forget: %s", ve)
         logger.info(f"🗑️ Unified Memory deleted: [{scope}] {name}")
 
     def recall(self, query: str, limit: int = 5) -> List[Dict[str, Any]]:
-        """Search all memory tiers for query relevant context (Fast-local first)."""
+        """Search all memory tiers for query-relevant context with decay-aware ranking."""
+        import time, math
+        from memory.persistent_store import _SEARCH_CACHE
         results = []
+        now = time.time()
 
-        # 1. Search Persistent Markdown/SQLite memory (sub-millisecond local tier)
+        # 1. Search Persistent Markdown/SQLite memory (primary structured tier)
         persistent_hits = search_memory(query)
-        for p in persistent_hits[:limit]:
+        for p in persistent_hits[:limit * 2]:
+            # Compute recency score (files modified recently rank higher)
+            age_days = max(0, (now - (getattr(p, 'mtime_s', 0) or 0)) / 86400)
+            recency_score = math.exp(-age_days / 30)  # 30-day half-life
+            rank = p.confidence * (0.7 + 0.3 * recency_score)
             results.append({
                 "source": "persistent",
                 "name": p.name,
@@ -112,20 +141,25 @@ class UnifiedMemoryManager:
                 "content": p.content,
                 "type": p.type,
                 "confidence": p.confidence,
+                "_rank": rank,
             })
 
-        # 2. Search Lesson store (sub-millisecond local tier)
-        lesson_hits = self.lessons.get_relevant_lessons(query, limit=3)
-        for l in lesson_hits:
-            results.append({
-                "source": "lesson",
-                "name": f"Lesson: {l['topic']}",
-                "content": l['correction'],
-                "confidence": 0.9,
-            })
+        # 2. Search Lesson store (high-confidence operational learnings)
+        try:
+            lesson_hits = self.lessons.get_relevant_lessons(query, limit=3)
+            for l in lesson_hits:
+                results.append({
+                    "source": "lesson",
+                    "name": f"Lesson: {l['topic']}",
+                    "content": l['correction'],
+                    "confidence": 0.9,
+                    "_rank": 0.9,
+                })
+        except Exception:
+            pass
 
-        # 3. Only query Semantic Vector Store if local results are insufficient to satisfy limit
-        if len(results) < limit and len(query.split()) >= 3:
+        # 3. Semantic Vector Store — only when local results are insufficient
+        if len(results) < limit and len(query.split()) >= 2:
             try:
                 vector_hits = self.vector.recall(query, n=max(1, limit - len(results)))
                 for v_text in vector_hits:
@@ -134,11 +168,17 @@ class UnifiedMemoryManager:
                             "source": "vector",
                             "name": "Semantic Vector Memory",
                             "content": v_text,
-                            "confidence": 0.85,
+                            "confidence": 0.75,
+                            "_rank": 0.75,
                         })
             except Exception as v_err:
                 logger.debug("Vector memory recall fallback: %s", v_err)
 
+        # Sort by decay-aware rank descending
+        results.sort(key=lambda r: r.get("_rank", 0.5), reverse=True)
+        # Strip internal rank key before returning
+        for r in results:
+            r.pop("_rank", None)
         return results[:limit]
 
     # ── Tier 3: Tool Result Caching ────────────────────────────────────────
@@ -194,6 +234,56 @@ class UnifiedMemoryManager:
             "successes": self.experience.get_successful_patterns(goal, limit=limit),
             "failures": self.experience.get_similar_failures(goal, limit=limit),
         }
+
+    def record_operational_lesson(
+        self,
+        tool_name: str,
+        goal: str,
+        success: bool,
+        result_summary: str,
+        failure_reason: Optional[str] = None,
+    ) -> None:
+        """Link a tool execution outcome directly to operational memory.
+
+        Stores:
+        - Trajectory in ExperienceReplayStore for pattern learning
+        - Lesson in LessonStore if a verifiable failure occurred
+        - Persistent memory note for significant successful verified operations
+        """
+        # 1. Always record trajectory
+        self.record_execution_experience(
+            goal=goal,
+            success=success,
+            tool_sequence=[tool_name],
+            failure_reason=failure_reason,
+        )
+
+        # 2. Record lesson if this was a verified failure
+        if not success and failure_reason:
+            try:
+                self.lessons.add_lesson(
+                    topic=f"Tool:{tool_name} | Goal: {goal[:80]}",
+                    correction=f"Failure: {failure_reason[:200]}",
+                    source="tool_verifier",
+                )
+                logger.info(f"📚 Operational lesson recorded for failed tool: {tool_name}")
+            except Exception as e:
+                logger.debug("Lesson store add_lesson failed: %s", e)
+
+        # 3. For significant successful verified operations, persist a memory note
+        if success and len(result_summary) > 20:
+            try:
+                from datetime import datetime
+                self.remember(
+                    name=f"op_{tool_name}_{datetime.now().strftime('%Y%m%d')}",
+                    content=f"Tool '{tool_name}' completed successfully for: {goal[:100]}. Result: {result_summary[:200]}",
+                    description=f"Verified execution of {tool_name}",
+                    mem_type="operational",
+                    scope="user",
+                    confidence=1.0,
+                )
+            except Exception:
+                pass
 
 
 _global_unified_memory: Optional[UnifiedMemoryManager] = None

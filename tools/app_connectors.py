@@ -1,17 +1,16 @@
 # tools/app_connectors.py — JARVIS MK37 App Connectors (Gmail, Notion, GitHub, Calendar, Slack)
 """
 App Connectors for external productivity tools and cloud platforms.
-Supports Gmail, Notion, GitHub, Google Calendar, Slack, and Discord.
+Supports Gmail, Notion, GitHub, Google Calendar, and Slack via ConnectorHub.
 """
 from __future__ import annotations
 
 import json
 import logging
-import os
-import urllib.parse
 from typing import Any, Dict, List, Optional
 
 from tools.registry import register_tool
+from connectors.hub import get_hub
 
 logger = logging.getLogger("JARVIS.AppConnectors")
 
@@ -41,37 +40,8 @@ def gmail_list_unread(max_results: int = 5, *args, **kwargs) -> str:
     except (ValueError, TypeError):
         max_results = 5
 
-    sample_emails = [
-        {
-            "id": "msg_001",
-            "sender": "alex.dev@organization.com",
-            "subject": "System Architecture Review & Deployment Schedule",
-            "snippet": "Hi team, please review the latest architecture update for the BR JARVIS deployment...",
-            "date": "2026-07-24T10:15:00Z"
-        },
-        {
-            "id": "msg_002",
-            "sender": "alerts@github.com",
-            "subject": "[GitHub] Build Succeeded: main_mk37 workflow #142",
-            "snippet": "Workflow main_mk37 completed successfully in 45s...",
-            "date": "2026-07-24T11:00:00Z"
-        },
-        {
-            "id": "msg_003",
-            "sender": "finance@company.com",
-            "subject": "Q3 Cloud Budget Allocation Report",
-            "snippet": "Attached is the Q3 infrastructure budget report for review...",
-            "date": "2026-07-24T11:30:00Z"
-        }
-    ]
-
-    return json.dumps({
-        "status": "success",
-        "source": "gmail_connector",
-        "unread_count": len(sample_emails[:max_results]),
-        "emails": sample_emails[:max_results],
-        "browser_option": "To view live Gmail interactive inbox, use browser_open_url with 'https://mail.google.com'"
-    }, indent=2)
+    hub = get_hub()
+    return hub.call("gmail", "list_unread", {"limit": max_results})
 
 
 @register_tool(
@@ -87,16 +57,15 @@ def gmail_list_unread(max_results: int = 5, *args, **kwargs) -> str:
         "required": ["to", "subject", "body"]
     }
 )
-def gmail_send_email(to: str, subject: str, body: str) -> str:
+def gmail_send_email(to: str, subject: str = "", body: str = "", *args, **kwargs) -> str:
     """Send or draft an email via Gmail connector."""
-    logger.info(f"✉️ GmailConnector: Drafting email to={to}, subject={subject}")
-    return json.dumps({
-        "status": "success",
-        "action": "email_sent",
-        "recipient": to,
-        "subject": subject,
-        "message": f"Email to {to} successfully transmitted via Gmail Connector."
-    })
+    if isinstance(to, dict):
+        subject = to.get("subject", subject)
+        body = to.get("body", body)
+        to = to.get("to", "")
+
+    hub = get_hub()
+    return hub.call("gmail", "send_email", {"to": to, "subject": subject, "body": body})
 
 
 # ── NOTION CONNECTORS ─────────────────────────────────────────────────────────
@@ -112,33 +81,15 @@ def gmail_send_email(to: str, subject: str, body: str) -> str:
         "required": ["query"]
     }
 )
-def notion_search_pages(*args, **kwargs) -> str:
+def notion_search_pages(query: str = "", *args, **kwargs) -> str:
     """Search Notion workspace for pages and databases."""
-    query = args[0] if args else kwargs.get("query", "")
     if isinstance(query, dict):
-        query = query.get("query", str(query))
+        query = query.get("query", "")
+    elif args and isinstance(args[0], str):
+        query = args[0]
 
-    logger.info(f"📝 NotionConnector: Searching workspace for query='{query}'")
-    return json.dumps({
-        "status": "success",
-        "mode": "demo_stub",
-        "source": "notion_connector",
-        "query": query,
-        "results": [
-            {
-                "page_id": "notion_page_101",
-                "title": f"Project Specs — {query.title()}",
-                "url": f"https://notion.so/workspace/{query.lower().replace(' ', '-')}-101",
-                "last_edited": "2026-07-22T09:40:00Z"
-            },
-            {
-                "page_id": "notion_page_102",
-                "title": "BR JARVIS Engineering Knowledge Base",
-                "url": "https://notion.so/workspace/br-jarvis-kb-102",
-                "last_edited": "2026-07-21T18:20:00Z"
-            }
-        ]
-    }, indent=2)
+    hub = get_hub()
+    return hub.call("notion", "search", {"query": query})
 
 
 @register_tool(
@@ -153,21 +104,18 @@ def notion_search_pages(*args, **kwargs) -> str:
         "required": ["title"]
     }
 )
-def notion_create_page(*args, **kwargs) -> str:
+def notion_create_page(title: str = "", content: str = "", *args, **kwargs) -> str:
     """Create a new page in Notion workspace."""
-    title = args[0] if args else kwargs.get("title", "")
-    content = args[1] if len(args)>1 else kwargs.get("content", "")
     if isinstance(title, dict):
         content = title.get("content", content)
-        title = title.get("title", str(title))
+        title = title.get("title", "")
+    elif args:
+        title = args[0]
+        if len(args) > 1:
+            content = args[1]
 
-    logger.info(f"📝 NotionConnector: Creating page title='{title}'")
-    return json.dumps({
-        "status": "success",
-        "page_title": title,
-        "url": f"https://notion.so/workspace/{title.lower().replace(' ', '-')}-new",
-        "message": f"Notion page '{title}' created successfully."
-    })
+    hub = get_hub()
+    return hub.call("notion", "create_page", {"title": title, "content": content})
 
 
 # ── GITHUB CONNECTORS ─────────────────────────────────────────────────────────
@@ -183,29 +131,21 @@ def notion_create_page(*args, **kwargs) -> str:
         "required": []
     }
 )
-def github_list_prs(repo: str = "bharthraj1412/BrJarvis") -> str:
-    """List open PRs or Issues in a GitHub repository."""
-    logger.info(f"🐙 GitHubConnector: Listing PRs for repo='{repo}'")
-    return json.dumps({
-        "status": "success",
-        "repository": repo,
-        "pull_requests": [
-            {
-                "number": 37,
-                "title": "feat: Add Claude & DeepSeek backend connectors with dynamic failover",
-                "author": "bharthraj1412",
-                "state": "open",
-                "url": f"https://github.com/{repo}/pull/37"
-            },
-            {
-                "number": 36,
-                "title": "ui: Glassmorphic dark assistant redesign & voice visualizer",
-                "author": "bharthraj1412",
-                "state": "open",
-                "url": f"https://github.com/{repo}/pull/36"
-            }
-        ]
-    }, indent=2)
+def github_list_prs(repo: str = "bharthraj1412/BrJarvis", *args, **kwargs) -> str:
+    """List open PRs in a GitHub repository."""
+    if isinstance(repo, dict):
+        repo = repo.get("repo", "bharthraj1412/BrJarvis")
+    elif args and isinstance(args[0], str):
+        repo = args[0]
+
+    parts = repo.strip().split("/")
+    if len(parts) == 2:
+        owner, repo_name = parts
+    else:
+        owner, repo_name = "bharthraj1412", repo.strip()
+
+    hub = get_hub()
+    return hub.call("github", "list_prs", {"owner": owner, "repo": repo_name})
 
 
 @register_tool(
@@ -221,16 +161,21 @@ def github_list_prs(repo: str = "bharthraj1412/BrJarvis") -> str:
         "required": ["repo", "title"]
     }
 )
-def github_create_issue(repo: str, title: str, body: str = "") -> str:
+def github_create_issue(repo: str = "", title: str = "", body: str = "", *args, **kwargs) -> str:
     """Create a new issue on GitHub repository."""
-    logger.info(f"🐙 GitHubConnector: Creating issue on repo='{repo}' title='{title}'")
-    return json.dumps({
-        "status": "success",
-        "issue_number": 42,
-        "title": title,
-        "url": f"https://github.com/{repo}/issues/42",
-        "message": f"GitHub Issue '#42 {title}' created successfully."
-    })
+    if isinstance(repo, dict):
+        title = repo.get("title", title)
+        body = repo.get("body", body)
+        repo = repo.get("repo", "")
+
+    parts = repo.strip().split("/")
+    if len(parts) == 2:
+        owner, repo_name = parts
+    else:
+        owner, repo_name = "bharthraj1412", repo.strip()
+
+    hub = get_hub()
+    return hub.call("github", "create_issue", {"owner": owner, "repo": repo_name, "title": title, "body": body})
 
 
 # ── GOOGLE CALENDAR CONNECTORS ────────────────────────────────────────────────
@@ -246,29 +191,15 @@ def github_create_issue(repo: str, title: str, body: str = "") -> str:
         "required": []
     }
 )
-def calendar_list_events(days: int = 7) -> str:
+def calendar_list_events(days: int = 7, *args, **kwargs) -> str:
     """List upcoming Google Calendar events."""
-    logger.info(f"📅 CalendarConnector: Listing events for next {days} days")
-    return json.dumps({
-        "status": "success",
-        "source": "google_calendar",
-        "events": [
-            {
-                "event_id": "cal_evt_1",
-                "summary": "BR JARVIS Architecture Review & Demo",
-                "start": "2026-07-22T14:00:00+05:30",
-                "end": "2026-07-22T15:00:00+05:30",
-                "attendees": ["sir@organization.com", "architect@organization.com"]
-            },
-            {
-                "event_id": "cal_evt_2",
-                "summary": "Weekly AIOS Infrastructure Standup",
-                "start": "2026-07-23T10:00:00+05:30",
-                "end": "2026-07-23T10:30:00+05:30",
-                "attendees": ["dev-team@organization.com"]
-            }
-        ]
-    }, indent=2)
+    if isinstance(days, dict):
+        days = days.get("days", 7)
+    elif args and isinstance(args[0], (int, dict)):
+        days = args[0] if isinstance(args[0], int) else args[0].get("days", 7)
+
+    hub = get_hub()
+    return hub.call("calendar", "list_events", {"days": days})
 
 
 @register_tool(
@@ -284,19 +215,18 @@ def calendar_list_events(days: int = 7) -> str:
         "required": ["summary", "start_time"]
     }
 )
-def calendar_create_event(summary: str, start_time: str, duration_minutes: int = 30) -> str:
+def calendar_create_event(summary: str = "", start_time: str = "", duration_minutes: int = 30, *args, **kwargs) -> str:
     """Schedule a new meeting or event in Google Calendar."""
-    logger.info(f"📅 CalendarConnector: Creating event summary='{summary}', start='{start_time}'")
-    return json.dumps({
-        "status": "success",
-        "summary": summary,
-        "start_time": start_time,
-        "duration": f"{duration_minutes} mins",
-        "message": f"Calendar event '{summary}' scheduled successfully."
-    })
+    if isinstance(summary, dict):
+        start_time = summary.get("start_time", start_time)
+        duration_minutes = summary.get("duration_minutes", duration_minutes)
+        summary = summary.get("summary", "")
+
+    hub = get_hub()
+    return hub.call("calendar", "create_event", {"summary": summary, "start_time": start_time, "duration_minutes": duration_minutes})
 
 
-# ── SLACK / DISCORD CONNECTORS ────────────────────────────────────────────────
+# ── SLACK CONNECTORS ──────────────────────────────────────────────────────────
 
 @register_tool(
     name="slack_send_message",
@@ -304,18 +234,17 @@ def calendar_create_event(summary: str, start_time: str, duration_minutes: int =
     parameters={
         "type": "object",
         "properties": {
-            "channel": {"type": "string", "description": "Channel name e.g. '#dev-announcements'"},
+            "channel": {"type": "string", "description": "Channel name e.g. '#general'"},
             "message": {"type": "string", "description": "Message text to post"}
         },
         "required": ["channel", "message"]
     }
 )
-def slack_send_message(channel: str, message: str) -> str:
+def slack_send_message(channel: str = "", message: str = "", *args, **kwargs) -> str:
     """Post a message to a Slack or Discord dev channel."""
-    logger.info(f"💬 SlackConnector: Posting to channel='{channel}'")
-    return json.dumps({
-        "status": "success",
-        "channel": channel,
-        "delivered": True,
-        "message": f"Message delivered to channel {channel}."
-    })
+    if isinstance(channel, dict):
+        message = channel.get("message", message)
+        channel = channel.get("channel", "")
+
+    hub = get_hub()
+    return hub.call("slack", "post_message", {"channel": channel, "text": message})

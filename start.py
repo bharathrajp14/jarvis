@@ -99,9 +99,7 @@ except ImportError:
 
 # ── Constants ────────────────────────────────────────────────────────────────
 
-VERSION = "40.2.0"
-BUILD   = "2026-08-15"
-CODENAME = "MARK XL.2"
+from core.version import VERSION, BUILD, CODENAME
 
 BASE_DIR = Path(__file__).resolve().parent
 PYTHON   = sys.executable
@@ -564,8 +562,46 @@ def doctor(auto_confirm: bool = False):
 
     console.print()
 
-    # 7. AI Backends & Gateway Health Audit
-    table_ai = Table(title="7. AI Backends & Model Gateway Audit", box=None)
+    # 7. System Application Paths & Auto-Configuration Audit
+    console.print("[bold cyan]7. System Application Paths & Registry Auto-Configuration[/]")
+    try:
+        from actions.app_resolver import get_app_resolver
+        resolver = get_app_resolver()
+        app_count = len(resolver._cache)
+        console.print(f"  [green]✓ Application Resolver:[/] [bold green]{app_count}[/] system applications indexed and launch-ready")
+    except Exception as ar_err:
+        console.print(f"  [yellow]⚠ Application Resolver note: {ar_err}[/]")
+
+    console.print()
+
+    # 8. Integrated Connectors Suite Audit
+    table_conn = Table(title="8. Integrated Connector Suite Audit", box=None)
+    table_conn.add_column("Connector ID", style="bold cyan")
+    table_conn.add_column("Display Name", style="bold white")
+    table_conn.add_column("Tools Count", justify="center")
+    table_conn.add_column("Status")
+
+    try:
+        from connectors.hub import get_hub
+        hub = get_hub()
+        for cid, conn in hub._connectors.items():
+            t_count = len(conn.list_tools())
+            is_conf = conn.is_configured
+            if is_conf:
+                status_str = "[green]✓ CONNECTED / READY[/]"
+            elif not conn.requires_auth:
+                status_str = "[green]✓ ZERO-SETUP[/]"
+            else:
+                status_str = "[yellow]○ NEEDS KEY[/]"
+            table_conn.add_row(cid, conn.display_name, str(t_count), status_str)
+    except Exception as c_err:
+        table_conn.add_row("hub", "ConnectorHub", "-", f"[yellow]⚠ Warning: {c_err}[/]")
+
+    console.print(table_conn)
+    console.print()
+
+    # 9. AI Backends & Gateway Health Audit
+    table_ai = Table(title="9. AI Backends & Model Gateway Audit", box=None)
     table_ai.add_column("Provider / Model Profile", style="bold magenta")
     table_ai.add_column("Model Name", style="dim")
     table_ai.add_column("Status")
@@ -588,7 +624,7 @@ def doctor(auto_confirm: bool = False):
     console.print(table_ai)
     console.print()
 
-    # 8. Fix & Auto-Repair Phase
+    # 10. Fix & Auto-Repair Phase
     if not missing_pip:
         console.print("[bold green]========================================================[/]")
         console.print("[bold green]  DOCTOR DIAGNOSIS: SYSTEM IS 100% HEALTHY & OPERATIONAL!  [/]")
@@ -743,12 +779,8 @@ def launch_web_server(open_url: str = None):
         _run_script("server.py", None)
 
 def launch_dashboard_server():
-    console.print("\n[bold cyan]▶ Launching Remote PWA QR Mobile Dashboard (Port 8000)[/]")
-    dash_script = BASE_DIR / "dashboard" / "server.py"
-    if not dash_script.exists():
-        console.print("[red]✗ Dashboard server not found.[/]")
-        return
-    _run_script("dashboard/server.py", None)
+    console.print("\n[bold cyan]▶ Launching Canonical BR JARVIS Dashboard Control Plane (Port 8000)[/]")
+    launch_web_server()
 
 def launch_mark_ui():
     console.print("\n[bold cyan]▶ Launching Mark Cyberpunk HUD Interface (JarvisLive Gemini Session + PyQt6 HUD)[/]")
@@ -1034,7 +1066,7 @@ def main():
         
         valid_choices = [
             "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11",
-            "voice", "cli", "both", "web", "webserver", "webcore", "server",
+            "voice", "cli", "both", "web", "webserver", "webcore", "server", "api",
             "status", "health", "doctor", "fix", "smoke", "check", "verify",
             "audio", "sound", "live", "liveos", "os", "floating", "float", "overlay",
             "galaxy", "3d", "space", "nodes"
@@ -1054,7 +1086,7 @@ def main():
             "1": "voice", "voice": "voice", "v": "voice", "gui": "voice",
             "2": "cli", "cli": "cli", "c": "cli", "terminal": "cli",
             "3": "both", "both": "both", "b": "both", "all": "both",
-            "4": "webserver", "web": "webserver", "webcore": "webserver", "server": "webserver",
+            "4": "webserver", "web": "webserver", "webcore": "webserver", "server": "webserver", "api": "webserver",
             "5": "status", "status": "status", "health": "status",
             "6": "doctor", "doctor": "doctor", "fix": "doctor",
             "7": "smoke", "smoke": "smoke", "check": "smoke", "verify": "smoke",
@@ -1071,7 +1103,8 @@ def main():
     elif mode in ("cli", "c", "terminal"): launch_cli() if _pre_launch_check() else None
     elif mode in ("both", "b", "all"): launch_both() if _pre_launch_check() else None
     elif mode in ("dashboard", "pwa", "mobile", "qr"): launch_dashboard_server()
-    elif mode in ("webserver", "web", "server"): launch_web_server()
+    elif mode in ("webserver", "web", "server", "api"): launch_web_server()
+
     elif mode in ("status", "health"): show_status()
     elif mode in ("doctor", "fix"): doctor()
     elif mode in ("silent",): launch_silent()

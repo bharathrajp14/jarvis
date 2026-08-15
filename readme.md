@@ -108,5 +108,7 @@ python start.py smoke
 ---
 
 ## 📜 Documentation Index
+- [`docs/operations/MANUAL_WORKS_AND_OPERATIONS_GUIDE.md`](docs/operations/MANUAL_WORKS_AND_OPERATIONS_GUIDE.md) — **Manual Setup, Keys, Audio & Operations Guide.**
 - [`docs/FILE_AUDIT.md`](docs/FILE_AUDIT.md) — Comprehensive forensic inventory of every repository file.
 - [`docs/MODERNIZATION_LEDGER.md`](docs/MODERNIZATION_LEDGER.md) — Architectural modernization ledger across all 18 phases.
+- [`docs/architecture/full-system-map.md`](docs/architecture/full-system-map.md) — Full system subsystem topology and lifecycle.

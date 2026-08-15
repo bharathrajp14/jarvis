@@ -392,6 +392,11 @@ class NeuralTTS:
                 pass
 
         self._is_speaking = False
+        try:
+            from voice.audio_bus import AudioBus
+            AudioBus.get_instance().set_echo_gate(False)
+        except Exception:
+            pass
 
     @property
     def is_speaking(self) -> bool:
@@ -473,7 +478,8 @@ class NeuralTTS:
                     if mp3_path.exists() and mp3_path.stat().st_size >= 100:
                         return (str(mp3_path), sentence)
                 except Exception as ex_save:
-                    logger.warning(f"EdgeTTS save error: {ex_save}")
+                    if "shutdown" not in str(ex_save).lower():
+                        logger.debug(f"EdgeTTS save note: {ex_save}")
             except Exception as e:
                 err_str = str(e).lower()
                 if any(w in err_str for w in ("getaddrinfo", "connect", "dns", "ssl", "timeout", "network")):
@@ -485,6 +491,12 @@ class NeuralTTS:
     def _speak_streaming_worker(self, text: str, on_start, on_finish, gen_id: int):
         """Parallel producer-consumer pipelined speech worker. Pre-fetches next sentences while current audio plays for ZERO gap after periods."""
         self._is_speaking = True
+        try:
+            from voice.audio_bus import AudioBus
+            AudioBus.get_instance().set_echo_gate(True)
+        except Exception:
+            pass
+
         if on_start:
             on_start()
 
@@ -538,6 +550,11 @@ class NeuralTTS:
         finally:
             self._is_speaking = False
             self._current_alias = None
+            try:
+                from voice.audio_bus import AudioBus
+                AudioBus.get_instance().set_echo_gate(False)
+            except Exception:
+                pass
             if on_finish and gen_id == self._generation_id:
                 on_finish()
 

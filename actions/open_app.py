@@ -291,26 +291,52 @@ def open_app(
         except Exception as e:
             logger.debug("Artifact interception note: %s", e)
 
+    # 1. Primary Strategy: Auto-Configuring ApplicationResolver Engine
+    try:
+        from actions.app_resolver import get_app_resolver
+        resolver = get_app_resolver()
+        success, msg = resolver.launch(app_name)
+        if success:
+            if player:
+                player.write_log(f"[open_app] {app_name} -> {msg}")
+            return f"✅ {msg}"
+    except Exception as e:
+        logger.debug("[open_app] AppResolver note: %s", e)
+
+    # 2. Secondary Strategy: OS Native Launchers Fallback
     launcher = _OS_LAUNCHERS.get(_SYSTEM)
     if launcher is None:
         return f"Unsupported operating system: {_SYSTEM}"
 
     normalized = _normalize(app_name)
-    logger.info(f"[open_app] Launching: '{app_name}' → '{normalized}' ({_SYSTEM})")
+    logger.info(f"[open_app] Launching via fallback: '{app_name}' → '{normalized}' ({_SYSTEM})")
 
     if player:
         player.write_log(f"[open_app] {app_name}")
 
     try:
-        if launcher(normalized):
-            return f"Opened {app_name}."
-        if normalized.lower() != app_name.lower():
-            if launcher(app_name):
-                return f"Opened {app_name}."
-        return (
-            f"Could not confirm that {app_name} launched. "
-            f"It may still be loading, or it might not be installed."
-        )
+        launched = launcher(normalized)
+        if not launched and normalized.lower() != app_name.lower():
+            launched = launcher(app_name)
+
+        if not launched:
+            return (
+                f"[FAILED] Could not find or launch application '{app_name}'. "
+                f"Please verify the app name or run 'sync_app_paths' to re-scan installed software."
+            )
+
+        # Verify process and window actually started
+        try:
+            from agent.verifier import ActionVerifier
+            proc_name = normalized.split()[0] if " " in normalized else normalized
+            vres = ActionVerifier.verify_window_open(app_name=proc_name, window_title_keyword=app_name)
+            if vres.verified:
+                return f"[SUCCESS_VERIFIED] '{app_name}' launched successfully. {vres.evidence}"
+            else:
+                return f"[SUCCESS_UNVERIFIED] Launch command sent for '{app_name}'. {vres.details}"
+        except Exception as ver_err:
+            return f"[SUCCESS_UNVERIFIED] Launch command sent for '{app_name}' (verification note: {ver_err})."
     except Exception as e:
         logger.warning(f"[open_app] Error: {e}")
-        return f"Failed to open {app_name}: {e}"
+        return f"[FAILED] Failed to open {app_name}: {e}"
+

@@ -680,7 +680,7 @@ class UnifiedContactStore:
         for group in (important_contacts, other_contacts):
             for c in group:
                 c_name = c.get("name", "").lower()
-                if q_low in c_name or c_name in q_low:
+                if (c_name and q_low in c_name) or (len(c_name) >= 3 and c_name in q_low):
                     return c
 
         return None

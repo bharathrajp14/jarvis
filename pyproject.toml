@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "brjarvis"
-version = "38.5.0"
+version = "40.2.0"
 description = "BRJARVIS — Cognitive Multi-Modal AI Operating System & Autonomous Controller"
 readme = "readme.md"
 license = {text = "MIT"}
@@ -46,6 +46,7 @@ voice = [
     "edge-tts>=7.0.0",
     "numpy>=1.26.0",
     "faster-whisper>=1.0.0",
+    "onnxruntime>=1.17.0",
 ]
 automation = [
     "pyperclip>=1.8.2",
@@ -57,13 +58,16 @@ automation = [
 ]
 web = [
     "duckduckgo-search>=6.0.0",
+    "ddgs>=6.0.0",
     "beautifulsoup4>=4.12.0",
     "playwright>=1.44.0",
+    "selenium>=4.20.0",
     "youtube-transcript-api>=0.6.0",
     "websockets>=14.0",
 ]
 documents = [
     "python-docx>=1.1.0",
+    "python-pptx>=1.0.0",
     "fpdf2>=2.7.0",
     "openpyxl>=3.1.0",
     "pypdf>=4.0.0",
@@ -84,6 +88,7 @@ windows = [
     "win10toast",
     "pywinauto",
     "send2trash",
+    "keyboard>=0.13.5",
 ]
 all = [
     "brjarvis[voice,automation,web,documents,memory,llm-backends,windows]",

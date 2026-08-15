@@ -1277,7 +1277,13 @@ class MainWindow(QMainWindow):
 
         lay.addWidget(_fl("[F4] Mute  ·  [F11] Fullscreen  ·  [ESC] Interrupt"))
         lay.addStretch()
-        lay.addWidget(_fl(f"BR JARVIS MK49 · {self._assistant_name.upper()}", C.PRI_DIM))
+        # ISSUE-8 FIX: store reference so _on_setup_done can update the name after config loads
+        assistant_label = _fl(
+            f"BR JARVIS MK49 · {(self._assistant_name or 'JARVIS').upper()}",
+            C.PRI_DIM
+        )
+        self._footer_brand_label = assistant_label
+        lay.addWidget(assistant_label)
         return w
 
     def notify_phone_connected(self) -> None:
@@ -1636,6 +1642,11 @@ class MainWindow(QMainWindow):
             self._overlay = None
         self._apply_state("LISTENING")
         self._assistant_name = data.get("assistant_name", "JARVIS") or "JARVIS"
+        # ISSUE-8 FIX: update footer label now that assistant name is resolved
+        if hasattr(self, "_footer_brand_label") and self._footer_brand_label:
+            self._footer_brand_label.setText(
+                f"BR JARVIS MK49 · {self._assistant_name.upper()}"
+            )
         self._log.append_log(f"SYS: Initialised. OS={os_name.upper()}. {self._assistant_name} online.")
 
     def closeEvent(self, event):

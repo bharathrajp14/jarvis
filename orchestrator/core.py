@@ -147,6 +147,28 @@ def _format_clean_tool_summary(tool_name: str, tool_args: dict) -> str:
         return f"[Executed Tool: {tool_name}({keys})]"
 
 
+def _synthesize_evidence_summary(tool_history: list[dict], user_input: str) -> str:
+    """Synthesize truthful, evidence-backed summary from actual tool execution records."""
+    if not tool_history:
+        return "I analyzed your request, sir, but no tool operations were required or executed."
+
+    tools_used = list(dict.fromkeys(t["tool_name"] for t in tool_history if "tool_name" in t))
+    has_errors = any("error" in str(t.get("result", "")).lower() or "failed" in str(t.get("result", "")).lower() for t in tool_history)
+    
+    header = "Completed operations with verified evidence, sir." if not has_errors else "Operations completed with notable execution notices or errors, sir."
+    lines = [f"{header} (Tools: {', '.join(tools_used)})", "", "### Execution Evidence:"]
+    for t in tool_history:
+        tname = t.get("tool_name", "tool")
+        res = str(t.get("result", "")).strip()
+        preview = res.replace("\n", " ")[:180]
+        is_err = "error" in res.lower() or "failed" in res.lower()
+        icon = "❌" if is_err else "✅"
+        lines.append(f"- {icon} **{tname}**: {preview}")
+
+    return "\n".join(lines)
+
+
+
 class JarvisOrchestrator:
 
     def __init__(self, router: AgentRouter | None = None, use_vector_memory: bool = True):
@@ -216,14 +238,145 @@ class JarvisOrchestrator:
         return self._session_id
 
     def _parse_mode(self, user_input: str) -> str | None:
-        m = re.match(r"^/mode\s+(\w+)", user_input.strip())
+        stripped = user_input.strip()
+
+        # /mode <name>
+        m = re.match(r"^/mode\s+(\w+)", stripped)
         if m:
             mode = m.group(1).lower()
             if mode in MODES:
                 self.current_mode = mode
                 return f"[JARVIS] Mode → {mode.upper()} ✓"
             return f"[JARVIS] Unknown mode: '{mode}'. Available: {', '.join(MODES.keys())}"
+
+        # /memory [search <query>|recent|project|stats]
+        if stripped.startswith("/memory"):
+            return self._handle_memory_command(stripped)
+
+        # /tasks — show active/incomplete tasks
+        if stripped == "/tasks":
+            return self._handle_tasks_command()
+
+        # /history — show recent session history
+        if stripped == "/history":
+            return self._handle_history_command()
+
         return None
+
+    def _handle_memory_command(self, cmd: str) -> str:
+        """Handle /memory subcommands: search, recent, project, stats."""
+        try:
+            from memory.unified_memory import get_unified_memory
+            um = get_unified_memory()
+
+            parts = cmd.split(maxsplit=2)
+            sub = parts[1].lower() if len(parts) > 1 else ""
+
+            if sub == "search" and len(parts) > 2:
+                query = parts[2]
+                hits = um.recall(query, limit=5)
+                if not hits:
+                    return f"[Memory] No memories found for '{query}'."
+                lines = [f"[Memory] Search results for '{query}':"]
+                for h in hits:
+                    src = h.get("source", "memory")
+                    name = h.get("name", "")
+                    content = h.get("content", "")[:200]
+                    conf = h.get("confidence", 1.0)
+                    lines.append(f"  • [{src.upper()}] {name} (conf: {conf:.2f})\n    {content}")
+                return "\n".join(lines)
+
+            elif sub == "recent":
+                from memory.persistent_store import load_index
+                entries = load_index("user")[:5]
+                if not entries:
+                    return "[Memory] No recent memories found."
+                lines = ["[Memory] Recent memories:"]
+                for e in entries:
+                    lines.append(f"  • [{e.type}] {e.name}: {e.content[:100]}")
+                return "\n".join(lines)
+
+            elif sub == "project":
+                from memory.persistent_store import load_index
+                entries = [e for e in load_index("user") if e.type in ("project", "operational")][:5]
+                if not entries:
+                    return "[Memory] No project memories found."
+                lines = ["[Memory] Project memories:"]
+                for e in entries:
+                    lines.append(f"  • [{e.type}] {e.name}: {e.content[:100]}")
+                return "\n".join(lines)
+
+            elif sub == "stats":
+                from memory.persistent_store import load_index
+                user_entries = load_index("user")
+                proj_entries = load_index("project")
+                by_type: dict = {}
+                for e in user_entries + proj_entries:
+                    by_type[e.type] = by_type.get(e.type, 0) + 1
+                lines = [f"[Memory] Stats — Total: {len(user_entries) + len(proj_entries)}"]
+                for t, count in sorted(by_type.items()):
+                    lines.append(f"  • {t}: {count}")
+                return "\n".join(lines)
+
+            else:
+                # Default: show memory summary
+                from memory.persistent_store import load_index
+                entries = load_index("user")[:3]
+                total = len(load_index("user")) + len(load_index("project"))
+                lines = [f"[Memory] {total} total memories. Recent:"]
+                for e in entries:
+                    lines.append(f"  • [{e.type}] {e.name}: {e.content[:80]}")
+                lines.append("\nUsage: /memory search <query> | /memory recent | /memory project | /memory stats")
+                return "\n".join(lines)
+
+        except Exception as e:
+            return f"[Memory] Error: {e}"
+
+    def _handle_tasks_command(self) -> str:
+        """Handle /tasks — list incomplete tasks from TaskState DB."""
+        try:
+            from agent.task_state import TaskStateManager, TaskStatus
+            mgr = TaskStateManager()
+            incomplete_statuses = [
+                TaskStatus.RUNNING, TaskStatus.PLANNING, TaskStatus.PAUSED,
+                TaskStatus.WAITING_APPROVAL, TaskStatus.RETRYING, TaskStatus.CREATED
+            ]
+            tasks = []
+            for status in incomplete_statuses:
+                tasks.extend(mgr.list_tasks(status=status, limit=3))
+            if not tasks:
+                return "[Tasks] No active or pending tasks."
+            lines = [f"[Tasks] {len(tasks)} active task(s):"]
+            for t in tasks:
+                lines.append(f"  • [{t.status.value}] {t.goal[:80]} (id: {t.task_id[:8]})")
+            return "\n".join(lines)
+        except Exception as e:
+            return f"[Tasks] Error listing tasks: {e}"
+
+    def _handle_history_command(self) -> str:
+        """Handle /history — show recent session turns."""
+        try:
+            if self._session_store and self._session_id:
+                session_data = self._session_store.get_session(self._session_id)
+                if session_data and session_data.get("turns"):
+                    turns = session_data["turns"][-5:]
+                    lines = [f"[History] Session {self._session_id[:8]} — last {len(turns)} turns:"]
+                    for t in turns:
+                        role = t.get("role", "?")
+                        content = str(t.get("content", ""))[:100]
+                        lines.append(f"  [{role.upper()}] {content}")
+                    return "\n".join(lines)
+            # Fallback: working memory
+            hist = self.working_memory.get()[-6:]
+            if not hist:
+                return "[History] No conversation history available."
+            lines = ["[History] Recent working memory:"]
+            for h in hist:
+                lines.append(f"  [{h.get('role','?').upper()}] {str(h.get('content',''))[:100]}")
+            return "\n".join(lines)
+        except Exception as e:
+            return f"[History] Error: {e}"
+
 
     _tool_prompt_cache: str = ""  # class-level cache for tool prompt block
     _tool_prompt_cache_ts: float = 0.0  # timestamp of last cache build (BUG-13 FIX)
@@ -289,31 +442,91 @@ class JarvisOrchestrator:
             kw.append("vision")
         return kw
 
+    # ISSUE-7 FIX: Pre-compiled set of instant commands that never benefit from vector memory recall.
+    # Avoids 50–200ms ChromaDB search latency for every "hi", "stop", "yes", "open chrome", etc.
+    _TRIVIAL_CMDS = re.compile(
+        r"^(hi|hey|hello|ok|okay|yes|no|stop|mute|unmute|exit|quit|bye|thanks?|"
+        r"shut up|pause|resume|cancel|continue|next|back|go|done|got it|"
+        r"open\s+\w+|close\s+\w+|launch\s+\w+|start\s+\w+|/"
+        r")\b",
+        re.IGNORECASE,
+    )
+
     def _recall_context(self, user_input: str) -> str:
-        if not self.vector_memory:
+        """Hierarchical, relevance-first context assembler for incoming user requests."""
+        if not user_input or len(user_input.strip()) == 0:
             return ""
-        if len(user_input.split()) < 4:
-            return ""
+
+        blocks = []
         low = user_input.lower().strip()
-        if low.startswith(("open ", "launch ", "start ", "close ", "stop ", "/")):
-            return ""
+
+        # Check for task continuation / past reference
+        is_continuation = bool(re.search(
+            r"\b(continue|resume|pick up|last time|we were|yesterday|earlier|previous|what did we|what was|what were)\b",
+            low
+        ))
+
         try:
-            results = self.vector_memory.search(user_input, top_k=2)
-            if results:
-                return "### Relevant Memory\n" + "\n".join(f"- {r}" for r in results)
+            from memory.unified_memory import get_unified_memory
+            um = get_unified_memory()
+
+            # 1. Always retrieve structured memories (preferences, project, semantic, operational)
+            #    This includes ALL memory types regardless of query length or whether it is a continuation.
+            recalled_memories = um.recall(user_input, limit=6)
+            if recalled_memories:
+                m_lines = []
+                for m in recalled_memories:
+                    m_type = m.get("type", m.get("source", "memory"))
+                    m_name = m.get("name", "")
+                    m_content = m.get("content", "")
+                    if m_content:
+                        m_lines.append(f"- [{m_type.upper()}] {m_name}: {m_content[:300]}")
+                if m_lines:
+                    blocks.append("### 🧠 Persistent Memory & Preferences\n" + "\n".join(m_lines))
+
+            # 2. Operational Experience & Past Findings (always checked for continuations and technical tasks)
+            if is_continuation or any(w in low for w in ("audit", "report", "test", "build", "verify", "finding", "delete", "drop", "destroy", "remove")):
+                exp = um.get_relevant_experiences(user_input, limit=2)
+                exp_lines = []
+                for succ in exp.get("successes", []):
+                    exp_lines.append(f"- Successful pattern for '{succ.get('goal_query', '')[:60]}': tools={succ.get('tool_sequence', [])}")
+                for fail in exp.get("failures", []):
+                    if fail.get("failure_reason"):
+                        exp_lines.append(f"- Pitfall to avoid: {fail.get('failure_reason')[:150]}")
+                if exp_lines:
+                    blocks.append("### ⚡ Operational History & Lessons\n" + "\n".join(exp_lines))
+
+            # 3. Recent Artifacts Context (if asking about reports, docs, spreadsheets)
+            if any(w in low for w in ("pdf", "docx", "excel", "report", "document", "artifact", "yesterday", "audit", "file")):
+                try:
+                    from agent.artifacts import get_artifact_manager
+                    mgr = get_artifact_manager()
+                    recent_artifacts = mgr.list_artifacts(limit=3)
+                    if recent_artifacts:
+                        art_lines = [f"- {a.filename} ({a.category.upper()}) at '{a.host_path or a.sandbox_path}' [Verified: {a.verified}]" for a in recent_artifacts]
+                        blocks.append("### 📄 Recent Verified Artifacts\n" + "\n".join(art_lines))
+                except Exception:
+                    pass
+
         except Exception as exc:
-            logger.debug("[Memory] Context recall failed: %s", exc)
-        return ""
+            logger.debug("[Memory] Context recall note: %s", exc)
+
+        return "\n\n".join(blocks)
 
     def _save_turn(self, user_input: str, response: str) -> None:
-        """Save exchange to vector memory for future recall."""
-        if not self.vector_memory or len(response) < 20:
+        """Save exchange to vector memory with secret redaction."""
+        if len(response) < 20:
             return
         try:
-            self.vector_memory.store(
-                f"Q: {user_input}\nA: {response[:500]}",
-                metadata={"mode": self.current_mode},
-            )
+            from memory.memory_types import redact_secrets
+            clean_input = redact_secrets(user_input)
+            clean_response = redact_secrets(response[:500])
+
+            if self.vector_memory:
+                self.vector_memory.store(
+                    f"Q: {clean_input}\nA: {clean_response}",
+                    metadata={"mode": self.current_mode},
+                )
         except Exception as exc:
             logger.debug("[Memory] Store turn failed: %s", exc)
 
@@ -516,12 +729,7 @@ class JarvisOrchestrator:
                 except Exception:
                     pass
                 if not final_response or final_response.startswith("[BR:"):
-                    tools_used = list(dict.fromkeys(t["tool_name"] for t in tool_history if "tool_name" in t))
-                    final_response = (
-                        f"I have executed your request using {', '.join(tools_used)} and saved all generated materials to your workspace."
-                        if tools_used else
-                        "I have completed the planned steps for your request."
-                    )
+                    final_response = _synthesize_evidence_summary(tool_history, user_input)
                 if stream:
                     yield final_response
                 break
@@ -609,7 +817,7 @@ class JarvisOrchestrator:
                         except Exception:
                             pass
                         if not final_response or final_response.startswith("[BR:"):
-                            final_response = f"I have executed the tool operations for '{tool_name}' and completed your request."
+                            final_response = _synthesize_evidence_summary(tool_history, user_input)
                         break
 
                 # Duplicate-call hard limit (consecutive)
@@ -628,7 +836,7 @@ class JarvisOrchestrator:
                         except Exception:
                             pass
                         if not final_response or final_response.startswith("[BR:"):
-                            final_response = f"I have executed the tool operations for '{tool_name}' and completed your request."
+                            final_response = _synthesize_evidence_summary(tool_history, user_input)
                         break
 
 
@@ -729,13 +937,7 @@ class JarvisOrchestrator:
                     or clean_check.startswith("Executed Tool")
                     or is_raw_python_payload
                 ):
-                    # Fallback to current turn tool execution summary instead of repeating a previous turn
-                    tools_used = list(dict.fromkeys(t["tool_name"] for t in tool_history if "tool_name" in t))
-                    final_response = (
-                        f"I have successfully executed the requested operations using {', '.join(tools_used)}, sir."
-                        if tools_used else
-                        "I have successfully executed the requested operations, sir."
-                    )
+                    final_response = _synthesize_evidence_summary(tool_history, user_input)
 
                 if not stream:
                     self._record_turn("assistant", final_response[:5000], backend=profile.value, latency_ms=latency_ms)

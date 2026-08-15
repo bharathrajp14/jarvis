@@ -137,13 +137,22 @@ class AgentExecutor:
                 return "Task cancelled, sir."
 
             if result["success"]:
-                summary = self._summarize(goal, completed_steps, step_results, speak)
-                state = state_mgr.get_task(task_id)
-                if state:
-                    state.status = TaskStatus.COMPLETED
-                    state.final_report = summary
-                    state_mgr.save_task(state)
-                return summary
+                from core.execution.completion_gate import get_task_completion_gate
+                gate = get_task_completion_gate().evaluate_task(goal, completed_steps, step_results)
+                
+                if gate.is_approved:
+                    summary = self._summarize(goal, completed_steps, step_results, speak)
+                    state = state_mgr.get_task(task_id)
+                    if state:
+                        state.status = TaskStatus.COMPLETED if gate.final_status.value == "SUCCESS_VERIFIED" else TaskStatus.PARTIAL
+                        state.final_report = summary
+                        state_mgr.save_task(state)
+                    return summary
+                else:
+                    msg = f"Task completion blocked by verification gate: {gate.evidence_summary}"
+                    if speak: speak(msg)
+                    state_mgr.update_status(task_id, TaskStatus.FAILED, {"error": msg, "reasons": gate.blocking_reasons})
+                    return msg
 
             # Handle failure
             failed_step  = result["failed_step"]
@@ -304,6 +313,33 @@ class AgentExecutor:
                 result.output   = output or "Done."
                 result.success  = True
                 result.duration = time.time() - t_start
+
+                # ── Phase 9: Post-execution verification + operational memory link ──
+                try:
+                    from agent.verifier import get_action_verifier
+                    verifier = get_action_verifier()
+                    vres = verifier.verify_action(tool, params, result.output)
+                    if not vres.verified:
+                        logger.warning("[Verifier] Tool '%s' output failed verification: %s", tool, vres.details)
+                        # Downgrade from success if verification failed
+                        result.success = False
+                        result.error = vres.details or "Verification failed"
+                        result.output = f"[VERIFICATION FAILED] {vres.details}\nRaw output: {result.output[:200]}"
+                    # Record to operational memory (non-blocking)
+                    try:
+                        from memory.unified_memory import get_unified_memory
+                        get_unified_memory().record_operational_lesson(
+                            tool_name=tool,
+                            goal=goal,
+                            success=vres.verified,
+                            result_summary=result.output[:200],
+                            failure_reason=vres.details if not vres.verified else None,
+                        )
+                    except Exception:
+                        pass
+                except Exception as verify_err:
+                    logger.debug("[Verifier] Skipped: %s", verify_err)
+
                 return result
 
             except Exception as e:
@@ -341,6 +377,18 @@ class AgentExecutor:
                         break
                 else:
                     result.error = err
+                    # Record failure to operational memory (non-blocking)
+                    try:
+                        from memory.unified_memory import get_unified_memory
+                        get_unified_memory().record_operational_lesson(
+                            tool_name=tool,
+                            goal=goal,
+                            success=False,
+                            result_summary="",
+                            failure_reason=err[:200],
+                        )
+                    except Exception:
+                        pass
 
         result.duration = time.time() - t_start
         return result

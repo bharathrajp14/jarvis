@@ -87,14 +87,14 @@ class LessonStore:
 
     def get_relevant_lessons(self, query: str, limit: int = 5) -> list[dict]:
         """Retrieve relevant lessons matching query keywords."""
-        query_words = [w.lower() for w in query.split() if len(w) > 3]
+        query_words = [w.lower() for w in query.split() if len(w) > 2]
         if not query_words:
             return self.get_latest_lessons(limit=limit)
 
         with self._lock:
             conn = self._get_conn()
             rows = conn.execute(
-                "SELECT * FROM lessons ORDER BY weight DESC, created_at DESC LIMIT 50"
+                "SELECT * FROM lessons ORDER BY weight DESC, created_at DESC LIMIT 100"
             ).fetchall()
 
             matched = []
@@ -102,9 +102,10 @@ class LessonStore:
                 try:
                     topic_val = row["topic"] if "topic" in row.keys() else ""
                     corr_val = row["correction"] if "correction" in row.keys() else ""
-                    text = f"{topic_val} {corr_val}".lower()
+                    src_val = row["source"] if "source" in row.keys() else ""
+                    text = f"{topic_val} {corr_val} {src_val}".lower()
                     score = sum(1 for w in query_words if w in text)
-                    if score > 0 or not query_words:
+                    if score > 0:
                         item = dict(row)
                         matched.append((score, item))
                 except Exception:
@@ -121,3 +122,15 @@ class LessonStore:
                 "SELECT * FROM lessons ORDER BY created_at DESC LIMIT ?", (limit,)
             ).fetchall()
             return [dict(r) for r in rows]
+
+    def record_workflow_lesson(self, workflow_name: str, sequence_desc: str, success: bool = True) -> int:
+        """Record verified multi-tool workflow sequence pattern to memory."""
+        topic = f"workflow.{workflow_name.lower().replace(' ', '_')}"
+        status_tag = "SUCCESS" if success else "FAILURE"
+        correction = f"[{status_tag}] Workflow sequence: {sequence_desc}"
+        return self.store_lesson(topic=topic, correction=correction, source="workflow_orchestrator", weight=1.5 if success else 0.8)
+
+    def get_workflow_patterns(self, query: str = "") -> list[dict]:
+        """Retrieve verified workflow lessons."""
+        return self.get_relevant_lessons(f"workflow {query}", limit=5)
+

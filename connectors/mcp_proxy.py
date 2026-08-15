@@ -1,13 +1,8 @@
 # connectors/mcp_proxy.py — Universal MCP Server Proxy Connector
 """
-Universal proxy connector that bridges JARVIS to ANY external MCP server.
-Compatible with all MCP servers from the Claude marketplace and open-source community.
-
-MCP (Model Context Protocol) is an open standard by Anthropic.
-Any MCP server can be used with JARVIS — no Claude subscription needed.
-
-Setup: Set MCP_SERVER_URLS in .env as comma-separated list of server URLs.
-Example: MCP_SERVER_URLS=http://localhost:3000,http://localhost:3001
+Universal Model Context Protocol (MCP) proxy connector for BR JARVIS.
+Compatible with any MCP server (HTTP/SSE or stdio).
+Allows JARVIS to dynamically discover, bridge, and execute tools from external MCP servers.
 """
 from __future__ import annotations
 
@@ -15,26 +10,33 @@ import json
 import logging
 import os
 import threading
+import urllib.parse
 import urllib.request
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from connectors.base import BaseConnector, ConnectorTool
 
 logger = logging.getLogger("JARVIS.Connectors.MCPProxy")
 
+_CONFIG_PATH = Path(__file__).resolve().parent.parent / "config" / "mcp_servers.json"
+
 
 class MCPServerProxy:
     """
-    Lightweight MCP client that connects to an MCP server via HTTP.
-    Supports MCP HTTP/SSE transport (the most common deployment type).
+    Lightweight MCP client that connects to an MCP server via HTTP/SSE.
     """
 
     def __init__(self, server_url: str, api_key: str = "", name: str = ""):
         self.url = server_url.rstrip("/")
         self.api_key = api_key
-        self.name = name or server_url
+        self.name = name or self._infer_name(server_url)
         self._tools_cache: Optional[List[dict]] = None
         self._cache_lock = threading.Lock()
+
+    def _infer_name(self, url: str) -> str:
+        parsed = urllib.parse.urlparse(url)
+        return parsed.hostname or url.replace("http://", "").replace("https://", "").replace("/", "_")
 
     def _headers(self) -> dict:
         h = {
@@ -46,7 +48,7 @@ class MCPServerProxy:
             h["Authorization"] = f"Bearer {self.api_key}"
         return h
 
-    def _post(self, path: str, body: dict, timeout: float = 15.0) -> dict:
+    def _post(self, path: str, body: dict, timeout: float = 10.0) -> dict:
         data = json.dumps(body).encode()
         req = urllib.request.Request(
             f"{self.url}{path}",
@@ -57,7 +59,7 @@ class MCPServerProxy:
         with urllib.request.urlopen(req, timeout=timeout) as r:
             return json.loads(r.read().decode())
 
-    def _get(self, path: str, timeout: float = 8.0) -> dict:
+    def _get(self, path: str, timeout: float = 6.0) -> dict:
         req = urllib.request.Request(
             f"{self.url}{path}",
             headers=self._headers(),
@@ -72,7 +74,6 @@ class MCPServerProxy:
                 return self._tools_cache
 
         tools = []
-        # Try MCP standard endpoint
         for endpoint in ["/tools", "/mcp/tools", "/api/tools"]:
             try:
                 data = self._get(endpoint)
@@ -83,7 +84,6 @@ class MCPServerProxy:
             except Exception:
                 continue
 
-        # Also try JSON-RPC 2.0 style
         if not tools:
             try:
                 data = self._post("/", {"jsonrpc": "2.0", "id": 1, "method": "tools/list", "params": {}})
@@ -98,14 +98,11 @@ class MCPServerProxy:
 
     def call_tool(self, name: str, args: dict) -> Any:
         """Call a tool on the MCP server."""
-        # Try standard REST endpoint first
         for endpoint in ["/tools/call", "/mcp/tools/call", "/api/tools/call"]:
             try:
                 result = self._post(endpoint, {"name": name, "arguments": args})
-                # Extract content from MCP response format
                 content = result.get("content", result)
                 if isinstance(content, list):
-                    # MCP returns content as list of content blocks
                     texts = []
                     for block in content:
                         if isinstance(block, dict):
@@ -118,7 +115,6 @@ class MCPServerProxy:
             except Exception:
                 continue
 
-        # Try JSON-RPC 2.0
         try:
             result = self._post("/", {
                 "jsonrpc": "2.0",
@@ -142,7 +138,7 @@ class MCPServerProxy:
                     f"{self.url}{endpoint}",
                     headers=self._headers(),
                 )
-                with urllib.request.urlopen(req, timeout=3.0) as r:
+                with urllib.request.urlopen(req, timeout=2.5) as r:
                     return r.status < 500
             except Exception:
                 continue
@@ -151,67 +147,61 @@ class MCPServerProxy:
 
 class MCPProxyConnector(BaseConnector):
     """
-    Universal proxy connector for any external MCP server.
-    Auto-discovers tools from the server and exposes them in JARVIS.
+    Universal proxy connector for external Model Context Protocol (MCP) servers.
+    Provides bridge and management tools natively.
     """
 
     def __init__(self):
-        self._servers: List[MCPServerProxy] = []
-        self._all_tools: List[ConnectorTool] = []
-        self._configured = False
-        self._load_servers()
+        self._servers: Dict[str, MCPServerProxy] = {}
+        self._load_all_servers()
 
-    def _load_servers(self) -> None:
-        """Load MCP server URLs from environment."""
-        urls_raw = os.environ.get("MCP_SERVER_URLS", "").strip()
-        if not urls_raw:
-            return
-
-        for entry in urls_raw.split(","):
-            entry = entry.strip()
-            if not entry:
-                continue
-            # Support "name=url:key" format
-            name, api_key = "", ""
-            if "=" in entry and "://" not in entry.split("=")[0]:
-                parts = entry.split("=", 1)
-                name = parts[0].strip()
-                entry = parts[1].strip()
-            if ":key=" in entry:
-                entry, api_key = entry.split(":key=", 1)
-
-            proxy = MCPServerProxy(entry, api_key=api_key, name=name or entry)
-            if proxy.ping():
-                self._servers.append(proxy)
-                logger.info("MCPProxy: Connected to server %s", proxy.url)
-            else:
-                logger.warning("MCPProxy: Server unreachable: %s", proxy.url)
-
-        self._configured = len(self._servers) > 0
-        if self._configured:
-            self._build_tool_list()
-
-    def _build_tool_list(self) -> None:
-        """Fetch and cache tools from all connected MCP servers."""
-        for server in self._servers:
+    def _load_all_servers(self) -> None:
+        """Load servers from config/mcp_servers.json and environment."""
+        # 1. From config file
+        if _CONFIG_PATH.exists():
             try:
-                server_tools = server.list_tools()
-                for t in server_tools:
-                    name = t.get("name", "")
-                    description = t.get("description", "")
-                    parameters = t.get("inputSchema") or t.get("parameters") or {
-                        "type": "object", "properties": {}
-                    }
-                    if name:
-                        self._all_tools.append(ConnectorTool(
-                            name=f"{server.name}_{name}",
-                            description=f"[{server.name}] {description}",
-                            parameters=parameters,
-                            requires_auth=False,
-                        ))
-                logger.info("MCPProxy: Loaded %d tools from %s", len(server_tools), server.url)
+                data = json.loads(_CONFIG_PATH.read_text(encoding="utf-8"))
+                for s in data.get("servers", []):
+                    url = s.get("url", "").strip()
+                    name = s.get("name", "").strip()
+                    key = s.get("api_key", "").strip()
+                    if url:
+                        self._servers[name or url] = MCPServerProxy(url, api_key=key, name=name)
             except Exception as e:
-                logger.warning("MCPProxy: Failed to load tools from %s: %s", server.url, e)
+                logger.warning("Failed to load mcp_servers.json: %e", e)
+
+        # 2. From MCP_SERVER_URLS env
+        urls_raw = os.environ.get("MCP_SERVER_URLS", "").strip()
+        if urls_raw:
+            for entry in urls_raw.split(","):
+                entry = entry.strip()
+                if not entry:
+                    continue
+                name, api_key = "", ""
+                if "=" in entry and "://" not in entry.split("=")[0]:
+                    parts = entry.split("=", 1)
+                    name = parts[0].strip()
+                    entry = parts[1].strip()
+                if ":key=" in entry:
+                    entry, api_key = entry.split(":key=", 1)
+                self._servers[name or entry] = MCPServerProxy(entry, api_key=api_key, name=name)
+
+    def _save_servers_to_file(self) -> None:
+        try:
+            _CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+            existing = {}
+            if _CONFIG_PATH.exists():
+                try:
+                    existing = json.loads(_CONFIG_PATH.read_text(encoding="utf-8"))
+                except Exception:
+                    pass
+            existing["servers"] = [
+                {"name": s.name, "url": s.url, "api_key": s.api_key}
+                for s in self._servers.values()
+            ]
+            _CONFIG_PATH.write_text(json.dumps(existing, indent=4), encoding="utf-8")
+        except Exception as e:
+            logger.error("Failed to save mcp_servers.json: %s", e)
 
     @property
     def connector_id(self) -> str:
@@ -219,14 +209,15 @@ class MCPProxyConnector(BaseConnector):
 
     @property
     def display_name(self) -> str:
-        return f"MCP Server Proxy ({len(self._servers)} servers)"
+        count = len(self._servers)
+        return f"MCP Server Proxy ({count} server{'s' if count != 1 else ''})" if count > 0 else "MCP Server Proxy"
 
     @property
     def description(self) -> str:
         if not self._servers:
-            return "Universal proxy to any MCP server (not configured)"
-        server_names = ", ".join(s.name for s in self._servers[:3])
-        return f"Connected to external MCP servers: {server_names}"
+            return "Universal Model Context Protocol bridge: connect, manage and run tools on any MCP server."
+        names = ", ".join(list(self._servers.keys())[:3])
+        return f"Universal MCP bridge ({len(self._servers)} registered: {names})"
 
     @property
     def icon(self) -> str:
@@ -234,54 +225,168 @@ class MCPProxyConnector(BaseConnector):
 
     @property
     def requires_auth(self) -> bool:
-        return True
+        return False
 
     @property
     def is_configured(self) -> bool:
-        return self._configured
+        return True
 
     @property
     def auth_hint(self) -> str:
-        return (
-            "Add to your .env file:\n"
-            "MCP_SERVER_URLS=http://localhost:3000,http://my-mcp-server.com\n\n"
-            "Any MCP server works — run local MCP servers using:\n"
-            "  npx @modelcontextprotocol/server-filesystem\n"
-            "  npx @modelcontextprotocol/server-github\n"
-            "  npx @modelcontextprotocol/server-sqlite\n"
-            "  (and 200+ others from the MCP marketplace)"
-        )
+        return "Add any MCP server endpoint (e.g. http://localhost:3000) using the + Add Server tool or in config/mcp_servers.json."
 
     def list_tools(self) -> List[ConnectorTool]:
-        return self._all_tools
+        tools = [
+            ConnectorTool(
+                name="list_servers",
+                description="List all registered MCP servers and their real-time connectivity status",
+                parameters={"type": "object", "properties": {}},
+            ),
+            ConnectorTool(
+                name="add_server",
+                description="Register a new external MCP server URL (e.g. 'http://localhost:3000')",
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "url": {"type": "string", "description": "MCP server HTTP/SSE URL (e.g. http://localhost:3000)"},
+                        "name": {"type": "string", "description": "Short identifier/name for this server"},
+                        "api_key": {"type": "string", "description": "Optional Bearer auth token"},
+                    },
+                    "required": ["url"],
+                },
+            ),
+            ConnectorTool(
+                name="remove_server",
+                description="Disconnect and remove an MCP server by name or URL",
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "name": {"type": "string", "description": "Name or URL of the server to remove"},
+                    },
+                    "required": ["name"],
+                },
+            ),
+            ConnectorTool(
+                name="call_tool",
+                description="Execute any tool on a connected MCP server",
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "tool_name": {"type": "string", "description": "Target tool name on the MCP server"},
+                        "args": {"type": "object", "description": "JSON arguments for the tool call", "default": {}},
+                        "server_name": {"type": "string", "description": "Optional target server name if multiple exist"},
+                    },
+                    "required": ["tool_name"],
+                },
+            ),
+            ConnectorTool(
+                name="list_tools",
+                description="Inspect all tools provided by connected MCP servers",
+                parameters={"type": "object", "properties": {}},
+            ),
+        ]
+
+        # Also expose dynamic tools from connected servers
+        for s_name, server in self._servers.items():
+            try:
+                server_tools = server.list_tools()
+                for t in server_tools:
+                    tname = t.get("name", "")
+                    if tname:
+                        tools.append(ConnectorTool(
+                            name=f"{s_name}_{tname}",
+                            description=f"[{s_name}] {t.get('description', '')}",
+                            parameters=t.get("inputSchema") or t.get("parameters") or {"type": "object", "properties": {}},
+                        ))
+            except Exception:
+                pass
+
+        return tools
 
     def call_tool(self, tool_name: str, args: Dict[str, Any]) -> Any:
-        # Resolve server + real tool name
-        for server in self._servers:
-            prefix = f"{server.name}_"
-            if tool_name.startswith(prefix):
+        norm = tool_name.lower().replace("mcp_proxy_", "").replace("mcp_", "")
+
+        if norm in ("list_servers", "servers", "status"):
+            if not self._servers:
+                return "🔌 **MCP Proxy Bridge: 0 external servers registered.**\nUse `add_server` or the UI to connect an MCP server (e.g. `http://localhost:3000`)."
+            lines = [f"🔌 **Registered MCP Servers ({len(self._servers)}):**\n"]
+            for name, s in self._servers.items():
+                alive = s.ping()
+                status_icon = "🟢 Connected" if alive else "🔴 Offline"
+                tools_cnt = len(s.list_tools()) if alive else 0
+                lines.append(f"• **{name}** — `{s.url}` ({status_icon}, {tools_cnt} tools)")
+            return "\n".join(lines)
+
+        elif norm in ("add_server", "add", "connect"):
+            url = str(args.get("url") or args.get("server_url") or "").strip()
+            name = str(args.get("name") or "").strip()
+            api_key = str(args.get("api_key") or args.get("token") or "").strip()
+            if not url:
+                return "Error: 'url' parameter is required to add an MCP server."
+            proxy = MCPServerProxy(url, api_key=api_key, name=name)
+            self._servers[proxy.name] = proxy
+            self._save_servers_to_file()
+            alive = proxy.ping()
+            tools_cnt = len(proxy.list_tools()) if alive else 0
+            status_text = f"🟢 Connected ({tools_cnt} tools found)" if alive else "⚠️ Registered (server currently unreachable)"
+            return f"🔌 MCP Server '{proxy.name}' ({url}) registered: {status_text}."
+
+        elif norm in ("remove_server", "remove", "delete", "disconnect"):
+            target = str(args.get("name") or args.get("url") or "").strip()
+            if not target:
+                return "Error: 'name' or 'url' is required to remove an MCP server."
+            removed = False
+            for k in list(self._servers.keys()):
+                if k.lower() == target.lower() or self._servers[k].url.lower() == target.lower():
+                    del self._servers[k]
+                    removed = True
+            if removed:
+                self._save_servers_to_file()
+                return f"🔌 MCP server '{target}' removed successfully."
+            return f"MCP server '{target}' not found."
+
+        elif norm in ("list_tools", "tools"):
+            if not self._servers:
+                return "🔌 No external MCP servers connected. Register one to view its tools."
+            lines = ["🔌 **Available MCP Server Tools:**\n"]
+            found = False
+            for name, s in self._servers.items():
+                tools = s.list_tools()
+                if tools:
+                    found = True
+                    lines.append(f"**[{name}]** ({s.url}):")
+                    for t in tools:
+                        lines.append(f"  • `{t.get('name')}`: {t.get('description', 'No description')}")
+            return "\n".join(lines) if found else "🔌 No tools discovered from connected servers."
+
+        elif norm in ("call_tool", "call", "run", "execute"):
+            target_tool = str(args.get("tool_name") or args.get("name") or "").strip()
+            tool_args = args.get("args") or args.get("arguments") or args.get("params") or {}
+            target_server = str(args.get("server_name") or "").strip()
+
+            if not target_tool:
+                return "Error: 'tool_name' is required."
+
+            if target_server and target_server in self._servers:
+                return self._servers[target_server].call_tool(target_tool, tool_args)
+
+            for s in self._servers.values():
+                res = s.call_tool(target_tool, tool_args)
+                if not str(res).startswith("MCP call error"):
+                    return res
+            return f"❌ Tool '{target_tool}' not found on any connected MCP server."
+
+        # Support direct server tool calls like `myserver_mytool`
+        for s_name, server in self._servers.items():
+            prefix = f"{s_name.lower()}_"
+            if tool_name.lower().startswith(prefix):
                 real_name = tool_name[len(prefix):]
                 return server.call_tool(real_name, args)
 
-        # Try all servers
-        for server in self._servers:
-            try:
-                result = server.call_tool(tool_name, args)
-                if not result.startswith("MCP call error"):
-                    return result
-            except Exception:
-                continue
-        return f"❌ Tool '{tool_name}' not found on any connected MCP server."
+        return f"Unknown tool '{tool_name}' for MCP proxy connector."
 
     def health_check(self) -> bool:
-        return any(s.ping() for s in self._servers)
-
-    def add_server(self, url: str, name: str = "", api_key: str = "") -> str:
-        """Dynamically add a new MCP server at runtime."""
-        proxy = MCPServerProxy(url, api_key=api_key, name=name or url)
-        if proxy.ping():
-            self._servers.append(proxy)
-            self._configured = True
-            self._build_tool_list()
-            return f"✅ MCP server '{url}' connected. {len(proxy.list_tools())} tools loaded."
-        return f"❌ Could not connect to MCP server: {url}"
+        # MCP bridge itself is healthy; if servers are configured, also check if at least one is alive
+        if not self._servers:
+            return True
+        return any(s.ping() for s in self._servers.values())

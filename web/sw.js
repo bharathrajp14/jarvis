@@ -1,5 +1,5 @@
-// web/sw.js — BR JARVIS Progressive Web App Service Worker v38.5.0
-const CACHE_NAME = "br-jarvis-v38.5.0";
+// web/sw.js — BR JARVIS Progressive Web App Service Worker v40.2.0
+const CACHE_NAME = "br-jarvis-v40.2.0";
 const ASSETS_TO_CACHE = [
   "/",
   "/web/index.html",
@@ -13,7 +13,7 @@ const ASSETS_TO_CACHE = [
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      console.log("[ServiceWorker] Caching core PWA shell assets");
+      console.log("[ServiceWorker] Caching core PWA shell assets for v40.2.0");
       return cache.addAll(ASSETS_TO_CACHE);
     })
   );
@@ -52,14 +52,29 @@ self.addEventListener("fetch", (event) => {
     return; // Pass through to network natively
   }
 
-  // Handle static assets & navigation
+  // Network-first for JavaScript and HTML to ensure immediate upgrade propagation
+  if (url.pathname.endsWith(".js") || url.pathname.endsWith(".html") || url.pathname === "/") {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          if (response && response.status === 200) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          }
+          return response;
+        })
+        .catch(() => caches.match(event.request, { ignoreSearch: true }))
+    );
+    return;
+  }
+
+  // Handle other static assets with cache-first
   event.respondWith(
     caches.match(event.request, { ignoreSearch: true }).then((cachedResponse) => {
       if (cachedResponse) {
         return cachedResponse;
       }
       return fetch(event.request).catch((err) => {
-        // Only return index.html fallback for navigation HTML requests
         if (
           event.request.mode === "navigate" ||
           (event.request.headers.get("Accept") && event.request.headers.get("Accept").includes("text/html"))

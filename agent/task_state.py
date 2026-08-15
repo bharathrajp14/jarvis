@@ -23,7 +23,8 @@ logger = logging.getLogger("JARVIS.TaskState")
 
 class TaskStatus(str, Enum):
     PENDING = "pending"
-    CREATED = "pending"
+    CREATED = "created"
+    VALIDATING = "validating"
     PLANNING = "planning"
     RUNNING = "running"
     PAUSED = "paused"
@@ -33,6 +34,7 @@ class TaskStatus(str, Enum):
     WAITING_FOR_AUTH = "waiting_for_auth"
     WAITING_FOR_USER = "waiting_for_user"
     RECOVERING = "recovering"
+    RETRYING = "retrying"
     VERIFYING = "verifying"
     COMPLETED = "completed"
     PARTIAL = "partial"
@@ -88,6 +90,9 @@ class ApprovalRequest:
 class TaskState:
     task_id: str
     goal: str
+    request_id: str = ""
+    parent_task_id: str = ""
+    cancellation_requested: bool = False
     status: TaskStatus = TaskStatus.CREATED
     current_step: int = 0
     total_steps: int = 0
@@ -147,7 +152,7 @@ class TaskStateManager:
         state = TaskState(
             task_id=tid,
             goal=goal,
-            status=TaskStatus.PENDING,
+            status=TaskStatus.CREATED,
             total_steps=total_steps,
             active_devices=devices,
             created_at=now,

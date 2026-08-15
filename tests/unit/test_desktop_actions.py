@@ -25,7 +25,7 @@ def run_desktop_task():
     b = len(a)
 """
     res = _execute_generated_code(code)
-    assert "Task completed successfully." in res or "Script executed." in res
+    assert "Task completed successfully." in res or "Script executed." in res or "Task executed successfully." in res
 
 
 def test_execute_generated_code_unsafe_attribute_blocked():

@@ -1,15 +1,15 @@
-# api/routes/connectors.py — Connector Hub Endpoints
+# api/routes/connectors.py — Modernized Dynamic Connector Hub Endpoints
 from __future__ import annotations
 
-import os
-import json
-import time
 import asyncio
+import json
 import logging
+import os
+import time
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 logger = logging.getLogger("JARVIS.API.Connectors")
 router = APIRouter(tags=["Connectors"])
@@ -18,7 +18,7 @@ _CONFIG_DIR = Path(__file__).resolve().parent.parent.parent / "config"
 _API_FILE = _CONFIG_DIR / "api_keys.json"
 _CONNECTORS_CACHE: dict | None = None
 _CONNECTORS_CACHE_TS = 0.0
-_CACHE_TTL_SECONDS = 5.0
+_CACHE_TTL_SECONDS = 3.0
 
 
 def _read_full_config() -> dict:
@@ -31,98 +31,114 @@ def _read_full_config() -> dict:
 
 
 class ConnectorCallRequest(BaseModel):
-    connector: str
+    connector: Optional[str] = None
+    connector_id: Optional[str] = None
     tool: str
     params: Dict[str, Any] = {}
 
+    def get_connector(self) -> str:
+        return (self.connector or self.connector_id or "").strip()
+
 
 class ConnectorConfigRequest(BaseModel):
-    connector: str
+    connector: Optional[str] = None
+    connector_id: Optional[str] = None
     api_key: Optional[str] = None
     settings: Optional[Dict[str, Any]] = None
 
+    def get_connector(self) -> str:
+        return (self.connector or self.connector_id or "").strip()
+
+
+class ConnectorTestRequest(BaseModel):
+    connector: Optional[str] = None
+    connector_id: Optional[str] = None
+
+    def get_connector(self) -> str:
+        return (self.connector or self.connector_id or "").strip()
+
+
+def _categorize_connector(cid: str) -> str:
+    cid = cid.lower()
+    if cid in ("telegram", "slack", "gmail", "whatsapp"):
+        return "Communication"
+    elif cid in ("web_search", "wikipedia", "rss_news", "weather"):
+        return "Search & Knowledge"
+    elif cid in ("calendar", "notion", "filesystem", "github"):
+        return "Productivity & Dev"
+    return "System & MCP"
+
 
 @router.get("/api/connectors")
+@router.get("/api/v1/connectors")
 async def get_connectors_list():
-    """List registered App Connectors with real-time availability & auth status."""
+    """List all dynamically discovered App Connectors with live status, tool inventories & auth hints."""
     global _CONNECTORS_CACHE, _CONNECTORS_CACHE_TS
     now = time.time()
     if _CONNECTORS_CACHE is not None and (now - _CONNECTORS_CACHE_TS) < _CACHE_TTL_SECONDS:
         return _CONNECTORS_CACHE
 
-    from tools.registry import TOOL_REGISTRY, _import_plugins
-    _import_plugins()
+    from connectors.hub import get_hub
+    hub = get_hub()
+    raw_connectors = hub.list_connectors()
 
-    def _check_tools(tool_names: list[str], env_vars: list[str] | None = None) -> str:
-        if env_vars and any(os.environ.get(v, "").strip() for v in env_vars):
-            return "CONNECTED"
-        return "CONNECTED" if any(t in TOOL_REGISTRY for t in tool_names) else "NOT_CONFIGURED"
+    formatted_connectors = []
+    for c in raw_connectors:
+        cid = c.get("id", "")
+        name = c.get("name", cid.capitalize())
+        desc = c.get("description", "")
+        icon = c.get("icon", "🔌")
+        is_conf = bool(c.get("configured", False))
+        req_auth = bool(c.get("requires_auth", False))
+        tools = c.get("tools", [])
+        tool_names = [t.get("name", "") for t in tools if isinstance(t, dict)]
 
-    gmail_status = "NOT_CONFIGURED"
-    gmail_desc = "Access inbox, list unread emails, send messages"
-    try:
-        from actions.gmail_auth import get_gmail_auth_manager
-        g_st = get_gmail_auth_manager().get_status()
-        if g_st.get("logged_in"):
-            gmail_status = "CONNECTED"
-            gmail_desc = f"Connected as {g_st.get('email')} ({g_st.get('auth_method')})"
-        else:
-            gmail_status = _check_tools(["gmail_login", "send_email"], ["GMAIL_APP_PASSWORD", "GOOGLE_CLIENT_ID"])
-    except Exception:
-        gmail_status = _check_tools(["gmail_login", "send_email"], ["GMAIL_APP_PASSWORD", "GOOGLE_CLIENT_ID"])
+        status = "CONNECTED" if is_conf else "NOT_CONFIGURED"
 
-    contacts_count = 0
-    try:
-        from memory.contact_manager import get_contact_store
-        contacts_count = get_contact_store().get_count()
-    except Exception:
-        pass
+        formatted_connectors.append({
+            "id": cid,
+            "name": name,
+            "desc": desc,
+            "icon": icon,
+            "status": status,
+            "configured": is_conf,
+            "requires_auth": req_auth,
+            "auth_hint": c.get("auth_hint", ""),
+            "category": _categorize_connector(cid),
+            "tools": tool_names,
+            "tool_details": tools,
+            "tool_count": len(tools),
+        })
 
-    connectors = [
-        {"name": "Gmail / Google Account", "icon": "✉️", "status": gmail_status, "tools": ["gmail_login", "send_email"], "desc": gmail_desc},
-        {"name": "Mobile Contacts Store", "icon": "📱", "status": "CONNECTED" if contacts_count > 0 else "NOT_CONFIGURED", "tools": ["import_contacts", "manage_contacts", "resolve_contact"], "desc": f"{contacts_count} saved contacts (.vcf/.csv import supported)"},
-        {"name": "Notion Workspace", "icon": "📝", "status": _check_tools(["notion_search_pages", "notion_create_page"], ["NOTION_API_KEY", "NOTION_TOKEN"]), "tools": ["notion_search_pages", "notion_create_page"], "desc": "Search workspaces, create pages and notes"},
-        {"name": "GitHub Developer", "icon": "🐙", "status": _check_tools(["github_list_prs", "github_create_issue"], ["GITHUB_TOKEN", "GH_TOKEN"]), "tools": ["github_list_prs", "github_create_issue"], "desc": "List pull requests, open issues and review code"},
-        {"name": "Google Calendar", "icon": "📅", "status": _check_tools(["create_calendar_event", "list_calendar_events"], ["GOOGLE_CALENDAR_CREDENTIALS", "GOOGLE_CLIENT_ID"]), "tools": ["create_calendar_event", "list_calendar_events"], "desc": "Schedule meetings, inspect agenda and events"},
-        {"name": "WhatsApp Automation", "icon": "💬", "status": _check_tools(["send_whatsapp", "manage_whatsapp_contacts"], ["WHATSAPP_TOKEN", "TWILIO_ACCOUNT_SID"]), "tools": ["send_whatsapp", "manage_whatsapp_contacts"], "desc": "Send instant & scheduled messages by contact name"},
-        {"name": "Wikipedia Search", "icon": "🌐", "status": "CONNECTED", "tools": ["wikipedia_search"], "desc": "Live article summary & encyclopedia lookups"},
-        {"name": "YouTube Search", "icon": "🎥", "status": "CONNECTED", "tools": ["youtube_search"], "desc": "Search videos, fetch transcripts & metadata"},
-        {"name": "Weather Forecast", "icon": "🌤️", "status": _check_tools(["get_weather"], ["WEATHER_API_KEY", "OPENWEATHER_API_KEY"]), "tools": ["get_weather"], "desc": "Live temperature, humidity & multi-day forecast"},
-        {"name": "RSS News Reader", "icon": "📰", "status": "CONNECTED", "tools": ["fetch_rss_news"], "desc": "Fetch top tech & global news headlines"},
-        {"name": "Filesystem Explorer", "icon": "📂", "status": "CONNECTED", "tools": ["list_dir", "view_file"], "desc": "Inspect local directories & workspace files"},
-        {"name": "MCP Proxy Connector", "icon": "🔌", "status": _check_tools(["mcp_call"], ["MCP_SERVER_URL"]), "tools": ["mcp_call"], "desc": "Model Context Protocol external server proxy"},
-    ]
-    payload = {"connectors": connectors}
+    payload = {
+        "status": "ok",
+        "count": len(formatted_connectors),
+        "active_count": sum(1 for c in formatted_connectors if c["configured"]),
+        "connectors": formatted_connectors,
+    }
     _CONNECTORS_CACHE = payload
     _CONNECTORS_CACHE_TS = now
     return payload
 
 
 @router.get("/api/connector/status")
+@router.get("/api/v1/connector/status")
 async def connector_status():
     """Return status of all registered connectors in the Connector Hub."""
-    try:
-        from connectors.hub import get_hub
-        hub = get_hub()
-        connectors = hub.list_connectors()
-        return {
-            "status": "ok",
-            "count": len(connectors),
-            "connectors": connectors,
-        }
-    except Exception as e:
-        return {"status": "error", "error": str(e), "connectors": []}
+    return await get_connectors_list()
 
 
 @router.get("/api/connector/list")
+@router.get("/api/v1/connector/list")
 async def connector_list():
-    """Return all connectors and their available tools."""
+    """Return all connectors and their available tools dictionary."""
     try:
         from connectors.hub import get_hub
         hub = get_hub()
         result = {}
         for c in hub.list_connectors():
             result[c["name"]] = {
+                "id": c.get("id", ""),
                 "icon": c.get("icon", "🔌"),
                 "configured": c.get("configured", False),
                 "tools": c.get("tools", []),
@@ -134,37 +150,106 @@ async def connector_list():
 
 
 @router.post("/api/connector/call")
+@router.post("/api/v1/connector/call")
 async def connector_call(req: ConnectorCallRequest):
-    """Call a specific connector tool by connector name and tool name."""
+    """Call a specific connector tool by connector ID/name and tool name."""
     try:
+        conn_id = req.get_connector()
+        if not conn_id:
+            raise HTTPException(status_code=400, detail="Missing 'connector' or 'connector_id' in request.")
         from connectors.hub import get_hub
         hub = get_hub()
-        result = await asyncio.to_thread(hub.call, req.connector, req.tool, req.params)
+        result = await asyncio.to_thread(hub.call, conn_id, req.tool, req.params)
         return {"status": "ok", "result": result}
+    except HTTPException:
+        raise
     except Exception as e:
+        logger.error("Error executing connector tool %s/%s: %s", req.get_connector(), req.tool, e)
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/api/connector/test")
+@router.post("/api/v1/connector/test")
+async def connector_test(req: ConnectorTestRequest):
+    """Test live connectivity and latency for a specific connector."""
+    conn_id = req.get_connector()
+    if not conn_id:
+        raise HTTPException(status_code=400, detail="Missing 'connector' or 'connector_id' in request.")
+    from connectors.hub import get_hub
+    hub = get_hub()
+    conn = hub.get_connector(conn_id)
+    if not conn:
+        for c in hub._connectors.values():
+            if c.display_name.lower() == conn_id.lower():
+                conn = c
+                break
+
+    if not conn:
+        raise HTTPException(status_code=404, detail=f"Connector '{conn_id}' not found.")
+
+    t0 = time.perf_counter()
+    try:
+        is_healthy = await asyncio.to_thread(conn.health_check)
+        latency_ms = round((time.perf_counter() - t0) * 1000, 1)
+        return {
+            "status": "ok" if is_healthy else "degraded",
+            "connector": conn.connector_id,
+            "display_name": conn.display_name,
+            "healthy": is_healthy,
+            "latency_ms": latency_ms,
+            "message": f"Connection verified in {latency_ms}ms" if is_healthy else "Health check reported degraded state",
+        }
+    except Exception as exc:
+        latency_ms = round((time.perf_counter() - t0) * 1000, 1)
+        return {
+            "status": "error",
+            "connector": conn.connector_id,
+            "display_name": conn.display_name,
+            "healthy": False,
+            "latency_ms": latency_ms,
+            "error": str(exc),
+            "message": f"Connection test failed: {exc}",
+        }
+
+
 @router.post("/api/connector/config")
+@router.post("/api/v1/connector/config")
 async def save_connector_config(req: ConnectorConfigRequest):
     """Save API key or configuration settings for a specific connector."""
+    global _CONNECTORS_CACHE
+    _CONNECTORS_CACHE = None
     try:
+        conn_id = req.get_connector()
+        if not conn_id:
+            raise HTTPException(status_code=400, detail="Missing 'connector' or 'connector_id' in request.")
         data = _read_full_config()
-        conn_name = req.connector.lower().strip()
+        conn_name = conn_id.lower().strip()
         key_name = f"{conn_name}_api_key"
+
         if req.api_key:
             val = req.api_key.strip()
             data[key_name] = val
             os.environ[key_name.upper()] = val
+
             if "github" in conn_name:
                 os.environ["GITHUB_TOKEN"] = val
             elif "notion" in conn_name:
+                os.environ["NOTION_TOKEN"] = val
                 os.environ["NOTION_API_KEY"] = val
-            elif "weather" in conn_name:
-                os.environ["OPENWEATHER_API_KEY"] = val
-                os.environ["WEATHER_API_KEY"] = val
-        if req.settings:
+            elif "slack" in conn_name:
+                os.environ["SLACK_BOT_TOKEN"] = val
+            elif "telegram" in conn_name:
+                os.environ["TELEGRAM_BOT_TOKEN"] = val
+            elif "tavily" in conn_name or "search" in conn_name:
+                os.environ["TAVILY_API_KEY"] = val
+            elif "youtube" in conn_name:
+                os.environ["YOUTUBE_API_KEY"] = val
+
+        if req.settings and isinstance(req.settings, dict):
             data[f"{conn_name}_settings"] = req.settings
+            for k, v in req.settings.items():
+                if isinstance(v, str) and v.strip():
+                    os.environ[k.upper()] = v.strip()
 
         _CONFIG_DIR.mkdir(parents=True, exist_ok=True)
         _API_FILE.write_text(json.dumps(data, indent=4), encoding="utf-8")

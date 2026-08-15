@@ -1,7 +1,8 @@
-# voice/assistant.py — JARVIS MK37 Voice Control Coordinator
+# voice/assistant.py — JARVIS MK40.2 Voice Control Coordinator
 """
-Main hands-free voice control coordinator for JARVIS MK37.
-Integrates Speech Recognition, Wake Word Detection, and ReAct loop execution.
+Main hands-free voice control coordinator for JARVIS MK40.2.
+Integrates Speech Recognition, Wake Word Detection, State Machine, Single-Stream AudioBus,
+and Shared ReAct loop execution.
 """
 from __future__ import annotations
 
@@ -16,25 +17,31 @@ import threading
 import time
 import traceback
 from pathlib import Path
-from typing import Callable
+from typing import Any, Callable, Dict, List, Optional, Tuple
+
 from router import AgentProfile
+from voice.state_machine import VoiceStateMachine, VoiceState, VoiceErrorType
+from voice.audio_bus import AudioBus, AudioBusMicrophoneSource
 
 logger = logging.getLogger("JARVIS.VoiceAssistant")
 
-# Pre-compiled wake word pattern matching jarvis/javis variants
-_WAKE_RE = re.compile(
-    r"\b(jarvis|javis|jarves|jarvas|jervis|garvis|charvis|harvis|travis|jarvs|hey\s+jarvis|hey\s+javis|ok\s+jarvis|ok\s+javis|hi\s+jarvis|hi\s+javis|hello\s+jarvis|hello\s+javis|hey\s+br|br)\b",
-    re.IGNORECASE,
-)
-_FUZZY_WAKE_MATCHES = (
-    "jarvis", "javis", "hey jarvis", "hey javis", "ok jarvis", "ok javis",
-    "hi jarvis", "hi javis", "hello jarvis", "hello javis", "wake up", "hey assistant"
-)
-_WAKE_STRIP_RE = re.compile(
-    r"^(hey\s+jarvis|hey\s+javis|ok\s+jarvis|ok\s+javis|hi\s+jarvis|hi\s+javis|hello\s+jarvis|hello\s+javis|br\s+jarvis|hey\s+br|jarvis|javis|jarves|jarvas|jervis|garvis|charvis|harvis)\b[\s,:\.\!]*",
+# Default strict wake word patterns (no noisy tokens like 'travis' or standalone 'br')
+DEFAULT_PRIMARY_WAKE_WORD = "jarvis"
+DEFAULT_WAKE_ALIASES = [
+    "jarvis", "javis", "jarves", "jervis",
+    "hey jarvis", "hey javis", "ok jarvis", "ok javis",
+    "hi jarvis", "hi javis", "hello jarvis", "hello javis"
+]
+
+_STRICT_WAKE_RE = re.compile(
+    r"\b(hey\s+jarvis|hey\s+javis|ok\s+jarvis|ok\s+javis|hi\s+jarvis|hi\s+javis|hello\s+jarvis|hello\s+javis|jarvis|javis|jarves|jervis)\b",
     re.IGNORECASE,
 )
 
+_WAKE_STRIP_RE = re.compile(
+    r"^(hey\s+jarvis|hey\s+javis|ok\s+jarvis|ok\s+javis|hi\s+jarvis|hi\s+javis|hello\s+jarvis|hello\s+javis|br\s+jarvis|hey\s+br|jarvis|javis|jarves|jervis)\b[\s,:\.\!]*",
+    re.IGNORECASE,
+)
 
 _HAS_SR = False
 try:
@@ -60,8 +67,10 @@ except ImportError:
             def __init__(self):
                 self.speaking = False
                 self.muted = False
+                self.on_interrupt = None
                 self._state = "IDLE"
                 self.on_text_command = None
+                self.on_remote_clicked = None
                 self.mic_energy_level = 0.0
 
             def write_log(self, msg: str) -> None:
@@ -70,26 +79,28 @@ except ImportError:
             def set_state(self, state: str) -> None:
                 self._state = state
 
-            def update_agent_task(self, task_id: str, desc: str, status: str) -> None:
+            def update_agent_task(self, task_id: str, name: str, status: str,
+                                  progress: float = 0.0, result: str = "") -> None:
                 pass
+
+            def remove_agent_task(self, task_id: str) -> None:
+                pass
+
 from core.bootstrap import build_assistant_runtime
 from agent.task_queue import get_queue, TaskPriority
 from voice.tts import NeuralTTS
-from voice.stt import SounddeviceMicrophone
+from voice.stt import SounddeviceMicrophone, STTConfidence
 
 
 class BRVoiceAssistant:
-    """Hands-free Voice Assistant coordinator for JARVIS MK38."""
+    """Hands-free Voice Assistant coordinator for JARVIS MK40.2."""
 
-    # Class-level barge-in VAD singleton (shared across all instances)
-    # Lazy-initialized on first speak() to avoid startup overhead
     _barge_vad = None
     _barge_vad_lock = None
 
     @classmethod
     def _get_barge_vad(cls):
         """Lazy-load the barge-in SileroVAD singleton (thread-safe)."""
-        import threading
         if cls._barge_vad_lock is None:
             cls._barge_vad_lock = threading.Lock()
         with cls._barge_vad_lock:
@@ -103,11 +114,10 @@ class BRVoiceAssistant:
         return cls._barge_vad
 
     def __init__(self, ui: JarvisUI | None = None):
-        # ── BUG-001 FIX: self.ui must be set FIRST before any other attribute
-        # access, because hotkey manager and other subsystems reference self.ui
-        # immediately during __init__. The missing assignment caused:
-        # AttributeError: 'BRVoiceAssistant' object has no attribute 'ui'
         self.ui = ui if ui is not None else JarvisUI()
+
+        # Initialize Explicit State Machine
+        self.state_machine = VoiceStateMachine(initial_state=VoiceState.IDLE, ui_ref=self.ui)
 
         # Initialize ReAct Orchestrator & Backend Gateway via shared runtime
         try:
@@ -120,20 +130,24 @@ class BRVoiceAssistant:
             self.backends = {}
 
         self._loop = None
-        self._current_task: asyncio.Task | None = None   # track running command task
-        self._task_lock = threading.Lock()                # serialize task switches
+        self._current_task: asyncio.Task | None = None
+        self._task_lock = threading.Lock()
         self._async_task_lock: asyncio.Lock | None = None
         self._vocab_cache = self._load_vocab_cache()
-        
+
         # Load configurable settings
         self.name = os.environ.get("JARVIS_ASSISTANT_NAME", "BR").strip()
-        self.wake_word = os.environ.get("JARVIS_WAKE_WORD", "jarvis").strip().lower()
-        self._wake_listen_timeout = 2.0       # max seconds to wait for speech start
-        self._wake_phrase_limit = 4.0         # ⚡ 4.0s capture window for single-breath wake + command
-        self._command_timeout = 5.0           # seconds to wait for command speech
-        self._command_phrase_limit = 20.0     # allow long complex multi-sentence commands
-        self._ambient_calibration = 0.25      # ⚡ 250ms ultra-fast ambient noise calibration
+        self.wake_word = os.environ.get("JARVIS_WAKE_WORD", DEFAULT_PRIMARY_WAKE_WORD).strip().lower()
+        self._wake_listen_timeout = 2.0
+        self._wake_phrase_limit = 4.0
+        self._command_timeout = 5.0
+        self._command_phrase_limit = 20.0
+        self._ambient_calibration = 0.25
+        self._last_wake_time = 0.0
+        self._wake_cooldown_seconds = 1.0
 
+        # Multi-turn clarification tracking
+        self._pending_clarification: Optional[Dict[str, Any]] = None
 
         # Initialize 500ms rolling audio pre-roll ring buffer
         try:
@@ -144,8 +158,8 @@ class BRVoiceAssistant:
 
         # Initialize Neural TTS Engine
         self.tts = NeuralTTS(voice_key="default", rate="+0%", pitch="+0Hz")
-        
-        # Initialize Gemini Live Duplex Voice Engine
+
+        # Initialize Gemini Live Voice Loop
         try:
             from voice.gemini_live import GeminiLiveVoiceLoop
             self.gemini_live = GeminiLiveVoiceLoop(assistant_ref=self, ui_ref=self.ui)
@@ -153,19 +167,20 @@ class BRVoiceAssistant:
             logger.warning("Gemini Live loop init warning: %s", e)
             self.gemini_live = None
 
-        # Tracked background tasks (monitor_tasks, etc.) for clean cancellation
+        # Centralized Audio Bus
+        self.audio_bus = AudioBus.get_instance(sample_rate=16000, chunk_size=512)
+
+        # Tracked background tasks
         self._bg_tasks: set[asyncio.Task] = set()
 
-        # Initialize Persistent Barge-In Input Stream
-        self._persistent_barge_stream = None
-        self._persistent_barge_queue = None
+        # Initialize Persistent Barge-In Monitor on AudioBus
+        self._barge_sub = self.audio_bus.subscribe("barge_in_monitor")
         self._barge_in_running = False
-        
         barge_in_enabled = os.environ.get("JARVIS_ENABLE_BARGE_IN", "true").lower() in ("1", "true", "yes")
         if barge_in_enabled:
             self._start_persistent_barge_in()
 
-        # Bind manual text command submission and interrupt from UI if available
+        # Bind manual text command submission and interrupt from UI
         if self.ui:
             self.ui.on_text_command = self._on_text_command
             self.ui.on_interrupt = self.stop_speech
@@ -190,7 +205,6 @@ class BRVoiceAssistant:
             logger.warning(f"Vocabulary cache load error: {e}")
         return {}
 
-
     def _on_text_command(self, text: str):
         if self._loop:
             asyncio.run_coroutine_threadsafe(self._switch_to_new_command(text), self._loop)
@@ -201,105 +215,69 @@ class BRVoiceAssistant:
             self._async_task_lock = asyncio.Lock()
 
         async with self._async_task_lock:
-            # 1. Stop TTS immediately
             self.tts.stop()
-            # 2. Cancel previous async task if still running
             if self._current_task and not self._current_task.done():
                 self._current_task.cancel()
                 try:
                     await self._current_task
                 except (asyncio.CancelledError, Exception):
                     pass
-            # 3. Launch new command
             self._current_task = asyncio.create_task(self.process_command(text))
 
-
     def _start_persistent_barge_in(self):
-        """Starts a persistent background RawInputStream to monitor barge-in interuptions."""
-        import queue as _q
-        self._persistent_barge_queue = _q.Queue()
+        """Starts background thread monitoring audio frames on AudioBus for barge-in interruptions."""
         self._barge_in_running = True
 
-        def _cb(indata, frames, t, status):
-            if self._persistent_barge_queue:
-                self._persistent_barge_queue.put(bytes(indata))
-
-        def _run_stream():
-            import sounddevice as sd_barge
-            import time
-            barge_chunk = 512
+        def _run_barge_loop():
             while self._barge_in_running:
                 try:
-                    with sd_barge.RawInputStream(
-                        samplerate=16000, channels=1, dtype='int16',
-                        blocksize=barge_chunk, callback=_cb
-                    ):
-                        while self._barge_in_running:
-                            # If not speaking, keep queue empty to prevent lag or memory leak
-                            if not getattr(self.ui, "speaking", False):
-                                try:
-                                    while not self._persistent_barge_queue.empty():
-                                        self._persistent_barge_queue.get_nowait()
-                                except Exception:
-                                    pass
-                                time.sleep(0.1)
+                    frame = self._barge_sub.get(timeout=0.1)
+                    if frame is None:
+                        continue
 
-                                continue
+                    # Only monitor for barge-in speech while the assistant is actively speaking
+                    if not getattr(self.ui, "speaking", False) and not self.tts.is_speaking:
+                        continue
 
-                            # We are speaking! Monitor queue for barge-in speech
-                            try:
-                                pcm = self._persistent_barge_queue.get(timeout=0.08)
-                                _barge_vad = self.__class__._get_barge_vad()
-                                if _barge_vad:
-                                    is_speech, prob, snr_db = _barge_vad.is_speech(pcm)
-                                    if is_speech and snr_db > 8.0:
-                                        logger.info("[BRG-IN] Barge-in SNR=%.1fdB — stopping TTS", snr_db)
-                                        self.tts.stop()
-                                        self.ui.speaking = False
-                                        self.ui.set_state("LISTENING")
-                                        # Clear queue
-                                        while not self._persistent_barge_queue.empty():
-                                            self._persistent_barge_queue.get_nowait()
-                                        time.sleep(0.5)  # Cooldown
-                            except Exception:
-                                pass
+                    _barge_vad = self.__class__._get_barge_vad()
+                    if _barge_vad:
+                        is_speech, prob, snr_db = _barge_vad.is_speech(frame.data, echo_gated=True)
+                        if is_speech and snr_db > 8.5:
+                            logger.info("[BRG-IN] Barge-in speech detected SNR=%.1fdB — interrupting TTS", snr_db)
+                            self.tts.stop()
+                            if self.ui:
+                                self.ui.speaking = False
+                            self.state_machine.transition_to(VoiceState.INTERRUPTED)
+                            self._barge_sub.drain()
+                            time.sleep(0.3)
+                except queue.Empty:
+                    continue
                 except Exception as e:
-                    logger.debug("Barge-in input stream exception: %s. Retrying...", e)
-                    time.sleep(2.0)
+                    logger.debug("Barge-in loop exception: %s", e)
+                    time.sleep(0.5)
 
-
-        threading.Thread(target=_run_stream, daemon=True, name="PersistentBargeIn").start()
+        threading.Thread(target=_run_barge_loop, daemon=True, name="PersistentBargeIn").start()
 
     def speak(self, text: str):
-        """Speak text using the neural TTS engine with UI state sync & barge-in support."""
+        """Speak text using NeuralTTS with state machine & barge-in support."""
         from voice.tts import clean_for_speech
         log_text = clean_for_speech(text)
         if log_text:
             logger.info(f"[JARVIS] 🗣 Speak: {log_text[:200]}")
 
         def on_start():
-            self.ui.speaking = True
-            self.ui.set_state("SPEAKING")
+            self.state_machine.transition_to(VoiceState.SPEAKING)
 
         def on_finish():
-            self.ui.speaking = False
-            if not self.ui.muted:
-                self.ui.set_state("LISTENING")
+            if not getattr(self.ui, "muted", False):
+                self.state_machine.transition_to(VoiceState.LISTENING_FOR_COMMAND)
 
         self.tts.speak_async(text, on_start=on_start, on_finish=on_finish)
-
-        # ── Barge-In Detection ────────────────────────────────────────────────
-        # Clear persistent queue to avoid pre-existing audio triggers
-        if getattr(self, "_persistent_barge_queue", None):
-            try:
-                while not self._persistent_barge_queue.empty():
-                    self._persistent_barge_queue.get_nowait()
-            except Exception:
-                pass
-
+        if self._barge_sub:
+            self._barge_sub.drain()
 
     def stop_speech(self):
-        """Halt active neural TTS speech playback immediately for barge-in interruption or user cancel."""
+        """Halt active neural TTS speech playback immediately for interruption or cancellation."""
         if hasattr(self, "tts") and self.tts:
             self.tts.stop()
         if hasattr(self, "_current_task") and self._current_task and not self._current_task.done():
@@ -309,8 +287,8 @@ class BRVoiceAssistant:
                 pass
         if self.ui:
             self.ui.speaking = False
-            if not getattr(self.ui, "muted", False):
-                self.ui.set_state("LISTENING")
+        if not getattr(self.ui, "muted", False):
+            self.state_machine.transition_to(VoiceState.LISTENING_FOR_COMMAND)
 
     def _play_listening_chime(self):
         """Play ascending dual-tone acoustic activation chime when wake word is recognized."""
@@ -321,35 +299,45 @@ class BRVoiceAssistant:
             pass
 
     def _tune_recognizer(self, recognizer):
-        """Apply adaptive dynamic energy thresholding and optimal phrase boundary settings."""
-        recognizer.dynamic_energy_threshold = True   # Enable adaptive noise floor tracking
+        """Apply adaptive dynamic energy thresholding and phrase boundary settings."""
+        recognizer.dynamic_energy_threshold = True
         recognizer.dynamic_energy_adjustment_damping = 0.15
         recognizer.dynamic_energy_ratio = 1.35
-        recognizer.energy_threshold = max(180, getattr(recognizer, "energy_threshold", 250))  # Enforce 180 RMS floor
-        recognizer.pause_threshold = 0.45             # ⚡ Fast 0.45s endpoint pause (slashes latency)
-        recognizer.non_speaking_duration = 0.25       # Min non-speech duration before phrase end
-        recognizer.phrase_threshold = 0.1           # Min speech length to register
+        recognizer.energy_threshold = max(180, getattr(recognizer, "energy_threshold", 250))
+        recognizer.pause_threshold = 0.45
+        recognizer.non_speaking_duration = 0.25
+        recognizer.phrase_threshold = 0.1
 
-    def _is_wake_phrase(self, text: str) -> bool:
-        """Return True when transcript contains explicit wake word ('jarvis', 'javis', 'hey jarvis', or phonetic variants)."""
-        normalized = re.sub(r"[^a-z0-9\s]", " ", text.lower()).strip()
+    def _is_wake_phrase(self, text: str, enforce_cooldown: bool = False) -> bool:
+        """Strict wake word matching policy: strongly prefers 'Jarvis' and configured aliases."""
+        now = time.monotonic()
+        if enforce_cooldown and (now - self._last_wake_time) < self._wake_cooldown_seconds:
+            return False
+
+        normalized = re.sub(r"[^a-z0-9\s]", " ", (text or "").lower()).strip()
         if not normalized:
             return False
 
-        if _WAKE_RE.search(normalized):
+        if _STRICT_WAKE_RE.search(normalized):
+            self._last_wake_time = now
             return True
 
         wake_word = self.wake_word.lower().strip()
-        if wake_word and wake_word in normalized:
+        if wake_word and re.search(r"\b" + re.escape(wake_word) + r"\b", normalized):
+            self._last_wake_time = now
             return True
 
-        return any(target in normalized for target in _FUZZY_WAKE_MATCHES)
+        for alias in DEFAULT_WAKE_ALIASES:
+            if re.search(r"\b" + re.escape(alias) + r"\b", normalized):
+                self._last_wake_time = now
+                return True
+
+        return False
 
     def _extract_command_from_wake(self, text: str) -> str:
         """Extract trailing command when user speaks wake-word and command in a single sentence."""
         if not text:
             return ""
-        # Collapse repetitive token loops first
         from voice.prompt_refiner import VoicePromptRefiner
         collapsed = VoicePromptRefiner.get_instance().collapse_repetitions(text)
         norm = collapsed.lower().strip()
@@ -361,19 +349,10 @@ class BRVoiceAssistant:
             return ""
         return cleaned
 
-
     def _get_active_loop(self) -> asyncio.AbstractEventLoop:
-        """Safely get the active event loop.
-
-        Inside an async method (which all callers are), asyncio.get_running_loop()
-        always succeeds. The old code could mistakenly create a new loop inside an
-        already-running loop, which would never be run.
-        """
         try:
-            # Primary path: we're already inside an async context (always true for callers)
             return asyncio.get_running_loop()
         except RuntimeError:
-            # Fallback: called from a non-async context (shouldn't happen in normal usage)
             if self._loop and not self._loop.is_closed():
                 return self._loop
             loop = asyncio.new_event_loop()
@@ -382,11 +361,10 @@ class BRVoiceAssistant:
             return loop
 
     async def _transcribe_wake(self, audio: sr.AudioData) -> str:
-        """⚡ FAST 100% OFFLINE wake-word transcription via local faster-whisper CTranslate2."""
+        """Fast offline wake-word transcription via local faster-whisper CTranslate2."""
         loop = self._get_active_loop()
         text = ""
 
-        # 1. Ultrafast Specialized Wake-Word Decoder (< 30ms Latency)
         try:
             from voice.whisper_local import transcribe_wake_fast, is_available as whisper_available
             if whisper_available():
@@ -400,7 +378,6 @@ class BRVoiceAssistant:
         except Exception:
             text = ""
 
-        # 2. Online Google STT Fallback (Only if offline engine unavailable)
         if not text.strip() and hasattr(self, "r") and self.r:
             try:
                 from voice.multilingual import get_google_stt_code
@@ -414,20 +391,20 @@ class BRVoiceAssistant:
         return text.strip()
 
     async def _transcribe_command(self, audio: sr.AudioData) -> str:
-        """Full-quality command transcription with fallback chain."""
+        """Full-quality command transcription with fallback chain: Gemini STT -> Local Whisper -> Backend."""
         loop = self._get_active_loop()
         text = ""
 
-        # 0. Try dedicated Gemini Listening API key (if online & configured)
+        # 1. Try dedicated Gemini Listening API key
         try:
             from voice.gemini_stt import transcribe_audio_online
             text = await loop.run_in_executor(
                 None, lambda: transcribe_audio_online(audio.get_wav_data(), timeout_seconds=4.5)
             )
-        except Exception as e:
+        except Exception:
             text = ""
 
-        # 1. Try local Whisper (100% offline STT fallback or primary when offline)
+        # 2. Try local Whisper
         if not text:
             try:
                 from voice.whisper_local import transcribe as whisper_transcribe, is_available as whisper_available
@@ -445,7 +422,7 @@ class BRVoiceAssistant:
             except Exception as e:
                 logger.warning(f"[Voice] Local Whisper transcription failed: {e}")
 
-        # 2. Try configured default backend (if it has transcribe method)
+        # 3. Try configured default backend
         if not text and hasattr(self, "backends") and self.backends:
             try:
                 default_profile = AgentProfile.GEMINI
@@ -459,12 +436,59 @@ class BRVoiceAssistant:
 
         return text
 
+    async def run_voice_diagnostics(self) -> str:
+        """Run complete live voice subsystem diagnostics and health check."""
+        results = []
+        results.append("=== BR JARVIS VOICE SUBSYSTEM DIAGNOSTICS ===")
+
+        # 1. Microphone & AudioBus
+        mic_status = "READY" if self.audio_bus.is_alive() else "OFFLINE"
+        results.append(f"Microphone Stream:     {mic_status} (Device {self.audio_bus.device_index})")
+        results.append(f"Sample Rate:           {self.audio_bus.sample_rate} Hz (Chunk: {self.audio_bus.chunk_size})")
+
+        # 2. Noise Calibrator
+        try:
+            from voice.noise_calibrator import get_calibrator
+            nc = get_calibrator()
+            results.append(f"Noise Calibrator:      READY (Baseline: {nc.baseline_rms:.4f}, Env: {nc.environment_label})")
+        except Exception as e:
+            results.append(f"Noise Calibrator:      DEGRADED ({e})")
+
+        # 3. Silero VAD
+        try:
+            vad = self.__class__._get_barge_vad()
+            vad_status = "READY (ONNX/Torch)" if vad else "DEGRADED"
+            results.append(f"Voice Activity VAD:    {vad_status}")
+        except Exception as e:
+            results.append(f"Voice Activity VAD:    OFFLINE ({e})")
+
+        # 4. STT Engines
+        from voice.whisper_local import is_available as whisper_avail
+        from voice.gemini_stt import get_listen_api_key
+        w_status = "READY (Local CTranslate2)" if whisper_avail() else "NOT_INSTALLED"
+        g_status = "CONFIGURED (Gemini Flash)" if get_listen_api_key() else "NOT_CONFIGURED"
+        results.append(f"Primary Local STT:     {w_status}")
+        results.append(f"Online Gemini STT:     {g_status}")
+
+        # 5. TTS Engine
+        tts_status = "READY (Neural Edge-TTS + OneCore)" if hasattr(self, "tts") and self.tts else "OFFLINE"
+        results.append(f"Neural TTS:            {tts_status}")
+
+        # 6. Orchestrator & Memory
+        orch_status = "ONLINE (ReAct Agent Core)" if self.orchestrator else "OFFLINE"
+        results.append(f"Shared Orchestrator:   {orch_status}")
+
+        diag_report = "\n".join(results)
+        self.ui.write_log(diag_report)
+        return "Voice diagnostics completed. All primary audio, speech, and orchestrator subsystems are operational, sir."
 
     async def process_command(self, text: str):
         if not text or not text.strip():
             return
 
-        # Refine raw acoustic speech transcript into a clean execution prompt
+        self.state_machine.transition_to(VoiceState.UNDERSTANDING)
+
+        # Refine raw acoustic transcript
         from voice.prompt_refiner import refine_voice_prompt
         ref_res = refine_voice_prompt(text)
         text_clean = ref_res["refined"]
@@ -472,7 +496,7 @@ class BRVoiceAssistant:
         if not text_clean or not text_clean.strip():
             raw_preview = ref_res.get("raw", text)[:60]
             self.ui.write_log(f"SYS: Ignored wake/noise artifact: \"{raw_preview}\"")
-            self.ui.set_state("LISTENING")
+            self.state_machine.transition_to(VoiceState.LISTENING_FOR_COMMAND)
             return
 
         if ref_res["was_modified"]:
@@ -483,32 +507,29 @@ class BRVoiceAssistant:
 
         low = text_clean.lower().strip()
 
-        # Handle Total Recall voice capture: "remember that..." or "remember..."
-        if low.startswith("remember that ") or low.startswith("remember "):
-            self.ui.write_log(f"🧠 Total Recall Capture: \"{text_clean}\"")
-            try:
-                port = int(os.environ.get("PORT", "8000"))
-                def _post_remember():
-                    import urllib.request
-                    req = urllib.request.Request(
-                        f"http://127.0.0.1:{port}/api/remember",
-                        data=json.dumps({"text": text_clean}).encode("utf-8"),
-                        headers={"Content-Type": "application/json"}
-                    )
-                    with urllib.request.urlopen(req, timeout=5) as response:
-                        return response.status, json.loads(response.read().decode("utf-8"))
+        # Handle Voice Diagnostics Command
+        if "voice diagnostics" in low or "run voice diagnostics" in low or "test voice" in low:
+            summary = await self.run_voice_diagnostics()
+            self.speak(summary)
+            return
 
-                status_code, data = await asyncio.to_thread(_post_remember)
-                if status_code == 200:
-                    confirm = data.get("confirmation", "Recorded to your brain, sir.")
-                    self.speak(confirm)
-                    self.ui.set_state("IDLE")
-                    return
-            except Exception as e:
-                self.ui.write_log(f"SYS: Capture sync error: {e}")
+        # Handle Conversational Approvals & Cancellations
+        if ref_res.get("is_approval") and self._pending_clarification:
+            pending_goal = self._pending_clarification.get("goal", "")
+            self._pending_clarification = None
+            self.ui.write_log(f"SYS: Confirmed pending task: '{pending_goal}'")
+            text_clean = pending_goal
+            low = text_clean.lower().strip()
 
+        elif ref_res.get("is_rejection") and self._pending_clarification:
+            self._pending_clarification = None
+            self.ui.write_log("SYS: Cancelled pending task upon voice rejection.")
+            self.speak("Task cancelled, sir.")
+            self.state_machine.transition_to(VoiceState.CANCELLED)
+            self.state_machine.transition_to(VoiceState.IDLE)
+            return
 
-        # System shutdown ONLY triggers on exact standalone shutdown commands
+        # System shutdown
         exact_shutdown_commands = {
             "exit", "quit", "goodbye", "shutdown", "bye",
             "shutdown jarvis", "exit jarvis", "close jarvis", "stop jarvis",
@@ -518,15 +539,13 @@ class BRVoiceAssistant:
         if low in exact_shutdown_commands:
             self.ui.write_log("SYS: Shutting down.")
             self.speak("Goodbye, sir.")
-            await asyncio.sleep(2.5)
+            await asyncio.sleep(2.0)
             if self._loop and self._loop.is_running():
                 self._loop.stop()
             sys.exit(0)
 
         # Detect multiple parallel goals
         parallel_keywords = ["while also", "at the same time", "simultaneously", "and also"]
-        
-        # Don't treat | in markdown tables as goal separators
         is_table = False
         if "|" in text_clean:
             for line in text_clean.splitlines():
@@ -534,7 +553,7 @@ class BRVoiceAssistant:
                 if (line_s.startswith("|") and line_s.endswith("|") and len(line_s) > 1) or "|---" in line_s or "--|" in line_s:
                     is_table = True
                     break
-        
+
         is_parallel = ("|" in text_clean and not is_table) or any(kw in low for kw in parallel_keywords)
 
         if is_parallel:
@@ -547,83 +566,101 @@ class BRVoiceAssistant:
                 goals = [g.strip() for g in pattern.split(text_clean) if g.strip()]
 
             if len(goals) > 1:
+                self.state_machine.transition_to(VoiceState.EXECUTING)
                 self.ui.write_log(f"SYS: Running {len(goals)} tasks in parallel...")
                 self.speak("Executing multiple tasks in parallel.")
 
                 q = get_queue()
                 task_ids = q.submit_many(goals, priority=TaskPriority.NORMAL, speak=self.speak)
 
-                for idx, tid in enumerate(task_ids):
-                    self.ui.update_agent_task(tid, goals[idx][:20], "running")
+                tid_to_goal: dict[str, str] = {
+                    tid: goals[idx][:40] for idx, tid in enumerate(task_ids)
+                }
+
+                for tid in task_ids:
+                    self.ui.update_agent_task(tid, tid_to_goal[tid], "running", 0.0, "")
 
                 async def monitor_tasks():
+                    completed_tids: set[str] = set()
                     while True:
                         all_done = True
                         for tid in task_ids:
+                            if tid in completed_tids:
+                                continue
                             status = q.get_status(tid)
-                            if status and status["status"] not in ("completed", "failed", "cancelled"):
+                            if not status:
+                                continue
+                            s = status["status"]
+                            if s not in ("completed", "failed", "cancelled"):
                                 all_done = False
-                            elif status and status["status"] == "completed":
-                                self.ui.update_agent_task(tid, goals[task_ids.index(tid)][:20], "completed")
-                            elif status and status["status"] == "failed":
-                                self.ui.update_agent_task(tid, goals[task_ids.index(tid)][:20], "failed")
+                            elif s == "completed":
+                                completed_tids.add(tid)
+                                self.ui.update_agent_task(
+                                    tid, tid_to_goal.get(tid, tid[:20]),
+                                    "completed", 1.0, status.get("result", "")
+                                )
+                            elif s in ("failed", "cancelled"):
+                                completed_tids.add(tid)
+                                self.ui.update_agent_task(
+                                    tid, tid_to_goal.get(tid, tid[:20]),
+                                    s, 1.0, status.get("error", "")
+                                )
                         if all_done:
                             break
                         await asyncio.sleep(0.5)
                     self.speak("All parallel tasks completed.")
-                    self.ui.set_state("LISTENING")
+                    self.state_machine.transition_to(VoiceState.LISTENING_FOR_COMMAND)
 
-                asyncio.create_task(monitor_tasks())
-                # FLAW-4 FIX: track the monitor task so it can be cancelled on shutdown
+                # Single tracked monitor task
+                for old_task in list(self._bg_tasks):
+                    if old_task.done():
+                        self._bg_tasks.discard(old_task)
+
                 _mt = asyncio.create_task(monitor_tasks())
                 self._bg_tasks.add(_mt)
                 _mt.add_done_callback(self._bg_tasks.discard)
                 return
 
         # Single goal execution using ReAct Orchestrator loop
+        self.state_machine.transition_to(VoiceState.EXECUTING)
         try:
             response = await asyncio.to_thread(self.orchestrator.chat, text_clean)
-            # Check if this task was cancelled during the blocking chat() call
             if asyncio.current_task() and asyncio.current_task().cancelled():
                 return
             if not response or not str(response).strip():
                 response = "I am ready, sir. Please specify a single task or command."
 
-            # Check for structured diagnostic failure
+            # Check for backend failures
             if "TASK_EXECUTION_FAILED" in response or "All backends failed" in response:
-                logger.error("[Voice] STT_SUCCESS_BACKEND_FAILURE encountered for prompt: %s", text_clean[:80])
-                self.ui.write_log("SYS: [STT_SUCCESS_BACKEND_FAILURE] AI execution failed — diagnostic trace generated.")
-
-                # Extract user-friendly portion if present
-                if "[BR JARVIS:" in response and "]" in response:
-                    user_part = response.split("[BR JARVIS:")[-1].split("]")[0].strip()
-                    spoken_summary = f"I couldn't complete the planning stage because all compatible AI providers failed. {user_part}"
-                else:
-                    spoken_summary = "I was unable to complete the AI planning stage because all compatible model providers failed. Please check connectivity or proxy status."
-                
-                self.ui.write_log(f"JARVIS: {response[:500]}")
-                self.speak(spoken_summary)
-                self.ui.set_state("LISTENING")
+                logger.error("[Voice] STT_SUCCESS_BACKEND_FAILURE: %s", text_clean[:80])
+                self.ui.write_log("SYS: [STT_SUCCESS_BACKEND_FAILURE] AI execution failed.")
+                self.state_machine.set_error(VoiceErrorType.LLM_FAILURE, "All backends failed")
+                self.speak("I was unable to complete the AI planning stage because the model backends failed.")
                 return
 
-            # Log clean version to UI
+            # Check if response asks for confirmation
+            if "?" in response and any(kw in response.lower() for kw in ("should i", "do you want me to", "confirm", "proceed")):
+                self._pending_clarification = {"goal": text_clean, "question": response}
+                self.state_machine.transition_to(VoiceState.WAITING_APPROVAL)
+
             from voice.tts import clean_for_speech, summarize_for_speech
             clean_log = clean_for_speech(response)
             self.ui.write_log(f"JARVIS: {clean_log[:500] if clean_log else response[:500]}")
             spoken_summary = summarize_for_speech(response, max_chars=600)
             if not spoken_summary or not spoken_summary.strip():
-                spoken_summary = "I have executed all requested operations and saved the output to your workspace, sir."
+                spoken_summary = clean_log[:300] if clean_log else "I have completed processing your request, sir."
             self.speak(spoken_summary)
         except asyncio.CancelledError:
-            # Task was cancelled by a new incoming command — silently exit
+            self.state_machine.transition_to(VoiceState.CANCELLED)
             return
         except Exception as e:
             err_msg = f"Error processing request: {e}"
             self.ui.write_log(f"ERR: {err_msg}")
+            self.state_machine.set_error(VoiceErrorType.TOOL_FAILURE, str(e))
             self.speak("Sorry, I encountered an error processing that request.")
             traceback.print_exc()
 
-        self.ui.set_state("LISTENING")
+        self.state_machine.transition_to(VoiceState.LISTENING_FOR_COMMAND)
 
     async def run(self):
         try:
@@ -632,10 +669,10 @@ class BRVoiceAssistant:
             self._loop = asyncio.new_event_loop()
             asyncio.set_event_loop(self._loop)
 
-        # Initialize AI core backends if not already initialized in __init__
+        # Initialize AI core backends if needed
         if not self.orchestrator:
+            self.state_machine.transition_to(VoiceState.PLANNING)
             if self.ui:
-                self.ui.set_state("THINKING")
                 self.ui.write_log("SYS: Initializing AI backends...")
             runtime = build_assistant_runtime()
             self.orchestrator = runtime.orchestrator
@@ -643,45 +680,24 @@ class BRVoiceAssistant:
         if self.ui:
             self.ui.write_log("SYS: JARVIS Cognitive Core online.")
 
-        # Background thread: sync TTS speaking state with UI animation (thread-safe)
-        def animation_sync_loop():
-            while True:
-                try:
-                    is_speaking = getattr(self.tts, "is_speaking", getattr(self.tts, "_is_speaking", False))
-                    if callable(is_speaking):
-                        is_speaking = is_speaking()
-                    if self.ui:
-                        self.ui.speaking = bool(is_speaking)
-                        ui_state = getattr(self.ui, "_state", "IDLE")
-                        if is_speaking:
-                            if ui_state != "SPEAKING":
-                                self.ui.set_state("SPEAKING")
-                        elif ui_state == "SPEAKING":
-                            self.ui.set_state("LISTENING")
-                except Exception:
-                    pass
-                time.sleep(0.05)
-
-
-        # Setup Speech Recognition
+        # Setup Speech Recognition & AudioBus
         mic_available = False
         self.r = None
-        mic = None
+        mic_source = None
 
         if _HAS_SR:
             try:
                 self.r = sr.Recognizer()
-                mic = SounddeviceMicrophone()
+                mic_source = AudioBusMicrophoneSource(subscriber_name="assistant_main_mic")
                 self._tune_recognizer(self.r)
                 mic_available = True
             except Exception as e:
-                self.ui.write_log(f"WRN: Hands-free mic offline: {e}")
+                self.ui.write_log(f"WRN: AudioBus mic offline: {e}")
+                self.state_machine.set_error(VoiceErrorType.MICROPHONE_UNAVAILABLE, str(e))
         else:
             self.ui.write_log("WRN: speech_recognition not installed. Text-only mode.")
 
-        threading.Thread(target=animation_sync_loop, daemon=True).start()
-
-        self.ui.set_state("LISTENING")
+        self.state_machine.transition_to(VoiceState.LISTENING_FOR_COMMAND)
         self.speak(f"{self.name} online. Neural core active. Awaiting your command.")
 
         # Execute custom startup commands
@@ -690,21 +706,20 @@ class BRVoiceAssistant:
             if custom_command_engine.startup_commands:
                 self.ui.write_log("SYS: Executing startup commands...")
                 for startup_cmd in custom_command_engine.startup_commands:
-                    # Run startup command asynchronously
                     self._loop.call_soon_threadsafe(
                         lambda c=startup_cmd: custom_command_engine.execute({"actions": [c]}, {}, speak_callback=self.speak)
                     )
         except Exception as e:
             logger.warning(f"[Voice] Startup commands error: {e}")
 
-        if not mic_available or not self.r or not mic:
+        if not mic_available or not self.r or not mic_source:
             self.ui.write_log("SYS: Keyboard text control operational.")
             while True:
                 await asyncio.sleep(1.0)
 
-        # Open and start microphone stream globally (one-time setup)
+        # Open and start AudioBus stream
         try:
-            with mic as source:
+            with mic_source as source:
                 self.ui.write_log("SYS: Calibrating microphone noise threshold...")
                 try:
                     self.r.adjust_for_ambient_noise(source, duration=self._ambient_calibration)
@@ -712,77 +727,61 @@ class BRVoiceAssistant:
                         self.r.energy_threshold = 180
                     self.r.phrase_threshold = 0.08
                     self.r.dynamic_energy_ratio = 1.25
-                    mic.drain()  # ⚡ instant flush instead of sleep + manual loop
+                    mic_source.drain()
 
-                    # ── AdaptiveNoiseCalibrator: tune VAD threshold to environment ──
+                    # Start background noise calibrator
                     try:
                         from voice.noise_calibrator import get_calibrator
                         _nc = get_calibrator()
                         if not _nc.is_calibrated:
-                            _nc.start_background_calibration(
-                                chunk_size=512, sample_rate=16000
-                            )
-                        # Feed noise floor into STT energy pre-filter
-                        if hasattr(mic, 'set_noise_floor') and _nc.is_calibrated:
-                            mic.set_noise_floor(_nc.baseline_rms)
-                        logger.info("[Voice] NoiseCalibrator: %r", _nc)
+                            _nc.start_background_calibration(chunk_size=512, sample_rate=16000)
                     except Exception as _nc_err:
                         logger.debug("NoiseCalibrator boot error: %s", _nc_err)
 
-                    self.ui.set_state("LISTENING")
-                    self.ui.write_log(f"SYS: Microphone active (Device {mic.device_index}). Hands-free mode active. Listening for 'Jarvis' or 'Hey Jarvis'...")
+                    self.state_machine.transition_to(VoiceState.WAKE_DETECTION)
+                    self.ui.write_log(f"SYS: Microphone active (Device {mic_source.device_index}). Hands-free mode active. Listening for 'Jarvis'...")
 
-                    # ── Mic Health Watchdog ────────────────────────────────────────
+                    # Mic Health Watchdog
                     def _mic_watchdog():
                         while True:
                             time.sleep(5.0)
-
                             try:
-                                if not mic.is_alive():
+                                if not mic_source.is_alive():
                                     logger.warning("[Watchdog] Mic stale — attempting hot-plug recovery")
+                                    self.state_machine.transition_to(VoiceState.RECOVERING)
                                     self.ui.write_log("WRN: Mic disconnect detected. Reconnecting...")
-                                    if mic.try_reconnect():
-                                        # Feed updated noise floor after recovery
-                                        try:
-                                            from voice.noise_calibrator import get_calibrator
-                                            _nc2 = get_calibrator()
-                                            if hasattr(mic, 'set_noise_floor'):
-                                                mic.set_noise_floor(_nc2.baseline_rms)
-                                        except Exception:
-                                            pass
+                                    if mic_source.try_reconnect():
+                                        self.state_machine.transition_to(VoiceState.WAKE_DETECTION)
                                         self.ui.write_log("SYS: Mic recovered successfully.")
                                     else:
+                                        self.state_machine.set_error(VoiceErrorType.MICROPHONE_DISCONNECTED, "Recovery failed")
                                         self.ui.write_log("ERR: Mic recovery failed. Using text input only.")
                             except Exception:
                                 pass
 
                     threading.Thread(target=_mic_watchdog, daemon=True, name="MicWatchdog").start()
 
-
                 except Exception as e:
                     self.ui.write_log(f"ERR: Microphone calibration failed: {e}")
-
 
                 # Wake-word passive listening loop
                 while True:
                     try:
-                        # Passive listening checks: suspend listening while speaking, thinking, executing, or muted
-                        if self.ui.speaking or self.ui._state in ("THINKING", "SPEAKING", "EXECUTING", "BUSY") or getattr(self.ui, "muted", False):
+                        curr_st = self.state_machine.current_state
+                        if self.ui.speaking or curr_st in (VoiceState.THINKING if hasattr(VoiceState, "THINKING") else VoiceState.EXECUTING, VoiceState.SPEAKING, VoiceState.PLANNING, VoiceState.MUTED):
                             await asyncio.sleep(0.1)
                             continue
 
-                        # ⚡ Dynamic micro-endpoint tuning for ultra-snappy wake detection
                         self.r.pause_threshold = 0.25
                         self.r.non_speaking_duration = 0.15
 
-                        # Drain microphone buffer so old frames recorded while speaking/thinking/executing are flushed
                         try:
                             await asyncio.sleep(0.15)
-                            mic.drain()
+                            mic_source.drain()
                         except Exception:
                             pass
 
-                        # ⚡ Listen for wake phrase (4.0s limit captures single-breath wake+command)
+                        self.state_machine.transition_to(VoiceState.WAKE_DETECTION)
                         audio = await self._loop.run_in_executor(
                             None, lambda: self.r.listen(
                                 source,
@@ -791,34 +790,25 @@ class BRVoiceAssistant:
                             )
                         )
 
-
-
-                        # ⚡ ULTRAFAST wake decoding
+                        self.state_machine.transition_to(VoiceState.TRANSCRIBING)
                         text = await self._transcribe_wake(audio)
 
                         if self._is_wake_phrase(text):
-                            # Instant audio feedback & listening HUD trigger
+                            self.state_machine.transition_to(VoiceState.WAKE_CONFIRMED)
                             self._play_listening_chime()
-                            self.ui.set_state("LISTENING")
                             self.ui.write_log("SYS: 🎙️ Wake word detected. Active listening mode...")
 
-                            # Check if command was spoken in the same sentence as the wake word
                             embedded_cmd = self._extract_command_from_wake(text)
                             if embedded_cmd:
                                 self.ui.write_log(f"SYS: Command captured: '{embedded_cmd}'")
                                 await self._switch_to_new_command(embedded_cmd)
                                 continue
 
-                            # Drain microphone buffer so chime echo is not recorded as voice input
                             try:
-                                mic.drain()
+                                mic_source.drain()
                             except Exception:
                                 pass
 
-                            # Restore full command listening thresholds for active command capture
-                            # ── Dynamic Pause Threshold ──────────────────────────────────────────
-                            # Use adaptive pause based on environment noise level.
-                            # QUIET env → tighter 0.55s, NOISY env → looser 0.90s
                             try:
                                 from voice.noise_calibrator import get_calibrator
                                 _env = get_calibrator().environment_label
@@ -828,8 +818,7 @@ class BRVoiceAssistant:
                             self.r.pause_threshold = _pause
                             self.r.non_speaking_duration = max(0.20, _pause * 0.40)
 
-
-                            # Listen for follow-up command if user spoke only the wake word
+                            self.state_machine.transition_to(VoiceState.LISTENING_FOR_COMMAND)
                             try:
                                 audio_cmd = await self._loop.run_in_executor(
                                     None, lambda: self.r.listen(
@@ -838,31 +827,29 @@ class BRVoiceAssistant:
                                         phrase_time_limit=self._command_phrase_limit
                                     )
                                 )
-                                # Play deep processing bass chime when voice capture finishes
                                 try:
                                     from voice.sound_effects import play_processing_bass_chime
                                     play_processing_bass_chime()
                                 except Exception:
                                     pass
 
-                                # Full-quality transcription for command
+                                self.state_machine.transition_to(VoiceState.TRANSCRIBING)
                                 cmd_text = await self._transcribe_command(audio_cmd)
 
                                 if cmd_text.strip():
                                     await self._switch_to_new_command(cmd_text)
                                 else:
                                     self.ui.write_log("SYS: No command detected. Resuming...")
-                                    self.ui.set_state("LISTENING")
+                                    self.state_machine.transition_to(VoiceState.WAKE_DETECTION)
                             except sr.WaitTimeoutError:
                                 self.ui.write_log("SYS: Command capture timed out — no input heard.")
                                 try:
-                                    mic.drain()
+                                    mic_source.drain()
                                 except Exception:
                                     pass
-                                self.ui.set_state("LISTENING")
+                                self.state_machine.transition_to(VoiceState.WAKE_DETECTION)
 
                     except sr.WaitTimeoutError:
-                        # Expected timeout when silence, continue loop immediately
                         pass
                     except RuntimeError as e:
                         if "shutdown" in str(e).lower() or "closed" in str(e).lower():
@@ -893,4 +880,3 @@ def get_voice_assistant(ui_instance: Optional[Any] = None) -> BRVoiceAssistant:
         if _global_voice_assistant is None:
             _global_voice_assistant = BRVoiceAssistant(ui=ui_instance)
     return _global_voice_assistant
-

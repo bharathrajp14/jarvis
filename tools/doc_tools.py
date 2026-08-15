@@ -547,13 +547,31 @@ def document_creator(args: dict) -> str:
             return f"Error: Unsupported format '{fmt}'. Choose from docx, pdf, html, md."
     except Exception as e:
         return f"Error building document ({fmt}): {e}"
-        
+
+    # Verify generated document
+    from agent.verifier import ActionVerifier
+    v_res = ActionVerifier.verify_file_parsed(str(saved_path))
+    if not v_res.verified:
+        return f"Document created but verification failed: {v_res.details}"
+
+    # Register in ArtifactManager
+    try:
+        from agent.artifacts import get_artifact_manager
+        mgr = get_artifact_manager()
+        mgr.export_sandbox_artifact(saved_path, custom_filename=out_path.name)
+    except Exception as art_err:
+        logger.debug("Artifact registration note: %s", art_err)
+
+    open_status = "auto-open disabled"
     if auto_open and sys.platform == "win32":
         try:
-            subprocess.Popen(["cmd", "/c", "start", "", str(saved_path)], shell=False)
+            from actions.open_app import open_app
+            open_res = open_app(parameters={"app_name": f"start \"\" \"{saved_path}\""})
+            open_status = open_res
         except Exception as e:
-            logger.debug('Suppressed exception: %s', e)
-    return f"⚡ Created Executive Document ({fmt.upper()}): '{saved_path}' and launched viewer."
+            open_status = f"Launch notice: {e}"
+
+    return f"⚡ [SUCCESS_VERIFIED] Created Executive Document ({fmt.upper()}): '{saved_path}' | Evidence: {v_res.evidence} | Viewer: {open_status}"
 
 
 # ── Backward Compatibility Tool Wrappers ──────────────────────────────────

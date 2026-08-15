@@ -18,7 +18,6 @@ from connectors.base import BaseConnector, ConnectorTool
 
 logger = logging.getLogger("JARVIS.Connectors.RSS")
 
-# Pre-configured popular free RSS feeds
 PRESET_FEEDS = {
     "bbc_world":       "http://feeds.bbci.co.uk/news/world/rss.xml",
     "bbc_tech":        "http://feeds.bbci.co.uk/news/technology/rss.xml",
@@ -30,6 +29,17 @@ PRESET_FEEDS = {
     "mit_tech_review": "https://www.technologyreview.com/feed/",
     "ai_news":         "https://aiweekly.co/issues.rss",
     "github_trending": "https://github-trending-api.fly.dev/feed",
+}
+
+PRESET_ALIASES = {
+    "tech": "bbc_tech",
+    "news": "bbc_world",
+    "world": "bbc_world",
+    "ai": "ai_news",
+    "hackernews": "hacker_news",
+    "verge": "the_verge",
+    "mit": "mit_tech_review",
+    "github": "github_trending",
 }
 
 
@@ -60,16 +70,15 @@ class RSSNewsConnector(BaseConnector):
         return [
             ConnectorTool(
                 name="get_feed",
-                description=f"Read headlines from a preset news source or custom RSS URL. "
-                            f"Preset sources: {', '.join(presets)}",
+                description=f"Read headlines from a preset news source or custom RSS URL. Preset sources: {', '.join(presets)}",
                 parameters={
                     "type": "object",
                     "properties": {
                         "source": {
                             "type": "string",
-                            "description": f"Preset name (e.g. 'bbc_tech', 'hacker_news') or full RSS URL",
+                            "description": "Preset name (e.g. 'bbc_tech', 'techcrunch', 'hacker_news') or full RSS URL",
                         },
-                        "limit": {"type": "integer", "default": 10},
+                        "limit": {"type": "integer", "description": "Max articles (1-20)", "default": 10},
                     },
                     "required": ["source"],
                 },
@@ -89,7 +98,7 @@ class RSSNewsConnector(BaseConnector):
                         "sources": {
                             "type": "array",
                             "items": {"type": "string"},
-                            "description": "List of preset source names (defaults to top 3 news feeds)",
+                            "description": "List of preset source names (defaults to top news feeds)",
                         },
                     },
                     "required": ["keyword"],
@@ -97,134 +106,135 @@ class RSSNewsConnector(BaseConnector):
             ),
         ]
 
+    def call_tool(self, tool_name: str, args: Dict[str, Any]) -> Any:
+        norm_tool = tool_name.lower().replace("rss_", "").replace("get_", "")
+
+        # Support tool named after a preset directly (e.g. 'tech', 'hacker_news')
+        if norm_tool in PRESET_FEEDS or norm_tool in PRESET_ALIASES:
+            source = PRESET_ALIASES.get(norm_tool, norm_tool)
+            limit = int(args.get("limit") or 5)
+            return self._get_feed(source, limit)
+
+        if norm_tool in ("feed", "get_feed", "read", "headlines", "latest"):
+            source = str(
+                args.get("source")
+                or args.get("category")
+                or args.get("preset")
+                or args.get("name")
+                or args.get("url")
+                or "bbc_tech"
+            ).strip()
+            limit = int(args.get("limit") or 10)
+            return self._get_feed(source, limit)
+
+        elif norm_tool in ("list_sources", "sources", "presets"):
+            return self._list_sources()
+
+        elif norm_tool in ("search_feeds", "search", "find"):
+            keyword = str(args.get("keyword") or args.get("query") or "").strip()
+            sources = args.get("sources") or ["bbc_tech", "techcrunch", "hacker_news", "the_verge"]
+            return self._search_feeds(keyword, sources)
+
+        return f"Unknown tool: {tool_name}"
+
     def _fetch_rss(self, url: str) -> List[Dict]:
-        """Fetch and parse an RSS/Atom feed. Returns list of article dicts."""
         req = urllib.request.Request(
             url,
-            headers={"User-Agent": "JARVIS-ConnectorHub/1.0 RSS Reader"},
+            headers={
+                "User-Agent": "JARVIS-ConnectorHub/1.0 (RSS Reader; +https://github.com/bharthraj1412/BrJarvis)"
+            }
         )
-        try:
-            with urllib.request.urlopen(req, timeout=8.0) as r:
-                content = r.read()
-        except Exception as e:
-            raise RuntimeError(f"Failed to fetch feed: {e}")
+        with urllib.request.urlopen(req, timeout=10.0) as resp:
+            content = resp.read()
 
-        # Strip HTML entities that break XML parsing
-        content_str = content.decode("utf-8", errors="replace")
-        content_str = re.sub(r"&(?!amp;|lt;|gt;|quot;|apos;|#\d+;|#x[\da-fA-F]+;)([a-zA-Z]+);",
-                             r"&amp;\1;", content_str)
+        root = ET.fromstring(content)
+        items = []
 
-        try:
-            root = ET.fromstring(content_str)
-        except ET.ParseError:
-            # Try stripping namespaces as last resort
-            content_str = re.sub(r' xmlns[^"]*"[^"]*"', "", content_str)
-            root = ET.fromstring(content_str)
-
-        ns = {"atom": "http://www.w3.org/2005/Atom"}
-        articles = []
-
-        # RSS 2.0
-        for item in root.findall(".//item"):
+        # RSS 2.0: channel/item
+        for item in root.iter("item"):
             title = item.findtext("title", "").strip()
             link = item.findtext("link", "").strip()
             desc = item.findtext("description", "").strip()
-            pub_date = item.findtext("pubDate", "").strip()
-            # Strip HTML from description
-            desc = re.sub(r"<[^>]+>", "", desc)[:200]
+            pub = item.findtext("pubDate", "").strip()
+            desc_clean = re.sub(r"<[^>]+>", "", desc)[:200].strip()
             if title:
-                articles.append({"title": title, "url": link, "description": desc, "date": pub_date})
+                items.append({"title": title, "link": link, "summary": desc_clean, "published": pub})
 
-        # Atom feeds
-        if not articles:
-            for entry in root.findall(".//atom:entry", ns) or root.findall(".//{http://www.w3.org/2005/Atom}entry"):
-                title_el = entry.find("{http://www.w3.org/2005/Atom}title")
+        # Atom: feed/entry
+        if not items:
+            ns = {"atom": "http://www.w3.org/2005/Atom"}
+            for entry in root.iter("{http://www.w3.org/2005/Atom}entry"):
+                title = entry.findtext("{http://www.w3.org/2005/Atom}title", "").strip()
                 link_el = entry.find("{http://www.w3.org/2005/Atom}link")
-                summary_el = entry.find("{http://www.w3.org/2005/Atom}summary")
-                updated_el = entry.find("{http://www.w3.org/2005/Atom}updated")
-                title = (title_el.text or "").strip() if title_el is not None else ""
                 link = link_el.get("href", "") if link_el is not None else ""
-                desc = re.sub(r"<[^>]+>", "", (summary_el.text or ""))[:200] if summary_el is not None else ""
-                date = (updated_el.text or "")[:10] if updated_el is not None else ""
+                summary = entry.findtext("{http://www.w3.org/2005/Atom}summary", "") or entry.findtext("{http://www.w3.org/2005/Atom}content", "")
+                summary_clean = re.sub(r"<[^>]+>", "", summary)[:200].strip()
                 if title:
-                    articles.append({"title": title, "url": link, "description": desc, "date": date})
+                    items.append({"title": title, "link": link, "summary": summary_clean, "published": ""})
 
-        return articles
-
-    def call_tool(self, tool_name: str, args: Dict[str, Any]) -> Any:
-        if tool_name == "get_feed":
-            return self._get_feed(args.get("source", ""), int(args.get("limit", 10)))
-        elif tool_name == "list_sources":
-            return self._list_sources()
-        elif tool_name == "search_feeds":
-            sources = args.get("sources", list(PRESET_FEEDS.keys())[:3])
-            return self._search_feeds(args.get("keyword", ""), sources)
-        return f"Unknown tool: {tool_name}"
+        return items
 
     def _get_feed(self, source: str, limit: int = 10) -> str:
-        url = PRESET_FEEDS.get(source, source)
-        if not url.startswith("http"):
-            return f"Unknown source '{source}'. Use list_sources to see available feeds or provide a full URL."
+        resolved_source = PRESET_ALIASES.get(source.lower(), source)
+        url = PRESET_FEEDS.get(resolved_source, source)
+        label = resolved_source if resolved_source in PRESET_FEEDS else url
+
         try:
-            articles = self._fetch_rss(url)[:limit]
-            if not articles:
-                return f"No articles found in feed: {url}"
-            source_label = source if source in PRESET_FEEDS else url
-            lines = [f"📰 **{source_label.replace('_', ' ').title()}** — Latest Headlines\n"]
-            for a in articles:
-                title = a["title"]
-                link = a["url"]
-                desc = a["description"]
-                date = a["date"][:10] if a["date"] else ""
-                date_str = f" ({date})" if date else ""
-                desc_str = f"\n  {desc}" if desc else ""
-                lines.append(f"• **{title}**{date_str}{desc_str}\n  🔗 {link}")
-            return "\n".join(lines)
+            items = self._fetch_rss(url)
+            if not items:
+                return f"📰 No articles found in feed: {label}"
+
+            lines = [f"📰 **{label.upper()} — Top Headlines ({min(limit, len(items))} articles):**\n"]
+            for i, item in enumerate(items[:limit], 1):
+                lines.append(f"{i}. **{item['title']}**")
+                if item["summary"]:
+                    lines.append(f"   {item['summary']}")
+                if item["link"]:
+                    lines.append(f"   🔗 {item['link']}")
+                lines.append("")
+            return "\n".join(lines).strip()
         except Exception as e:
-            return f"RSS feed error for '{source}': {e}"
+            return f"Failed to fetch RSS feed '{label}': {e}"
 
     def _list_sources(self) -> str:
-        lines = ["📰 **Available News Feed Sources**\n"]
+        lines = ["📰 **Pre-Configured News Feeds (Zero Auth):**\n"]
         for name, url in PRESET_FEEDS.items():
-            lines.append(f"• **{name}** — {url}")
-        lines.append("\nYou can also pass any full RSS URL directly as the 'source' parameter.")
+            lines.append(f"• `{name}` — {url}")
+        lines.append("\n*You can also pass any full custom RSS/Atom URL.*")
         return "\n".join(lines)
 
     def _search_feeds(self, keyword: str, sources: List[str]) -> str:
         if not keyword:
             return "Please provide a keyword to search for."
-        keyword_lower = keyword.lower()
-        all_matches = []
+        matches = []
+        kw_lower = keyword.lower()
 
-        for source in sources[:5]:  # Limit to 5 sources max
-            url = PRESET_FEEDS.get(source, source if source.startswith("http") else None)
-            if not url:
-                continue
+        for src in sources:
+            resolved_src = PRESET_ALIASES.get(src.lower(), src)
+            url = PRESET_FEEDS.get(resolved_src, src)
             try:
-                articles = self._fetch_rss(url)
-                for a in articles:
-                    if keyword_lower in a["title"].lower() or keyword_lower in a["description"].lower():
-                        a["source"] = source
-                        all_matches.append(a)
+                items = self._fetch_rss(url)
+                for item in items:
+                    if kw_lower in item["title"].lower() or kw_lower in item["summary"].lower():
+                        matches.append({"source": resolved_src, **item})
             except Exception:
-                pass
+                continue
 
-        if not all_matches:
-            return f"No articles found containing '{keyword}' across {len(sources)} feeds."
+        if not matches:
+            return f"📰 No articles found matching '{keyword}' across sources."
 
-        lines = [f"📰 **News Search: '{keyword}'** ({len(all_matches)} matches)\n"]
-        for a in all_matches[:10]:
-            src = a.get("source", "unknown")
-            lines.append(
-                f"• **{a['title']}** [{src}]\n"
-                f"  {a['description'][:150]}\n"
-                f"  🔗 {a['url']}"
-            )
+        lines = [f"📰 **News Search Results for '{keyword}' ({len(matches[:10])} matches):**\n"]
+        for m in matches[:10]:
+            lines.append(f"• [{m['source']}] **{m['title']}**")
+            if m["summary"]:
+                lines.append(f"  {m['summary']}")
+            if m["link"]:
+                lines.append(f"  🔗 {m['link']}")
         return "\n".join(lines)
 
     def health_check(self) -> bool:
         try:
-            articles = self._fetch_rss(PRESET_FEEDS["hacker_news"])
-            return len(articles) > 0
+            items = self._fetch_rss(PRESET_FEEDS["bbc_tech"])
+            return len(items) > 0
         except Exception:
             return False

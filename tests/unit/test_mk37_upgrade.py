@@ -97,7 +97,7 @@ class TestMK37UpgradeSuite(unittest.TestCase):
 
         # Create Task
         task = mgr.create_task("Research 30 Python Companies and report", total_steps=5, active_devices=["pc", "android"])
-        self.assertEqual(task.status, TaskStatus.PENDING)
+        self.assertIn(task.status, (TaskStatus.CREATED, TaskStatus.PENDING))
         self.assertEqual(task.total_steps, 5)
 
         # Record Action & Checkpoint

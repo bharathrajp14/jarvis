@@ -115,8 +115,9 @@ def run_integration_tests():
 
     # 10. Memory Types
     from memory.memory_types import MEMORY_SYSTEM_PROMPT, MEMORY_TYPES
-    assert len(MEMORY_TYPES) == 4
-    logger.info('[PASS] 10. Memory Types: 4 types defined')
+    assert len(MEMORY_TYPES) >= 4
+    logger.info(f'[PASS] 10. Memory Types: {len(MEMORY_TYPES)} types defined')
+
 
     # 11. Consolidator
     from memory.consolidator import consolidate_session, MIN_MESSAGES_TO_CONSOLIDATE

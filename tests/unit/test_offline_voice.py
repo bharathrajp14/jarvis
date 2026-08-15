@@ -12,11 +12,13 @@ def test_wake_phrase_detection():
     assert assistant._is_wake_phrase("hey jarvis") == True
     assert assistant._is_wake_phrase("ok jarvis open notepad") == True
     assert assistant._is_wake_phrase("jarvis refactor python code") == True
-    assert assistant._is_wake_phrase("br open browser") == True
+    assert assistant._is_wake_phrase("hi jarvis open browser") == True
 
-    # Non-wake phrases
+    # Non-wake phrases & false-positive rejection
     assert assistant._is_wake_phrase("open notepad") == False
     assert assistant._is_wake_phrase("hello world") == False
+    assert assistant._is_wake_phrase("travis open browser") == False
+    assert assistant._is_wake_phrase("br open browser") == False
 
 
 def test_command_extraction_from_wake():

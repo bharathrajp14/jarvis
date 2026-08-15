@@ -115,3 +115,17 @@ def tool_search_applications(args: dict) -> str:
         lines.append("  (No running processes matched)")
 
     return "\n".join(lines)
+
+
+@register_tool(
+    name="sync_app_paths",
+    description="Automatically scan host OS (Windows Registry, Start Menu, LocalAppData, Program Files) and configure/index all application executable paths into config/app_paths.json.",
+    parameters={"type": "object", "properties": {}}
+)
+def tool_sync_app_paths(args: dict) -> str:
+    """Rescan and auto-configure all system application executable paths."""
+    from actions.app_resolver import get_app_resolver
+    resolver = get_app_resolver()
+    apps = resolver.rescan_system_applications()
+    return f"✅ Successfully scanned and auto-configured {len(apps)} system application paths into config/app_paths.json."
+

@@ -72,17 +72,42 @@ class ToolResult:
     def success(self) -> bool:
         return self.status == ToolExecutionStatus.SUCCESS
 
+    @property
+    def tool(self) -> str:
+        return self.tool_name
+
+    @property
+    def execution_id(self) -> str:
+        return self.invocation_id
+
+    @property
+    def output(self) -> Any:
+        return self.data
+
+    @property
+    def error(self) -> str:
+        return self.error_code or self.message
+
+    @property
+    def duration_ms(self) -> float:
+        return self.execution_ms
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "tool_name": self.tool_name,
+            "tool": self.tool_name,
             "invocation_id": self.invocation_id,
+            "execution_id": self.invocation_id,
             "status": self.status.value,
             "success": self.success,
             "data": self.data,
+            "output": self.data,
             "error_code": self.error_code,
+            "error": self.error,
             "message": self.message,
             "evidence": self.evidence,
             "execution_ms": self.execution_ms,
+            "duration_ms": self.execution_ms,
             "verified": self.verified,
             "metadata": self.metadata,
         }
@@ -279,6 +304,9 @@ class ToolRuntimeEngine:
 
 
 _global_tool_runtime: Optional[ToolRuntimeEngine] = None
+
+# Canonical alias for ToolRuntimeEngine
+ToolRuntime = ToolRuntimeEngine
 
 
 def get_tool_runtime() -> ToolRuntimeEngine:

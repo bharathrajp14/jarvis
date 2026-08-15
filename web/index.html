@@ -9,13 +9,43 @@
     <meta name="theme-color" content="#03070d">
     <meta name="color-scheme" content="dark">
 
-    <title>BR JARVIS — AI Operating System v38.5</title>
+    <title>BR JARVIS — AI Operating System v40.2.0 (MARK XL.2)</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
     <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
-    <link rel="stylesheet" href="/web/style.css?v=38.5.0">
+    <link rel="stylesheet" href="/web/style.css?v=40.2.0">
+
+    <!-- ── SW CACHE BUSTER: Unregisters any stale v38 Service Worker before page loads ── -->
+    <script>
+        (function () {
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.getRegistrations().then(function (registrations) {
+                    for (var i = 0; i < registrations.length; i++) {
+                        var sw = registrations[i];
+                        // Unregister any SW that was serving an old cache name
+                        sw.unregister().then(function (success) {
+                            if (success) console.log('[JARVIS] Stale Service Worker unregistered. Page will reload with fresh assets.');
+                        });
+                    }
+                });
+                // Also clear all SW caches to force fresh app.js load
+                if ('caches' in window) {
+                    caches.keys().then(function (names) {
+                        names.forEach(function (name) {
+                            if (name !== 'br-jarvis-v40.2.0') {
+                                caches.delete(name).then(function () {
+                                    console.log('[JARVIS] Purged stale cache:', name);
+                                });
+                            }
+                        });
+                    });
+                }
+            }
+        })();
+    </script>
 
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 </head>
+
 
 <body>
     <!-- Visual background layers -->
@@ -31,8 +61,9 @@
                     <span class="status-pulse"></span>
                     <span class="brand-title">BRJARVIS</span>
                 </div>
-                <span class="os-badge">AIOS v38.5</span>
+                <span class="os-badge">v40.2.0</span>
                 <span class="guardian-badge" id="guardianBadge">GUARDIAN ACTIVE 🛡️</span>
+                <button class="galaxy-btn" id="authKeyTrigger" onclick="window.showServerAuthModal()" title="Configure Server Authentication Key">🔑 AUTH</button>
                 <a href="/web/galaxy.html" target="_blank" class="galaxy-btn" rel="noopener">🌌 3D GALAXY</a>
             </div>
 
@@ -219,9 +250,28 @@
                     <div class="view-header">
                         <div>
                             <h1 class="view-title">App Connectors Hub</h1>
-                            <p class="view-subtitle">Integrate Google, Contacts, Notion, GitHub, Calendar & WhatsApp.</p>
+                            <p class="view-subtitle">Modular ecosystem plugins: Google, GitHub, Telegram, Notion, Slack, Weather & AI Tools.</p>
+                        </div>
+                        <div class="header-stats-group" style="display: flex; gap: 10px; align-items: center;">
+                            <span class="os-badge" id="connectorsStatusSummary" style="background: rgba(0, 223, 162, 0.15); color: var(--accent-green); border-color: rgba(0, 223, 162, 0.4); font-size: 0.85rem; padding: 6px 14px;">
+                                ⚡ <span id="activeConnectorsCount">0</span> / <span id="totalConnectorsCount">0</span> Active
+                            </span>
                         </div>
                     </div>
+
+                    <!-- Connectors Controls: Search & Category Pills -->
+                    <div class="connectors-control-bar" style="margin-bottom: 20px; display: flex; flex-direction: column; gap: 12px;">
+                        <input type="text" id="connectorSearchInput" class="cmd-input" placeholder="🔍 Search connectors by name, capability, or tool command (e.g. 'search', 'email', 'git')...">
+                        <div class="filter-pills-row" id="connectorCategoryPills" style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            <button class="filter-pill active" data-category="all">All</button>
+                            <button class="filter-pill" data-category="active">⚡ Active Only</button>
+                            <button class="filter-pill" data-category="Communication">💬 Communication</button>
+                            <button class="filter-pill" data-category="Search & Knowledge">🔍 Search & Knowledge</button>
+                            <button class="filter-pill" data-category="Productivity & Dev">⚡ Productivity & Dev</button>
+                            <button class="filter-pill" data-category="zero_auth">✨ Zero-Setup</button>
+                        </div>
+                    </div>
+
                     <div id="connectorsGrid" class="cards-grid"></div>
                 </div>
 
@@ -258,16 +308,35 @@
                     <div class="view-header">
                         <div>
                             <h1 class="view-title">Knowledge Base & RAG Memory</h1>
-                            <p class="view-subtitle">Ingest documents and inspect vector memory stores.</p>
+                            <p class="view-subtitle">Ingest documents, manage persistent memory nodes, and explore the 3D Neural Galaxy.</p>
                         </div>
-                        <a href="/web/galaxy.html" target="_blank" class="galaxy-btn" rel="noopener">🌌 View 3D Galaxy</a>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <a href="/web/galaxy.html" target="_blank" class="galaxy-btn" rel="noopener">🌌 3D Knowledge Galaxy</a>
+                        </div>
                     </div>
-                    <div id="knowledgeDropZone" class="connector-card file-dropzone" style="text-align: center; padding: 40px; cursor: pointer;">
-                        <span style="font-size: 48px;">📄</span>
-                        <h3 style="color: #fff; font-family: var(--font-heading); margin-top: 8px;">Drop Files or Click to Ingest</h3>
-                        <p style="color: var(--text-secondary); font-size: 0.85rem;">Supports PDF, TXT, CSV, Python, and Markdown files</p>
+
+                    <!-- Knowledge Stats Bar -->
+                    <div id="memoryStatsRow" style="display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap;">
+                        <span class="os-badge" style="background: rgba(0, 242, 254, 0.12); color: var(--accent-cyan); border-color: rgba(0, 242, 254, 0.3);">
+                            🧠 <span id="memoryCountBadge">0</span> Persistent Notes
+                        </span>
+                        <span class="os-badge" style="background: rgba(184, 91, 255, 0.12); color: var(--accent-purple); border-color: rgba(184, 91, 255, 0.3);">
+                            🌌 <span id="galaxyNodesBadge">0</span> Graph Nodes
+                        </span>
+                    </div>
+
+                    <!-- Dropzone -->
+                    <div id="knowledgeDropZone" class="connector-card file-dropzone" style="text-align: center; padding: 32px 20px; cursor: pointer; margin-bottom: 20px;">
+                        <span style="font-size: 40px;">📄</span>
+                        <h3 style="color: #fff; font-family: var(--font-heading); margin-top: 8px; font-size: 1.1rem;">Drop Files or Click to Ingest</h3>
+                        <p style="color: var(--text-secondary); font-size: 0.82rem;">Supports PDF, TXT, CSV, Python (.py), and Markdown (.md) documents</p>
                         <input type="file" id="fileImportInput" style="display: none;" multiple>
                     </div>
+
+                    <!-- Search & Saved Memories List -->
+                    <div class="panel-section-title" style="margin-bottom: 10px;">PERSISTENT MEMORY & NOTES</div>
+                    <input type="text" id="memorySearchInput" class="cmd-input" placeholder="🔍 Search memory notes by title or content..." style="margin-bottom: 16px;">
+                    <div id="memoriesGrid" class="cards-grid"></div>
                 </div>
             </section>
         </main>
@@ -341,12 +410,12 @@
         </div>
     </div>
 
-    <!-- ── MODAL: CONNECTOR CONFIG KEY ── -->
+    <!-- ── MODAL: CONNECTOR API KEY CONFIGURATION ── -->
     <div id="connectorConfigModal" class="modal-overlay">
         <div class="modal-box">
             <form id="connectorConfigForm" onsubmit="event.preventDefault(); window.submitConnectorConfig();">
-                <h3 style="color: var(--accent-cyan); font-family: var(--font-heading);" id="configModalTitle">🔑 Configure Connector Key</h3>
-                <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 6px 0 12px;" id="configModalDesc">Provide API token or access key to activate integration.</p>
+                <h3 id="configModalTitle" style="color: var(--accent-cyan); font-family: var(--font-heading);">🔑 Configure API Key</h3>
+                <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 6px 0 12px;">Save API credentials securely into your local configuration.</p>
                 <input type="hidden" id="configConnectorName">
                 <input type="password" id="configApiKeyInput" class="cmd-input" placeholder="Paste API Key / Token here..." required>
                 <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 14px;">
@@ -357,7 +426,48 @@
         </div>
     </div>
 
-    <script src="/web/app.js?v=38.5.0"></script>
+    <!-- ── MODAL: MCP SERVER MANAGER ── -->
+    <div id="mcpServerModal" class="modal-overlay">
+        <div class="modal-box" style="max-width: 520px;">
+            <form id="mcpServerForm" onsubmit="event.preventDefault(); window.submitAddMcpServer();">
+                <h3 style="color: var(--accent-cyan); font-family: var(--font-heading);">🔌 Model Context Protocol (MCP) Manager</h3>
+                <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 6px 0 12px;">Connect to any local or remote MCP tool server (HTTP, SSE, or stdio).</p>
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <input type="text" id="mcpServerUrlInput" class="cmd-input" placeholder="Server URL (e.g. http://localhost:3000)" required>
+                    <input type="text" id="mcpServerNameInput" class="cmd-input" placeholder="Server Name / Identifier (e.g. local_sqlite)">
+                    <input type="password" id="mcpServerTokenInput" class="cmd-input" placeholder="Optional Bearer Auth Token">
+                </div>
+                <div style="margin-top: 12px; padding: 10px; background: rgba(0, 242, 254, 0.05); border: 1px dashed rgba(0, 242, 254, 0.2); border-radius: 6px;">
+                    <div style="font-size: 0.72rem; color: var(--accent-cyan); font-weight: 600; margin-bottom: 4px;">Popular Local MCP Servers:</div>
+                    <div style="font-size: 0.7rem; color: var(--text-secondary); font-family: var(--font-code); line-height: 1.5;">
+                        • npx -y @modelcontextprotocol/server-sqlite --db-path .jarvis/jarvis.db<br>
+                        • npx -y @modelcontextprotocol/server-filesystem .
+                    </div>
+                </div>
+                <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 14px;">
+                    <button type="button" class="btn btn-secondary" onclick="window.closeMcpServerModal()">Cancel</button>
+                    <button type="submit" class="btn" style="background: var(--accent-cyan); color: #000; font-weight: bold;">CONNECT SERVER</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- ── MODAL: SERVER AUTHENTICATION KEY ── -->
+    <div id="serverAuthModal" class="modal-overlay">
+        <div class="modal-box">
+            <form id="serverAuthForm" onsubmit="event.preventDefault(); window.submitServerAuth();">
+                <h3 style="color: var(--accent-cyan); font-family: var(--font-heading);">🔐 Server Authentication</h3>
+                <p style="font-size: 0.8rem; color: var(--text-secondary); margin: 6px 0 12px;">Enter your BR JARVIS Server API Key to authenticate session & WebSocket stream.</p>
+                <input type="password" id="serverApiKeyInput" class="cmd-input" placeholder="Enter SERVER_API_KEY (e.g. 23DA981E)..." required autofocus>
+                <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 14px;">
+                    <button type="button" class="btn btn-secondary" onclick="window.closeServerAuthModal()">Dismiss</button>
+                    <button type="submit" id="saveServerAuthBtn" class="btn" style="background: var(--accent-cyan); color: #000; font-weight: bold;">AUTHENTICATE</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="/web/app.js?v=40.2.0"></script>
 </body>
 
 </html>

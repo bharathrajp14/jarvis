@@ -183,10 +183,11 @@ class ApplicationRuntime:
         """Boot the master runtime and publish system startup event."""
         _ = self.orchestrator
         await self.lifecycle.startup()
+        from core.version import VERSION
         self.event_bus.publish(SystemEvent(
             topic="system.startup",
             state="RUNNING",
-            payload={"version": "40.2.0", "status": "ONLINE"}
+            payload={"version": VERSION, "status": "ONLINE"}
         ))
 
     async def shutdown(self) -> None:
