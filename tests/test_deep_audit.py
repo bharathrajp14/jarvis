@@ -1,10 +1,9 @@
-"""JARVIS MK37 -- Deep Audit: Runtime cross-reference and logic bug test."""
-
-import logging
 import sys, os, traceback
-
-logger = logging.getLogger(__name__)
+import logging
+sys.path.insert(0, 'src')
 sys.path.insert(0, '.')
+import brjarvis
+logger = logging.getLogger(__name__)
 os.environ['JARVIS_PERMISSION_MODE'] = 'allow_all'
 try:
     sys.stdout.reconfigure(encoding='utf-8', errors='replace')

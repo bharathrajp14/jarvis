@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JARVIS MK37 — Neural Screen Share</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&display=swap');
+
+    :root {
+      --bg:       #000508;
+      --bg2:      #00080f;
+      --panel:    #010c14;
+      --border:   #0a3d5c;
+      --pri:      #00e5ff;
+      --pri2:     #00b8d9;
+      --mid:      #006680;
+      --dim:      #002a3a;
+      --acc:      #ff6d00;
+      --acc2:     #ffd600;
+      --acc3:     #76ff03;
+      --text:     #b2ebf2;
+      --muted:    #ff1744;
+      --success:  #00e676;
+      --warn:     #ff9100;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Share Tech Mono', 'Courier New', monospace;
+      overflow: hidden;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    /* ── Scan-line overlay ── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,229,255,.015) 2px,
+        rgba(0,229,255,.015) 4px
+      );
+      pointer-events: none;
+      z-index: 9998;
+    }
+
+    /* ── Toolbar ── */
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      height: 52px;
+      background: linear-gradient(90deg, #000a12 0%, #000d16 60%, #000810 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 0 12px;
+      flex-shrink: 0;
+      position: relative;
+      z-index: 100;
+    }
+
+    .logo {
+      font-family: 'Orbitron', monospace;
+      font-weight: 900;
+      font-size: 15px;
+      letter-spacing: 3px;
+      color: var(--pri);
+      margin-right: 20px;
+      text-shadow: 0 0 20px rgba(0,229,255,.6);
+    }
+    .logo span { color: var(--acc); }
+
+    .toolbar-divider {
+      width: 1px;
+      height: 32px;
+      background: var(--border);
+      margin: 0 12px;
+    }
+
+    .status-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .status-dot {
+      width: 9px; height: 9px;
+      border-radius: 50%;
+      background: #333;
+      transition: background .3s, box-shadow .3s;
+    }
+    .status-dot.connected  { background: var(--success); box-shadow: 0 0 8px rgba(0,230,118,.6); }
+    .status-dot.connecting { background: var(--warn); animation: blink 1s infinite; }
+    .status-dot.error      { background: var(--muted); }
+
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+    .status-text {
+      font-size: 11px;
+      color: var(--mid);
+      min-width: 100px;
+      letter-spacing: 1px;
+    }
+    .status-text.connected  { color: var(--success); }
+    .status-text.connecting { color: var(--warn); }
+    .status-text.error      { color: var(--muted); }
+
+    .metric {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--mid);
+      letter-spacing: 1px;
+    }
+    .metric-val { color: var(--pri); font-weight: bold; min-width: 44px; }
+
+    .spacer { flex: 1; }
+
+    /* Toolbar buttons */
+    .tb-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--mid);
+      font-family: inherit;
+      font-size: 10px;
+      letter-spacing: 1px;
+      padding: 5px 11px;
+      cursor: pointer;
+      transition: all .2s;
+      margin-left: 6px;
+      text-transform: uppercase;
+    }
+    .tb-btn:hover { background: rgba(0,229,255,.08); color: var(--pri); border-color: var(--pri); }
+    .tb-btn.active { background: rgba(0,229,255,.15); color: var(--pri); border-color: var(--pri); }
+    .tb-btn.danger:hover { background: rgba(255,23,68,.1); color: var(--muted); border-color: var(--muted); }
+
+    /* ── Main layout ── */
+    .layout {
+      display: flex;
+      height: calc(100vh - 52px);
+    }
+
+    /* ── Canvas area ── */
+    .canvas-area {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #000306;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* HUD corner brackets */
+    .canvas-area::before,
+    .canvas-area::after {
+      content: '';
+      position: absolute;
+      width: 28px; height: 28px;
+      pointer-events: none;
+      z-index: 10;
+    }
+    .canvas-area::before {
+      top: 12px; left: 12px;
+      border-top: 2px solid var(--pri);
+      border-left: 2px solid var(--pri);
+    }
+    .canvas-area::after {
+      bottom: 12px; right: 12px;
+      border-bottom: 2px solid var(--pri);
+      border-right: 2px solid var(--pri);
+    }
+
+    .hud-br { position: absolute; bottom: 12px; left: 12px; width: 28px; height: 28px; border-bottom: 2px solid var(--pri); border-left: 2px solid var(--pri); z-index:10; }
+    .hud-tr { position: absolute; top: 12px; right: 12px; width: 28px; height: 28px; border-top: 2px solid var(--pri); border-right: 2px solid var(--pri); z-index:10; }
+
+    .canvas-wrap {
+      position: relative;
+      max-width: 100%;
+      max-height: 100%;
+      cursor: crosshair;
+    }
+
+    #screen {
+      display: block;
+      max-width: 100%;
+      max-height: calc(100vh - 52px);
+      object-fit: contain;
+      image-rendering: -webkit-optimize-contrast;
+      image-rendering: crisp-edges;
+    }
+
+    /* Scan glow on canvas */
+    .canvas-wrap::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        180deg,
+        transparent 0%,
+        rgba(0,229,255,.02) 50%,
+        transparent 100%
+      );
+      animation: scan-glow 4s linear infinite;
+      pointer-events: none;
+    }
+    @keyframes scan-glow {
+      0%   { background-position: 0 -100%; }
+      100% { background-position: 0 200%; }
+    }
+
+    /* Overlays */
+    .overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,5,8,.88);
+      z-index: 20;
+    }
+    .overlay-icon { font-size: 52px; margin-bottom: 16px; }
+    .overlay-title {
+      font-family: 'Orbitron', monospace;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--pri);
+      letter-spacing: 3px;
+      margin-bottom: 8px;
+    }
+    .overlay-msg { font-size: 12px; color: var(--mid); letter-spacing: 1px; }
+
+    /* Loading bar */
+    .loading-bar {
+      width: 240px; height: 3px;
+      background: var(--dim);
+      margin-top: 20px;
+      overflow: hidden;
+    }
+    .loading-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, transparent, var(--pri), transparent);
+      animation: loading 1.4s ease-in-out infinite;
+    }
+    @keyframes loading {
+      0%   { transform: translateX(-100%); }
+      100% { transform: translateX(400%);  }
+    }
+
+    /* Crosshair tooltip */
+    #crosshair {
+      position: absolute;
+      pointer-events: none;
+      z-index: 30;
+      display: none;
+    }
+    #crosshair .ch-h, #crosshair .ch-v {
+      position: absolute;
+      background: rgba(0,229,255,.4);
+    }
+    #crosshair .ch-h { height: 1px; width: 100vw; top: 0; left: -50vw; }
+    #crosshair .ch-v { width: 1px; height: 100vh; left: 0; top: -50vh; }
+    #coord-tip {
+      position: absolute;
+      top: 12px; left: 12px;
+      background: rgba(0,8,15,.85);
+      border: 1px solid var(--border);
+      padding: 2px 8px;
+      font-size: 10px;
+      color: var(--pri);
+      letter-spacing: 1px;
+      white-space: nowrap;
+    }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: 240px;
+      min-width: 240px;
+      background: var(--panel);
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .sb-section {
+      border-bottom: 1px solid var(--border);
+      padding: 10px 12px;
+    }
+    .sb-title {
+      font-size: 9px;
+      letter-spacing: 2px;
+      color: var(--mid);
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    /* Stats grid */
+    .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .stat-cell {
+      background: var(--bg2);
+      border: 1px solid var(--dim);
+      padding: 6px 8px;
+    }
+    .stat-label { font-size: 8px; color: var(--mid); letter-spacing: 1px; }
+    .stat-val   { font-size: 13px; font-weight: bold; color: var(--pri); margin-top: 2px; }
+    .stat-val.warn { color: var(--warn); }
+    .stat-val.ok   { color: var(--acc3); }
+
+    /* Quality slider */
+    .slider-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 4px;
+    }
+    .slider-label { font-size: 9px; color: var(--mid); width: 60px; }
+    input[type=range] {
+      flex: 1;
+      height: 3px;
+      accent-color: var(--pri);
+      background: var(--dim);
+      border-radius: 2px;
+      cursor: pointer;
+    }
+    .slider-val { font-size: 10px; color: var(--pri); width: 30px; text-align: right; }
+
+    /* Log */
+    .sb-log {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px 12px;
+      font-size: 9px;
+      line-height: 1.6;
+    }
+    .sb-log::-webkit-scrollbar { width: 4px; }
+    .sb-log::-webkit-scrollbar-track { background: var(--bg2); }
+    .sb-log::-webkit-scrollbar-thumb { background: var(--mid); border-radius: 2px; }
+
+    .log-entry { margin-bottom: 4px; }
+    .log-ts    { color: var(--dim); }
+    .log-msg   { color: var(--mid); }
+    .log-msg.ok { color: var(--acc3); }
+    .log-msg.err { color: var(--muted); }
+    .log-msg.info { color: var(--pri); }
+
+    /* ── Keyboard capture indicator ── */
+    .kb-indicator {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      background: rgba(0,229,255,.05);
+      border-top: 1px solid var(--border);
+      font-size: 9px;
+      color: var(--dim);
+      letter-spacing: 1px;
+    }
+    .kb-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--dim);
+    }
+    .kb-dot.active { background: var(--acc3); box-shadow: 0 0 6px rgba(118,255,3,.5); }
+
+    /* ── Responsive ── */
+    @media (max-width: 768px) {
+      .sidebar { display: none; }
+      .tb-btn .label { display: none; }
+    }
+
+    /* Selection rectangle */
+    #sel-rect {
+      position: absolute;
+      border: 1px dashed var(--acc2);
+      background: rgba(255,214,0,.06);
+      pointer-events: none;
+      display: none;
+      z-index: 25;
+    }
+
+    /* Utility classes */
+    .logo-sub { font-size: 10px; color: var(--mid); letter-spacing: 2px; margin-left: -12px; }
+    .sb-res-text { font-size: 11px; color: var(--pri); margin-bottom: 6px; }
+    .connection-stats { font-size: 9px; color: var(--mid); line-height: 1.8; }
+    .val-pri { color: var(--pri); }
+    .val-acc3 { color: var(--acc3); }
+    .log-section { border-bottom: none; flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+
+    /* ── Fullscreen adjustments ── */
+    :fullscreen .sidebar { display: none; }
+    :fullscreen .toolbar { display: none; }
+    :fullscreen .layout  { height: 100vh; }
+  </style>
+</head>
+
+<body>
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <div class="logo">J<span>.</span>A<span>.</span>R<span>.</span>V<span>.</span>I<span>.</span>S</div>
+    <span class="logo logo-sub">MK37</span>
+    <div class="toolbar-divider"></div>
+
+    <div class="status-group">
+      <div class="status-dot" id="statusDot"></div>
+      <div class="status-text" id="statusText">OFFLINE</div>
+    </div>
+
+    <div class="toolbar-divider"></div>
+    <div class="metric"><span>FPS</span><span class="metric-val" id="fps">0</span></div>
+    <div class="toolbar-divider"></div>
+    <div class="metric"><span>RES</span><span class="metric-val" id="res">—</span></div>
+    <div class="toolbar-divider"></div>
+    <div class="metric"><span>LAT</span><span class="metric-val" id="lat">—</span></div>
+
+    <div class="spacer"></div>
+
+    <button class="tb-btn" id="btnPause" onclick="togglePause()">⏸ <span class="label">PAUSE</span></button>
+    <button class="tb-btn" id="btnKb" onclick="toggleKb()">⌨ <span class="label">KEYBOARD</span></button>
+    <button class="tb-btn" onclick="takeSnapshot()">📷 <span class="label">SNAP</span></button>
+    <button class="tb-btn" onclick="toggleFullscreen()">⛶ <span class="label">FULLSCREEN</span></button>
+    <button class="tb-btn danger" onclick="reconnect()">↻ <span class="label">RECONNECT</span></button>
+  </div>
+
+  <div class="layout">
+    <!-- Canvas area -->
+    <div class="canvas-area" id="canvasArea">
+      <div class="hud-br"></div>
+      <div class="hud-tr"></div>
+
+      <div id="overlay" class="overlay">
+        <div class="overlay-icon">📡</div>
+        <div class="overlay-title">NEURAL LINK</div>
+        <div class="overlay-msg" id="overlayMsg">Establishing connection…</div>
+        <div class="loading-bar"><div class="loading-bar-fill"></div></div>
+      </div>
+
+      <div class="canvas-wrap" id="canvasWrap">
+        <canvas id="screen"></canvas>
+        <div id="crosshair">
+          <div class="ch-h"></div>
+          <div class="ch-v"></div>
+          <div id="coord-tip">0, 0</div>
+        </div>
+        <div id="sel-rect"></div>
+      </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <!-- Stats -->
+      <div class="sb-section">
+        <div class="sb-title">◈ TELEMETRY</div>
+        <div class="stats-grid">
+          <div class="stat-cell">
+            <div class="stat-label">FPS</div>
+            <div class="stat-val" id="sb-fps">0</div>
+          </div>
+          <div class="stat-cell">
+            <div class="stat-label">LATENCY</div>
+            <div class="stat-val" id="sb-lat">—</div>
+          </div>
+          <div class="stat-cell">
+            <div class="stat-label">FRAMES</div>
+            <div class="stat-val" id="sb-frames">0</div>
+          </div>
+          <div class="stat-cell">
+            <div class="stat-label">BYTES</div>
+            <div class="stat-val" id="sb-bytes">0</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Resolution -->
+      <div class="sb-section">
+        <div class="sb-title">◈ STREAM CONFIG</div>
+        <div id="sb-res" class="sb-res-text">—</div>
+        <div class="slider-row">
+          <span class="slider-label">QUALITY</span>
+          <input type="range" id="qualSlider" min="10" max="100" value="80"
+                 title="Stream Quality" placeholder="Quality slider"
+                 oninput="document.getElementById('qualVal').textContent=this.value">
+          <span class="slider-val" id="qualVal">80</span>
+        </div>
+        <div class="slider-row">
+          <span class="slider-label">ZOOM</span>
+          <input type="range" id="zoomSlider" min="25" max="200" value="100"
+                 title="Zoom Level" placeholder="Zoom slider"
+                 oninput="applyZoom(this.value)">
+          <span class="slider-val" id="zoomVal">100%</span>
+        </div>
+      </div>
+
+      <!-- Connection -->
+      <div class="sb-section">
+        <div class="sb-title">◈ CONNECTION</div>
+        <div class="connection-stats">
+          <div>HOST <span id="sb-host" class="val-pri">—</span></div>
+          <div>PORT <span id="sb-port" class="val-pri">—</span></div>
+          <div>UPTIME <span id="sb-uptime" class="val-pri">—</span></div>
+          <div>STATUS <span id="sb-status" class="val-acc3">—</span></div>
+        </div>
+      </div>
+
+      <!-- Log -->
+      <div class="sb-section log-section">
+        <div class="sb-title">◈ EVENT LOG</div>
+        <div class="sb-log" id="sbLog"></div>
+      </div>
+
+      <!-- KB indicator -->
+      <div class="kb-indicator">
+        <div class="kb-dot" id="kbDot"></div>
+        <span id="kbStatus">KEYBOARD CAPTURE: OFF</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (function() {
+    const canvas  = document.getElementById('screen');
+    const ctx     = canvas.getContext('2d');
+    const overlay = document.getElementById('overlay');
+    const ovMsg   = document.getElementById('overlayMsg');
+
+    // ── URL params ─────────────────────────────────────────────────────────
+    const p    = new URLSearchParams(window.location.search);
+    const port = p.get('port') || '8765';
+    const host = p.get('host') || 'localhost';
+    const tok  = p.get('token') || '';
+    const wsUrl = `ws://${host}:${port}`;
+
+    document.getElementById('sb-host').textContent = host;
+    document.getElementById('sb-port').textContent = port;
+
+    // ── State ──────────────────────────────────────────────────────────────
+    let ws          = null;
+    let paused      = false;
+    let kbCapture   = false;
+    let metaReady   = false;
+    let frameCount  = 0;
+    let totalFrames = 0;
+    let totalBytes  = 0;
+    let lastFpsTs   = performance.now();
+    let currentFps  = 0;
+    let reconnDelay = 1000;
+    let reconnTimer = null;
+    let connectTs   = null;
+    let frameTs     = performance.now();
+    let latency     = 0;
+    let zoomLevel   = 1.0;
+    let selStart    = null;
+    let selRect     = document.getElementById('sel-rect');
+
+    // ── FPS ticker ─────────────────────────────────────────────────────────
+    setInterval(() => {
+      const now = performance.now();
+      const dt  = now - lastFpsTs;
+      if (dt >= 800) {
+        currentFps = Math.round(frameCount * 1000 / dt);
+        frameCount = 0;
+        lastFpsTs  = now;
+        document.getElementById('fps').textContent    = currentFps;
+        document.getElementById('sb-fps').textContent = currentFps;
+        document.getElementById('sb-fps').className   =
+          'stat-val ' + (currentFps > 8 ? 'ok' : currentFps > 3 ? '' : 'warn');
+      }
+    }, 600);
+
+    // ── Uptime ticker ───────────────────────────────────────────────────────
+    setInterval(() => {
+      if (!connectTs) return;
+      const s = Math.floor((Date.now() - connectTs) / 1000);
+      const h = String(Math.floor(s/3600)).padStart(2,'0');
+      const m = String(Math.floor((s%3600)/60)).padStart(2,'0');
+      const sec = String(s%60).padStart(2,'0');
+      document.getElementById('sb-uptime').textContent = `${h}:${m}:${sec}`;
+    }, 1000);
+
+    // ── Status helpers ──────────────────────────────────────────────────────
+    function setStatus(state, text) {
+      const dot  = document.getElementById('statusDot');
+      const stxt = document.getElementById('statusText');
+      dot.className  = 'status-dot ' + state;
+      stxt.className = 'status-text ' + state;
+      stxt.textContent = text;
+      document.getElementById('sb-status').textContent = text;
+      document.getElementById('sb-status').style.color =
+        state === 'connected' ? 'var(--acc3)' :
+        state === 'connecting' ? 'var(--warn)' : 'var(--muted)';
+    }
+
+    function showOverlay(msg, show=true) {
+      overlay.style.display = show ? 'flex' : 'none';
+      ovMsg.textContent     = msg;
+    }
+
+    // ── Log ─────────────────────────────────────────────────────────────────
+    function logEvent(msg, type='') {
+      const log  = document.getElementById('sbLog');
+      const ts   = new Date().toLocaleTimeString('en-GB', {hour12:false});
+      const el   = document.createElement('div');
+      el.className = 'log-entry';
+      el.innerHTML =
+        `<span class="log-ts">[${ts}]</span> <span class="log-msg ${type}">${msg}</span>`;
+      log.appendChild(el);
+      log.scrollTop = log.scrollHeight;
+      // Keep max 80 entries
+      while (log.children.length > 80) log.removeChild(log.firstChild);
+    }
+
+    // ── Connection ──────────────────────────────────────────────────────────
+    function connect() {
+      if (ws && (ws.readyState === WebSocket.CONNECTING || ws.readyState === WebSocket.OPEN)) return;
+
+      setStatus('connecting', 'LINKING…');
+      showOverlay('Establishing neural link to ' + wsUrl);
+      metaReady = false;
+      logEvent('Connecting to ' + wsUrl, 'info');
+
+      try {
+        ws = new WebSocket(wsUrl);
+        ws.binaryType = 'arraybuffer';
+      } catch(e) {
+        setStatus('error', 'FAILED');
+        showOverlay('Connection error: ' + e.message);
+        logEvent('Connection error: ' + e.message, 'err');
+        scheduleReconn();
+        return;
+      }
+
+      ws.onopen = () => {
+        setStatus('connected', 'LINKED');
+        reconnDelay = 1000;
+        connectTs   = Date.now();
+        logEvent('WebSocket connected', 'ok');
+        if (tok) ws.send(JSON.stringify({token: tok}));
+      };
+
+      ws.onmessage = (ev) => {
+        if (!metaReady && typeof ev.data === 'string') {
+          try {
+            const meta = JSON.parse(ev.data);
+            if (meta.type === 'meta') {
+              canvas.width  = meta.width;
+              canvas.height = meta.height;
+              document.getElementById('res').textContent = `${meta.width}×${meta.height}`;
+              document.getElementById('sb-res').textContent = `${meta.width}×${meta.height} @ ${meta.fps||'?'}fps`;
+              metaReady = true;
+              showOverlay('', false);
+              logEvent(`Stream: ${meta.width}×${meta.height} @ ${meta.fps}fps`, 'info');
+              return;
+            }
+          } catch(_) {}
+          metaReady = true;
+          showOverlay('', false);
+        }
+
+        if (paused) return;
+
+        if (ev.data instanceof ArrayBuffer) {
+          const now  = performance.now();
+          latency    = Math.round(now - frameTs);
+          frameTs    = now;
+          totalBytes += ev.data.byteLength;
+          totalFrames++;
+          frameCount++;
+
+          document.getElementById('lat').textContent      = latency + 'ms';
+          document.getElementById('sb-lat').textContent   = latency + 'ms';
+          document.getElementById('sb-frames').textContent = totalFrames;
+          document.getElementById('sb-bytes').textContent  = fmtBytes(totalBytes);
+
+          const blob = new Blob([ev.data], {type: 'image/jpeg'});
+          const url  = URL.createObjectURL(blob);
+          const img  = new Image();
+          img.onload = () => {
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            URL.revokeObjectURL(url);
+          };
+          img.onerror = () => URL.revokeObjectURL(url);
+          img.src = url;
+        }
+      };
+
+      ws.onclose = (e) => {
+        setStatus('error', 'SEVERED');
+        showOverlay(`Link severed (${e.code}). Reconnecting…`);
+        logEvent(`Disconnected — code ${e.code}`, 'err');
+        document.getElementById('fps').textContent = '0';
+        connectTs = null;
+        scheduleReconn();
+      };
+
+      ws.onerror = () => {
+        setStatus('error', 'ERROR');
+        logEvent('WebSocket error', 'err');
+      };
+    }
+
+    function disconnect() {
+      if (reconnTimer) { clearTimeout(reconnTimer); reconnTimer = null; }
+      if (ws) { ws.onclose = null; ws.close(); ws = null; }
+    }
+
+    function scheduleReconn() {
+      if (reconnTimer) return;
+      reconnTimer = setTimeout(() => {
+        reconnTimer = null;
+        connect();
+        reconnDelay = Math.min(reconnDelay * 1.5, 30000);
+      }, reconnDelay);
+    }
+
+    // ── Controls ────────────────────────────────────────────────────────────
+    window.togglePause = () => {
+      paused = !paused;
+      const btn = document.getElementById('btnPause');
+      btn.textContent = paused ? '▶ RESUME' : '⏸ PAUSE';
+      btn.classList.toggle('active', paused);
+      logEvent(paused ? 'Stream paused' : 'Stream resumed');
+    };
+
+    window.reconnect = () => {
+      disconnect();
+      reconnDelay = 1000;
+      connect();
+    };
+
+    window.toggleFullscreen = () => {
+      if (document.fullscreenElement) document.exitFullscreen();
+      else document.documentElement.requestFullscreen();
+    };
+
+    window.takeSnapshot = () => {
+      const a = document.createElement('a');
+      a.download = `jarvis_snap_${Date.now()}.png`;
+      a.href = canvas.toDataURL('image/png');
+      a.click();
+      logEvent('Snapshot saved', 'ok');
+    };
+
+    window.toggleKb = () => {
+      kbCapture = !kbCapture;
+      const dot = document.getElementById('kbDot');
+      const txt = document.getElementById('kbStatus');
+      const btn = document.getElementById('btnKb');
+      dot.classList.toggle('active', kbCapture);
+      txt.textContent = 'KEYBOARD CAPTURE: ' + (kbCapture ? 'ON' : 'OFF');
+      txt.style.color  = kbCapture ? 'var(--acc3)' : '';
+      btn.classList.toggle('active', kbCapture);
+      logEvent('Keyboard capture ' + (kbCapture ? 'enabled' : 'disabled'));
+    };
+
+    window.applyZoom = (val) => {
+      zoomLevel = val / 100;
+      document.getElementById('zoomVal').textContent = val + '%';
+      const wrap = document.getElementById('canvasWrap');
+      wrap.style.transform = `scale(${zoomLevel})`;
+      wrap.style.transformOrigin = 'center center';
+    };
+
+    // ── Mouse tracking overlay ───────────────────────────────────────────────
+    const crosshair = document.getElementById('crosshair');
+    const coordTip  = document.getElementById('coord-tip');
+    const cWrap     = document.getElementById('canvasWrap');
+
+    cWrap.addEventListener('mousemove', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const x    = Math.round((e.clientX - rect.left) * (canvas.width  / rect.width));
+      const y    = Math.round((e.clientY - rect.top)  * (canvas.height / rect.height));
+      crosshair.style.display = 'block';
+      crosshair.style.left    = (e.clientX - rect.left) + 'px';
+      crosshair.style.top     = (e.clientY - rect.top)  + 'px';
+      coordTip.textContent    = `${x}, ${y}`;
+    });
+    cWrap.addEventListener('mouseleave', () => {
+      crosshair.style.display = 'none';
+    });
+
+    // Click to copy coordinates
+    cWrap.addEventListener('click', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const x = Math.round((e.clientX - rect.left) * (canvas.width  / rect.width));
+      const y = Math.round((e.clientY - rect.top)  * (canvas.height / rect.height));
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(`${x},${y}`);
+        logEvent(`Coordinates copied: (${x}, ${y})`, 'ok');
+      }
+    });
+
+    // ── Keyboard capture ────────────────────────────────────────────────────
+    document.addEventListener('keydown', (e) => {
+      // Hotkeys always active
+      if (e.key === 'f' || e.key === 'F') { window.toggleFullscreen(); return; }
+      if (e.key === ' ' && !kbCapture) { e.preventDefault(); window.togglePause(); return; }
+      if (e.key === 'r' || e.key === 'R') { if (!kbCapture) { window.reconnect(); return; } }
+      if (e.key === 's' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); window.takeSnapshot(); return; }
+
+      // Keyboard capture passthrough would send to JARVIS backend here
+      if (kbCapture) {
+        e.preventDefault();
+        logEvent(`Key: ${e.key}`, 'info');
+      }
+    });
+
+    document.addEventListener('fullscreenchange', () => {
+      const fs = !!document.fullscreenElement;
+      logEvent(fs ? 'Entered fullscreen' : 'Exited fullscreen');
+    });
+
+    // ── Utilities ───────────────────────────────────────────────────────────
+    function fmtBytes(n) {
+      if (n > 1073741824) return (n/1073741824).toFixed(1) + 'G';
+      if (n > 1048576)    return (n/1048576).toFixed(1)    + 'M';
+      if (n > 1024)       return (n/1024).toFixed(1)       + 'K';
+      return n + 'B';
+    }
+
+    // ── Start ────────────────────────────────────────────────────────────────
+    logEvent('JARVIS MK37 Neural Screen Share initialised', 'ok');
+    connect();
+  })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+{
+  "hotkeys": [
+    {
+      "keys": "ctrl+shift+j",
+      "action": "toggle_listen",
+      "description": "Toggle voice assistant listening"
+    },
+    {
+      "keys": "ctrl+shift+c",
+      "action": "ask_clipboard",
+      "description": "Send clipboard content to AI"
+    },
+    {
+      "keys": "ctrl+shift+s",
+      "action": "screenshot_analyze",
+      "description": "Take screenshot and analyze with Vision"
+    }
+  ]
+}

@@ -1,10 +1,11 @@
-﻿{
+{
   "pythonVersion": "3.12",
   "pythonPlatform": "Windows",
   "venvPath": ".",
   "venv": ".venv",
-  "include": ["."],
-  "exclude": [".venv", "__pycache__", "node_modules", "*.egg-info"],
+  "extraPaths": ["src", "src/brjarvis", "."],
+  "include": ["src", "apps", "scripts", "tests"],
+  "exclude": [".venv", "runtime", "__pycache__", "node_modules", "*.egg-info", ".git"],
   "typeCheckingMode": "basic",
   "reportMissingModuleSource": "warning",
   "reportMissingImports": "warning",

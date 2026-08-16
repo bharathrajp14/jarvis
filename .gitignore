@@ -3,6 +3,12 @@
 .env.*
 !.env.template
 config/api_keys.json
+credentials.json
+config/credentials.json
+token.json
+token.pickle
+*.key
+.jarvis/*.key
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -10,22 +16,31 @@ __pycache__/
 *$py.class
 *.pyd
 
-# Personal data & transient storage
-memory/contacts.json
-memory/contacts.enc
-memory/processed_messages.db
+# Caches & tools
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.pyright/
+
+# Runtime data & transient storage
+runtime/
+runtime/logs/
+runtime/captures/
+runtime/reports/
+runtime/temporary/
+runtime/state/
+runtime/artifacts/
 memory_db/
 .jarvis/
-.jarvis_pid
+*.pid
 .jarvis.pid
 .jarvis_server.pid
-*.pid
-
 
 # OS generated files
 .DS_Store
 Thumbs.db
 ehthumbs.db
+%SystemDrive%/
 
 # Virtual environments
 venv/
@@ -38,17 +53,16 @@ env/
 *.db-wal
 *.db-shm
 
-# Build artifacts & packages
+# Build artifacts & packaging outputs
 build/
 dist/
 *.egg-info/
 *.spec
 
-# Logs & scratch & screenshots
+# Logs & temporary files
 logs/
 *.log
 scratch/
-workspace/
 captures/
 reports/
 BR_WORKSPACE/
@@ -66,13 +80,17 @@ guardian/PAUSED
 native/*.dll
 native/*.so
 native/*.dylib
+src/brjarvis/native/*.dll
+src/brjarvis/native/*.so
+src/brjarvis/native/*.dylib
 
-# Browser profiles and security keys
+# Browser profiles
 workspace/browser_user_data/
-*.key
-.jarvis/*.key
-credentials.json
-config/credentials.json
-token.json
-token.pickle
+runtime/browser_user_data/
+src/brjarvis/workspace/browser_user_data/
 
+# Workspace runtime data (resumes, career docs are runtime artifacts, not source)
+# Comment out lines below if you want to track generated career documents
+# src/brjarvis/workspace/Career/
+# src/brjarvis/workspace/Documents/
+# src/brjarvis/workspace/Resumes/

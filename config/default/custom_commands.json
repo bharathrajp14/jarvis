@@ -1,0 +1,24 @@
+{
+  "commands": [
+    {
+      "trigger": "good morning",
+      "aliases": ["morning routine", "start my day"],
+      "actions": [
+        {"type": "speak", "text": "Good morning, sir. Starting your daily routine."},
+        {"type": "open_url", "url": "https://news.google.com"}
+      ],
+      "variables": {}
+    },
+    {
+      "trigger": "search google for $QUERY",
+      "aliases": ["google $QUERY"],
+      "actions": [
+        {"type": "open_url", "url": "https://www.google.com/search?q=$QUERY"}
+      ],
+      "variables": {}
+    }
+  ],
+  "startup_commands": [
+    {"type": "speak", "text": "Cognitive systems initialized."}
+  ]
+}

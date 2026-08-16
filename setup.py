@@ -16,12 +16,14 @@ if __name__ == "__main__":
             name="brjarvis",
             version="40.2.0",
             description="BR JARVIS Autonomous AI Operating System",
-            py_modules=["brjarvis", "start", "main", "ui_mark", "float_widget", "server"],
-            packages=find_packages(),
+            package_dir={"": "src"},
+            packages=find_packages(where="src"),
             entry_points={
                 "console_scripts": [
-                    "brjarvis=start:main",
-                    "jarvis=start:main",
+                    "brjarvis=brjarvis.apps.cli:main",
+                    "jarvis=brjarvis.apps.bootstrap:main",
+                    "jarvis-cli=brjarvis.apps.cli:main",
+                    "jarvis-server=brjarvis.apps.web:main",
                 ],
             },
         )

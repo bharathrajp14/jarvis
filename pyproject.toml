@@ -100,42 +100,14 @@ dev = [
 ]
 
 [project.scripts]
-brjarvis = "start:main"
-jarvis = "start:main"
-jarvis-cli = "core.cli:main"
-jarvis-server = "server:main"
+brjarvis = "brjarvis.apps.cli:main"
+jarvis = "brjarvis.apps.bootstrap:main"
+jarvis-cli = "brjarvis.apps.cli:main"
+jarvis-server = "brjarvis.apps.web:main"
 
 [tool.setuptools.packages.find]
-include = [
-    "actions*",
-    "agent*",
-    "backends*",
-    "computer*",
-    "config*",
-    "context*",
-    "core*",
-    "desktop_ui*",
-    "events*",
-    "evolution*",
-    "guardian*",
-    "history*",
-    "memory*",
-    "multi_agent*",
-    "native*",
-    "plugins*",
-    "reasoning*",
-    "redteam*",
-    "router*",
-    "screen_server*",
-    "scripts*",
-    "skills*",
-    "tools*",
-    "vision*",
-    "voice*",
-    "watchers*",
-    "web*",
-    "workflow*",
-]
+where = ["src"]
+include = ["brjarvis*"]
 
 [tool.ruff]
 line-length = 120

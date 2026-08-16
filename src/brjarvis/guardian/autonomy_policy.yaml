@@ -1,0 +1,27 @@
+guardian:
+  enabled: true
+  integrity_check_interval_sec: 300
+  kill_switch_hotkey: "ctrl+alt+j+esc"
+  paused_flag_file: "guardian/PAUSED"
+
+snapshots:
+  before_self_upgrade: true
+  before_bulk_file_op: true
+  retention:
+    count: 20
+    days: 7
+
+self_upgrade:
+  low_risk_auto_apply: true
+  medium_risk_auto_apply: true
+  medium_risk_undo_window_hours: 24
+  high_risk_auto_apply: false
+  rollback_on_failed_healthcheck: true
+  healthcheck_suite:
+    - "test_deep_audit.py"
+    - "test_integration.py"
+  healthcheck_min_pass_rate: 1.0
+
+learning:
+  implicit_correction_window_sec: 45
+  lesson_retrieval_priority: 6
