@@ -66,6 +66,11 @@ class TestJarvisCompleter(unittest.TestCase):
         subs = [r["text"] for r in results]
         self.assertIn("health", subs)
 
+    def test_mouse_argument_completions(self):
+        results = self.completer.get_completions_for("/mouse o")
+        subs = [r["text"] for r in results]
+        self.assertTrue("on" in subs or "off" in subs)
+
 
 class TestTerminalRenderer(unittest.TestCase):
     """Test rendering methods (non-raising assertions)."""
@@ -244,6 +249,40 @@ class TestSlashCommandHandler(unittest.TestCase):
         self.assertTrue(self.handler.execute("/verbose off"))
         self.assertFalse(self.session.verbose)
 
+    def test_mouse_command(self):
+        self.session.mouse_support = False
+        self.assertTrue(self.handler.execute("/mouse"))
+        self.assertTrue(self.session.set_mouse_support.called)
+
+        self.assertTrue(self.handler.execute("/mouse on"))
+        self.session.set_mouse_support.assert_called_with(True)
+
+        self.assertTrue(self.handler.execute("/mouse off"))
+        self.session.set_mouse_support.assert_called_with(False)
+
+        self.assertTrue(self.handler.execute("/mouse status"))
+
+    def test_approve_command_auto_detect(self):
+        mock_mgr = MagicMock()
+        mock_task = MagicMock()
+        mock_task.task_id = "task_auto_appr"
+        mock_task.approval_request = MagicMock()
+        mock_task.approval_request.request_id = "req_123"
+        mock_task.goal = "Build portfolio"
+        mock_mgr.get_task.return_value = mock_task
+        mock_mgr.list_tasks.return_value = [mock_task]
+        mock_mgr.resolve_approval.return_value = mock_task
+
+        with patch("brjarvis.agent.task_state.get_task_state_manager", return_value=mock_mgr):
+            # 1. With explicit task_id
+            self.assertTrue(self.handler.execute("/approve task_auto_appr"))
+            mock_mgr.resolve_approval.assert_called_with("task_auto_appr", "req_123", approved=True)
+
+            # 2. Auto-detect without task_id
+            self.session._active_task_id = "task_auto_appr"
+            self.assertTrue(self.handler.execute("/approve"))
+            mock_mgr.resolve_approval.assert_called_with("task_auto_appr", "req_123", approved=True)
+
     def test_rename_command(self):
         self.assertTrue(self.handler.execute("/rename Portfolio Sprint"))
         self.assertEqual(self.session.session_name, "Portfolio Sprint")
@@ -366,6 +405,16 @@ class TestTerminalSafeExit(unittest.TestCase):
              patch.object(TerminalSession, "run_repl", side_effect=EOFError):
             ret = cli_main()
             self.assertEqual(ret, 0)
+
+    def test_terminal_session_mouse_support(self):
+        session = TerminalSession(auto_welcome=False)
+        self.assertTrue(hasattr(session, "mouse_support"))
+        session.set_mouse_support(True)
+        self.assertTrue(session.mouse_support)
+        self.assertEqual(os.environ.get("JARVIS_MOUSE_SUPPORT"), "1")
+        session.set_mouse_support(False)
+        self.assertFalse(session.mouse_support)
+        self.assertEqual(os.environ.get("JARVIS_MOUSE_SUPPORT"), "0")
 
 
 if __name__ == "__main__":

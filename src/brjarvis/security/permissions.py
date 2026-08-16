@@ -46,13 +46,34 @@ class PermissionMode(str, Enum):
 def _normalize_mode(mode: Any) -> PermissionMode:
     """Normalize a mode string, enum, or None to a valid PermissionMode enum member (defaults to CONFIRM_DESTRUCTIVE)."""
     if not mode:
+        env_val = os.environ.get("JARVIS_PERMISSION_MODE")
+        if env_val:
+            val = env_val.strip().lower()
+            if val in ("auto", "allow_all"):
+                return PermissionMode.ALLOW_ALL
+            elif val in ("confirm_all", "all"):
+                return PermissionMode.CONFIRM_ALL
+            elif val in ("deny", "deny_all"):
+                return PermissionMode.DENY_ALL
+            elif val in ("confirm_destructive", "confirm", "plan", "accept_edits"):
+                return PermissionMode.CONFIRM_DESTRUCTIVE
         return PermissionMode.CONFIRM_DESTRUCTIVE
     if isinstance(mode, PermissionMode):
         return mode
+    val = str(mode).strip().lower()
+    if val in ("auto", "allow_all"):
+        return PermissionMode.ALLOW_ALL
+    elif val in ("confirm_all", "all"):
+        return PermissionMode.CONFIRM_ALL
+    elif val in ("deny", "deny_all"):
+        return PermissionMode.DENY_ALL
+    elif val in ("confirm_destructive", "confirm", "plan", "accept_edits"):
+        return PermissionMode.CONFIRM_DESTRUCTIVE
     try:
-        return PermissionMode(str(mode).strip().lower())
+        return PermissionMode(val)
     except Exception:
         return PermissionMode.CONFIRM_DESTRUCTIVE
+
 
 
 DESTRUCTIVE_TOOLS: Set[str] = {
@@ -136,7 +157,7 @@ class PermissionPolicy:
         deny_names: Optional[FrozenSet[str]] = None,
         allow_names: Optional[FrozenSet[str]] = None,
     ):
-        init_mode = _normalize_mode(mode) if mode is not None else PermissionMode.CONFIRM_DESTRUCTIVE
+        init_mode = _normalize_mode(mode)
         self._engine: PolicyEngine = PolicyEngine(
             mode=SecPermissionMode(init_mode.value),
             deny_names=deny_names,
@@ -154,6 +175,7 @@ class PermissionPolicy:
     def set_mode(self, mode: Union[PermissionMode, str]) -> None:
         norm = _normalize_mode(mode)
         self._engine.set_mode(SecPermissionMode(norm.value))
+        os.environ["JARVIS_PERMISSION_MODE"] = norm.value.upper()
 
     def evaluate(self, ctx: PolicyContext) -> ActionDecision:
         dec = self._engine.evaluate(ctx)

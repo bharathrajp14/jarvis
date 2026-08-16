@@ -64,7 +64,16 @@ class ParallelExecutionEngine:
         )
 
         # 2. Human-in-the-Loop Approval Interlock
-        if (step.requires_approval or policy_decision == ActionDecision.CONFIRM) and step.status != StepStatus.SUCCESS:
+        from brjarvis.security.permissions import PERMISSIONS, PermissionMode
+        is_allow_all = (
+            policy_decision in (ActionDecision.ALLOW, ActionDecision.ALLOW_FOR_SESSION)
+            and (
+                PERMISSIONS.mode == PermissionMode.ALLOW_ALL
+                or os.environ.get("JARVIS_PERMISSION_MODE", "").strip().lower() in ("auto", "allow_all")
+            )
+        )
+        if (not is_allow_all) and (step.requires_approval or policy_decision == ActionDecision.CONFIRM) and step.status != StepStatus.SUCCESS:
+
             step.status = StepStatus.WAITING_FOR_APPROVAL
             logger.warning("⚠️ Human Approval Interlock: Step #%s [%s] requires confirmation!", step.step_id, step.description)
 

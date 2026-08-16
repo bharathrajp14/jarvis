@@ -94,6 +94,7 @@ class SlashCommandHandler:
             "/permission":   lambda: self._cmd_permission(args_str),
             "/style":        lambda: self._cmd_style(args_str),
             "/verbose":      lambda: self._cmd_verbose(args_str),
+            "/mouse":        lambda: self._cmd_mouse(args_str),
 
             # Task lifecycle
             "/tasks":        lambda: self._cmd_tasks(args_str),
@@ -205,9 +206,10 @@ class SlashCommandHandler:
                 ("Agent",        "/permission [mode]",      "View or set permission policy"),
                 ("Agent",        "/style [compact|verbose]","Set output verbosity style"),
                 ("Agent",        "/verbose [on|off]",       "Toggle verbose debug output"),
+                ("Agent",        "/mouse [on|off|status]",  "Toggle interactive mouse support (cursor, scroll, menus)"),
                 # Planning
                 ("Planning",     "/plan <goal>",            "Decompose goal → approve → execute"),
-                ("Planning",     "/approve <task_id>",      "Approve a pending task gate"),
+                ("Planning",     "/approve [task_id]",      "Approve pending task gate (auto-detects if omitted)"),
                 # Tasks
                 ("Tasks",        "/tasks [id]",             "Dashboard or task detail"),
                 ("Tasks",        "/pause <task_id>",        "Pause running task"),
@@ -464,6 +466,17 @@ class SlashCommandHandler:
             return
 
         os.environ["JARVIS_PERMISSION_MODE"] = canonical.upper()
+        try:
+            from brjarvis.security.permissions import PERMISSIONS
+            PERMISSIONS.set_mode(canonical)
+        except Exception:
+            pass
+        try:
+            from brjarvis.security.policy_engine import get_policy_engine
+            get_policy_engine().set_mode(canonical)
+        except Exception:
+            pass
+
         if HAS_RICH and self.renderer.console:
             self.renderer.console.print(
                 f"[bold green]{Glyphs.SHIELD} Permission mode → {canonical.upper()}[/]"
@@ -766,23 +779,45 @@ class SlashCommandHandler:
         except Exception as e:
             self.renderer.render_error("Retry Failed", str(e))
 
-    def _cmd_approve(self, task_id: str) -> None:
+    def _cmd_approve(self, task_id: str = "") -> None:
         """Approve a task waiting for approval."""
+        task_id = (task_id or "").strip()
         if not task_id:
-            self.renderer.render_error("Missing Task ID", "Usage: `/approve <task_id>`")
+            try:
+                from brjarvis.agent.task_state import get_task_state_manager, TaskStatus
+                mgr = get_task_state_manager()
+                if self.session._active_task_id:
+                    t = mgr.get_task(self.session._active_task_id)
+                    if t and (t.approval_request or str(t.status) == TaskStatus.WAITING_FOR_APPROVAL.value):
+                        task_id = self.session._active_task_id
+                if not task_id:
+                    for t in mgr.list_tasks(limit=10):
+                        if t.approval_request or str(t.status) == TaskStatus.WAITING_FOR_APPROVAL.value:
+                            task_id = t.task_id
+                            break
+            except Exception as ex:
+                logger.debug("Auto-detect approval task note: %s", ex)
+
+        if not task_id:
+            self.renderer.render_error("No Pending Approval", "No task is currently waiting for approval. Usage: `/approve <task_id>`")
             return
+
         try:
-            from agent.task_state import get_task_state_manager
+            from brjarvis.agent.task_state import get_task_state_manager
             mgr = get_task_state_manager()
             task = mgr.get_task(task_id)
-            if not task or not task.approval_request:
-                self.renderer.render_error("No Pending Approval", f"Task '{task_id}' has no pending approval gate.")
+            if not task:
+                self.renderer.render_error("Task Not Found", f"Task '{task_id}' was not found.")
                 return
-            req_id = task.approval_request.request_id
+
+            req_id = task.approval_request.request_id if task.approval_request else ""
             state = mgr.resolve_approval(task_id, req_id, approved=True)
+            self.session.clear_active_task()
             if state:
                 self.renderer.render_markdown(f"[bold green]{Glyphs.CHECK} Approval granted for task `{task_id}`.[/]" if HAS_RICH else f"✓ Approved: {task_id}")
-                self.session.execute_turn(f"[APPROVED:{task_id}] Continue approved task: {task.goal}")
+                self.session.execute_turn(f"[APPROVED:{task_id}] Continue approved task: {task.goal or task.user_request}")
+            else:
+                self.renderer.render_markdown(f"[bold green]{Glyphs.CHECK} Task `{task_id}` marked as approved.[/]" if HAS_RICH else f"✓ Approved: {task_id}")
         except Exception as e:
             self.renderer.render_error("Approve Failed", str(e))
 
@@ -1346,6 +1381,33 @@ class SlashCommandHandler:
         else:
             status = "ON" if self.session.verbose else "OFF"
             self.renderer.render_markdown(f"**Verbose Mode:** `{status}`\n\nUse `/verbose on` or `/verbose off`")
+
+    # ── Mouse Interaction ─────────────────────────────────────────────────────
+
+    def _cmd_mouse(self, args_str: str = "") -> None:
+        """Toggle or configure interactive mouse support in terminal session."""
+        sub = args_str.strip().lower()
+        if sub in ("on", "enable", "1", "true", "yes"):
+            self.session.set_mouse_support(True)
+            msg = f"[bold green]{Glyphs.CHECK} Mouse support ENABLED[/bold green]. You can click to position cursor, select completions, and scroll."
+            self.renderer.render_markdown(msg) if HAS_RICH else print("✓ Mouse support ENABLED.")
+        elif sub in ("off", "disable", "0", "false", "no"):
+            self.session.set_mouse_support(False)
+            msg = f"[bold yellow]⚠ Mouse support DISABLED[/bold yellow]. Native terminal text selection is active."
+            self.renderer.render_markdown(msg) if HAS_RICH else print("⚠ Mouse support DISABLED.")
+        elif sub in ("status", "info"):
+            st = "ENABLED" if self.session.mouse_support else "DISABLED"
+            color = "green" if self.session.mouse_support else "yellow"
+            msg = f"Mouse interaction status: [bold {color}]{st}[/bold {color}]. Use `/mouse on` or `/mouse off` to change."
+            self.renderer.render_markdown(msg) if HAS_RICH else print(f"Mouse support is {st}.")
+        else:
+            # Toggle
+            new_state = not self.session.mouse_support
+            self.session.set_mouse_support(new_state)
+            st = "ENABLED" if new_state else "DISABLED"
+            color = "green" if new_state else "yellow"
+            msg = f"[bold {color}]Mouse support toggled: {st}[/bold {color}]. ({'Click to position cursor & select suggestions' if new_state else 'Standard terminal text selection mode'})"
+            self.renderer.render_markdown(msg) if HAS_RICH else print(f"Mouse support toggled: {st}.")
 
     # ── Export ────────────────────────────────────────────────────────────────
 

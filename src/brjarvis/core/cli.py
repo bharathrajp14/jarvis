@@ -106,6 +106,18 @@ def main(runtime: Optional[ApplicationRuntime] = None) -> int:
         metavar="GOAL",
         help="Decompose a goal into a step plan and prompt for approval before executing.",
     )
+    parser.add_argument(
+        "--mouse",
+        action="store_true",
+        default=None,
+        help="Enable interactive mouse support in terminal REPL (click cursor, select completions, scroll).",
+    )
+    parser.add_argument(
+        "--no-mouse",
+        action="store_true",
+        default=False,
+        help="Disable interactive mouse support (standard terminal text selection).",
+    )
 
     parsed = parser.parse_args()
     app_runtime = runtime
@@ -113,6 +125,16 @@ def main(runtime: Optional[ApplicationRuntime] = None) -> int:
     # Apply environment/runtime overrides
     if parsed.permission:
         os.environ["JARVIS_PERMISSION_MODE"] = parsed.permission.upper()
+        try:
+            from brjarvis.security.permissions import PERMISSIONS
+            PERMISSIONS.set_mode(parsed.permission)
+        except Exception:
+            pass
+        try:
+            from brjarvis.security.policy_engine import get_policy_engine
+            get_policy_engine().set_mode(parsed.permission)
+        except Exception:
+            pass
 
     # Subsystem status check
     if parsed.status:
@@ -131,6 +153,10 @@ def main(runtime: Optional[ApplicationRuntime] = None) -> int:
         session = TerminalSession(runtime=app_runtime, mode=parsed.mode, session_id=parsed.session, auto_welcome=False)
         if parsed.verbose:
             session.verbose = True
+        if parsed.no_mouse:
+            session.set_mouse_support(False)
+        elif parsed.mouse:
+            session.set_mouse_support(True)
         session.output_style = parsed.style
         session.commands.execute(f"/plan {parsed.plan}")
         return 0
@@ -143,6 +169,10 @@ def main(runtime: Optional[ApplicationRuntime] = None) -> int:
 
     # Interactive REPL mode
     session = TerminalSession(runtime=app_runtime, mode=parsed.mode, session_id=parsed.session)
+    if parsed.no_mouse:
+        session.set_mouse_support(False)
+    elif parsed.mouse:
+        session.set_mouse_support(True)
     if parsed.model and hasattr(session, "commands"):
         session.commands.execute(f"/model {parsed.model}")
     if parsed.verbose:

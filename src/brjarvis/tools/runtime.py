@@ -19,6 +19,8 @@ from brjarvis.events.bus import get_event_bus
 from brjarvis.events.types import ToolExecutionEvent
 from brjarvis.security.permissions import (
     ActionDecision,
+    PermissionMode,
+    PERMISSIONS,
     RiskLevel as SecRiskLevel,
     check_permission,
     evaluate_action_policy,
@@ -221,7 +223,15 @@ class ToolRuntime:
         )
 
         # ── Stage 6: Human Approval Interlock ──
-        needs_approval = (tool_def.approval_required or policy_decision == ActionDecision.CONFIRM) and not confirmed
+        is_allow_all = (
+            policy_decision in (ActionDecision.ALLOW, ActionDecision.ALLOW_FOR_SESSION)
+            and (
+                PERMISSIONS.mode == PermissionMode.ALLOW_ALL
+                or os.environ.get("JARVIS_PERMISSION_MODE", "").strip().lower() in ("auto", "allow_all")
+            )
+        )
+        needs_approval = (not is_allow_all) and ((tool_def.approval_required or policy_decision == ActionDecision.CONFIRM) and not confirmed)
+
         if needs_approval:
             duration_ms = (time.perf_counter() - t0) * 1000.0
             logger.warning(f"⚠️ Approval Required: Tool '{canonical_name}' requires human confirmation.")

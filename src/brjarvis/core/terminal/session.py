@@ -104,15 +104,29 @@ class TerminalSession:
         self._active_task_label: Optional[str] = None
         self._prompt_state: str = PROMPT_NORMAL
 
+        # ── Mouse interaction support ─────────────────────────────────────
+        env_mouse = os.environ.get("JARVIS_MOUSE_SUPPORT", "1").strip().lower()
+        self.mouse_support: bool = env_mouse not in ("0", "false", "no", "off", "disable", "disabled")
+
         # ── prompt_toolkit session (with history + autocomplete) ──────────
         self._pt_session: Any = None
         if HAS_PROMPT_TOOLKIT:
             try:
-                self._pt_session = build_prompt_session()
+                self._pt_session = build_prompt_session(mouse_support=self.mouse_support)
             except Exception as e:
                 logger.debug("prompt_toolkit session init failed: %s", e)
 
         self._setup_event_listeners()
+
+    def set_mouse_support(self, enabled: bool) -> None:
+        """Dynamically enable or disable mouse support in the CLI terminal session."""
+        self.mouse_support = enabled
+        os.environ["JARVIS_MOUSE_SUPPORT"] = "1" if enabled else "0"
+        if HAS_PROMPT_TOOLKIT and self._pt_session is not None:
+            try:
+                self._pt_session.mouse_support = enabled
+            except Exception as e:
+                logger.debug("Could not update pt_session mouse_support: %s", e)
 
     # ── Event bus wiring ──────────────────────────────────────────────────────
 
@@ -341,6 +355,13 @@ class TerminalSession:
                     break
                 continue
 
+            # Direct approval keyword handler (e.g. typing 'approve', 'allow', 'yes', 'y')
+            if lower_input in ("approve", "allow", "yes", "y", "agree", "accept", "proceed") and (
+                self._prompt_state == PROMPT_APPROVAL or self._active_task_id is not None
+            ):
+                self.commands.execute(f"/approve {self._active_task_id or ''}".strip())
+                continue
+
             # Cognitive turn
             self.execute_turn(user_input)
 
@@ -354,6 +375,7 @@ class TerminalSession:
                 return self._pt_session.prompt(
                     self._get_pt_formatted_prompt(),
                     style=None,  # style already in session
+                    mouse_support=self.mouse_support,
                 ).strip()
             except KeyboardInterrupt:
                 return self._handle_interrupt(force_quit=False) or ""

@@ -137,11 +137,33 @@ class PolicyEngine:
 
     def __init__(
         self,
-        mode: PermissionMode = PermissionMode.CONFIRM_DESTRUCTIVE,
+        mode: Optional[Union[PermissionMode, str]] = None,
         deny_names: Optional[FrozenSet[str]] = None,
         allow_names: Optional[FrozenSet[str]] = None,
     ):
-        self.mode = mode
+        if mode is None:
+            env_mode = os.environ.get("JARVIS_PERMISSION_MODE")
+            if env_mode:
+                val = env_mode.strip().lower()
+                if val in ("auto", "allow_all"):
+                    self.mode = PermissionMode.ALLOW_ALL
+                elif val in ("confirm_all", "all"):
+                    self.mode = PermissionMode.CONFIRM_ALL
+                elif val in ("deny", "deny_all"):
+                    self.mode = PermissionMode.DENY_ALL
+                elif val in ("confirm_destructive", "confirm", "plan", "accept_edits"):
+                    self.mode = PermissionMode.CONFIRM_DESTRUCTIVE
+                else:
+                    try:
+                        self.mode = PermissionMode(val)
+                    except ValueError:
+                        self.mode = PermissionMode.CONFIRM_DESTRUCTIVE
+            else:
+                self.mode = PermissionMode.CONFIRM_DESTRUCTIVE
+        elif isinstance(mode, str):
+            self.set_mode(mode)
+        else:
+            self.mode = mode
         self.deny_names = deny_names or frozenset()
         self.allow_names = allow_names or frozenset()
         self.session_grants: Dict[str, Set[str]] = {}  # session_id -> set of granted actions/capabilities
@@ -150,7 +172,20 @@ class PolicyEngine:
     def set_mode(self, mode: Union[PermissionMode, str]) -> None:
         """Set permission mode safely."""
         if isinstance(mode, str):
-            self.mode = PermissionMode(mode)
+            val = mode.strip().lower()
+            if val in ("auto", "allow_all"):
+                self.mode = PermissionMode.ALLOW_ALL
+            elif val in ("confirm_all", "all"):
+                self.mode = PermissionMode.CONFIRM_ALL
+            elif val in ("deny", "deny_all"):
+                self.mode = PermissionMode.DENY_ALL
+            elif val in ("confirm_destructive", "confirm", "plan", "accept_edits"):
+                self.mode = PermissionMode.CONFIRM_DESTRUCTIVE
+            else:
+                try:
+                    self.mode = PermissionMode(val)
+                except ValueError:
+                    self.mode = PermissionMode.CONFIRM_DESTRUCTIVE
         else:
             self.mode = mode
 
@@ -197,9 +232,10 @@ class PolicyEngine:
         if action in grants or any(cap.value in grants for cap in ctx.capabilities):
             return ActionDecision.ALLOW_FOR_SESSION
 
-        # 4. Critical Risk operations ALWAYS require explicit user confirmation
-        if ctx.risk == RiskLevel.CRITICAL:
+        # 4. Critical Risk operations ALWAYS require explicit user confirmation (unless ALLOW_ALL)
+        if ctx.risk == RiskLevel.CRITICAL and self.mode != PermissionMode.ALLOW_ALL:
             return ActionDecision.CONFIRM
+
 
         # 5. Dangerous capabilities (Code Execution, System Control, Destructive)
         high_risk_caps = {

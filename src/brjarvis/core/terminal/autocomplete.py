@@ -64,9 +64,10 @@ SLASH_COMMANDS: List[dict] = [
     {"cmd": "/connectors",  "desc": "Connector status: /connectors or /connectors <name>"},
     {"cmd": "/doctor",      "desc": "Run interactive system diagnostics"},
     {"cmd": "/usage",       "desc": "Show token & request usage stats"},
-    # Output style
+    # Output style & interactions
     {"cmd": "/style",       "desc": "Set output style: /style [compact|detailed|minimal|verbose]"},
     {"cmd": "/verbose",     "desc": "Toggle verbose debug output: /verbose [on|off]"},
+    {"cmd": "/mouse",       "desc": "Toggle or configure mouse support: /mouse [on|off|status]"},
     # Career OS
     {"cmd": "/career",      "desc": "Career profile & funnel analytics"},
     {"cmd": "/applications","desc": "List tracked job applications"},
@@ -126,6 +127,9 @@ class JarvisCompleter:
                 return [{"text": s, "desc": ""} for s in subs if s.startswith(arg_part)]
             if cmd_part == "/verbose":
                 return [{"text": o, "desc": ""} for o in ["on", "off"] if o.startswith(arg_part)]
+            if cmd_part == "/mouse":
+                subs = ["on", "off", "toggle", "status"]
+                return [{"text": s, "desc": f"Set mouse interaction: {s}"} for s in subs if s.startswith(arg_part)]
             return []
 
         # Command-level completions
@@ -190,10 +194,17 @@ def get_prompt_toolkit_style() -> Any:
     })
 
 
-def build_prompt_session(history_path: Optional[Path] = None) -> Any:
+def build_prompt_session(
+    history_path: Optional[Path] = None,
+    mouse_support: bool = True,
+) -> Any:
     """Build and return a prompt_toolkit PromptSession (or None if unavailable)."""
     if not HAS_PROMPT_TOOLKIT:
         return None
+
+    # Check env var override if not explicitly provided
+    env_mouse = os.environ.get("JARVIS_MOUSE_SUPPORT", "1").strip().lower()
+    effective_mouse = mouse_support and (env_mouse not in ("0", "false", "no", "off", "disable", "disabled"))
 
     hist_path = history_path or get_history_path()
     try:
@@ -207,7 +218,7 @@ def build_prompt_session(history_path: Optional[Path] = None) -> Any:
         auto_suggest=AutoSuggestFromHistory(),
         style=get_prompt_toolkit_style(),
         enable_system_prompt=False,
-        mouse_support=False,
+        mouse_support=effective_mouse,
         reserve_space_for_menu=4,
     )
     return session
