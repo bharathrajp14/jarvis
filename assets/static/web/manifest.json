@@ -1,0 +1,43 @@
+{
+  "id": "br-jarvis-aios",
+  "short_name": "BR JARVIS",
+  "name": "BR JARVIS — Local AI Operating System",
+  "description": "Next-Gen Local AI Operating System with Hands-Free Voice, Computer Automation & Multi-Model Cognitive Intelligence",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%2303070d'/><text y='.85em' x='15' font-size='65'>⚡</text></svg>",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "scope": "/",
+  "background_color": "#03070d",
+  "theme_color": "#03070d",
+  "display": "standalone",
+  "orientation": "any",
+  "categories": ["utilities", "productivity", "developer tools"],
+  "shortcuts": [
+    {
+      "name": "Dialogue Workspace",
+      "url": "/#chat",
+      "description": "Open interactive AI prompt workspace"
+    },
+    {
+      "name": "Hands-Free Voice",
+      "url": "/#voice",
+      "description": "Open real-time voice speech assistant"
+    },
+    {
+      "name": "3D Knowledge Galaxy",
+      "url": "/galaxy",
+      "description": "Open 3D Force-Directed Knowledge Galaxy"
+    },
+    {
+      "name": "App Connectors Hub",
+      "url": "/#connectors",
+      "description": "Manage integration tokens and services"
+    }
+  ]
+}

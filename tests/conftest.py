@@ -52,3 +52,12 @@ for leg, can in _ALIASES.items():
         sys.modules[leg] = mod
     except Exception:
         pass
+
+# Automatically alias all loaded canonical submodules to legacy names
+for mod_name, mod_obj in list(sys.modules.items()):
+    if mod_name.startswith("brjarvis."):
+        for leg, can in _ALIASES.items():
+            if mod_name == can or mod_name.startswith(can + "."):
+                suffix = mod_name[len(can):]
+                legacy_name = leg + suffix
+                sys.modules.setdefault(legacy_name, mod_obj)

@@ -89,8 +89,9 @@ workspace/browser_user_data/
 runtime/browser_user_data/
 src/brjarvis/workspace/browser_user_data/
 
-# Workspace runtime data (resumes, career docs are runtime artifacts, not source)
-# Comment out lines below if you want to track generated career documents
-# src/brjarvis/workspace/Career/
-# src/brjarvis/workspace/Documents/
-# src/brjarvis/workspace/Resumes/
+# Workspace runtime outputs & captures
+workspace/screenshots/
+workspace/snapshots/
+workspace/test_temp/
+runtime/screenshots/
+runtime/snapshots/

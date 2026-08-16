@@ -292,10 +292,10 @@ class StageDecomposer:
     def to_tool_plan(cls, stages: list[ExecutionStage], user_prompt: str, task_id: str = "task_001") -> Any:
         """Convert a list of ExecutionStages into a ToolPlan with ToolSteps for the workflow orchestrator."""
         try:
-            from workflow.tool_orchestration import ToolPlan, ToolStep, ToolCategory
+            from brjarvis.workflow.tool_orchestration import ToolPlan, ToolStep, ToolCategory
         except ImportError:
             try:
-                from brjarvis.workflow.tool_orchestration import ToolPlan, ToolStep, ToolCategory
+                from workflow.tool_orchestration import ToolPlan, ToolStep, ToolCategory
             except ImportError:
                 # Fallback: return a dict-based plan if workflow module unavailable
                 return {

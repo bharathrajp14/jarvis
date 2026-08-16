@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="BR JARVIS — 3D Force-Directed Knowledge Galaxy & Neural Node Graph">
+  <title>BR JARVIS — 3D Knowledge Galaxy</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌌</text></svg>">
+  <script src="https://unpkg.com/3d-force-graph"></script>
+  <script src="graph-data.js"></script>
+  <style>
+    :root {
+      --bg-space: #020408;
+      --accent-cyan: #00f2fe;
+      --accent-purple: #7928ca;
+      --accent-green: #00dfa2;
+      --accent-pink: #ff007a;
+      --accent-amber: #ffb703;
+      --text-main: #d8f8ff;
+      --border-hud: rgba(0, 242, 254, 0.3);
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background-color: var(--bg-space);
+      font-family: 'Share Tech Mono', 'Courier New', monospace;
+      color: var(--text-main);
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    #3d-graph {
+      width: 100vw;
+      height: 100vh;
+    }
+    .hud-title {
+      position: absolute;
+      top: 16px;
+      left: 20px;
+      z-index: 10;
+      background: rgba(1, 13, 20, 0.88);
+      -webkit-backdrop-filter: blur(12px);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border-hud);
+      padding: 10px 18px;
+      border-radius: 8px;
+      box-shadow: 0 0 20px rgba(0, 242, 254, 0.2);
+    }
+    .hud-title h1 {
+      margin: 0;
+      font-size: 15px;
+      color: var(--accent-cyan);
+      letter-spacing: 2px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .hud-title p {
+      margin: 4px 0 0 0;
+      font-size: 11px;
+      color: #5ba3b5;
+    }
+    .hud-controls {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .hud-btn {
+      background: rgba(0, 242, 254, 0.1);
+      border: 1px solid var(--border-hud);
+      color: var(--accent-cyan);
+      font-size: 10px;
+      font-family: inherit;
+      padding: 3px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.2s ease;
+    }
+    .hud-btn:hover {
+      background: rgba(0, 242, 254, 0.25);
+      box-shadow: 0 0 10px rgba(0, 242, 254, 0.3);
+    }
+    #side-panel {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      width: 320px;
+      max-height: 80vh;
+      background: rgba(1, 15, 24, 0.94);
+      -webkit-backdrop-filter: blur(16px);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--accent-cyan);
+      border-radius: 8px;
+      padding: 16px;
+      display: none;
+      z-index: 10;
+      overflow-y: auto;
+      box-shadow: 0 0 25px rgba(0, 242, 254, 0.35);
+    }
+    #side-panel h2 {
+      margin: 0 0 8px 0;
+      font-size: 14px;
+      color: var(--accent-green);
+    }
+    #side-panel .tag {
+      display: inline-block;
+      padding: 2px 8px;
+      background: #001f2e;
+      border: 1px solid #007a99;
+      color: var(--accent-cyan);
+      font-size: 10px;
+      border-radius: 4px;
+      margin-bottom: 12px;
+    }
+    #side-panel p {
+      font-size: 12px;
+      line-height: 1.5;
+      color: var(--text-main);
+      white-space: pre-wrap;
+    }
+    .close-btn {
+      float: right;
+      cursor: pointer;
+      color: #ff3355;
+      font-weight: bold;
+      font-size: 14px;
+    }
+    .close-btn:hover {
+      color: #ff6688;
+    }
+  </style>
+</head>
+<body>
+  <div class="hud-title">
+    <h1>⚡ BR JARVIS — KNOWLEDGE GALAXY</h1>
+    <p id="stats-line">Scanning neural nodes...</p>
+    <div class="hud-controls">
+      <a href="/" class="hud-btn">◂ DASHBOARD</a>
+      <button id="toggleOrbitBtn" class="hud-btn" onclick="toggleOrbit()">⏸ PAUSE ORBIT</button>
+      <button class="hud-btn" onclick="resetCamera()">🔄 RESET VIEW</button>
+    </div>
+  </div>
+
+  <div id="side-panel">
+    <span class="close-btn" onclick="closePanel()">✕</span>
+    <h2 id="panel-title">Node Title</h2>
+    <div id="panel-tag" class="tag">folder</div>
+    <p id="panel-text">Note excerpt...</p>
+  </div>
+
+  <div id="3d-graph"></div>
+
+  <script>
+    const data = window.GRAPH || { nodes: [], links: [] };
+
+    // Group Color Mapping
+    const groupColors = {
+      notes: '#00f2fe',
+      server: '#7928ca',
+      testing: '#a855f7',
+      actions: '#00dfa2',
+      ui: '#38bdf8',
+      memory: '#ff007a',
+      agent: '#ec4899',
+      models: '#ffb703',
+      personality: '#f59e0b',
+      hardware: '#06b6d4',
+      default: '#00f2fe'
+    };
+
+    function getNodeColor(node) {
+      const g = (node.group || '').toLowerCase();
+      return groupColors[g] || groupColors.default;
+    }
+
+    const statsLine = document.getElementById('stats-line');
+    if (statsLine) {
+      statsLine.innerText = `${data.nodes.length} Neural Nodes · ${data.links.length} Synaptic Links · Interactive 3D Orbit Active`;
+    }
+
+    let Graph = null;
+    let isOrbiting = true;
+    let isUserInteracting = false;
+    let orbitAngle = 0;
+    let resumeOrbitTimeout = null;
+
+    function pauseOrbitTemporarily(durationMs = 4000) {
+      isUserInteracting = true;
+      if (resumeOrbitTimeout) clearTimeout(resumeOrbitTimeout);
+      resumeOrbitTimeout = setTimeout(() => {
+        isUserInteracting = false;
+      }, durationMs);
+    }
+
+    function toggleOrbit() {
+      isOrbiting = !isOrbiting;
+      const btn = document.getElementById('toggleOrbitBtn');
+      if (btn) btn.textContent = isOrbiting ? '⏸ PAUSE ORBIT' : '▶ RESUME ORBIT';
+    }
+
+    function resetCamera() {
+      if (Graph) {
+        pauseOrbitTemporarily(3000);
+        Graph.cameraPosition({ x: 0, y: 0, z: 250 }, { x: 0, y: 0, z: 0 }, 1500);
+      }
+    }
+
+    function openNodePanel(node) {
+      if (!node) return;
+      document.getElementById('panel-title').innerText = node.label || `Node #${node.id}`;
+      document.getElementById('panel-tag').innerText = `GROUP: ${(node.group || 'GENERAL').toUpperCase()}`;
+      document.getElementById('panel-text').innerText = node.excerpt || 'No excerpt available for this neural node.';
+      document.getElementById('side-panel').style.display = 'block';
+    }
+
+    function closePanel() {
+      document.getElementById('side-panel').style.display = 'none';
+    }
+
+    // ── 3D FORCE GRAPH INITIALIZATION ──
+    if (typeof ForceGraph3D !== 'undefined') {
+      Graph = ForceGraph3D()(document.getElementById('3d-graph'))
+        .graphData(data)
+        .nodeLabel(node => `${node.label} [${(node.group || 'note').toUpperCase()}]`)
+        .nodeColor(getNodeColor)
+        .nodeVal(node => (node.group === 'agent' || node.group === 'memory' ? 7 : 5))
+        .linkWidth(1.2)
+        .linkColor(() => 'rgba(0, 242, 254, 0.25)')
+        .linkDirectionalParticles(2)
+        .linkDirectionalParticleSpeed(0.005)
+        .linkDirectionalParticleWidth(1.5)
+        .linkDirectionalParticleColor(() => '#00f2fe')
+        .onNodeClick(node => {
+          pauseOrbitTemporarily(5000);
+          // Smooth camera transition to node
+          const distance = 45;
+          const hyp = Math.hypot(node.x || 1, node.y || 1, node.z || 1) || 1;
+          const distRatio = 1 + distance / hyp;
+          Graph.cameraPosition(
+            { x: (node.x || 0) * distRatio, y: (node.y || 0) * distRatio, z: (node.z || 0) * distRatio },
+            node,
+            1800
+          );
+          openNodePanel(node);
+        })
+        .onNodeDrag(() => pauseOrbitTemporarily(6000))
+        .onBackgroundClick(() => closePanel());
+
+      // Safe Idle Orbit Loop (only updates if user is not dragging / inspecting)
+      setInterval(() => {
+        if (isOrbiting && !isUserInteracting && Graph) {
+          orbitAngle += 0.002;
+          const cam = Graph.cameraPosition();
+          const distance = Math.hypot(cam.x, cam.z) || 200;
+          Graph.cameraPosition({
+            x: distance * Math.sin(orbitAngle),
+            z: distance * Math.cos(orbitAngle)
+          });
+        }
+      }, 50);
+    } else {
+      // ── STANDALONE 2D/3D CANVAS FALLBACK ──
+      console.warn('[GALAXY] 3d-force-graph CDN unavailable — Launching Standalone Interactive Canvas Galaxy Visualizer...');
+      const container = document.getElementById('3d-graph');
+      const cvs = document.createElement('canvas');
+      cvs.width = window.innerWidth;
+      cvs.height = window.innerHeight;
+      container.appendChild(cvs);
+      const ctx = cvs.getContext('2d');
+
+      let width = cvs.width;
+      let height = cvs.height;
+
+      window.addEventListener('resize', () => {
+        width = cvs.width = window.innerWidth;
+        height = cvs.height = window.innerHeight;
+      });
+
+      const nodes = data.nodes.map((n, i) => ({
+        ...n,
+        cx: (Math.random() - 0.5) * width * 0.7,
+        cy: (Math.random() - 0.5) * height * 0.7,
+        cz: (Math.random() - 0.5) * 500,
+        screenX: 0,
+        screenY: 0,
+        screenRadius: 4,
+      }));
+
+      // Interactive Click on Canvas
+      cvs.addEventListener('click', (e) => {
+        const rect = cvs.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+        const clicked = nodes.find(n => Math.hypot(n.screenX - mx, n.screenY - my) < Math.max(8, n.screenRadius + 4));
+        if (clicked) {
+          openNodePanel(clicked);
+        }
+      });
+
+      let rot = 0;
+      function drawFallback() {
+        ctx.fillStyle = '#020408';
+        ctx.fillRect(0, 0, width, height);
+        if (isOrbiting) rot += 0.003;
+
+        const cx = width / 2;
+        const cy = height / 2;
+
+        // Render Links
+        ctx.strokeStyle = 'rgba(0, 242, 254, 0.15)';
+        ctx.lineWidth = 1;
+        (data.links || []).forEach(link => {
+          const s = nodes[typeof link.source === 'object' ? link.source.id : link.source];
+          const t = nodes[typeof link.target === 'object' ? link.target.id : link.target];
+          if (s && t && s.screenX && t.screenX) {
+            ctx.beginPath();
+            ctx.moveTo(s.screenX, s.screenY);
+            ctx.lineTo(t.screenX, t.screenY);
+            ctx.stroke();
+          }
+        });
+
+        // Render Nodes
+        nodes.forEach(n => {
+          const rx = n.cx * Math.cos(rot) - n.cz * Math.sin(rot);
+          const rz = n.cx * Math.sin(rot) + n.cz * Math.cos(rot) + 600;
+          const scale = 500 / Math.max(1, rz);
+          n.screenX = cx + rx * scale;
+          n.screenY = cy + n.cy * scale;
+          n.screenRadius = Math.max(3, 6 * scale);
+
+          ctx.beginPath();
+          ctx.arc(n.screenX, n.screenY, n.screenRadius, 0, Math.PI * 2);
+          ctx.fillStyle = getNodeColor(n);
+          ctx.shadowBlur = 10;
+          ctx.shadowColor = getNodeColor(n);
+          ctx.fill();
+          ctx.shadowBlur = 0;
+
+          ctx.fillStyle = 'rgba(216, 248, 255, 0.8)';
+          ctx.font = `${Math.max(8, Math.round(11 * scale))}px 'Share Tech Mono', monospace`;
+          ctx.fillText(n.label, n.screenX + 8, n.screenY + 4);
+        });
+
+        requestAnimationFrame(drawFallback);
+      }
+      drawFallback();
+    }
+
+    // Fly to node by ID (called during RAG query / external events)
+    window.flyToNode = function(nodeId) {
+      const node = data.nodes.find(n => n.id === nodeId || String(n.id) === String(nodeId));
+      if (node) {
+        pauseOrbitTemporarily(5000);
+        if (Graph) {
+          const distance = 45;
+          const hyp = Math.hypot(node.x || 1, node.y || 1, node.z || 1) || 1;
+          const distRatio = 1 + distance / hyp;
+          Graph.cameraPosition(
+            { x: (node.x || 0) * distRatio, y: (node.y || 0) * distRatio, z: (node.z || 0) * distRatio },
+            node,
+            1800
+          );
+        }
+        openNodePanel(node);
+      }
+    };
+  </script>
+</body>
+</html>
