@@ -1,2 +1,1 @@
-# tests/fixtures/__init__.py
-"""Test fixtures package."""
+"""tests/fixtures package."""

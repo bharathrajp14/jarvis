@@ -14,6 +14,9 @@ import sys
 import threading
 import time
 from pathlib import Path
+import psutil
+
+from brjarvis.core.version import CODENAME, VERSION
 
 logger = logging.getLogger("JARVIS.UI.MainWindow")
 
@@ -70,7 +73,7 @@ class MainWindow(QMainWindow):
         if _ui_color and _ui_color.lower() != DEFAULT_UI_COLOR:
             apply_ui_accent(_ui_color)
 
-        self.setWindowTitle(f"{_display} — MARK XLIX")
+        self.setWindowTitle(f"{_display} — MARK {CODENAME}")
         self.setMinimumSize(_MIN_W, _MIN_H)
         self.resize(_DEFAULT_W, _DEFAULT_H)
 
@@ -222,6 +225,17 @@ class MainWindow(QMainWindow):
         sc_full.activated.connect(self._toggle_fullscreen)
         sc_intr = QShortcut(QKeySequence("Escape"), self)
         sc_intr.activated.connect(self._do_interrupt)
+
+        # Telemetry update timer (1.0s periodic tick)
+        self._start_time = time.time()
+        self._metrics_timer = QTimer(self)
+        self._metrics_timer.setInterval(1000)
+        self._metrics_timer.timeout.connect(self._update_metrics)
+        self._metrics_timer.start()
+        self._update_metrics()
+
+        # Connect sub-agent task updates via EventBus
+        self._setup_event_bus_subscription()
 
     def _show_camera_frame(self, img_bytes: bytes):
         """Slot — display camera preview overlay (main thread)."""
@@ -730,11 +744,14 @@ class MainWindow(QMainWindow):
             pass
 
         try:
-            boot_t  = psutil.boot_time()
-            elapsed = time.time() - boot_t
-            h = int(elapsed // 3600)
-            m = int((elapsed % 3600) // 60)
-            self._uptime_lbl.setText(f"UP  {h:02d}:{m:02d}")
+            elapsed = int(time.time() - getattr(self, "_start_time", time.time()))
+            h = elapsed // 3600
+            m = (elapsed % 3600) // 60
+            s = elapsed % 60
+            if h > 0:
+                self._uptime_lbl.setText(f"UP  {h:02d}:{m:02d}:{s:02d}")
+            else:
+                self._uptime_lbl.setText(f"UP  {m:02d}:{s:02d}")
         except Exception:
             self._uptime_lbl.setText("UP  --:--")
 
@@ -758,7 +775,7 @@ class MainWindow(QMainWindow):
             l.setStyleSheet(f"color: {color}; background: transparent;")
             return l
 
-        lay.addWidget(_badge("MARK XLIX", C.PRI_DIM))
+        lay.addWidget(_badge(f"MARK {CODENAME}", C.PRI_DIM))
         lay.addSpacing(8)
         self._drawer_btn = QPushButton("⚙")
         self._drawer_btn.setFixedSize(26, 26)
@@ -892,7 +909,7 @@ class MainWindow(QMainWindow):
         for txt, col in [
             ("AI CORE\nACTIVE",  C.GREEN),
             ("SEC\nCLEARED",     C.PRI),
-            ("PROTOCOL\nXLIX",   C.TEXT_DIM),
+            (f"PROTOCOL\n{CODENAME}",   C.TEXT_DIM),
         ]:
             lbl = QLabel(txt)
             lbl.setFont(QFont("Courier New", 7, QFont.Weight.Bold))
@@ -1277,9 +1294,8 @@ class MainWindow(QMainWindow):
 
         lay.addWidget(_fl("[F4] Mute  ·  [F11] Fullscreen  ·  [ESC] Interrupt"))
         lay.addStretch()
-        # ISSUE-8 FIX: store reference so _on_setup_done can update the name after config loads
         assistant_label = _fl(
-            f"BR JARVIS MK49 · {(self._assistant_name or 'JARVIS').upper()}",
+            f"BR JARVIS {CODENAME} · {(self._assistant_name or 'JARVIS').upper()}",
             C.PRI_DIM
         )
         self._footer_brand_label = assistant_label
@@ -1487,7 +1503,7 @@ class MainWindow(QMainWindow):
         """Update all name/theme-dependent UI elements and persist to config."""
         self._assistant_name = name.strip() or "JARVIS"
         display = self._assistant_name.upper()
-        self.setWindowTitle(f"{display} — MARK XLIX")
+        self.setWindowTitle(f"{display} — MARK {CODENAME}")
         self._title_lbl.setText(display)
         if display in ("JARVIS", "J.A.R.V.I.S"):
             self._sub_lbl.setText("Just A Rather Very Intelligent System")
@@ -1585,14 +1601,14 @@ class MainWindow(QMainWindow):
         txt = self._input.text().strip()
         if not txt: return
         self._input.clear()
+        self._log.append_log(f"You: {txt}")
         if self.on_text_command:
             threading.Thread(target=self.on_text_command, args=(txt,), daemon=True).start()
         else:
-            self._log.append_log(f"You: {txt}")
             def _standalone_cmd(cmd_text: str):
                 try:
                     self._state_sig.emit("THINKING")
-                    from core.bootstrap import build_assistant_runtime
+                    from brjarvis.core.bootstrap import build_assistant_runtime
                     runtime = build_assistant_runtime()
                     resp = runtime.orchestrator.chat(cmd_text)
                     self._log_sig.emit(f"JARVIS: {resp}")
@@ -1648,6 +1664,25 @@ class MainWindow(QMainWindow):
                 f"BR JARVIS MK49 · {self._assistant_name.upper()}"
             )
         self._log.append_log(f"SYS: Initialised. OS={os_name.upper()}. {self._assistant_name} online.")
+
+    def _setup_event_bus_subscription(self):
+        """Subscribe to background task lifecycle events to update Sub-Agent Task panel."""
+        try:
+            from brjarvis.events.bus import get_event_bus
+            bus = get_event_bus()
+            def _on_task_event(event):
+                try:
+                    task_id = str(getattr(event, "task_id", "") or "task_0")
+                    goal = str(getattr(event, "goal", "") or getattr(event, "name", "Task Workflow"))
+                    status = str(getattr(event, "status", "RUNNING"))
+                    progress = float(getattr(event, "progress", 0.0) or 0.0)
+                    result = str(getattr(event, "result", "") or "")
+                    self._task_update_sig.emit(task_id, goal, status, progress, result)
+                except Exception:
+                    pass
+            bus.subscribe("task.*", _on_task_event)
+        except Exception as e:
+            logger.debug("EventBus task subscription note: %s", e)
 
     def closeEvent(self, event):
         QApplication.quit()

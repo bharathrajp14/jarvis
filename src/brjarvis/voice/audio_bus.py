@@ -401,14 +401,25 @@ class AudioBusMicrophoneSource(_BaseAudioSource):
 
     def read(self, size: int) -> bytes:
         bytes_to_read = size * self.SAMPLE_WIDTH
-        while len(self._buffer) < bytes_to_read:
-            frame = self.sub.get(timeout=0.1)
-            if frame is not None:
-                self._buffer.extend(frame.data)
-            else:
-                break
+        start_time = time.monotonic()
+        while len(self._buffer) < bytes_to_read and (time.monotonic() - start_time) < 1.0:
+            try:
+                frame = self.sub.get(timeout=0.1)
+                if frame is not None:
+                    self._buffer.extend(frame.data)
+            except (queue.Empty, Exception):
+                # Non-fatal: queue timeout
+                if len(self._buffer) >= bytes_to_read:
+                    break
+                time.sleep(0.01)
+
+        if not self._buffer:
+            return b"\x00" * bytes_to_read
+
         out = bytes(self._buffer[:bytes_to_read])
         del self._buffer[:bytes_to_read]
+        if len(out) < bytes_to_read:
+            out += b"\x00" * (bytes_to_read - len(out))
         return out
 
     def drain(self) -> int:

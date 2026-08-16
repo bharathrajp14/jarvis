@@ -170,7 +170,10 @@ def get_tool_prompt_block() -> str:
     # Load available skills catalog dynamically to avoid circular import cycles
     skills_block = ""
     try:
-        from skills import load_skills
+        try:
+            from brjarvis.skills import load_skills
+        except ImportError:
+            from skills import load_skills
         skills = [s for s in load_skills() if getattr(s, "user_invocable", True)]
         if skills:
             skills_lines = [

@@ -594,7 +594,10 @@ class JarvisOrchestrator:
 
     def _check_skill(self, user_input: str) -> str | None:
         try:
-            from skills import find_skill, execute_skill, load_skills
+            try:
+                from brjarvis.skills import find_skill, execute_skill, load_skills
+            except ImportError:
+                from skills import find_skill, execute_skill, load_skills
             m = re.match(r"^/skill\s+(\S+)\s*(.*)", user_input.strip())
             if m:
                 name = m.group(1)

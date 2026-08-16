@@ -25,7 +25,7 @@ from .registry import register_tool
 )
 def tool_list_installed_applications(args: dict) -> str:
     """List installed applications on the host system."""
-    from actions.app_analyzer import get_app_analyzer  # lazy import
+    from brjarvis.actions.app_analyzer import get_app_analyzer  # lazy import
     query = str(args.get("query", "")).strip().lower()
     limit = args.get("limit", 50)
 
@@ -60,7 +60,7 @@ def tool_list_installed_applications(args: dict) -> str:
 )
 def tool_list_running_applications(args: dict) -> str:
     """List running desktop applications and processes."""
-    from actions.app_analyzer import get_app_analyzer  # lazy import
+    from brjarvis.actions.app_analyzer import get_app_analyzer  # lazy import
     gui_only = args.get("gui_only", True)
     top_n = args.get("top_n", 25)
 
@@ -88,7 +88,7 @@ def tool_list_running_applications(args: dict) -> str:
 )
 def tool_search_applications(args: dict) -> str:
     """Search installed and running applications by keyword."""
-    from actions.app_analyzer import get_app_analyzer  # lazy import
+    from brjarvis.actions.app_analyzer import get_app_analyzer  # lazy import
     query = str(args.get("query", "")).strip()
     if not query:
         return "Error: Search query required."
@@ -124,7 +124,7 @@ def tool_search_applications(args: dict) -> str:
 )
 def tool_sync_app_paths(args: dict) -> str:
     """Rescan and auto-configure all system application executable paths."""
-    from actions.app_resolver import get_app_resolver
+    from brjarvis.actions.app_resolver import get_app_resolver
     resolver = get_app_resolver()
     apps = resolver.rescan_system_applications()
     return f"✅ Successfully scanned and auto-configured {len(apps)} system application paths into config/app_paths.json."

@@ -20,20 +20,23 @@ from memory.canonical_db import get_canonical_db
 
 logger = logging.getLogger("JARVIS.TaskState")
 class TaskStatus(str, Enum):
-    CREATED              = "CREATED"
-    UNDERSTANDING        = "UNDERSTANDING"
-    PLANNING             = "PLANNING"
-    PREFLIGHT            = "PREFLIGHT"
-    WAITING_FOR_USER     = "WAITING_FOR_USER"
-    WAITING_FOR_APPROVAL = "WAITING_FOR_APPROVAL"
-    RUNNING              = "RUNNING"
-    RECOVERING           = "RECOVERING"
-    PARTIAL_SUCCESS      = "PARTIAL_SUCCESS"
-    FAILED               = "FAILED"
-    CANCELLED            = "CANCELLED"
-    COMPLETED_UNVERIFIED = "COMPLETED_UNVERIFIED"
-    SUCCESS_VERIFIED     = "SUCCESS_VERIFIED"
-    
+    CREATED                   = "CREATED"
+    UNDERSTANDING             = "UNDERSTANDING"
+    PLANNING                  = "PLANNING"
+    PREFLIGHT                 = "PREFLIGHT"
+    WAITING_FOR_USER          = "WAITING_FOR_USER"
+    WAITING_FOR_APPROVAL      = "WAITING_FOR_APPROVAL"
+    RUNNING                   = "RUNNING"
+    RECOVERING                = "RECOVERING"
+    PARTIAL_SUCCESS           = "PARTIAL_SUCCESS"
+    FAILED                    = "FAILED"
+    CANCELLED                 = "CANCELLED"
+    COMPLETED_UNVERIFIED      = "COMPLETED_UNVERIFIED"
+    SUCCESS_VERIFIED          = "SUCCESS_VERIFIED"
+    # MK40.2 additions
+    REQUIRES_USER             = "REQUIRES_USER"              # needs human action to continue
+    TASK_FAILED_RESULT_MISMATCH = "TASK_FAILED_RESULT_MISMATCH"  # result does not match requested goal
+
     # Backwards-compatible aliases
     PENDING              = "CREATED"
     VALIDATING           = "PREFLIGHT"
@@ -113,9 +116,15 @@ class TaskState:
     """Authoritative Single Source of Truth for Autonomous Task State."""
     task_id: str
     session_id: str = ""
-    user_request: str = ""
-    normalized_request: str = ""
-    goal: str = ""  # alias for user_request
+    # ── Immutable goal fields — set once, never overwritten (MK40.2 §1, §2) ──
+    user_request: str = ""          # IMMUTABLE: original user text verbatim
+    normalized_request: str = ""    # IMMUTABLE: cleaned/normalized version set at creation
+    goal: str = ""                  # alias for user_request (backward compat)
+    # ── MK40.2 goal contract fields ───────────────────────────────────────────
+    required_operations: List[str] = field(default_factory=list)       # e.g. ["CREATE_PORTFOLIO", "PUSH_TO_GITHUB"]
+    acceptance_criteria: List[Dict[str, Any]] = field(default_factory=list)  # serialized Criterion objects
+    goal_spec: Dict[str, Any] = field(default_factory=dict)            # full GoalSpec serialized
+    # ── Execution state ───────────────────────────────────────────────────────
     current_phase: str = "CREATED"
     current_step: int = 0
     total_steps: int = 0
@@ -199,20 +208,47 @@ class TaskStateManager:
     def _get_conn(self) -> sqlite3.Connection:
         return self.db_manager.get_connection()
 
-    def create_task(self, goal: str, total_steps: int = 0, active_devices: Optional[List[str]] = None, task_id: Optional[str] = None) -> TaskState:
-        """Initialize and persist a new autonomous task."""
+    def create_task(
+        self,
+        goal: str,
+        total_steps: int = 0,
+        active_devices: Optional[List[str]] = None,
+        task_id: Optional[str] = None,
+        goal_spec: Optional[Dict[str, Any]] = None,
+    ) -> TaskState:
+        """Initialize and persist a new autonomous task.
+
+        MK40.2: user_request is stored verbatim and is NEVER overwritten after
+        this point.  The CompletionGate compares the final executed artifacts
+        against the original request to prevent result substitution.
+        """
         tid = task_id or f"task_{uuid.uuid4().hex[:12]}"
         now = time.time()
         devices = active_devices or ["pc"]
 
+        # Normalize goal (strip extra whitespace, keep original verbatim)
+        normalized = " ".join(goal.split())
+
+        # Extract required_operations and acceptance_criteria from goal_spec if provided
+        required_ops: List[str] = []
+        acceptance: List[Dict[str, Any]] = []
+        if goal_spec and isinstance(goal_spec, dict):
+            required_ops = list(goal_spec.get("required_operations", []))
+            acceptance = list(goal_spec.get("acceptance_criteria", []))
+
         state = TaskState(
             task_id=tid,
-            goal=goal,
+            user_request=goal,            # immutable — verbatim user text
+            normalized_request=normalized, # immutable — cleaned version
+            goal=goal,                    # backward-compat alias
+            required_operations=required_ops,
+            acceptance_criteria=acceptance,
+            goal_spec=goal_spec or {},
             status=TaskStatus.CREATED,
             total_steps=total_steps,
             active_devices=devices,
             created_at=now,
-            updated_at=now
+            updated_at=now,
         )
 
         with self._get_conn() as conn:

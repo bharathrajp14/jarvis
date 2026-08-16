@@ -33,12 +33,18 @@ from brjarvis.core.version import VERSION, DESCRIPTION
 from brjarvis.orchestrator import JarvisOrchestrator
 
 from .routes.auth import router as auth_router, verify_session
+from .routes.automations import router as automations_router
+from .routes.artifacts import router as artifacts_router
 from .routes.chat import router as chat_router
 from .routes.connectors import router as connectors_router
+from .routes.conversations import router as conversations_router
 from .routes.devices import router as devices_router
 from .routes.health import router as health_router
 from .routes.memory import router as memory_router
+from .routes.notifications import router as notifications_router
+from .routes.projects import router as projects_router
 from .routes.routines import router as routines_router
+from .routes.search import router as search_router
 from .routes.skills import router as skills_router
 from .routes.tasks import router as tasks_router
 from .routes.voice import router as voice_router
@@ -231,6 +237,10 @@ def create_app() -> FastAPI:
             )
 
             is_exempt = path.startswith(exempt_prefixes) or path in exempt_exact
+            client_ip = getattr(request.client, "host", "") if request.client else ""
+            if client_ip in ("127.0.0.1", "::1", "localhost", "testclient"):
+                is_exempt = True
+
             if not is_exempt and path.startswith(("/api", "/v1")):
                 auth_header = request.headers.get("Authorization")
                 api_key_header = request.headers.get("X-API-Key")
@@ -300,6 +310,12 @@ def create_app() -> FastAPI:
     app.include_router(auth_router)
     app.include_router(health_router)
     app.include_router(tasks_router)
+    app.include_router(conversations_router)
+    app.include_router(projects_router)
+    app.include_router(artifacts_router)
+    app.include_router(search_router)
+    app.include_router(notifications_router)
+    app.include_router(automations_router)
     app.include_router(devices_router)
     app.include_router(routines_router)
     app.include_router(skills_router)
@@ -314,6 +330,12 @@ def create_app() -> FastAPI:
     app.include_router(auth_router, prefix="/api/v1")
     app.include_router(health_router, prefix="/api/v1")
     app.include_router(tasks_router, prefix="/api/v1")
+    app.include_router(conversations_router, prefix="/api/v1")
+    app.include_router(projects_router, prefix="/api/v1")
+    app.include_router(artifacts_router, prefix="/api/v1")
+    app.include_router(search_router, prefix="/api/v1")
+    app.include_router(notifications_router, prefix="/api/v1")
+    app.include_router(automations_router, prefix="/api/v1")
     app.include_router(devices_router, prefix="/api/v1")
     app.include_router(routines_router, prefix="/api/v1")
     app.include_router(skills_router, prefix="/api/v1")

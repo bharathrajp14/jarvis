@@ -1,63 +1,22 @@
-# tests/unit/test_task_state_machine.py — Unit Tests for Strict Task Lifecycle & State Transitions
+"""Unit tests for Autonomous Task State Machine & Queue."""
 from __future__ import annotations
 
-import unittest
-from agent.task_lifecycle import (
-    CancellationToken,
-    TaskContext,
-    TaskState,
-    TERMINAL_STATES,
-)
-from agent.task_queue import TaskQueue, TaskStatus, TaskPriority
+import pytest
+from brjarvis.agent.task_state import TaskStateManager, TaskStatus
 
 
-class TestTaskStateMachine(unittest.TestCase):
+@pytest.mark.unit
+def test_task_state_transitions(tmp_path):
+    """Verify task state transitions from PENDING -> RUNNING -> COMPLETED."""
+    db_file = tmp_path / "test_tasks.db"
+    mgr = TaskStateManager(db_path=db_file)
 
-    def test_valid_forward_transitions(self):
-        ctx = TaskContext(task_id="t1", goal="sample goal")
-        self.assertEqual(ctx.state, TaskState.QUEUED)
+    task = mgr.create_task(goal="Analyze system memory consumption")
+    assert task.status == TaskStatus.PENDING
 
-        self.assertTrue(ctx.transition_to(TaskState.RUNNING))
-        self.assertEqual(ctx.state, TaskState.RUNNING)
+    mgr.update_status(task.task_id, TaskStatus.RUNNING)
+    assert mgr.get_task(task.task_id).status == TaskStatus.RUNNING
 
-        self.assertTrue(ctx.transition_to(TaskState.SUCCEEDED))
-        self.assertEqual(ctx.state, TaskState.SUCCEEDED)
-
-    def test_terminal_state_immutability(self):
-        ctx = TaskContext(task_id="t2", goal="sample goal")
-        ctx.transition_to(TaskState.RUNNING)
-        ctx.transition_to(TaskState.FAILED, error_msg="Simulated failure")
-
-        self.assertEqual(ctx.state, TaskState.FAILED)
-        self.assertIn(ctx.state, TERMINAL_STATES)
-
-        # Attempt illegal transition from FAILED to RUNNING
-        self.assertFalse(ctx.transition_to(TaskState.RUNNING))
-        self.assertEqual(ctx.state, TaskState.FAILED)
-
-        # Attempt illegal transition from FAILED to SUCCEEDED
-        self.assertFalse(ctx.transition_to(TaskState.SUCCEEDED))
-        self.assertEqual(ctx.state, TaskState.FAILED)
-
-    def test_cancellation_flow(self):
-        ctx = TaskContext(task_id="t3", goal="sample cancel goal")
-        ctx.transition_to(TaskState.RUNNING)
-        self.assertTrue(ctx.transition_to(TaskState.CANCELLING))
-        self.assertTrue(ctx.transition_to(TaskState.CANCELLED))
-        self.assertEqual(ctx.state, TaskState.CANCELLED)
-        self.assertFalse(ctx.transition_to(TaskState.SUCCEEDED))
-
-    def test_cancellation_token(self):
-        token = CancellationToken()
-        self.assertFalse(token.is_cancelled)
-
-        token.cancel("User abort")
-        self.assertTrue(token.is_cancelled)
-        self.assertEqual(token.reason, "User abort")
-
-        with self.assertRaises(InterruptedError):
-            token.check()
-
-
-if __name__ == "__main__":
-    unittest.main()
+    mgr.update_status(task.task_id, TaskStatus.COMPLETED)
+    completed = mgr.get_task(task.task_id)
+    assert completed.status == TaskStatus.COMPLETED

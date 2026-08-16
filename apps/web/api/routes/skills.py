@@ -1,14 +1,16 @@
 # api/routes/skills.py — Declarative Skills & Workflows Endpoints
 from __future__ import annotations
 
-import time
 import asyncio
-from typing import Dict, Any, Optional
+import logging
+import time
+from typing import Any, Dict, Optional
 from fastapi import APIRouter
 from pydantic import BaseModel
 
 from brjarvis.skills.skill_engine import get_skill_engine
 
+logger = logging.getLogger("JARVIS.API.Skills")
 router = APIRouter(tags=["Skills"])
 
 _SKILLS_CACHE: list[dict] | None = None
@@ -22,18 +24,53 @@ class RunSkillRequest(BaseModel):
 
 @router.get("/api/skills")
 async def get_skills_list():
-    """List user-invocable skills."""
+    """List all user-invocable and declarative skills."""
     global _SKILLS_CACHE, _SKILLS_CACHE_TS
     now = time.time()
     if _SKILLS_CACHE is not None and (now - _SKILLS_CACHE_TS) < _CACHE_TTL_SECONDS:
         return _SKILLS_CACHE
 
-    from brjarvis.skills import load_skills
-    skills = [s for s in load_skills() if s.user_invocable]
-    payload = [{"name": s.name, "description": s.description, "triggers": s.triggers} for s in skills]
-    _SKILLS_CACHE = payload
+    payload = []
+    try:
+        try:
+            from brjarvis.skills import load_skills
+        except ImportError:
+            from skills import load_skills
+
+        for s in load_skills():
+            triggers = getattr(s, "triggers", []) or [f"/{s.name}"]
+            payload.append({
+                "name": s.name,
+                "description": s.description or "Built-in automation skill.",
+                "triggers": triggers,
+                "command": triggers[0] if triggers else f"/{s.name}",
+                "user_invocable": getattr(s, "user_invocable", True),
+                "argument_hint": getattr(s, "argument_hint", ""),
+                "type": "template",
+            })
+    except Exception as e:
+        logger.warning(f"Error loading prompt skills: {e}")
+
+    try:
+        engine = get_skill_engine()
+        for ds in engine.list_skills():
+            if not any(p["name"] == ds.name for p in payload):
+                payload.append({
+                    "name": ds.name,
+                    "description": ds.description or "Declarative workflow capability.",
+                    "triggers": [f"/{ds.name}"],
+                    "command": f"/{ds.name}",
+                    "user_invocable": True,
+                    "argument_hint": "inputs JSON",
+                    "type": "declarative",
+                })
+    except Exception as e:
+        logger.warning(f"Error loading declarative skills: {e}")
+
+    res_data = {"total": len(payload), "skills": payload}
+    _SKILLS_CACHE = res_data
     _SKILLS_CACHE_TS = now
-    return payload
+    return res_data
 
 
 @router.get("/api/agent/skills/declarative")

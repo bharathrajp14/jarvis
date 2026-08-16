@@ -7,12 +7,12 @@ from typing import Optional, TYPE_CHECKING
 
 from .builder import ContextBuilder
 from .types import AssembledContext, ContextItem, ContextScope, TokenBudget
-from core.runtime import get_runtime
-from events.bus import get_event_bus
-from events.types import BaseEvent
+from brjarvis.core.runtime import get_runtime
+from brjarvis.events.bus import get_event_bus
+from brjarvis.events.types import BaseEvent
 
 if TYPE_CHECKING:
-    from router.core import AgentProfile
+    from brjarvis.router.core import AgentProfile
 
 logger = logging.getLogger("JARVIS.ContextEngine")
 

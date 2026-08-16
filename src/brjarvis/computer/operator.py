@@ -10,12 +10,12 @@ import sys
 import time
 from typing import Any, Dict, List, Optional
 from .types import ActionResult, ActionType, ComputerAction
-from core.runtime import get_runtime
-from events.bus import get_event_bus
-from events.types import AuditEvent
-from permissions import check_permission
-from vision.engine import get_vision_engine
-from actions.clipboard_utils import get_clipboard_text, set_clipboard_text
+from brjarvis.core.runtime import get_runtime
+from brjarvis.events.bus import get_event_bus
+from brjarvis.events.types import AuditEvent
+from brjarvis.security.permissions import check_permission
+from brjarvis.vision.engine import get_vision_engine
+from brjarvis.actions.clipboard_utils import get_clipboard_text, set_clipboard_text
 
 logger = logging.getLogger("JARVIS.ComputerOperator")
 

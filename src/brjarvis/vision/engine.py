@@ -3,9 +3,9 @@ from __future__ import annotations
 
 import logging
 from typing import Optional
-from core.runtime import get_runtime
-from events.bus import get_event_bus
-from events.types import BaseEvent
+from brjarvis.core.runtime import get_runtime
+from brjarvis.events.bus import get_event_bus
+from brjarvis.events.types import BaseEvent
 from .hybrid_pipeline import get_hybrid_pipeline
 from .ocr_engine import OCREngine
 from .screen_analyst import ScreenAnalyst

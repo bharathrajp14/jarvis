@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bharath Raj — AI / Agent Systems Engineer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #000000;
+            --secondary: #333333;
+            --accent: #000000;
+            --text: #111111;
+            --muted: #444444;
+            --bg: #FFFFFF;
+            --card-bg: #F7FAFC;
+            --font-heading: 'Arial', 'Helvetica', sans-serif;
+            --font-body: 'Arial', 'Helvetica', sans-serif;
+            --font-code: 'Share Tech Mono', monospace;
+            --font-size: 10pt;
+            --line-height: 1.4;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: var(--font-body);
+            font-size: var(--font-size);
+            line-height: var(--line-height);
+            color: var(--text);
+            background: #E2E8F0;
+            padding: 24px;
+        }
+        .resume-page {
+            max-width: 820px;
+            margin: 0 auto;
+            background: var(--bg);
+            padding: 36pt;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            border-radius: 4px;
+        }
+        a { color: var(--accent); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        .summary-text { font-size: 9.5pt; line-height: 1.5; color: var(--text); }
+        .skill-category-row { margin-bottom: 4px; font-size: 9.5pt; }
+        .skill-category-name { font-weight: 600; color: var(--primary); margin-right: 6px; }
+        .skill-tag { display: inline-block; background: var(--card-bg); color: var(--text); padding: 1px 6px; border-radius: 3px; font-size: 8.5pt; margin: 1px 3px 1px 0; border: 1px solid #E2E8F0; }
+        .entry-technologies { font-size: 8.5pt; color: var(--muted); margin-top: 3px; }
+        .proj-desc { font-size: 9pt; margin-top: 2px; color: var(--text); }
+        
+        
+            .resume-header { text-align: center; margin-bottom: 16px; }
+            .candidate-name { font-size: 20pt; font-weight: bold; text-transform: uppercase; color: #000; }
+            .contact-line { font-size: 9.5pt; color: #333; margin-top: 4px; }
+            .section-title { font-size: 11pt; font-weight: bold; text-transform: uppercase; border-bottom: 1px solid #000; padding-bottom: 2px; margin: 14px 0 8px; }
+            .job-entry, .project-entry { margin-bottom: 10px; }
+            .job-header { display: flex; justify-content: space-between; font-weight: bold; font-size: 10pt; }
+            .job-sub { display: flex; justify-content: space-between; font-size: 9.5pt; color: #333; }
+            .bullet-list { margin: 3px 0 0 16px; padding: 0; }
+            .bullet-list li { margin-bottom: 2px; font-size: 9.5pt; line-height: 1.35; }
+            .skills-text-line { font-size: 9.5pt; line-height: 1.4; margin-bottom: 3px; }
+        
+
+        @media print {
+            body { background: #FFFFFF; padding: 0; }
+            .resume-page { box-shadow: none; max-width: 100%; border-radius: 0; padding: 36pt; }
+            @page { margin: 0; size: letter portrait; }
+        }
+    </style>
+</head>
+<body>
+    <div class="resume-page">
+        <header class="resume-header">
+            <h1 class="candidate-name">Bharath Raj</h1>
+            <div class="candidate-title">AI / Agent Systems Engineer</div>
+            <div class="contact-line"><a href="mailto:bharthraj1412@gmail.com">bharthraj1412@gmail.com</a> • <span>+91 98765 43210</span> • <span>Madurai, Tamil Nadu, India</span> • <a href="https://linkedin.com/in/bharathraj" target="_blank" rel="noopener">LinkedIn: linkedin.com/in/bharathraj</a> • <a href="https://github.com/bharthraj1412" target="_blank" rel="noopener">GitHub: github.com/bharthraj1412</a> • <a href="https://github.com/bharthraj1412/BrJarvis" target="_blank" rel="noopener">Portfolio: github.com/bharthraj1412/BrJarvis</a></div>
+        </header>
+        <main class="resume-body">
+            
+                    <div class="resume-section" id="section-summary">
+                        <div class="section-title">Professional Summary</div>
+                        <p class="summary-text">Autonomous AI Systems Architect and Senior Software Engineer specializing in real-time agentic execution, OS-level process automation, hardware-in-the-loop control, fail-closed security engines, and distributed machine learning systems.</p>
+                    </div>
+                
+                        <div class="resume-section" id="section-skills">
+                            <div class="section-title">Core Technical Competencies</div>
+                            <div class="skills-container">
+                            <div class="skill-category-row">
+                                <span class="skill-category-name">Core Languages & Runtimes:</span>
+                                <span class="skill-tags-group"><span class="skill-tag">Python (Expert)</span><span class="skill-tag">TypeScript / JavaScript</span><span class="skill-tag">Go</span><span class="skill-tag">C/C++</span><span class="skill-tag">SQL</span><span class="skill-tag">PowerShell</span><span class="skill-tag">Bash</span></span>
+                            </div>
+                        
+                            <div class="skill-category-row">
+                                <span class="skill-category-name">AI, Agent Architectures & LLMs:</span>
+                                <span class="skill-tags-group"><span class="skill-tag">Agentic DAG Workflows</span><span class="skill-tag">ReAct Loops</span><span class="skill-tag">LangChain</span><span class="skill-tag">PyTorch</span><span class="skill-tag">HuggingFace</span><span class="skill-tag">RAG & Vector Search</span><span class="skill-tag">ChromaDB</span><span class="skill-tag">Function Calling</span></span>
+                            </div>
+                        
+                            <div class="skill-category-row">
+                                <span class="skill-category-name">System Architecture & Backend:</span>
+                                <span class="skill-tags-group"><span class="skill-tag">FastAPI</span><span class="skill-tag">AsyncIO</span><span class="skill-tag">REST APIs</span><span class="skill-tag">WebSockets</span><span class="skill-tag">Docker</span><span class="skill-tag">Process Containment</span><span class="skill-tag">SQLite WAL</span><span class="skill-tag">Redis</span><span class="skill-tag">PostgreSQL</span></span>
+                            </div>
+                        
+                            <div class="skill-category-row">
+                                <span class="skill-category-name">Browser & Desktop Automation:</span>
+                                <span class="skill-tags-group"><span class="skill-tag">Playwright</span><span class="skill-tag">Selenium</span><span class="skill-tag">Accessibility Tree Grounding</span><span class="skill-tag">Win32 API</span><span class="skill-tag">PyQt / PySide</span><span class="skill-tag">HTML5 / CSS3</span></span>
+                            </div>
+                        
+                            <div class="skill-category-row">
+                                <span class="skill-category-name">Testing & Verification:</span>
+                                <span class="skill-tags-group"><span class="skill-tag">PyTest</span><span class="skill-tag">Deterministic Verification</span><span class="skill-tag">Static Analysis</span><span class="skill-tag">Security Threat Modeling</span><span class="skill-tag">CI/CD</span></span>
+                            </div>
+                        </div>
+                        </div>
+                    
+                        <div class="resume-section" id="section-experience">
+                            <div class="section-title">Professional Experience</div>
+                            
+                        <div class="job-entry">
+                            <div class="job-header">
+                                <span class="job-title">Principal Autonomous AI Systems Architect</span>
+                                <span class="job-dates">2024-01 – Present</span>
+                            </div>
+                            <div class="job-sub">
+                                <span class="job-company">BR JARVIS Autonomous Systems</span>
+                                <span class="job-location">Remote / Madurai</span>
+                            </div>
+                            <ul class="bullet-list"><li>Architected and implemented BR JARVIS MK40.2 autonomous AI operating system across 260+ native tools and hardware actuators.</li><li>Engineered Universal Execution Runtime with fail-closed physical side-effect verifiers and deterministic 6-tier virtualenv isolation.</li><li>Built multi-modal Strawberry Browser Agent with semantic accessibility tree mapping, resilient element recovery, and CAPTCHA challenge safety pause.</li><li>Designed 7-tier hierarchical memory architecture (L0–L6) with decay-weighted semantic vector retrieval and experience replay.</li><li>Reduced end-to-end task false-success reports to 0.0% through physical verification gates.</li><li>Achieved sub-150ms voice wake-to-response latency with dual-channel Silero VAD and AudioBus architecture.</li></ul>
+                            <div class="entry-technologies"><strong>Tech Stack:</strong> Python, FastAPI, Playwright, ChromaDB, PyTorch, PyQt6, Win32 APIs, WebSockets</div>
+                        </div>
+                    
+                        <div class="job-entry">
+                            <div class="job-header">
+                                <span class="job-title">Senior Software Engineer — AI & Systems</span>
+                                <span class="job-dates">2023-01 – 2023-12</span>
+                            </div>
+                            <div class="job-sub">
+                                <span class="job-company">Cognitive Edge Technologies</span>
+                                <span class="job-location">Bengaluru, India</span>
+                            </div>
+                            <ul class="bullet-list"><li>Developed high-throughput asynchronous microservices handling 50k+ daily LLM workflow requests with circuit breaker resilience.</li><li>Constructed distributed vector retrieval engines and document parsing pipelines for complex multi-page financial filings.</li><li>Cut API latency by 38% through pipelined prompt caching and speculative streaming token delivery.</li></ul>
+                            <div class="entry-technologies"><strong>Tech Stack:</strong> Python, Go, Docker, PostgreSQL, Redis, LangChain, Kubernetes</div>
+                        </div>
+                    
+                        </div>
+                    
+                        <div class="resume-section" id="section-projects">
+                            <div class="section-title">Featured Engineering Projects</div>
+                            
+                        <div class="project-entry">
+                            <div class="job-header">
+                                <span class="job-title">BR JARVIS Autonomous Agent Platform — <em>Creator & Lead Architect</em></span>
+                                <span class="job-dates"><a href="https://github.com/bharthraj1412/BrJarvis" target="_blank" class="proj-link">https://github.com/bharthraj1412/BrJarvis</a></span>
+                            </div>
+                            <p class="proj-desc">Full-stack AI Operating System integrating desktop control, voice synthesis, smart model routing, and persistent memory.</p>
+                            <ul class="bullet-list"><li>Built fail-closed TaskCompletionGate preventing unverified task completion claims.</li><li>Designed 10-theme native resume rendering and ATS optimization engine.</li></ul>
+                            <div class="entry-technologies"><strong>Technologies:</strong> Python 3.12, FastAPI, Playwright, WebSockets, ChromaDB, PyAudio, fpdf2</div>
+                        </div>
+                    
+                        <div class="project-entry">
+                            <div class="job-header">
+                                <span class="job-title">Multi-Agent DAG Execution Runtime — <em>Systems Engineer</em></span>
+                                <span class="job-dates"></span>
+                            </div>
+                            <p class="proj-desc">High-concurrency directed acyclic graph task executor with automatic failure classification and dynamic replanning.</p>
+                            <ul class="bullet-list"><li>Supports parallel branch execution with zero cross-task contamination.</li></ul>
+                            <div class="entry-technologies"><strong>Technologies:</strong> Python, AsyncIO, Concurrent.Futures, SQLite WAL</div>
+                        </div>
+                    
+                        </div>
+                    
+                        <div class="resume-section" id="section-education">
+                            <div class="section-title">Education & Academic Background</div>
+                            
+                        <div class="edu-entry">
+                            <div class="job-header">
+                                <span class="job-title">Bachelor of Engineering (B.E.) in Computer Science & Engineering</span>
+                                <span class="job-dates">2020 – 2024</span>
+                            </div>
+                            <div class="job-sub">
+                                <span class="job-company">Anna University</span>
+                                <span class="job-location">Tamil Nadu, India</span>
+                            </div>
+                            <ul class="bullet-list"><li>Specialized in Autonomous Intelligent Systems, Distributed Systems, and Operating System Architecture</li><li>Led University AI Research Group; published research on multi-agent cognitive control</li></ul>
+                        </div>
+                    
+                        </div>
+                    
+                        <div class="resume-section" id="section-certifications">
+                            <div class="section-title">Certifications & Credentials</div>
+                            <ul class="bullet-list"><li><strong>Certified Autonomous Systems Architect</strong> — AI Systems Council (2024-03)</li><li><strong>Deep Learning Specialization</strong> — DeepLearning.AI (2023-08)</li></ul>
+                        </div>
+                    
+                        <div class="resume-section" id="section-achievements">
+                            <div class="section-title">Honors & Achievements</div>
+                            <ul class="bullet-list"><li><strong>1st Place — National Autonomous AI Hackathon 2024</strong> (2024-02): Engineered multimodal desktop agent navigating legacy enterprise software with accessibility tree grounding.</li></ul>
+                        </div>
+                    
+        </main>
+    </div>
+</body>
+</html>

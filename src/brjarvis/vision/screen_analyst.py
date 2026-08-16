@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import logging
 from typing import Dict, List, Optional, Tuple
-from core.native_bridge import fast_hash
+from brjarvis.core.native_bridge import fast_hash
 
 logger = logging.getLogger("JARVIS.ScreenAnalyst")
 

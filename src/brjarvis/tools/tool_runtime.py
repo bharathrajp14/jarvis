@@ -5,27 +5,16 @@ import asyncio
 import inspect
 import logging
 import time
-from typing import Any, Callable, Dict, List, Optional
-from dataclasses import dataclass, field
-
-from core.runtime import get_runtime
-from events.bus import get_event_bus
-from events.types import ToolExecutionEvent
-from memory.unified_memory import get_unified_memory
-from permissions import check_permission
-
-logger = logging.getLogger("JARVIS.ToolRuntime")
-
-
 import uuid
-from enum import Enum
 from dataclasses import dataclass, field
+from enum import Enum
+from typing import Any, Callable, Dict, List, Optional
 
-from core.runtime import get_runtime
-from events.bus import get_event_bus
-from events.types import ToolExecutionEvent
-from memory.unified_memory import get_unified_memory
-from permissions import check_permission
+from brjarvis.core.runtime import get_runtime
+from brjarvis.events.bus import get_event_bus
+from brjarvis.events.types import ToolExecutionEvent
+from brjarvis.memory.unified_memory import get_unified_memory
+from brjarvis.security.permissions import check_permission, evaluate_action_policy
 
 logger = logging.getLogger("JARVIS.ToolRuntime")
 
@@ -230,7 +219,7 @@ class ToolRuntimeEngine:
 
         # 1b. Prompt Injection Security Audit for untrusted input parameters
         try:
-            from guardian.prompt_injection_shield import check_prompt_injection
+            from brjarvis.guardian.prompt_injection_shield import check_prompt_injection
             for arg_k, arg_v in args.items():
                 if isinstance(arg_v, str) and len(arg_v) > 20:
                     is_injected, reason = check_prompt_injection(arg_v)

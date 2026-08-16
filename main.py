@@ -17,4 +17,7 @@ ensure_canonical_python()
 from brjarvis.apps.bootstrap import main
 
 if __name__ == "__main__":
-    sys.exit(main())
+    try:
+        sys.exit(main())
+    except (KeyboardInterrupt, EOFError):
+        sys.exit(0)

@@ -10,9 +10,9 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 
-from core.runtime import get_runtime
-from events.bus import get_event_bus
-from tools.tool_runtime import get_tool_runtime
+from brjarvis.core.runtime import get_runtime
+from brjarvis.events.bus import get_event_bus
+from brjarvis.tools.tool_runtime import get_tool_runtime
 
 logger = logging.getLogger("JARVIS.PluginManager")
 

@@ -6,7 +6,7 @@ import logging
 import re
 from typing import Any, Dict, List, Optional
 
-from core.runtime import get_runtime
+from brjarvis.core.runtime import get_runtime
 from .types import (
     ConfidenceScore,
     PlanGraph,
@@ -15,7 +15,7 @@ from .types import (
     StepStatus,
     TaskNode,
 )
-from tools.registry import TOOL_SCHEMAS
+from brjarvis.tools.registry import TOOL_SCHEMAS
 
 logger = logging.getLogger("JARVIS.ReasoningEngine")
 

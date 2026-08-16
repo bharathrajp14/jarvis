@@ -124,8 +124,10 @@ def main(argv: list[str] | None = None) -> int:
 
     # 6. Interactive CLI REPL
     if first in ("cli", "repl", "terminal", "interactive"):
-        launch_cli()
-        return 0
+        from brjarvis.core.cli import main as cli_main
+        sys.argv = [sys.argv[0]] + raw_args[1:]
+        return cli_main()
+
 
     # 7. Web Server & Dashboard
     if first in ("web", "server", "api", "dashboard", "ui"):
@@ -212,9 +214,11 @@ def main(argv: list[str] | None = None) -> int:
 if __name__ == "__main__":
     try:
         sys.exit(main())
-    except KeyboardInterrupt:
-        print("\n\n[JARVIS] Session terminated by user (Ctrl+C). Goodbye.")
+    except (KeyboardInterrupt, EOFError):
+        print("\n\n[JARVIS] Session terminated by user. Goodbye.")
         sys.exit(0)
+    except SystemExit as _se:
+        sys.exit(_se.code if _se.code is not None else 0)
     except Exception as _fatal:
         print(f"\n[Fatal Error] {_fatal}", file=sys.stderr)
         print("Tip: Run 'python start.py doctor' to diagnose system health.", file=sys.stderr)

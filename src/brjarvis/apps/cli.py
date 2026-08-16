@@ -7,8 +7,14 @@ from brjarvis.core.cli import main as cli_main
 
 def main() -> int:
     """Canonical CLI main entry point."""
-    return cli_main()
+    try:
+        return cli_main()
+    except (KeyboardInterrupt, EOFError):
+        return 0
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    try:
+        sys.exit(main())
+    except (KeyboardInterrupt, EOFError):
+        sys.exit(0)

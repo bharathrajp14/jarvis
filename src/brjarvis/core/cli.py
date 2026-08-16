@@ -77,6 +77,21 @@ def main(runtime: Optional[ApplicationRuntime] = None) -> int:
         help="Session ID to create or resume.",
     )
     parser.add_argument(
+        "--permission",
+        help="Specify active permission policy (auto, plan, accept_edits, confirm_destructive, confirm_all, deny).",
+    )
+    parser.add_argument(
+        "--style",
+        choices=["compact", "detailed", "minimal", "verbose"],
+        default="compact",
+        help="Set terminal rendering style (compact, detailed, minimal, verbose). Default: compact.",
+    )
+    parser.add_argument(
+        "-v", "--verbose",
+        action="store_true",
+        help="Enable verbose debug output (tool arguments, timings, telemetry).",
+    )
+    parser.add_argument(
         "--status",
         action="store_true",
         help="Display subsystem telemetry and health diagnostics.",
@@ -86,9 +101,18 @@ def main(runtime: Optional[ApplicationRuntime] = None) -> int:
         action="store_true",
         help="Run system doctor self-healing diagnostic checks.",
     )
+    parser.add_argument(
+        "-p", "--plan",
+        metavar="GOAL",
+        help="Decompose a goal into a step plan and prompt for approval before executing.",
+    )
 
     parsed = parser.parse_args()
     app_runtime = runtime
+
+    # Apply environment/runtime overrides
+    if parsed.permission:
+        os.environ["JARVIS_PERMISSION_MODE"] = parsed.permission.upper()
 
     # Subsystem status check
     if parsed.status:
@@ -102,6 +126,15 @@ def main(runtime: Optional[ApplicationRuntime] = None) -> int:
         session.commands.execute("/doctor")
         return 0
 
+    # Plan mode one-shot
+    if parsed.plan:
+        session = TerminalSession(runtime=app_runtime, mode=parsed.mode, session_id=parsed.session, auto_welcome=False)
+        if parsed.verbose:
+            session.verbose = True
+        session.output_style = parsed.style
+        session.commands.execute(f"/plan {parsed.plan}")
+        return 0
+
     # One-shot query mode
     if parsed.query:
         query_text = " ".join(parsed.query).strip()
@@ -109,9 +142,22 @@ def main(runtime: Optional[ApplicationRuntime] = None) -> int:
             return run_query(query_text, runtime=app_runtime, mode=parsed.mode)
 
     # Interactive REPL mode
-    run_cli(runtime=app_runtime, mode=parsed.mode, session_id=parsed.session)
-    return 0
+    session = TerminalSession(runtime=app_runtime, mode=parsed.mode, session_id=parsed.session)
+    if parsed.model and hasattr(session, "commands"):
+        session.commands.execute(f"/model {parsed.model}")
+    if parsed.verbose:
+        session.verbose = True
+    session.output_style = parsed.style
+    try:
+        session.run_repl()
+        return 0
+    except (KeyboardInterrupt, EOFError):
+        session.close(consolidate=True)
+        return 0
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    try:
+        sys.exit(main())
+    except (KeyboardInterrupt, EOFError):
+        sys.exit(0)

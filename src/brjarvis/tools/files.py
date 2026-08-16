@@ -16,7 +16,14 @@ class FileManager:
         else:
             p = Path(path)
             if not p.is_absolute():
-                p = (self.workspace / path).resolve()
+                # Guard against double-workspace paths like "workspace/Portfolio"
+                # when self.workspace already ends in "workspace". Strip any
+                # leading "workspace/" prefix (case-insensitive) before joining.
+                ws_name = self.workspace.name  # e.g. "workspace"
+                parts = p.parts
+                if parts and parts[0].lower() == ws_name.lower():
+                    p = Path(*parts[1:]) if len(parts) > 1 else Path(".")
+                p = (self.workspace / p).resolve()
             else:
                 p = p.resolve()
         return p

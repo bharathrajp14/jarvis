@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 
 from .registry import register_tool
-from core.workspace_engine import CognitiveWorkspaceEngine
+from brjarvis.core.workspace_engine import CognitiveWorkspaceEngine
 
 
 @register_tool(

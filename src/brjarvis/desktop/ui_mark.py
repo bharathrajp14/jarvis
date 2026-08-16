@@ -47,9 +47,9 @@ if __name__ == "__main__" and sys.version_info >= (3, 14) and sys.platform == "w
 # 2.  Ensure project root is in sys.path so all project imports resolve
 # ─────────────────────────────────────────────────────────────────────────────
 
-_ROOT = Path(__file__).resolve().parent
-if str(_ROOT) not in sys.path:
-    sys.path.insert(0, str(_ROOT))
+from brjarvis.core.paths import paths
+
+_ROOT = paths.PROJECT_ROOT
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 3.  Windows console / encoding hygiene
@@ -62,14 +62,14 @@ if sys.platform == "win32":
     except Exception:
         pass
 
-from ui import setup_qt_paths
+from brjarvis.ui import setup_qt_paths
 setup_qt_paths()
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 4.  Logging setup — structured, coloured-friendly, goes to stdout + file
 # ─────────────────────────────────────────────────────────────────────────────
-_LOG_DIR = _ROOT / "logs"
+_LOG_DIR = paths.LOG_ROOT
 _LOG_DIR.mkdir(parents=True, exist_ok=True)
 
 logging.basicConfig(
@@ -103,16 +103,16 @@ except ImportError:
 # ─────────────────────────────────────────────────────────────────────────────
 # 6.  Import UI components — these are the only public exports of this module
 # ─────────────────────────────────────────────────────────────────────────────
-from ui.colors import C, apply_ui_accent, current_palette, retheme_all_widgets, qcol  # noqa: E402
-from ui.widgets import (  # noqa: E402
+from brjarvis.ui.colors import C, apply_ui_accent, current_palette, retheme_all_widgets, qcol  # noqa: E402
+from brjarvis.ui.widgets import (  # noqa: E402
     HudCanvas, MetricBar, LogWidget,
     SubAgentTaskWidget, SubAgentTaskPanel, FileDropZone,
 )
-from ui.overlays import (  # noqa: E402
+from brjarvis.ui.overlays import (  # noqa: E402
     SetupOverlay, HueWheel, CustomizeOverlay, ClipboardPanel, RemoteKeyOverlay,
 )
-from ui.main_window import MainWindow  # noqa: E402
-from ui.app import (  # noqa: E402
+from brjarvis.ui.main_window import MainWindow  # noqa: E402
+from brjarvis.ui.app import (  # noqa: E402
     JarvisUI, HeadlessJarvisUI, is_gui_available, _RootShim,
 )
 

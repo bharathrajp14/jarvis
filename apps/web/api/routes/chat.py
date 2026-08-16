@@ -13,12 +13,12 @@ from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
+from brjarvis.core.paths import paths
 from ..state import get_orchestrator
 
 logger = logging.getLogger("JARVIS.API.Chat")
 router = APIRouter(tags=["Chat"])
 
-_BASE_DIR = Path(__file__).resolve().parent.parent.parent
 _CHAT_ASYNC_LOCK: asyncio.Lock | None = None
 
 
@@ -79,8 +79,8 @@ async def chat(req: ChatRequest):
     if not orchestrator:
         raise HTTPException(status_code=503, detail="JARVIS not initialized")
     try:
-        from actions.rag_library import galaxy_chat
-        res = galaxy_chat(req.message, str(_BASE_DIR))
+        from brjarvis.actions.rag_library import galaxy_chat
+        res = galaxy_chat(req.message, str(paths.PROJECT_ROOT))
         response = res.get("answer")
         nodes = res.get("nodes", [])
         return {"response": response, "nodes": nodes}

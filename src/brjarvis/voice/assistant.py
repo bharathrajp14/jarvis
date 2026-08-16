@@ -19,7 +19,7 @@ import traceback
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
-from router import AgentProfile
+from brjarvis.router import AgentProfile
 from .state_machine import VoiceStateMachine, VoiceState, VoiceErrorType
 from .audio_bus import AudioBus, AudioBusMicrophoneSource
 
@@ -58,10 +58,10 @@ except ImportError:
     pass
 
 try:
-    from ui_mark import JarvisUI
+    from brjarvis.desktop.ui_mark import JarvisUI
 except ImportError:
     try:
-        from ui import JarvisUI
+        from brjarvis.ui import JarvisUI
     except ImportError:
         class JarvisUI:
             def __init__(self):
@@ -308,25 +308,26 @@ class BRVoiceAssistant:
         recognizer.non_speaking_duration = 0.25
         recognizer.phrase_threshold = 0.1
 
-    def _is_wake_phrase(self, text: str, enforce_cooldown: bool = False) -> bool:
-        """Strict wake word matching policy: strongly prefers 'Jarvis' and configured aliases."""
-        now = time.monotonic()
-        if enforce_cooldown and (now - self._last_wake_time) < self._wake_cooldown_seconds:
+    def _is_wake_phrase(self, text: str) -> bool:
+        if not text:
             return False
 
-        normalized = re.sub(r"[^a-z0-9\s]", " ", (text or "").lower()).strip()
-        if not normalized:
+        # Strict Mute & Speaking guard
+        if getattr(self.ui, "muted", False) or getattr(self.ui, "speaking", False):
+            return False
+        if self.state_machine.current_state in (VoiceState.MUTED, VoiceState.SPEAKING):
             return False
 
-        if _STRICT_WAKE_RE.search(normalized):
-            self._last_wake_time = now
-            return True
+        # Reject non-ASCII / hallucinated scripts during wake detection
+        if any(ord(c) > 127 for c in text):
+            return False
 
-        wake_word = self.wake_word.lower().strip()
-        if wake_word and re.search(r"\b" + re.escape(wake_word) + r"\b", normalized):
-            self._last_wake_time = now
-            return True
+        now = time.time()
+        # Cooldown guard: prevent wake triggers within 1.2s of last wake
+        if (now - self._last_wake_time) < 1.2:
+            return False
 
+        normalized = text.lower().strip()
         for alias in DEFAULT_WAKE_ALIASES:
             if re.search(r"\b" + re.escape(alias) + r"\b", normalized):
                 self._last_wake_time = now
@@ -338,7 +339,7 @@ class BRVoiceAssistant:
         """Extract trailing command when user speaks wake-word and command in a single sentence."""
         if not text:
             return ""
-        from voice.prompt_refiner import VoicePromptRefiner
+        from brjarvis.voice.prompt_refiner import VoicePromptRefiner
         collapsed = VoicePromptRefiner.get_instance().collapse_repetitions(text)
         norm = collapsed.lower().strip()
         cleaned = _WAKE_STRIP_RE.sub("", norm).strip()
@@ -362,11 +363,27 @@ class BRVoiceAssistant:
 
     async def _transcribe_wake(self, audio: sr.AudioData) -> str:
         """Fast offline wake-word transcription via local faster-whisper CTranslate2."""
+        if getattr(self.ui, "muted", False) or self.state_machine.current_state == VoiceState.MUTED:
+            return ""
+
         loop = self._get_active_loop()
         text = ""
 
+        # Energy gate: check if audio data is actual speech or silence
         try:
-            from voice.whisper_local import transcribe_wake_fast, is_available as whisper_available
+            raw_bytes = audio.get_raw_data()
+            if len(raw_bytes) > 0:
+                from brjarvis.core.native_bridge import audio_energy
+                samples = [int.from_bytes(raw_bytes[i:i+2], "little", signed=True) / 32768.0 for i in range(0, min(2048, len(raw_bytes)), 2)]
+                if samples:
+                    rms = audio_energy(samples)
+                    if rms < 0.015:  # Below minimal speech threshold
+                        return ""
+        except Exception:
+            pass
+
+        try:
+            from brjarvis.voice.whisper_local import transcribe_wake_fast, is_available as whisper_available
             if whisper_available():
                 text = await loop.run_in_executor(
                     None, lambda: transcribe_wake_fast(
@@ -380,13 +397,16 @@ class BRVoiceAssistant:
 
         if not text.strip() and hasattr(self, "r") and self.r:
             try:
-                from voice.multilingual import get_google_stt_code
-                stt_lang = get_google_stt_code()
+                # Force English for wake detection to prevent noise hallucinations
                 text = await loop.run_in_executor(
-                    None, lambda: self.r.recognize_google(audio, language=stt_lang).lower()
+                    None, lambda: self.r.recognize_google(audio, language="en-US").lower()
                 )
             except Exception:
                 text = ""
+
+        # Filter out non-ASCII / hallucinated characters
+        if any(ord(c) > 127 for c in text):
+            return ""
 
         return text.strip()
 
@@ -489,7 +509,7 @@ class BRVoiceAssistant:
         self.state_machine.transition_to(VoiceState.UNDERSTANDING)
 
         # Refine raw acoustic transcript
-        from voice.prompt_refiner import refine_voice_prompt
+        from brjarvis.voice.prompt_refiner import refine_voice_prompt
         ref_res = refine_voice_prompt(text)
         text_clean = ref_res["refined"]
 
@@ -829,54 +849,62 @@ class BRVoiceAssistant:
             with mic_source as source:
                 self.ui.write_log("SYS: Calibrating microphone noise threshold...")
                 try:
-                    self.r.adjust_for_ambient_noise(source, duration=self._ambient_calibration)
+                    time.sleep(0.2)  # Allow hardware audio buffer to populate
+                    self.r.adjust_for_ambient_noise(source, duration=min(0.5, self._ambient_calibration))
                     if self.r.energy_threshold < 180:
                         self.r.energy_threshold = 180
                     self.r.phrase_threshold = 0.08
                     self.r.dynamic_energy_ratio = 1.25
                     mic_source.drain()
+                except Exception as cal_err:
+                    logger.warning("[Voice] Ambient noise calibration note: %s — using safe fallback threshold", cal_err)
+                    self.r.energy_threshold = 300
+                    self.r.phrase_threshold = 0.08
+                    self.r.dynamic_energy_ratio = 1.25
 
-                    # Start background noise calibrator
-                    try:
-                        from voice.noise_calibrator import get_calibrator
-                        _nc = get_calibrator()
-                        if not _nc.is_calibrated:
-                            _nc.start_background_calibration(chunk_size=512, sample_rate=16000)
-                    except Exception as _nc_err:
-                        logger.debug("NoiseCalibrator boot error: %s", _nc_err)
+                # Start background noise calibrator
+                try:
+                    from brjarvis.voice.noise_calibrator import get_calibrator
+                    _nc = get_calibrator()
+                    if not _nc.is_calibrated:
+                        _nc.start_background_calibration(chunk_size=512, sample_rate=16000)
+                except Exception as _nc_err:
+                    logger.debug("NoiseCalibrator boot note: %s", _nc_err)
 
-                    self.state_machine.transition_to(VoiceState.WAKE_DETECTION)
-                    self.ui.write_log(f"SYS: Microphone active (Device {mic_source.device_index}). Hands-free mode active. Listening for 'Jarvis'...")
+                self.state_machine.transition_to(VoiceState.WAKE_DETECTION)
+                self.ui.write_log(f"SYS: Microphone active (Device {mic_source.device_index}). Hands-free mode active. Listening for 'Jarvis'...")
 
-                    # Mic Health Watchdog
-                    def _mic_watchdog():
-                        while True:
-                            time.sleep(5.0)
-                            try:
-                                if not mic_source.is_alive():
-                                    logger.warning("[Watchdog] Mic stale — attempting hot-plug recovery")
-                                    self.state_machine.transition_to(VoiceState.RECOVERING)
-                                    self.ui.write_log("WRN: Mic disconnect detected. Reconnecting...")
-                                    if mic_source.try_reconnect():
-                                        self.state_machine.transition_to(VoiceState.WAKE_DETECTION)
-                                        self.ui.write_log("SYS: Mic recovered successfully.")
-                                    else:
-                                        self.state_machine.set_error(VoiceErrorType.MICROPHONE_DISCONNECTED, "Recovery failed")
-                                        self.ui.write_log("ERR: Mic recovery failed. Using text input only.")
-                            except Exception:
-                                pass
+                # Mic Health Watchdog
+                def _mic_watchdog():
+                    while True:
+                        time.sleep(5.0)
+                        try:
+                            if not mic_source.is_alive():
+                                logger.warning("[Watchdog] Mic stale — attempting hot-plug recovery")
+                                self.state_machine.transition_to(VoiceState.RECOVERING)
+                                self.ui.write_log("WRN: Mic disconnect detected. Reconnecting...")
+                                if mic_source.try_reconnect():
+                                    self.state_machine.transition_to(VoiceState.WAKE_DETECTION)
+                                    self.ui.write_log("SYS: Mic recovered successfully.")
+                                else:
+                                    self.state_machine.set_error(VoiceErrorType.MICROPHONE_DISCONNECTED, "Recovery failed")
+                                    self.ui.write_log("ERR: Mic recovery failed. Using text input only.")
+                        except Exception:
+                            pass
 
-                    threading.Thread(target=_mic_watchdog, daemon=True, name="MicWatchdog").start()
-
-                except Exception as e:
-                    self.ui.write_log(f"ERR: Microphone calibration failed: {e}")
+                threading.Thread(target=_mic_watchdog, daemon=True, name="MicWatchdog").start()
 
                 # Wake-word passive listening loop
                 while True:
                     try:
                         curr_st = self.state_machine.current_state
-                        if self.ui.speaking or curr_st in (VoiceState.THINKING if hasattr(VoiceState, "THINKING") else VoiceState.EXECUTING, VoiceState.SPEAKING, VoiceState.PLANNING, VoiceState.MUTED):
-                            await asyncio.sleep(0.1)
+                        if getattr(self.ui, "muted", False) or self.ui.speaking or curr_st in (
+                            VoiceState.THINKING if hasattr(VoiceState, "THINKING") else VoiceState.EXECUTING,
+                            VoiceState.SPEAKING,
+                            VoiceState.PLANNING,
+                            VoiceState.MUTED
+                        ):
+                            await asyncio.sleep(0.2)
                             continue
 
                         self.r.pause_threshold = 0.25

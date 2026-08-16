@@ -259,6 +259,11 @@ def refine_voice_prompt(raw_speech: str) -> Dict[str, Any]:
     return VoicePromptRefiner.get_instance().refine(raw_speech)
 
 
+def refine_prompt(raw_speech: str) -> str:
+    """Convenience helper returning the refined prompt string."""
+    return str(VoicePromptRefiner.get_instance().refine(raw_speech).get("refined", raw_speech))
+
+
 def collapse_repetitions(text: str) -> str:
     """Module-level convenience wrapper for collapse_repetitions."""
     return VoicePromptRefiner.get_instance().collapse_repetitions(text)

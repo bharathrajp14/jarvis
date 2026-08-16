@@ -21,7 +21,10 @@ from .registry import register_tool, get_orchestrator_ref
     }
 )
 def tool_run_skill(args: dict) -> str:
-    from skills import find_skill, load_skills, execute_skill
+    try:
+        from brjarvis.skills import find_skill, load_skills, execute_skill
+    except ImportError:
+        from skills import find_skill, load_skills, execute_skill
     skill_name = args.get("name", "").strip()
     skill_args = args.get("args", "")
     
@@ -50,7 +53,10 @@ def tool_run_skill(args: dict) -> str:
     parameters={}
 )
 def tool_list_skills(args: dict) -> str:
-    from skills import load_skills
+    try:
+        from brjarvis.skills import load_skills
+    except ImportError:
+        from skills import load_skills
     skills = [s for s in load_skills() if s.user_invocable]
     if not skills:
         return "No skills available."

@@ -290,3 +290,78 @@ def get_config(force_reload: bool = False) -> JarvisConfig:
         if _global_config is None or force_reload:
             _global_config = JarvisConfig.load()
     return _global_config
+
+
+# ── MK40.2: Model & Credential Display (§29, §30) ────────────────────────────
+
+def get_credential_source() -> Dict[str, str]:
+    """
+    Determine which API credential is active and return source metadata.
+
+    MK40.2 §30: If both GOOGLE_API_KEY and GEMINI_API_KEY exist, GOOGLE_API_KEY
+    wins (deterministic precedence). A warning is emitted explaining the conflict.
+    Never exposes the key value — only the variable name.
+
+    Returns:
+        {
+            "source": "GOOGLE_API_KEY" | "GEMINI_API_KEY" | "NOT_CONFIGURED",
+            "conflict": True | False,
+            "warning": "..." | None
+        }
+    """
+    google_key = bool(os.environ.get("GOOGLE_API_KEY", "").strip())
+    gemini_key = bool(os.environ.get("GEMINI_API_KEY", "").strip())
+
+    if google_key and gemini_key:
+        _logger.warning(
+            "[Config] Both GOOGLE_API_KEY and GEMINI_API_KEY are set. "
+            "GOOGLE_API_KEY takes precedence per MK40.2 §30. Remove GEMINI_API_KEY to eliminate this conflict."
+        )
+        return {
+            "source": "GOOGLE_API_KEY",
+            "conflict": True,
+            "warning": (
+                "Both GOOGLE_API_KEY and GEMINI_API_KEY are set. "
+                "GOOGLE_API_KEY is active. Remove GEMINI_API_KEY to resolve the conflict."
+            ),
+        }
+    elif google_key:
+        return {"source": "GOOGLE_API_KEY", "conflict": False, "warning": None}
+    elif gemini_key:
+        return {"source": "GEMINI_API_KEY", "conflict": False, "warning": None}
+    else:
+        return {"source": "NOT_CONFIGURED", "conflict": False, "warning": "No Google/Gemini API key found in environment."}
+
+
+def get_model_display_info() -> Dict[str, str]:
+    """
+    Return full model identity information for display in the CLI banner and /status.
+
+    MK40.2 §29: Never display generic "gpt" or "gemini". Always show specific
+    provider, model ID, endpoint, and credential source.
+    """
+    cfg = get_config()
+    cred = get_credential_source()
+    backend = cfg.model.default_backend.lower()
+
+    # Map backend to specific model ID and provider string
+    backend_model_map: Dict[str, tuple[str, str]] = {
+        "gemini":   ("Google DeepMind", cfg.model.gemini),
+        "claude":   ("Anthropic",       cfg.model.claude),
+        "gpt":      ("OpenAI",          cfg.model.gpt),
+        "ollama":   ("Ollama (local)",  cfg.model.ollama),
+        "nvidia":   ("NVIDIA NIM",      cfg.model.nvidia),
+        "mistral":  ("Mistral AI",      cfg.model.mistral),
+    }
+
+    provider, model_id = backend_model_map.get(backend, ("Unknown Provider", backend))
+
+    return {
+        "provider":          provider,
+        "model":             model_id,
+        "backend_key":       backend,
+        "endpoint":          os.environ.get("JARVIS_GATEWAY_URL", "localhost (direct API)"),
+        "credential_source": cred["source"],
+        "credential_conflict": str(cred["conflict"]),
+        "credential_warning": cred.get("warning") or "",
+    }

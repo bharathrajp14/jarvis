@@ -377,9 +377,10 @@ class ApplicationStatus(str, Enum):
     UNKNOWN                  = "UNKNOWN"
 
     # Backward-compatible aliases
+    APPLIED   = "SUBMITTED"
     INTERVIEW = "INTERVIEW_SCHEDULED"
+    OFFER     = "OFFER_RECEIVED"
     TECHNICAL = "TECHNICAL_ROUND"
-    OFFER = "OFFER_RECEIVED"
 
 
 class ApplicationEventType(str, Enum):
@@ -633,7 +634,7 @@ class Application:
         self.task_id = task_id
         self.candidate_id = candidate_id
         self.job_id = job_id
-        self.company = company
+        self.company = company or kwargs.get("company_name", "")
         self.job_title = job_title or kwargs.get("role_title", "")
         self.job_url = job_url or kwargs.get("application_url", "")
         self.source = source
@@ -927,4 +928,8 @@ class CareerContact:
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
+
+
+# Aliases for backward compatibility
+ApplicationRecord = Application
 

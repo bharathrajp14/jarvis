@@ -315,37 +315,44 @@ def interactive_menu() -> int:
 
 def main() -> int:
     """Canonical Application Bootstrap CLI Dispatcher."""
-    args = sys.argv[1:]
-    if not args:
-        return interactive_menu()
+    try:
+        args = sys.argv[1:]
+        if not args:
+            return interactive_menu()
 
-    cmd = args[0].lower().strip().lstrip("-")
-    if cmd in ("status", "info"):
-        show_status()
-    elif cmd in ("help", "h", "?"):
-        show_help()
-    elif cmd in ("doctor", "check"):
-        auto_fix = "--fix" in args or "-f" in args
-        rep = run_diagnostics_audit(auto_repair=auto_fix)
-        show_doctor(rep)
-    elif cmd in ("cli", "repl", "terminal"):
-        launch_cli()
-    elif cmd in ("web", "server", "dashboard"):
-        launch_web_server()
-    elif cmd in ("career", "careeros", "career-os", "studio"):
-        launch_career_studio()
-    elif cmd in ("sync", "career-sync"):
-        from brjarvis.career.crm.database import get_career_crm_db
-        db = get_career_crm_db()
-        console.print(f"[green]Career CRM synchronized. Total applications: {len(db.list_applications())}[/]")
-    elif cmd in ("voice", "hud"):
-        launch_voice()
-    else:
-        # Default to CLI asking question or executing query
-        from brjarvis.core.cli import run_query
-        return run_query(" ".join(args))
-    return 0
+        cmd = args[0].lower().strip().lstrip("-")
+        if cmd in ("status", "info"):
+            show_status()
+        elif cmd in ("help", "h", "?"):
+            show_help()
+        elif cmd in ("doctor", "check"):
+            auto_fix = "--fix" in args or "-f" in args
+            rep = run_diagnostics_audit(auto_repair=auto_fix)
+            show_doctor(rep)
+        elif cmd in ("cli", "repl", "terminal"):
+            launch_cli()
+        elif cmd in ("web", "server", "dashboard"):
+            launch_web_server()
+        elif cmd in ("career", "careeros", "career-os", "studio"):
+            launch_career_studio()
+        elif cmd in ("sync", "career-sync"):
+            from brjarvis.career.crm.database import get_career_crm_db
+            db = get_career_crm_db()
+            console.print(f"[green]Career CRM synchronized. Total applications: {len(db.list_applications())}[/]")
+        elif cmd in ("voice", "hud"):
+            launch_voice()
+        else:
+            # Default to CLI asking question or executing query
+            from brjarvis.core.cli import run_query
+            return run_query(" ".join(args))
+        return 0
+    except (KeyboardInterrupt, EOFError):
+        console.print("\n[dim]Session closed.[/]")
+        return 0
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    try:
+        sys.exit(main())
+    except (KeyboardInterrupt, EOFError):
+        sys.exit(0)

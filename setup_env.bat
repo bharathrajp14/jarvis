@@ -12,10 +12,10 @@ echo   BR JARVIS MK40.2+ -- Environment Setup
 echo  ========================================================
 echo.
 
-:: Find Python (prefer 3.14, also try 3.12, 3.11)
+:: Find Python (prefer stable 3.12, also try 3.11, 3.13, 3.10, 3.14)
 set PYTHON_CMD=
 
-for %%V in (3.14 3.12 3.13 3.11) do (
+for %%V in (3.12 3.11 3.13 3.10 3.14) do (
     if "!PYTHON_CMD!"=="" (
         py -%%V --version >nul 2>&1
         if !errorlevel!==0 (

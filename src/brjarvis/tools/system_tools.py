@@ -28,7 +28,7 @@ from .registry import register_tool
 )
 def tool_cli_controller(args: dict) -> str:
     try:
-        from actions.cli_controller import cli_controller
+        from brjarvis.actions.cli_controller import cli_controller
         return str(cli_controller(parameters=args))
     except ImportError:
         return "ERROR: cli_controller not installed"
@@ -45,7 +45,7 @@ def tool_cli_controller(args: dict) -> str:
     }
 )
 def tool_system_monitor(args: dict) -> str:
-    from actions.system_monitor import system_monitor
+    from brjarvis.actions.system_monitor import system_monitor
     return system_monitor(parameters=args)
 
 
@@ -63,7 +63,7 @@ def tool_system_monitor(args: dict) -> str:
     }
 )
 def tool_screen_share_start(args: dict) -> str:
-    from actions.screen_share import start_sharing
+    from brjarvis.actions.screen_share import start_sharing
     return start_sharing(
         port=args.get("port", 8765),
         monitor=args.get("monitor", 1),
@@ -78,7 +78,7 @@ def tool_screen_share_start(args: dict) -> str:
     parameters={}
 )
 def tool_screen_share_stop(args: dict) -> str:
-    from actions.screen_share import stop_sharing
+    from brjarvis.actions.screen_share import stop_sharing
     return stop_sharing()
 
 
@@ -88,7 +88,7 @@ def tool_screen_share_stop(args: dict) -> str:
     parameters={}
 )
 def tool_screen_share_status(args: dict) -> str:
-    from actions.screen_share import get_status
+    from brjarvis.actions.screen_share import get_status
     return json.dumps(get_status(), indent=2)
 
 
@@ -98,7 +98,7 @@ def tool_screen_share_status(args: dict) -> str:
     parameters={}
 )
 def tool_list_monitors(args: dict) -> str:
-    from actions.screen_share import list_monitors
+    from brjarvis.actions.screen_share import list_monitors
     return json.dumps(list_monitors(), indent=2)
 
 
@@ -114,7 +114,7 @@ def tool_list_monitors(args: dict) -> str:
     }
 )
 def tool_native_hash_fast(args: dict) -> str:
-    from core.native_bridge import fast_hash
+    from brjarvis.core.native_bridge import fast_hash
     text = args.get("text", "")
     h = fast_hash(text.encode("utf-8") if isinstance(text, str) else text)
     return json.dumps({"hash": h, "hex": hex(h)})
@@ -132,7 +132,7 @@ def tool_native_hash_fast(args: dict) -> str:
     }
 )
 def tool_native_audio_meter(args: dict) -> str:
-    from core.native_bridge import audio_energy
+    from brjarvis.core.native_bridge import audio_energy
     samples = args.get("samples", [0.0])
     rms = audio_energy(samples)
     return json.dumps({"rms_energy": rms})
@@ -154,7 +154,7 @@ def tool_native_audio_meter(args: dict) -> str:
     }
 )
 def tool_native_grid_transform(args: dict) -> str:
-    from core.native_bridge import grid_transform
+    from brjarvis.core.native_bridge import grid_transform
     gx = int(args.get("gx", 0))
     gy = int(args.get("gy", 0))
     gs = int(args.get("grid_size", 1000))
@@ -175,7 +175,7 @@ def tool_native_grid_transform(args: dict) -> str:
     }
 )
 def tool_native_proc_telemetry(args: dict) -> str:
-    from core.native_bridge import proc_memory_kb
+    from brjarvis.core.native_bridge import proc_memory_kb
     import os
     pid = int(args.get("pid", os.getpid()))
     kb = proc_memory_kb(pid)
@@ -196,7 +196,7 @@ def tool_native_proc_telemetry(args: dict) -> str:
 )
 def tool_system_cleanup(args: dict) -> str:
     try:
-        from actions.system_cleanup import execute_system_cleanup
+        from brjarvis.actions.system_cleanup import execute_system_cleanup
         return execute_system_cleanup(
             clean_temp=args.get("clean_temp", True),
             clean_pycache=args.get("clean_pycache", True),
@@ -244,7 +244,7 @@ def tool_system_cleanup(args: dict) -> str:
 )
 def tool_system_optimizer(args: dict) -> str:
     try:
-        from actions.system_optimizer import optimize_system_resources
+        from brjarvis.actions.system_optimizer import optimize_system_resources
         res = optimize_system_resources()
         if isinstance(res, dict):
             return f"System Optimized: Freed {res.get('freed_mb', 0)} MB RAM, collected {res.get('collected_objects', 0)} GC objects."

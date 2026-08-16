@@ -37,8 +37,14 @@ class CareerCRMDatabase:
     _INSTANCE: Optional[CareerCRMDatabase] = None
     _LOCK = threading.RLock()
 
-    def __init__(self):
-        self.db = get_canonical_db()
+    def __init__(self, db_path: Optional[Any] = None, db_manager: Optional[Any] = None):
+        if db_manager:
+            self.db = db_manager
+        elif db_path:
+            from brjarvis.memory.canonical_db import CanonicalDatabaseManager
+            self.db = CanonicalDatabaseManager(db_path=Path(db_path))
+        else:
+            self.db = get_canonical_db()
         self._init_tables()
 
     @classmethod
@@ -338,6 +344,17 @@ class CareerCRMDatabase:
             if row:
                 return Application.from_dict(json.loads(row["data_json"]))
         return None
+
+    def update_application_status(self, application_id: str, status: Union[ApplicationStatus, str]) -> Optional[Application]:
+        """Update an application's status and persist."""
+        app = self.get_application(application_id)
+        if not app:
+            return None
+        new_status = ApplicationStatus(status) if isinstance(status, str) else status
+        app.application_status = new_status
+        app.last_updated = time.time()
+        self.save_application(app)
+        return app
 
     def find_application_by_job_or_company(self, company: str, job_title: Optional[str] = None, job_id: Optional[str] = None) -> Optional[Application]:
         """Search application by company name, job title, or job_id."""

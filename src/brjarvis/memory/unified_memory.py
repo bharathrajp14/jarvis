@@ -3,8 +3,8 @@ from __future__ import annotations
 
 import logging
 from typing import Any, Dict, List, Optional
-from core.runtime import get_runtime
-from events.bus import get_event_bus
+from brjarvis.core.runtime import get_runtime
+from brjarvis.events.bus import get_event_bus
 from .archiver import MemoryArchiver
 from .cache import MemoryCache
 from .working import WorkingMemory

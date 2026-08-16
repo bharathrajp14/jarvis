@@ -20,7 +20,7 @@ from .registry import register_tool
     }
 )
 def tool_open_app(args: dict) -> str:
-    from actions.open_app import open_app
+    from brjarvis.actions.open_app import open_app
     return open_app(parameters=args) or "Done."
 
 
@@ -38,7 +38,7 @@ def tool_open_app(args: dict) -> str:
     }
 )
 def tool_game_updater(args: dict) -> str:
-    from actions.game_updater import game_updater
+    from brjarvis.actions.game_updater import game_updater
     return game_updater(parameters=args) or "Done."
 
 
@@ -56,7 +56,7 @@ def tool_game_updater(args: dict) -> str:
     }
 )
 def tool_computer_settings(args: dict) -> str:
-    from actions.computer_settings import computer_settings
+    from brjarvis.actions.computer_settings import computer_settings
     return computer_settings(parameters=args) or "Done."
 
 
@@ -74,7 +74,7 @@ def tool_computer_settings(args: dict) -> str:
     }
 )
 def tool_desktop_control(args: dict) -> str:
-    from actions.desktop import desktop_control
+    from brjarvis.actions.desktop import desktop_control
     return desktop_control(parameters=args) or "Done."
 
 
@@ -90,7 +90,7 @@ def tool_desktop_control(args: dict) -> str:
     }
 )
 def tool_weather_report(args: dict) -> str:
-    from actions.weather_report import weather_action
+    from brjarvis.actions.weather_report import weather_action
     return weather_action(parameters=args) or "Done."
 
 
@@ -107,7 +107,7 @@ def tool_weather_report(args: dict) -> str:
     }
 )
 def tool_youtube_video(args: dict) -> str:
-    from actions.youtube_video import youtube_video
+    from brjarvis.actions.youtube_video import youtube_video
     return youtube_video(parameters=args) or "Done."
 
 
@@ -128,7 +128,7 @@ def tool_youtube_video(args: dict) -> str:
     }
 )
 def tool_flight_finder(args: dict) -> str:
-    from actions.flight_finder import flight_finder
+    from brjarvis.actions.flight_finder import flight_finder
     return flight_finder(parameters=args) or "Done."
 
 
@@ -147,7 +147,7 @@ def tool_flight_finder(args: dict) -> str:
     }
 )
 def tool_code_helper(args: dict) -> str:
-    from actions.code_helper import code_helper
+    from brjarvis.actions.code_helper import code_helper
     return code_helper(parameters=args) or "Done."
 
 
@@ -165,7 +165,7 @@ def tool_code_helper(args: dict) -> str:
     }
 )
 def tool_dev_agent(args: dict) -> str:
-    from actions.dev_agent import dev_agent
+    from brjarvis.actions.dev_agent import dev_agent
     return dev_agent(parameters=args) or "Done."
 
 
@@ -181,7 +181,7 @@ def tool_dev_agent(args: dict) -> str:
     }
 )
 def tool_screen_process(args: dict) -> str:
-    from actions.screen_processor import screen_process
+    from brjarvis.actions.screen_processor import screen_process
     screen_process(parameters=args)
     return "Screen captured and analyzed."
 
@@ -203,7 +203,7 @@ def tool_agent_task(args: dict) -> str:
     if not goal:
         return "No goal specified for agent_task."
     # Dynamic import to avoid circular dependencies
-    from agent.executor import AgentExecutor
+    from brjarvis.agent.executor import AgentExecutor
     sub_executor = AgentExecutor()
     return sub_executor.execute(goal=goal)
 
@@ -224,7 +224,7 @@ def tool_agent_task(args: dict) -> str:
     }
 )
 def tool_file_controller(args: dict) -> str:
-    from actions.file_controller import file_controller
+    from brjarvis.actions.file_controller import file_controller
     return file_controller(parameters=args) or "File operation completed."
 
 

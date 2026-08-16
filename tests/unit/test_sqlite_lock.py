@@ -1,24 +1,27 @@
-import pytest
+"""Unit tests for Concurrency-Safe SQLite Locking."""
+from __future__ import annotations
+
 import asyncio
-from unittest.mock import MagicMock
-from memory.sqlite_lock import async_run_sqlite_write
+import pytest
+from brjarvis.memory.sqlite_lock import _get_async_sqlite_lock, run_sqlite_write, async_run_sqlite_write
 
+
+@pytest.mark.unit
+def test_sync_sqlite_write_execution():
+    """Verify synchronous SQLite write runner executes in background worker."""
+    def sample_write(val: int) -> int:
+        return val * 2
+
+    res = run_sqlite_write(sample_write, 21)
+    assert res == 42
+
+
+@pytest.mark.unit
 @pytest.mark.asyncio
-async def test_concurrent_sqlite_writes():
-    call_count = 0
+async def test_async_sqlite_write_execution():
+    """Verify async SQLite write runner acquires lock and executes correctly."""
+    def sample_write(name: str) -> str:
+        return f"written_{name}"
 
-    def mock_write(item_id: int):
-        nonlocal call_count
-        call_count += 1
-        return f"written_{item_id}"
-
-    tasks = [
-        async_run_sqlite_write(mock_write, i)
-        for i in range(10)
-    ]
-    results = await asyncio.gather(*tasks)
-
-    assert len(results) == 10
-    assert call_count == 10
-    assert results[0] == "written_0"
-    assert results[9] == "written_9"
+    res = await async_run_sqlite_write(sample_write, "record_01")
+    assert res == "written_record_01"

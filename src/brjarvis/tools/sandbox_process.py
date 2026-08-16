@@ -177,7 +177,7 @@ class SandboxedProcessRunner:
     def _export_jail_artifacts(self, jail_dir: Path, task_id: str = "default") -> List[Dict[str, Any]]:
         """Discover and securely export all user-facing artifacts generated inside jail before destruction."""
         try:
-            from agent.artifacts import get_artifact_manager
+            from brjarvis.agent.artifacts import get_artifact_manager
             mgr = get_artifact_manager()
             exported = []
             if not jail_dir.exists():
@@ -199,7 +199,7 @@ class SandboxedProcessRunner:
 
     def export_jail_artifact(self, sandbox_file: Union[str, Path], task_id: str = "default") -> Optional[Any]:
         """Manually export a specific file from a sandbox jail to the host directory."""
-        from agent.artifacts import get_artifact_manager
+        from brjarvis.agent.artifacts import get_artifact_manager
         mgr = get_artifact_manager()
         rec = mgr.export_sandbox_artifact(sandbox_file, task_id=task_id)
         return rec if rec.exported else None
@@ -221,28 +221,19 @@ class SandboxedProcessRunner:
                 "returncode": -1
             }
 
-        # Strip markdown code blocks
-        clean_code = code.strip()
-        clean_code = re.sub(r"^```[a-zA-Z0-9_\-]*\n?", "", clean_code)
-        clean_code = re.sub(r"\n?```$", "", clean_code).strip()
-
-        jail_id = f"jail_{uuid.uuid4().hex[:12]}"
-        jail_dir = self.jail_root / jail_id
+        jail_id = str(uuid.uuid4())[:8]
+        jail_dir = self.jail_root / f"jail_{jail_id}"
         jail_dir.mkdir(parents=True, exist_ok=True)
 
-        ext_map = {
-            "python": ".py",
-            "javascript": ".js",
-            "bash": ".sh",
-            "powershell": ".ps1"
-        }
-        script_file = jail_dir / f"main{ext_map[lang]}"
+        clean_code = _sanitize_jail_code(code, lang)
+        ext_map = {"python": ".py", "javascript": ".js", "bash": ".sh", "powershell": ".ps1"}
+        script_file = jail_dir / f"main{ext_map.get(lang, '.txt')}"
         script_file.write_text(clean_code, encoding="utf-8")
 
         env_profile = None
         if lang == "python":
             try:
-                from core.execution.environment_resolver import get_environment_resolver
+                from brjarvis.core.execution.environment_resolver import get_environment_resolver
                 env_profile = get_environment_resolver().resolve_python()
             except Exception:
                 pass

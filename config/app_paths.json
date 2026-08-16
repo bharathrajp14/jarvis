@@ -181,7 +181,7 @@
   },
   "pwsh": {
     "name": "pwsh.exe",
-    "path": "C:\\Program Files\\WindowsApps\\Microsoft.PowerShell_7.6.4.0_x64__8wekyb3d8bbwe\\pwsh.exe",
+    "path": "C:\\Program Files\\WindowsApps\\Microsoft.PowerShell_7.6.5.0_x64__8wekyb3d8bbwe\\pwsh.exe",
     "type": "executable",
     "source": "Registry App Paths"
   },

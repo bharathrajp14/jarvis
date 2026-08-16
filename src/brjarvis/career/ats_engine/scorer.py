@@ -28,6 +28,11 @@ class ATSScoreReport:
     recommended_changes: List[str] = field(default_factory=list)
     grade: str = "A"                         # "A+" (95+), "A" (85-94), "B" (70-84), "C" (50-69), "D" (<50)
 
+    @property
+    def total_score(self) -> float:
+        """Alias for overall_score."""
+        return self.overall_score
+
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
 
@@ -54,8 +59,49 @@ class ATSEngine:
     }
 
     @classmethod
-    def evaluate_resume(cls, resume: ResumeSchema, job_description: Optional[str] = None) -> ATSScoreReport:
+    def evaluate_resume(cls, resume: Union[ResumeSchema, str, Any], job_description: Optional[str] = None) -> ATSScoreReport:
         """Evaluate resume structure, syntax, and keyword alignment against job description."""
+        if isinstance(resume, str):
+            full_text = resume
+            tokens = cls._extract_tokens(full_text)
+            if job_description:
+                kw_score, matched_kws, missing_kws, rel_score = cls._score_keywords_and_relevance(resume, tokens, job_description)
+            else:
+                kw_score, matched_kws, missing_kws, rel_score = 90.0, list(tokens)[:15], [], 90.0
+
+            found_sections = sum(1 for aliases in cls.STANDARD_SECTIONS.values() if any(a in full_text.lower() for a in aliases))
+            sec_score = (found_sections / max(1, len(cls.STANDARD_SECTIONS))) * 100.0
+            parse_score = 95.0 if ("@" in full_text and any(c.isdigit() for c in full_text)) else 75.0
+            read_score, read_recs = cls._score_readability(full_text, tokens)
+            cons_score = 90.0
+
+            overall = (
+                (kw_score * 0.25) +
+                (sec_score * 0.20) +
+                (parse_score * 0.15) +
+                (read_score * 0.15) +
+                (cons_score * 0.10) +
+                (rel_score * 0.15)
+            )
+            overall = round(max(0.0, min(100.0, overall)), 1)
+            grade = "A+" if overall >= 95.0 else ("A" if overall >= 85.0 else ("B" if overall >= 72.0 else ("C" if overall >= 55.0 else "D")))
+
+            return ATSScoreReport(
+                overall_score=overall,
+                keyword_coverage_score=round(kw_score, 1),
+                section_recognition_score=round(sec_score, 1),
+                parsing_risk_score=round(parse_score, 1),
+                readability_score=round(read_score, 1),
+                consistency_score=round(cons_score, 1),
+                role_relevance_score=round(rel_score, 1),
+                matched_keywords=matched_kws,
+                missing_keywords=missing_kws,
+                critical_risks=[],
+                warnings=[],
+                recommended_changes=read_recs,
+                grade=grade,
+            )
+
         full_text = cls._get_full_resume_text(resume)
         tokens = cls._extract_tokens(full_text)
 
@@ -127,6 +173,10 @@ class ATSEngine:
             recommended_changes=recommendations,
             grade=grade,
         )
+
+    def evaluate(self, resume: Any, job_description: Optional[str] = None) -> ATSScoreReport:
+        """Instance method alias for evaluate_resume."""
+        return self.evaluate_resume(resume, job_description)
 
     # ── Sub-Scoring Helpers ──────────────────────────────────────────────────
 
@@ -242,7 +292,7 @@ class ATSEngine:
         coverage_score = min(100.0, coverage_pct * 1.6)  # Scale since 60%+ JD token overlap is top-tier
 
         # Role Relevance
-        target_role_tokens = set(resume.target_role.lower().split())
+        target_role_tokens = set(resume.target_role.lower().split()) if hasattr(resume, "target_role") else set()
         role_matched = sum(1 for t in target_role_tokens if t in job_description.lower())
         relevance_score = min(100.0, 70.0 + (role_matched * 15.0))
 

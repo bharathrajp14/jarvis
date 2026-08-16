@@ -159,5 +159,14 @@ def __getattr__(name: str):
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    try:
+        sys.exit(main())
+    except (KeyboardInterrupt, EOFError):
+        print("\n\n[JARVIS] Session terminated by user. Goodbye.")
+        sys.exit(0)
+    except SystemExit as _se:
+        sys.exit(_se.code if _se.code is not None else 0)
+    except Exception as _fatal:
+        print(f"\n[Fatal Error] {_fatal}", file=sys.stderr)
+        sys.exit(1)
 
