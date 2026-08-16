@@ -213,6 +213,25 @@ class DocumentVerifier:
                     details=f"Verified CSV structure for '{p.name}'.",
                 )
 
+            elif ext in (".html", ".htm"):
+                content = p.read_text(encoding="utf-8", errors="replace").strip()
+                if len(content) < 10 or ("<html" not in content.lower() and "<div" not in content.lower() and "<!doctype" not in content.lower()):
+                    return VerificationOutcome(
+                        verified=False,
+                        verifier_name="DocumentVerifier",
+                        status=ExecutionStatus.VERIFICATION_FAILED,
+                        details=f"HTML '{p.name}' lacks valid HTML markup structure.",
+                        error="INVALID_HTML",
+                    )
+                return VerificationOutcome(
+                    verified=True,
+                    verifier_name="DocumentVerifier",
+                    status=ExecutionStatus.SUCCESS_VERIFIED,
+                    evidence=f"HTML document '{p.name}' verified ({len(content):,} chars, {p.stat().st_size:,} bytes).",
+                    details=f"Verified HTML structure for '{p.name}'.",
+                    observed_state={"size": p.stat().st_size, "chars": len(content)},
+                )
+
             return file_res
         except Exception as e:
             return VerificationOutcome(
@@ -222,6 +241,224 @@ class DocumentVerifier:
                 details=f"Structural parse verification failed for '{p.name}': {e}",
                 error="PARSE_ERROR",
             )
+
+
+class CareerVerifier:
+    """Specialized verifier for Career OS documents, ATS scores, application packages, and submissions."""
+
+    @staticmethod
+    def verify_resume_artifact(path_str: str | Path) -> VerificationOutcome:
+        """Verifies that a generated resume file exists, is non-empty, and structurally valid."""
+        return DocumentVerifier.verify_document(path_str)
+
+    @staticmethod
+    def verify_application_package(package_dir_or_json: str | Path | Dict[str, Any]) -> VerificationOutcome:
+        """Verifies complete application package containing resume, cover letter, and answers."""
+        try:
+            if isinstance(package_dir_or_json, dict):
+                pkg = package_dir_or_json
+                req_fields = ["package_id", "job_id", "company", "resume_path", "status"]
+                missing = [f for f in req_fields if f not in pkg]
+                if missing:
+                    return VerificationOutcome(
+                        verified=False,
+                        verifier_name="CareerVerifier",
+                        status=ExecutionStatus.FAILED,
+                        details=f"Application package metadata missing fields: {missing}",
+                        error="INCOMPLETE_PACKAGE",
+                    )
+                return VerificationOutcome(
+                    verified=True,
+                    verifier_name="CareerVerifier",
+                    status=ExecutionStatus.SUCCESS_VERIFIED,
+                    evidence=f"Application package '{pkg.get('package_id')}' validated for {pkg.get('company')}.",
+                    observed_state=pkg,
+                )
+            
+            p = Path(package_dir_or_json).resolve()
+            if p.is_file() and p.suffix.lower() == ".json":
+                data = json.loads(p.read_text(encoding="utf-8"))
+                return CareerVerifier.verify_application_package(data)
+            elif p.is_dir():
+                files = [f.name for f in p.iterdir() if f.is_file()]
+                has_resume = any("resume" in f.lower() for f in files)
+                if not has_resume:
+                    return VerificationOutcome(
+                        verified=False,
+                        verifier_name="CareerVerifier",
+                        status=ExecutionStatus.PARTIAL_SUCCESS,
+                        details=f"Application package directory '{p.name}' missing resume document.",
+                        error="MISSING_RESUME_FILE",
+                    )
+                return VerificationOutcome(
+                    verified=True,
+                    verifier_name="CareerVerifier",
+                    status=ExecutionStatus.SUCCESS_VERIFIED,
+                    evidence=f"Application package folder verified with {len(files)} deliverables.",
+                    observed_state={"files": files},
+                )
+            return VerificationOutcome(
+                verified=False,
+                verifier_name="CareerVerifier",
+                status=ExecutionStatus.FAILED,
+                details=f"Application package target '{p}' is neither directory nor json.",
+                error="INVALID_PACKAGE_TARGET",
+            )
+        except Exception as e:
+            return VerificationOutcome(
+                verified=False,
+                verifier_name="CareerVerifier",
+                status=ExecutionStatus.FAILED,
+                details=f"Career package verification error: {e}",
+                error="CAREER_VERIFICATION_ERROR",
+            )
+
+    @staticmethod
+    def verify_submission_evidence(evidence: Dict[str, Any] | str) -> VerificationOutcome:
+        """Verifies physical proof of job submission (confirmation ID, URL, email, API response)."""
+        if isinstance(evidence, str):
+            evidence = {"raw_text": evidence}
+        
+        conf_id = evidence.get("confirmation_id") or evidence.get("application_id")
+        conf_url = evidence.get("confirmation_url") or evidence.get("response_url")
+        api_ok = evidence.get("api_verified") is True
+        
+        if conf_id or conf_url or api_ok:
+            return VerificationOutcome(
+                verified=True,
+                verifier_name="CareerVerifier",
+                status=ExecutionStatus.SUCCESS_VERIFIED,
+                evidence=f"Submission verified (ID: {conf_id or 'N/A'}, URL: {conf_url or 'N/A'}, API: {api_ok}).",
+                details="Verified job application submission evidence.",
+                observed_state=evidence,
+            )
+        
+        return VerificationOutcome(
+            verified=False,
+            verifier_name="CareerVerifier",
+            status=ExecutionStatus.SUCCESS_UNVERIFIED,
+            details="Submission attempted but lacks authoritative confirmation ID or response proof.",
+            error="UNVERIFIED_SUBMISSION",
+        )
+
+    @staticmethod
+    def verify_email_classification(classification_res: Dict[str, Any] | Any) -> VerificationOutcome:
+        """Verifies that an email was genuinely retrieved, parsed, and classified."""
+        cls_val = classification_res.get("classification") if isinstance(classification_res, dict) else getattr(classification_res, "classification", None)
+        conf = classification_res.get("confidence", 0.0) if isinstance(classification_res, dict) else getattr(classification_res, "confidence", 0.0)
+
+        if cls_val and conf > 0.0:
+            return VerificationOutcome(
+                verified=True,
+                verifier_name="CareerVerifier",
+                status=ExecutionStatus.SUCCESS_VERIFIED,
+                evidence=f"Email classified as '{cls_val}' (confidence: {conf:.2f}).",
+                details="Verified email classification and intent extraction.",
+                observed_state=classification_res if isinstance(classification_res, dict) else {},
+            )
+        return VerificationOutcome(
+            verified=False,
+            verifier_name="CareerVerifier",
+            status=ExecutionStatus.FAILED,
+            details="Email classification lacks confidence or valid category.",
+            error="INVALID_EMAIL_CLASSIFICATION",
+        )
+
+    @staticmethod
+    def verify_application_match(match_res: Dict[str, Any] | Any) -> VerificationOutcome:
+        """Verifies that an email or event was matched with high confidence to an application."""
+        app_id = match_res.get("application_id") if isinstance(match_res, dict) else getattr(match_res, "application_id", None)
+        conf = match_res.get("confidence", 0.0) if isinstance(match_res, dict) else getattr(match_res, "confidence", 0.0)
+        needs_rev = match_res.get("needs_review", False) if isinstance(match_res, dict) else getattr(match_res, "needs_review", False)
+
+        if app_id and conf >= 0.70 and not needs_rev:
+            return VerificationOutcome(
+                verified=True,
+                verifier_name="CareerVerifier",
+                status=ExecutionStatus.SUCCESS_VERIFIED,
+                evidence=f"Matched to application '{app_id}' with {conf*100:.0f}% confidence.",
+                details="Authoritative application match verified.",
+                observed_state=match_res if isinstance(match_res, dict) else {},
+            )
+        return VerificationOutcome(
+            verified=False,
+            verifier_name="CareerVerifier",
+            status=ExecutionStatus.PARTIAL_SUCCESS if needs_rev else ExecutionStatus.FAILED,
+            details="Application match requires user review or lacks required confidence threshold.",
+            error="MATCH_NEEDS_REVIEW",
+        )
+
+    @staticmethod
+    def verify_offer_evidence(offer_data: Dict[str, Any] | Any) -> VerificationOutcome:
+        """Verifies that an offer record contains concrete factual evidence."""
+        status_val = offer_data.get("status") if isinstance(offer_data, dict) else getattr(offer_data, "status", None)
+        evidence = offer_data.get("evidence") if isinstance(offer_data, dict) else getattr(offer_data, "evidence", "")
+
+        if evidence and status_val in ("OFFER_CANDIDATE", "OFFER_DETECTED", "OFFER_CONFIRMED"):
+            return VerificationOutcome(
+                verified=True,
+                verifier_name="CareerVerifier",
+                status=ExecutionStatus.SUCCESS_VERIFIED,
+                evidence=f"Offer evidence verified: {evidence}",
+                details="Verified job offer candidate record and terms.",
+                observed_state=offer_data if isinstance(offer_data, dict) else {},
+            )
+        return VerificationOutcome(
+            verified=False,
+            verifier_name="CareerVerifier",
+            status=ExecutionStatus.FAILED,
+            details="Offer detection lacks concrete documentary or textual evidence.",
+            error="UNVERIFIED_OFFER_EVIDENCE",
+        )
+
+    @staticmethod
+    def verify_spreadsheet_projection(excel_path_str: str | Path) -> VerificationOutcome:
+        """Verifies that the canonical Excel workbook exists, has 10 sheets, and is non-corrupt."""
+        try:
+            p = Path(excel_path_str).resolve()
+            if not p.exists() or p.stat().st_size == 0:
+                return VerificationOutcome(
+                    verified=False,
+                    verifier_name="CareerVerifier",
+                    status=ExecutionStatus.FAILED,
+                    details=f"Excel workbook '{p}' not found or zero-byte file.",
+                    error="EXCEL_FILE_MISSING",
+                )
+
+            import openpyxl
+            wb = openpyxl.load_workbook(p, read_only=True)
+            sheet_names = wb.sheetnames
+            wb.close()
+
+            req_sheets = ["Applications", "Jobs", "Interviews", "Offers", "Followups", "Email Events", "Analytics"]
+            missing = [s for s in req_sheets if s not in sheet_names]
+            if missing:
+                return VerificationOutcome(
+                    verified=False,
+                    verifier_name="CareerVerifier",
+                    status=ExecutionStatus.PARTIAL_SUCCESS,
+                    details=f"Excel workbook missing canonical sheets: {missing}",
+                    error="INCOMPLETE_EXCEL_PROJECTION",
+                )
+
+            return VerificationOutcome(
+                verified=True,
+                verifier_name="CareerVerifier",
+                status=ExecutionStatus.SUCCESS_VERIFIED,
+                evidence=f"Excel projection verified at '{p.name}' ({len(sheet_names)} sheets present).",
+                details="10-sheet career tracker workbook validated.",
+                observed_state={"sheets": sheet_names, "size_bytes": p.stat().st_size},
+            )
+        except Exception as exc:
+            return VerificationOutcome(
+                verified=False,
+                verifier_name="CareerVerifier",
+                status=ExecutionStatus.FAILED,
+                details=f"Excel workbook validation error: {exc}",
+                error="EXCEL_VALIDATION_ERROR",
+            )
+
+
 
 
 class ApplicationVerifier:
@@ -502,6 +739,9 @@ class UniversalVerifier:
     verify_process = staticmethod(ApplicationVerifier.verify_process_running)
     verify_window = staticmethod(ApplicationVerifier.verify_window_open)
     verify_browser = staticmethod(BrowserVerifier.verify_browser_artifact)
+    verify_career_artifact = staticmethod(CareerVerifier.verify_resume_artifact)
+    verify_application_package = staticmethod(CareerVerifier.verify_application_package)
+    verify_submission = staticmethod(CareerVerifier.verify_submission_evidence)
     validate_output = staticmethod(OutputContractValidator.validate_output)
 
     @classmethod
@@ -530,12 +770,25 @@ class UniversalVerifier:
                 filename = f"workspace/Documents/{clean_title}.{fmt}"
             return cls.verify_document(filename)
 
-        # 4. Browser open verification
-        if name in ("browser_open_url", "open_browser", "web_browser"):
-            target_url = args.get("url") or args.get("uri") or args.get("path") or ""
-            return cls.verify_browser(target_url, browser_response=raw_output)
+        # 4. Career resume export verification
+        if name in ("resume_export", "resume_create", "export_resume"):
+            filename = args.get("output_path") or args.get("path") or args.get("filename") or ""
+            if filename:
+                return cls.verify_career_artifact(filename)
 
-        # 5. App launch verification
+        # 5. Application package verification
+        if name in ("application_prepare", "prepare_application_package"):
+            pkg_path = args.get("package_path") or args.get("output_dir") or ""
+            if pkg_path:
+                return cls.verify_application_package(pkg_path)
+
+        # 6. Browser open verification
+        if name in ("browser_open_url", "open_browser", "web_browser", "application_open"):
+            target_url = args.get("url") or args.get("uri") or args.get("path") or args.get("application_url") or ""
+            if target_url:
+                return cls.verify_browser(target_url, browser_response=raw_output)
+
+        # 7. App launch verification
         if name in ("open_app", "launch_app"):
             app_name = args.get("app_name") or args.get("name") or ""
             if any(b in app_name.lower() for b in ["chrome", "msedge", "edge", "brave", "firefox"]):

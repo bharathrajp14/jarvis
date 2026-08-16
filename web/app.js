@@ -1691,8 +1691,448 @@ document.addEventListener('DOMContentLoaded', () => {
             .catch(err => console.debug('[PWA] Service worker registration error:', err));
     }
 
+    // ── CAREER OS CLIENT CONTROLLER ──
+    window.switchCareerTab = function (tabId) {
+        document.querySelectorAll('.career-subtab').forEach(el => el.style.display = 'none');
+        const activeTab = document.getElementById(tabId);
+        if (activeTab) activeTab.style.display = 'block';
+
+        const pills = document.querySelectorAll('#careerTabPills .filter-pill');
+        pills.forEach(p => p.classList.remove('active'));
+        if (event && event.target) event.target.classList.add('active');
+
+        if (tabId === 'jobsTab') window.executeJobSearch();
+        else if (tabId === 'profileTab') window.loadCareerProfile();
+        else if (tabId === 'analyticsTab') window.loadCareerAnalytics();
+        else if (tabId === 'pipelineTab') window.loadApplicationsPipeline();
+    };
+
+    window.loadCareerProfile = function () {
+        window.apiFetch(`${API_BASE}/api/career/profile`)
+            .then(res => res.json())
+            .then(data => {
+                const scoreEl = document.getElementById('careerCompletenessScore');
+                if (scoreEl && data.validation) scoreEl.textContent = `${data.validation.score}%`;
+                const jsonEl = document.getElementById('canonicalProfileJson');
+                if (jsonEl && data.profile) jsonEl.textContent = JSON.stringify(data.profile, null, 2);
+            })
+            .catch(err => console.debug('Profile load note:', err));
+    };
+
+    window.executeJobSearch = function () {
+        const queryInput = document.getElementById('careerJobSearchInput');
+        const query = (queryInput && queryInput.value.trim()) || 'Autonomous AI Systems Engineer';
+        const listEl = document.getElementById('careerJobsList');
+        if (listEl) listEl.innerHTML = '<div class="subagent-idle-msg">Searching across Greenhouse, Lever, Ashby...</div>';
+
+        window.apiFetch(`${API_BASE}/api/career/jobs/search?query=${encodeURIComponent(query)}&limit=6`)
+            .then(res => res.json())
+            .then(data => {
+                if (!listEl) return;
+                if (!data.matches || data.matches.length === 0) {
+                    listEl.innerHTML = '<div class="subagent-idle-msg">No open positions found matching criteria.</div>';
+                    return;
+                }
+                listEl.innerHTML = data.matches.map(m => {
+                    const j = m.job;
+                    const fit = m.match;
+                    return `
+                        <div class="connector-card" style="padding: 16px; display: flex; flex-direction: column; justify-content: space-between;">
+                            <div>
+                                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                                    <h4 style="color: #fff; font-family: var(--font-heading); font-size: 1rem;">${j.title}</h4>
+                                    <span class="os-badge" style="background: rgba(0,223,162,0.15); color: var(--accent-green); font-size: 0.8rem;">
+                                        Fit: ${fit.overall_score}%
+                                    </span>
+                                </div>
+                                <div style="color: var(--accent-cyan); font-size: 0.85rem; font-weight: 600; margin-bottom: 4px;">${j.company} — ${j.location} (${j.remote_type})</div>
+                                <div style="color: var(--text-secondary); font-size: 0.8rem; margin-bottom: 10px;">Salary: ${j.salary || 'Competitive Base'} │ Platform: ${j.platform}</div>
+                                <div style="font-size: 0.78rem; color: var(--text-secondary); line-height: 1.4; margin-bottom: 12px;">
+                                    ${fit.fit_explanation || (j.description ? j.description.slice(0, 140) + '...' : '')}
+                                </div>
+                            </div>
+                            <div style="display: flex; gap: 8px;">
+                                <button class="btn" style="background: var(--accent-cyan); color: #000; font-weight: bold; font-size: 0.8rem; flex: 1;" onclick="window.prepareJobApplication('${j.job_id}')">
+                                    ⚡ PREPARE APPLICATION
+                                </button>
+                                <a href="${j.application_url}" target="_blank" rel="noopener" class="btn btn-secondary" style="font-size: 0.8rem; text-decoration: none; display: flex; align-items: center;">
+                                    PORTAL ↗
+                                </a>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            })
+            .catch(err => {
+                if (listEl) listEl.innerHTML = `<div class="subagent-idle-msg">Job search note: ${err.message}</div>`;
+            });
+    };
+
+    window.generateResumeArtifacts = function () {
+        const role = document.getElementById('resumeTargetRoleInput')?.value.trim() || 'Systems Architect';
+        const tmpl = document.getElementById('resumeTemplateSelector')?.value || 'ats_classic';
+        window.showToast('Rendering Resume', `Generating verified DOCX, PDF, and HTML for '${role}'...`, 'info');
+
+        window.apiFetch(`${API_BASE}/api/career/resumes/create`, {
+            method: 'POST',
+            body: JSON.stringify({ target_role: role, template_id: tmpl })
+        })
+        .then(res => res.json())
+        .then(data => {
+            window.showToast('Resume Verified', `Generated version ${data.version_id}`, 'success');
+            const grid = document.getElementById('resumeArtifactsGrid');
+            if (grid && data.artifacts) {
+                grid.innerHTML = `
+                    <div class="connector-card" style="padding: 16px;">
+                        <h4 style="color: #fff; margin-bottom: 8px;">${data.resume.title} (v${data.version_id})</h4>
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            <a href="/api/career/download/${encodeURIComponent(data.artifacts.pdf.path)}" target="_blank" class="btn" style="background: var(--accent-cyan); color: #000; font-weight: bold; font-size: 0.8rem; text-decoration: none;">DOWNLOAD PDF</a>
+                            <a href="/api/career/download/${encodeURIComponent(data.artifacts.docx.path)}" target="_blank" class="btn btn-secondary" style="font-size: 0.8rem; text-decoration: none;">DOWNLOAD DOCX</a>
+                            <a href="/api/career/download/${encodeURIComponent(data.artifacts.html.path)}" target="_blank" class="btn btn-secondary" style="font-size: 0.8rem; text-decoration: none;">PREVIEW HTML</a>
+                        </div>
+                    </div>
+                `;
+            }
+        })
+        .catch(err => window.showToast('Export Error', `${err.message}`, 'error'));
+    };
+
+    window.runAtsAudit = function () {
+        const role = document.getElementById('resumeTargetRoleInput')?.value.trim() || 'Systems Architect';
+        window.showToast('Auditing ATS', 'Evaluating 7-factor deterministic screening criteria...', 'info');
+
+        window.apiFetch(`${API_BASE}/api/career/ats/score`, {
+            method: 'POST',
+            body: JSON.stringify({ target_role: role })
+        })
+        .then(res => res.json())
+        .then(data => {
+            const scoreEl = document.getElementById('atsOverallScoreDisplay');
+            if (scoreEl) scoreEl.textContent = `${data.overall_score}%`;
+            const gradeEl = document.getElementById('atsGradeDisplay');
+            if (gradeEl) gradeEl.textContent = data.grade;
+
+            const kwEl = document.getElementById('atsKwScore');
+            if (kwEl) kwEl.textContent = `${data.keyword_coverage_score}%`;
+            const secEl = document.getElementById('atsSecScore');
+            if (secEl) secEl.textContent = `${data.section_recognition_score}%`;
+            const parseEl = document.getElementById('atsParseScore');
+            if (parseEl) parseEl.textContent = `${data.parsing_risk_score}%`;
+            const readEl = document.getElementById('atsReadScore');
+            if (readEl) readEl.textContent = `${data.readability_score}%`;
+
+            window.showToast('ATS Audit Complete', `Grade: ${data.grade} (${data.overall_score}%)`, 'success');
+        })
+        .catch(err => window.showToast('ATS Error', `${err.message}`, 'error'));
+    };
+
+    window.prepareJobApplication = function (jobId) {
+        window.showToast('Assembling Application', 'Tailoring resume, cover letter & opening application portal...', 'info');
+
+        window.apiFetch(`${API_BASE}/api/career/applications/prepare`, {
+            method: 'POST',
+            body: JSON.stringify({ job_id: jobId, auto_open_browser: true })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                window.showToast('Application Ready', `Package prepared for ${data.company}. Review materials in browser.`, 'success');
+                window.switchCareerTab('pipelineTab');
+            } else {
+                window.showToast('Application Notice', data.message || 'Manual submission required.', 'warning');
+            }
+        })
+        .catch(err => window.showToast('Application Error', `${err.message}`, 'error'));
+    };
+
+    window.switchCareerTab = function (tabId) {
+        document.querySelectorAll('.career-subtab').forEach(t => t.style.display = 'none');
+        const target = document.getElementById(tabId);
+        if (target) target.style.display = 'block';
+
+        const pills = document.querySelectorAll('#careerTabPills .filter-pill');
+        pills.forEach(p => {
+            if (p.getAttribute('onclick')?.includes(tabId)) {
+                p.classList.add('active');
+            } else {
+                p.classList.remove('active');
+            }
+        });
+
+        if (tabId === 'pipelineTab') window.loadCareerApplications();
+        else if (tabId === 'interviewsTab') window.loadInterviews();
+        else if (tabId === 'offersTab') window.loadOffers();
+        else if (tabId === 'followupsTab') window.loadFollowups();
+        else if (tabId === 'emailFeedTab') window.loadEmailEvents();
+        else if (tabId === 'analyticsTab') window.loadCareerAnalytics();
+    };
+
+    window.loadCareerAnalytics = function () {
+        const row = document.getElementById('analyticsMetricsRow');
+        if (!row) return;
+
+        window.apiFetch(`${API_BASE}/api/career/analytics`)
+            .then(res => res.json())
+            .then(a => {
+                row.innerHTML = `
+                    <div style="background: rgba(0,0,0,0.3); padding: 14px; border-radius: 6px; text-align: center;">
+                        <div style="font-size: 1.8rem; font-weight: bold; color: var(--accent-cyan);">${a.total_jobs_discovered}</div>
+                        <div style="font-size: 0.75rem; color: var(--text-secondary);">Jobs Discovered</div>
+                    </div>
+                    <div style="background: rgba(0,0,0,0.3); padding: 14px; border-radius: 6px; text-align: center;">
+                        <div style="font-size: 1.8rem; font-weight: bold; color: var(--accent-green);">${a.total_applications_submitted}</div>
+                        <div style="font-size: 0.75rem; color: var(--text-secondary);">Applications Sent</div>
+                    </div>
+                    <div style="background: rgba(0,0,0,0.3); padding: 14px; border-radius: 6px; text-align: center;">
+                        <div style="font-size: 1.8rem; font-weight: bold; color: var(--accent-purple);">${a.total_interviews}</div>
+                        <div style="font-size: 0.75rem; color: var(--text-secondary);">Interviews</div>
+                    </div>
+                    <div style="background: rgba(0,0,0,0.3); padding: 14px; border-radius: 6px; text-align: center;">
+                        <div style="font-size: 1.8rem; font-weight: bold; color: #fff;">${a.response_rate}%</div>
+                        <div style="font-size: 0.75rem; color: var(--text-secondary);">Response Rate</div>
+                    </div>
+                `;
+            })
+            .catch(err => console.debug('Analytics load error:', err));
+    };
+
+    window.loadCareerApplications = function () {
+        const grid = document.getElementById('pipelineApplicationsGrid');
+        if (!grid) return;
+
+        window.apiFetch(`${API_BASE}/api/career/applications`)
+            .then(res => res.json())
+            .then(data => {
+                if (!data.applications || data.applications.length === 0) {
+                    grid.innerHTML = '<div class="subagent-idle-msg">No active applications tracked in Canonical CRM yet.</div>';
+                    return;
+                }
+                grid.innerHTML = data.applications.map(app => {
+                    const st = app.application_status || app.status;
+                    const priority = app.priority || 'MEDIUM';
+                    return `
+                    <div class="connector-card" style="padding: 16px;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                            <div>
+                                <h4 style="color: #fff; font-family: var(--font-heading); margin-bottom: 4px;">${app.job_title || app.role_title} @ ${app.company}</h4>
+                                <span style="font-size: 0.75rem; color: var(--text-muted);">ID: <code>${app.application_id}</code> │ Applied: ${app.date_applied || 'Pending'}</span>
+                            </div>
+                            <div style="text-align: right;">
+                                <span class="os-badge" style="background: rgba(0,242,254,0.15); color: var(--accent-cyan); font-size: 0.8rem; margin-bottom: 4px; display: inline-block;">
+                                    ${st}
+                                </span>
+                                <div style="font-size: 0.7rem; color: var(--accent-amber); font-weight: bold;">${priority} PRIORITY</div>
+                            </div>
+                        </div>
+                        <div style="color: var(--text-secondary); font-size: 0.8rem; margin-bottom: 10px;">
+                            Platform: ${app.platform || app.source_platform} │ Match: <strong>${app.match_score ? app.match_score + '%' : 'N/A'}</strong> │ Next Follow-up: <code>${app.next_followup || 'None'}</code>
+                        </div>
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            ${app.job_url || app.application_url ? `<a href="${app.job_url || app.application_url}" target="_blank" rel="noopener" class="btn btn-secondary" style="font-size: 0.75rem; text-decoration: none;">PORTAL ↗</a>` : ''}
+                            <button class="btn btn-secondary" style="font-size: 0.75rem;" onclick="window.viewApplicationTimeline('${app.application_id}')">📜 EVENT TIMELINE</button>
+                        </div>
+                    </div>
+                `}).join('');
+            })
+            .catch(err => console.debug('Applications CRM load error:', err));
+    };
+
+    window.loadInterviews = function () {
+        const grid = document.getElementById('interviewsGrid');
+        if (!grid) return;
+
+        window.apiFetch(`${API_BASE}/api/career/interviews`)
+            .then(res => res.json())
+            .then(data => {
+                if (!data.interviews || data.interviews.length === 0) {
+                    grid.innerHTML = '<div class="subagent-idle-msg">No upcoming interview loops scheduled.</div>';
+                    return;
+                }
+                grid.innerHTML = data.interviews.map(iv => `
+                    <div class="connector-card" style="padding: 16px;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                            <div>
+                                <h4 style="color: #fff; font-family: var(--font-heading); margin-bottom: 4px;">${iv.round}: ${iv.company}</h4>
+                                <div style="font-size: 0.8rem; color: var(--accent-cyan);">📅 ${iv.date} at ${iv.time_str} (${iv.timezone})</div>
+                            </div>
+                            <span class="os-badge" style="background: rgba(0,223,162,0.15); color: var(--accent-green); font-size: 0.8rem;">
+                                ${iv.status}
+                            </span>
+                        </div>
+                        <div style="color: var(--text-secondary); font-size: 0.8rem; margin-bottom: 10px;">
+                            Interviewer: ${iv.interviewer || 'Hiring Team'} │ Prep: <strong>${iv.preparation_status}</strong>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            ${iv.meeting_url ? `<a href="${iv.meeting_url}" target="_blank" rel="noopener" class="btn" style="background: var(--accent-green); color: #000; font-size: 0.75rem; text-decoration: none; font-weight: bold;">JOIN MEETING ↗</a>` : ''}
+                        </div>
+                    </div>
+                `).join('');
+            })
+            .catch(err => console.debug('Interviews load error:', err));
+    };
+
+    window.loadOffers = function () {
+        const grid = document.getElementById('offersGrid');
+        if (!grid) return;
+
+        window.apiFetch(`${API_BASE}/api/career/offers`)
+            .then(res => res.json())
+            .then(data => {
+                if (!data.offers || data.offers.length === 0) {
+                    grid.innerHTML = '<div class="subagent-idle-msg">No job offers currently staged or detected.</div>';
+                    return;
+                }
+                grid.innerHTML = data.offers.map(off => `
+                    <div class="connector-card" style="padding: 16px; border-color: rgba(255,183,3,0.3);">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                            <div>
+                                <h4 style="color: #fff; font-family: var(--font-heading); margin-bottom: 4px;">🏆 ${off.company} — ${off.role}</h4>
+                                <div style="font-size: 0.85rem; color: var(--accent-green); font-weight: bold;">💰 ${off.salary || 'Compensation specified in offer letter'}</div>
+                            </div>
+                            <span class="os-badge" style="background: rgba(255,183,3,0.15); color: var(--accent-amber); font-size: 0.8rem;">
+                                ${off.status}
+                            </span>
+                        </div>
+                        <div style="color: var(--text-secondary); font-size: 0.8rem; margin-bottom: 10px;">
+                            Joining Date: <strong>${off.joining_date || 'TBD'}</strong> │ Expiry: <strong>${off.expiry_date || 'N/A'}</strong> │ Mode: ${off.work_mode}
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            ${off.status !== 'OFFER_CONFIRMED' ? `<button class="btn" style="background: var(--accent-amber); color: #000; font-size: 0.75rem; font-weight: bold;" onclick="window.confirmOffer('${off.offer_id}')">CONFIRM OFFER (SAFETY APPROVAL)</button>` : '<span style="color: var(--accent-green); font-size: 0.8rem; font-weight: bold;">✓ CONFIRMED</span>'}
+                        </div>
+                    </div>
+                `).join('');
+            })
+            .catch(err => console.debug('Offers load error:', err));
+    };
+
+    window.confirmOffer = function (offerId) {
+        if (!confirm(`Are you sure you want to explicitly confirm offer [${offerId}]? This will record the offer as confirmed in the Canonical CRM.`)) return;
+
+        window.apiFetch(`${API_BASE}/api/career/offers/confirm`, {
+            method: 'POST',
+            body: JSON.stringify({ offer_id: offerId, user_confirmed: true })
+        })
+        .then(res => res.json())
+        .then(data => {
+            window.showToast('Offer Confirmed', data.message, 'success');
+            window.loadOffers();
+        })
+        .catch(err => window.showToast('Confirmation Error', err.message, 'error'));
+    };
+
+    window.loadFollowups = function () {
+        const grid = document.getElementById('followupsGrid');
+        if (!grid) return;
+
+        window.apiFetch(`${API_BASE}/api/career/followups`)
+            .then(res => res.json())
+            .then(data => {
+                if (!data.followups || data.followups.length === 0) {
+                    grid.innerHTML = '<div class="subagent-idle-msg">No follow-ups due. All submissions are current.</div>';
+                    return;
+                }
+                grid.innerHTML = data.followups.map(f => `
+                    <div class="connector-card" style="padding: 16px;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px;">
+                            <div>
+                                <h4 style="color: #fff; font-family: var(--font-heading); margin-bottom: 4px;">${f.company} — ${f.role}</h4>
+                                <div style="font-size: 0.8rem; color: var(--accent-amber);">⏰ Due Date: ${f.due_date} (${f.reason})</div>
+                            </div>
+                            <span class="os-badge" style="background: rgba(0,242,254,0.15); color: var(--accent-cyan); font-size: 0.8rem;">
+                                ${f.status}
+                            </span>
+                        </div>
+                        <div style="display: flex; gap: 8px; margin-top: 8px;">
+                            <button class="btn btn-secondary" style="font-size: 0.75rem;" onclick="window.generateFollowupDraft('${f.followup_id}')">📝 GENERATE DRAFT</button>
+                        </div>
+                    </div>
+                `).join('');
+            })
+            .catch(err => console.debug('Follow-ups load error:', err));
+    };
+
+    window.generateFollowupDraft = function (followupId) {
+        window.apiFetch(`${API_BASE}/api/career/followups/draft`, {
+            method: 'POST',
+            body: JSON.stringify({ followup_id: followupId, candidate_name: 'Bharath' })
+        })
+        .then(res => res.json())
+        .then(data => {
+            alert(`Generated Follow-up Draft (${data.state}):\n\nSubject: ${data.subject}\n\n${data.body}`);
+        })
+        .catch(err => window.showToast('Follow-up Draft Error', err.message, 'error'));
+    };
+
+    window.loadEmailEvents = function () {
+        const grid = document.getElementById('emailFeedGrid');
+        if (!grid) return;
+
+        window.apiFetch(`${API_BASE}/api/career/email/events`)
+            .then(res => res.json())
+            .then(data => {
+                if (!data.events || data.events.length === 0) {
+                    grid.innerHTML = '<div class="subagent-idle-msg">No recruitment email events recorded yet. Connect Gmail/Outlook to ingest messages.</div>';
+                    return;
+                }
+                grid.innerHTML = data.events.map(ev => `
+                    <div class="connector-card" style="padding: 14px;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+                            <div>
+                                <strong style="color: #fff; font-size: 0.9rem;">${ev.sender}</strong>
+                                <span style="font-size: 0.75rem; color: var(--text-muted);"> (${ev.received_time})</span>
+                            </div>
+                            <span class="os-badge" style="background: rgba(0,242,254,0.15); color: var(--accent-cyan); font-size: 0.75rem;">
+                                ${ev.classification} (${Math.round(ev.confidence*100)}%)
+                            </span>
+                        </div>
+                        <div style="color: var(--text-secondary); font-size: 0.8rem; margin-bottom: 6px;">
+                            <em>${ev.subject}</em>
+                        </div>
+                        <div style="font-size: 0.75rem; color: var(--accent-green);">Action Taken: ${ev.action_taken}</div>
+                    </div>
+                `).join('');
+            })
+            .catch(err => console.debug('Email events load error:', err));
+    };
+
+    window.syncExcelTracker = function () {
+        const out = document.getElementById('excelSyncStatusOutput');
+        if (out) out.textContent = 'Syncing Canonical Database to BR_JARVIS_Career_Tracker.xlsx...';
+
+        window.apiFetch(`${API_BASE}/api/career/spreadsheet/sync`, { method: 'POST' })
+            .then(res => res.json())
+            .then(data => {
+                if (data.status === 'SUCCESS_VERIFIED') {
+                    window.showToast('Excel Synced', `Projected ${data.sheets_projected?.length || 10} sheets. Applications: ${data.applications_count}`, 'success');
+                    if (out) out.textContent = `✓ Synced on ${data.timestamp} (${data.applications_count} apps, ${data.interviews_count} interviews, ${data.offers_count} offers).`;
+                } else if (data.status === 'QUEUED_LOCKED') {
+                    window.showToast('Excel Locked', 'File is currently open in Excel. Projection queued.', 'warning');
+                    if (out) out.textContent = '⚠️ File currently open in Excel. Will auto-retry on next cycle.';
+                } else {
+                    window.showToast('Sync Failed', data.error || 'Projection error', 'error');
+                }
+            })
+            .catch(err => window.showToast('Sync Error', err.message, 'error'));
+    };
+
+    window.viewApplicationTimeline = function (applicationId) {
+        window.apiFetch(`${API_BASE}/api/career/crm/events/${applicationId}`)
+            .then(res => res.json())
+            .then(data => {
+                if (!data.events || data.events.length === 0) {
+                    alert(`No event log found for Application ${applicationId}.`);
+                    return;
+                }
+                const timelineStr = data.events.map(e => `[${new Date(e.timestamp * 1000).toLocaleString()}] ${e.event_type}\nFrom: ${e.previous_state} -> To: ${e.new_state}\nActor: ${e.actor} | Source: ${e.source}\nEvidence: ${e.evidence}`).join('\n\n---\n\n');
+                alert(`Event Audit Log for Application [${applicationId}]:\n\n${timelineStr}`);
+            })
+            .catch(err => window.showToast('Timeline Error', err.message, 'error'));
+    };
+
     // Initial Engine Bootstrap
     initParticleCanvas();
     setInterval(fetchTelemetry, 5000);
     checkAuthStatus();
+    window.loadCareerProfile();
 });
+

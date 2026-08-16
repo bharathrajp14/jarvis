@@ -529,6 +529,89 @@ class BRVoiceAssistant:
             self.state_machine.transition_to(VoiceState.IDLE)
             return
 
+        # Career OS Voice Shortcuts
+        if any(kw in low for kw in ("ats score", "check my ats", "resume score")):
+            from career.profile_manager import get_profile_manager
+            from career.resume_engine.renderer import ResumeRenderer
+            from career.ats_engine.scorer import ATSEngine
+            p = get_profile_manager().get_profile()
+            schema = ResumeRenderer.schema_from_profile(p)
+            rep = ATSEngine.evaluate_resume(schema)
+            self.speak(f"Your master resume has an ATS compatibility score of {rep.overall_score:.0f} percent, rated Grade {rep.grade}.")
+            self.state_machine.transition_to(VoiceState.IDLE)
+            return
+
+        if any(kw in low for kw in ("career status", "career summary", "application funnel", "career overview")):
+            from career.analytics import CareerAnalyticsEngine
+            a = CareerAnalyticsEngine.compute_analytics()
+            self.speak(f"You have {a.total_jobs_discovered} jobs discovered, {a.total_applications_submitted} applications submitted, and {a.total_interviews} active interviews.")
+            self.state_machine.transition_to(VoiceState.IDLE)
+            return
+
+        if any(kw in low for kw in ("check my career emails", "check career emails", "career emails", "recruiter emails")):
+            from career.email_intelligence.service import get_email_career_intelligence
+            from career.crm.database import get_career_crm_db
+            db = get_career_crm_db()
+            events = db.list_email_records(limit=5)
+            if not events:
+                self.speak("No recent recruitment email events detected. Your mailbox cursor is up to date.")
+            else:
+                top = events[0]
+                cls_val = top.classification.value if hasattr(top.classification, "value") else str(top.classification)
+                self.speak(f"You have {len(events)} recent career emails. Latest is from {top.sender}, classified as {cls_val.replace('_', ' ').lower()}.")
+            self.state_machine.transition_to(VoiceState.IDLE)
+            return
+
+        if any(kw in low for kw in ("interview requests", "did i receive any interview", "show my interviews", "interviews this week")):
+            from career.crm.database import get_career_crm_db
+            db = get_career_crm_db()
+            interviews = db.list_interviews(limit=5)
+            if not interviews:
+                self.speak("You have no upcoming interview rounds scheduled.")
+            else:
+                top = interviews[0]
+                self.speak(f"You have {len(interviews)} scheduled interviews. Next is {top.round} with {top.company} on {top.date} at {top.time_str} {top.timezone}.")
+            self.state_machine.transition_to(VoiceState.IDLE)
+            return
+
+        if any(kw in low for kw in ("any offers", "did i receive any offers", "check my offers", "job offers")):
+            from career.crm.database import get_career_crm_db
+            db = get_career_crm_db()
+            offers = db.list_offers(limit=5)
+            if not offers:
+                self.speak("No job offers currently detected.")
+            else:
+                top = offers[0]
+                st_val = top.status.value if hasattr(top.status, "value") else str(top.status)
+                self.speak(f"You have {len(offers)} offers recorded. Latest is from {top.company} for {top.role}, status {st_val.replace('_', ' ').lower()}.")
+            self.state_machine.transition_to(VoiceState.IDLE)
+            return
+
+        if any(kw in low for kw in ("update my application tracker", "update tracker", "sync career tracker", "sync excel")):
+            from career.spreadsheet.projection import get_spreadsheet_projection
+            proj = get_spreadsheet_projection()
+            res = proj.project_database_to_excel()
+            if res.get("status") == "SUCCESS_VERIFIED":
+                self.speak("Your career tracker Excel workbook has been projected and verified with the latest database records.")
+            elif res.get("status") == "QUEUED_LOCKED":
+                self.speak("The Excel spreadsheet is currently open in Microsoft Excel. The update has been queued.")
+            else:
+                self.speak("Unable to synchronize Excel tracker. Please check logs.")
+            self.state_machine.transition_to(VoiceState.IDLE)
+            return
+
+        if any(kw in low for kw in ("need follow-up", "need follow up", "what applications need follow", "pending follow")):
+            from career.crm.followup_engine import get_followup_engine
+            fol_engine = get_followup_engine()
+            pending = fol_engine.get_pending_followups()
+            if not pending:
+                self.speak("All submitted applications are on track. No follow-ups are due today.")
+            else:
+                self.speak(f"You have {len(pending)} applications requiring follow-up. Top priority is {pending[0].company} for {pending[0].role}, due on {pending[0].due_date}.")
+            self.state_machine.transition_to(VoiceState.IDLE)
+            return
+
+
         # System shutdown
         exact_shutdown_commands = {
             "exit", "quit", "goodbye", "shutdown", "bye",

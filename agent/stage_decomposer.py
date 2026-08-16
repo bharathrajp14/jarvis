@@ -676,3 +676,15 @@ This document synthesizes findings for the user objective: **"{prompt}"**.
 1. **Verification-First Execution**: Ensure all side-effects are corroborated with physical proof before completion.
 2. **Environment Determinism**: Execute project tools strictly within the resolved virtual environment.
 """
+
+
+# Canonical aliases and exports
+StageExecutionEngine = StageDecomposer
+
+__all__ = [
+    "StageCapability",
+    "ExecutionStage",
+    "StageDecomposer",
+    "StageExecutionEngine",
+]
+

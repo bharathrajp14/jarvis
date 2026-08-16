@@ -60,6 +60,16 @@ class SlashCommandHandler:
             "/plan": lambda: self._cmd_plan(args_str),
             "/verify": lambda: self._cmd_verify(args_str),
             "/diff": lambda: self._cmd_diff(args_str),
+            "/career": lambda: self._cmd_career(args_str),
+            "/applications": lambda: self._cmd_applications(args_str),
+            "/interviews": lambda: self._cmd_interviews(args_str),
+            "/offers": lambda: self._cmd_offers(args_str),
+            "/emails": lambda: self._cmd_emails(args_str),
+            "/resume": lambda: self._cmd_resume(args_str),
+            "/jobs": lambda: self._cmd_jobs(args_str),
+            "/apply": lambda: self._cmd_apply(args_str),
+            "/ats": lambda: self._cmd_ats(args_str),
+
             "/doctor": self._cmd_doctor,
             "/history": lambda: self._cmd_history(args_str),
             "/export": lambda: self._cmd_export(args_str),
@@ -109,6 +119,13 @@ class SlashCommandHandler:
             table.add_row("Tasks & Lifecycle", "/verify [path|task]", "Run disk / process verification checks")
             table.add_row("Tasks & Lifecycle", "/diff [file]", "Display syntax-highlighted file changes")
 
+            # Career OS
+            table.add_row("Career OS", "/career [stats|onboard]", "Profile overview, completeness & funnel analytics")
+            table.add_row("Career OS", "/resume [role|tailor]", "Create or tailor resume (HTML/DOCX/PDF)")
+            table.add_row("Career OS", "/jobs <query>", "Search and match jobs across Greenhouse, Lever, Ashby")
+            table.add_row("Career OS", "/apply <job_id>", "Prepare application package & launch manual assistant")
+            table.add_row("Career OS", "/ats [role]", "Run 7-factor deterministic ATS compatibility audit")
+
             # Tools & Diagnostics
             table.add_row("Tools & System", "/tools [filter]", "Browse and search registered tool definitions")
             table.add_row("Tools & System", "/status", "Subsystem telemetry, memory & backend health")
@@ -120,7 +137,7 @@ class SlashCommandHandler:
 
             self.renderer.console.print(table)
         else:
-            print("Commands: /help, /status, /mode <name>, /model <name>, /tasks, /memory, /tools, /plan, /verify, /doctor, /export, /clear, /quit")
+            print("Commands: /help, /status, /career, /resume, /jobs, /apply, /ats, /mode, /model, /tasks, /memory, /tools, /doctor, /quit")
 
     def _cmd_status(self) -> None:
         """Display live subsystem status."""
@@ -331,6 +348,247 @@ class SlashCommandHandler:
             return
         content = p.read_text(encoding="utf-8", errors="replace")
         self.renderer.render_diff(file_path, "", content)
+
+    # ── Career OS Commands ───────────────────────────────────────────────────
+
+    def _cmd_career(self, args_str: str = "") -> None:
+        """Career Profile and Funnel Analytics overview."""
+        try:
+            from career.profile_manager import get_profile_manager
+            from career.analytics import CareerAnalyticsEngine
+            
+            mgr = get_profile_manager()
+            profile = mgr.get_profile()
+            val = mgr.validate_profile(profile)
+            analytics = CareerAnalyticsEngine.compute_analytics()
+
+            if "onboard" in args_str.lower():
+                qs = mgr.get_onboarding_questions(profile)
+                if not qs:
+                    self.renderer.render_markdown("✓ **Profile Onboarding Complete:** Zero missing critical fields.")
+                    return
+                self.renderer.render_markdown(f"### 📋 Career Onboarding ({len(qs)} missing fields):")
+                for idx, q in enumerate(qs, 1):
+                    self.renderer.render_markdown(f"**{idx}. [{q['field']}]**: {q['question']}")
+                return
+
+            self.renderer.render_markdown(f"""### 💼 Career Profile Overview: **{profile.contact.full_name}**
+* **Completeness Score:** `{val['score']}%` ({val['status']})
+* **Target Roles:** {', '.join(profile.preferences.target_roles) or 'Not Specified'}
+* **Work Mode:** {profile.preferences.remote_preference.replace('_', ' ').title()}
+* **Locations:** {', '.join(profile.preferences.target_locations)}
+* **Experience Entries:** {len(profile.experience)} │ **Projects:** {len(profile.projects)} │ **Skills:** {sum(len(s.skills) for s in profile.skills)}
+
+#### 📊 Pipeline Telemetry:
+* **Jobs Discovered:** `{analytics.total_jobs_discovered}` │ **Shortlisted:** `{analytics.total_shortlisted}`
+* **Applications Submitted:** `{analytics.total_applications_submitted}` │ **Screenings:** `{analytics.total_screenings}` │ **Interviews:** `{analytics.total_interviews}`
+* **Response Rate:** `{analytics.response_rate}%` │ **Interview Conversion:** `{analytics.interview_rate}%`
+""")
+        except Exception as e:
+            self.renderer.render_error("Career Profile Error", str(e))
+
+    def _cmd_applications(self, args_str: str = "") -> None:
+        """List and manage active job applications."""
+        try:
+            from career.crm.database import get_career_crm_db
+            from career.models import ApplicationStatus
+            db = get_career_crm_db()
+            apps = db.list_applications(limit=25)
+
+            arg_low = args_str.lower().strip()
+            if "followup" in arg_low:
+                from career.crm.followup_engine import get_followup_engine
+                fol_engine = get_followup_engine()
+                pending = fol_engine.get_pending_followups()
+                if not pending:
+                    self.renderer.render_markdown("✓ **No follow-ups due right now.**")
+                    return
+                self.renderer.render_markdown(f"### ⏰ Pending Follow-ups ({len(pending)} due):")
+                for f in pending:
+                    self.renderer.render_markdown(f"• `[{f.followup_id}]` **{f.company}** — {f.role} (Due: `{f.due_date}`, Reason: {f.reason})")
+                return
+
+            if not apps:
+                self.renderer.render_markdown("_No tracked job applications found. Use `/jobs` or `/apply` to start._")
+                return
+
+            self.renderer.render_markdown(f"### 📋 Tracked Job Applications ({len(apps)} active):")
+            for a in apps[:10]:
+                st_val = a.application_status.value if hasattr(a.application_status, "value") else str(a.application_status)
+                self.renderer.render_markdown(f"• `[{a.application_id}]` **{a.company}** — {a.job_title} │ Status: `{st_val}` │ Priority: `{a.priority.value if hasattr(a.priority, 'value') else a.priority}`")
+        except Exception as e:
+            self.renderer.render_error("Applications List Error", str(e))
+
+    def _cmd_interviews(self, args_str: str = "") -> None:
+        """List scheduled and upcoming interviews."""
+        try:
+            from career.crm.database import get_career_crm_db
+            db = get_career_crm_db()
+            interviews = db.list_interviews(limit=15)
+            if not interviews:
+                self.renderer.render_markdown("_No upcoming interviews scheduled._")
+                return
+            self.renderer.render_markdown(f"### 📅 Upcoming Interviews ({len(interviews)} scheduled):")
+            for iv in interviews:
+                self.renderer.render_markdown(f"• `[{iv.interview_id}]` **{iv.company}** ({iv.round}) — `{iv.date} {iv.time_str} {iv.timezone}` │ Link: {iv.meeting_url or 'TBD'}")
+        except Exception as e:
+            self.renderer.render_error("Interviews Error", str(e))
+
+    def _cmd_offers(self, args_str: str = "") -> None:
+        """List and confirm detected job offers."""
+        try:
+            from career.crm.database import get_career_crm_db
+            db = get_career_crm_db()
+            offers = db.list_offers(limit=10)
+            if not offers:
+                self.renderer.render_markdown("_No job offers detected or recorded._")
+                return
+            self.renderer.render_markdown(f"### 🏆 Job Offers & Packages ({len(offers)} detected):")
+            for off in offers:
+                st_val = off.status.value if hasattr(off.status, "value") else str(off.status)
+                self.renderer.render_markdown(f"• `[{off.offer_id}]` **{off.company}** — {off.role} │ Comp: `{off.salary}` │ Status: `{st_val}` │ Expiry: `{off.expiry_date or 'N/A'}`")
+        except Exception as e:
+            self.renderer.render_error("Offers Error", str(e))
+
+    def _cmd_emails(self, args_str: str = "") -> None:
+        """Career Email Intelligence events and synchronization."""
+        try:
+            from career.email_intelligence.service import get_email_career_intelligence
+            from career.crm.database import get_career_crm_db
+            db = get_career_crm_db()
+            events = db.list_email_records(limit=10)
+            if not events:
+                self.renderer.render_markdown("_No career email events recorded yet. Ingesting automatically on sync._")
+                return
+            self.renderer.render_markdown(f"### 📧 Career Email Activity Feed ({len(events)} events):")
+            for ev in events:
+                cls_val = ev.classification.value if hasattr(ev.classification, "value") else str(ev.classification)
+                self.renderer.render_markdown(f"• `[{ev.email_event_id}]` **{ev.sender}** │ `{cls_val}` ({ev.confidence*100:.0f}%) │ Subject: _{ev.subject[:50]}..._")
+        except Exception as e:
+            self.renderer.render_error("Email Intelligence Error", str(e))
+
+
+    def _cmd_resume(self, args_str: str = "") -> None:
+        """Create, tailor, or export resumes."""
+        try:
+            from career.profile_manager import get_profile_manager
+            from career.resume_engine.renderer import ResumeRenderer
+            from career.resume_engine.exporter import ResumeExportPipeline
+            from career.resume_engine.version_manager import ResumeVersionManager
+
+            mgr = get_profile_manager()
+            profile = mgr.get_profile()
+
+            role = args_str.strip() or (profile.preferences.target_roles[0] if profile.preferences.target_roles else "Systems Architect")
+            schema = ResumeRenderer.schema_from_profile(profile, target_role=role)
+            
+            exporter = ResumeExportPipeline()
+            res = exporter.export_all_formats(schema)
+
+            ver_mgr = ResumeVersionManager.get_instance()
+            ver_rec = ver_mgr.register_version(
+                resume=schema,
+                provider="native",
+                docx_path=res["docx"]["path"],
+                pdf_path=res["pdf"]["path"],
+                html_path=res["html"]["path"],
+            )
+
+            self.renderer.render_markdown(f"""✓ **Resume Generated & Verified (v{ver_rec.version_id}):**
+* **Title:** {schema.title}
+* **DOCX:** `{res['docx']['path']}` ({'✓ Verified' if res['docx']['verified'] else 'Failed'})
+* **PDF:** `{res['pdf']['path']}` ({'✓ Verified' if res['pdf']['verified'] else 'Failed'})
+* **HTML:** `{res['html']['path']}` ({'✓ Verified' if res['html']['verified'] else 'Failed'})
+""")
+        except Exception as e:
+            self.renderer.render_error("Resume Generation Error", str(e))
+
+    def _cmd_jobs(self, query: str = "") -> None:
+        """Search and match live job postings."""
+        try:
+            from career.job_engine.finder import JobFinder
+            q = query.strip() or "Autonomous AI Systems Engineer"
+            self.renderer.render_markdown(f"🔍 _Searching across Greenhouse, Lever, Ashby for:_ `{q}`...")
+
+            finder = JobFinder.get_instance()
+            results = finder.search_and_match(query_or_filters=q, limit=5)
+
+            if not results:
+                self.renderer.render_markdown(f"_No matching positions found for '{q}'._")
+                return
+
+            self.renderer.render_markdown(f"### 🎯 Top Job Matches ({len(results)} found):")
+            for idx, r in enumerate(results, 1):
+                j = r.job
+                m = r.match
+                self.renderer.render_markdown(f"""**{idx}. {j.title}** @ **{j.company}** (Fit: `{m.overall_score}%`)
+* **ID:** `{j.job_id}` │ **Platform:** {j.platform} │ **Location:** {j.location} ({j.remote_type})
+* **Salary:** {j.salary or 'Competitive'}
+* **Strengths:** {'; '.join(m.key_strengths[:2]) if m.key_strengths else 'Good skills overlap'}
+* **Apply:** [Application Portal]({j.application_url})
+""")
+        except Exception as e:
+            self.renderer.render_error("Job Search Error", str(e))
+
+    def _cmd_apply(self, job_id: str = "") -> None:
+        """Prepare complete application package and open browser for job ID."""
+        try:
+            from career.job_engine.finder import JobFinder
+            from career.application_engine.assistant import ManualApplicationAssistant
+            
+            jid = job_id.strip()
+            if not jid:
+                self.renderer.render_markdown("Usage: `/apply <job_id>` (Use `/jobs` to discover IDs).")
+                return
+
+            finder = JobFinder.get_instance()
+            job = finder.get_job_by_id(jid)
+            if not job:
+                self.renderer.render_error("Job Not Found", f"No job found with ID '{jid}'.")
+                return
+
+            assistant = ManualApplicationAssistant()
+            res = assistant.prepare_and_assist(job=job, auto_open_browser=True)
+
+            if not res.get("success"):
+                self.renderer.render_error("Application Blocked", res.get("message", "Application could not be prepared."))
+                return
+
+            self.renderer.render_markdown(f"""✓ **Application Package Ready for {job.company}:**
+* **Application ID:** `{res['application_id']}` │ **Package:** `{res['package_id']}`
+* **Portal URL Opened:** {res['application_url']}
+* **Tailored Resume PDF:** `{res['resume_pdf']}`
+* **Tailored Cover Letter:** `{res['cover_letter_pdf']}`
+* **Status:** `READY_FOR_REVIEW` (Human confirmation required before submission).
+""")
+        except Exception as e:
+            self.renderer.render_error("Application Assistant Error", str(e))
+
+    def _cmd_ats(self, role_str: str = "") -> None:
+        """Run 7-factor deterministic ATS audit."""
+        try:
+            from career.profile_manager import get_profile_manager
+            from career.resume_engine.renderer import ResumeRenderer
+            from career.ats_engine.scorer import ATSEngine
+
+            mgr = get_profile_manager()
+            profile = mgr.get_profile()
+            schema = ResumeRenderer.schema_from_profile(profile, target_role=role_str.strip() or None)
+
+            rep = ATSEngine.evaluate_resume(schema)
+            self.renderer.render_markdown(f"""### 🎯 ATS Evaluation Audit: **Grade {rep.grade}** (`{rep.overall_score}%`)
+* **Keyword Coverage:** `{rep.keyword_coverage_score}%`
+* **Section Recognition:** `{rep.section_recognition_score}%`
+* **Parsing Safety Index:** `{rep.parsing_risk_score}%`
+* **Readability & Action Verbs:** `{rep.readability_score}%`
+* **Formatting Consistency:** `{rep.consistency_score}%`
+* **Role Alignment:** `{rep.role_relevance_score}%`
+
+#### 💡 Actionable Optimizations:
+{chr(10).join(f'* {c}' for c in rep.recommended_changes[:4]) if rep.recommended_changes else '* All ATS metrics optimal.'}
+""")
+        except Exception as e:
+            self.renderer.render_error("ATS Audit Error", str(e))
 
     def _cmd_doctor(self) -> None:
         """Run diagnostic system health check."""

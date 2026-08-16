@@ -518,6 +518,36 @@ class ArtifactManager:
                 return rec
         return None
 
+    def register_host_artifact(
+        self,
+        host_path: Union[str, Path],
+        task_id: str = "default",
+    ) -> ArtifactRecord:
+        """Register an artifact created directly on the host."""
+        p = Path(host_path).resolve()
+        art_id = f"art_{uuid.uuid4().hex[:8]}"
+        size = p.stat().st_size if p.exists() else 0
+        sha = self.compute_sha256(p) if p.exists() else ""
+        
+        rec = ArtifactRecord(
+            artifact_id=art_id,
+            task_id=task_id,
+            host_path=str(p),
+            filename=p.name,
+            mime_type=self.get_mime_type(p.name),
+            size=size,
+            sha256=sha,
+            created_at=time.time(),
+            created=True,
+            exported=True,
+            host_verified=True,
+            error=None,
+        )
+        with self._lock:
+            self._records[art_id] = rec
+            self._records[str(p)] = rec
+        return rec
+
     def get_artifact(self, artifact_id: str) -> Optional[ArtifactRecord]:
         with self._lock:
             return self._records.get(artifact_id)

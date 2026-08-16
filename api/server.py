@@ -38,6 +38,7 @@ from api.routes.skills import router as skills_router
 from api.routes.tasks import router as tasks_router
 from api.routes.voice import router as voice_router
 from api.routes.websocket import router as ws_router
+from career.api_routes import router as career_router
 from api.state import (
     ACTIVE_WEBSOCKETS,
     BASE_DIR,
@@ -306,6 +307,7 @@ def create_app() -> FastAPI:
     app.include_router(chat_router)
     app.include_router(voice_router)
     app.include_router(ws_router)
+    app.include_router(career_router)
 
     # Versioned /api/v1 prefixes for all routers
     app.include_router(auth_router, prefix="/api/v1")
@@ -318,6 +320,7 @@ def create_app() -> FastAPI:
     app.include_router(memory_router, prefix="/api/v1")
     app.include_router(chat_router, prefix="/api/v1")
     app.include_router(voice_router, prefix="/api/v1")
+    app.include_router(career_router, prefix="/api/v1")
 
     # Mount Static Files & Web Client
     # Critical: HTML/JS/CSS served with no-cache so the Service Worker and browser

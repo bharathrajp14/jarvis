@@ -51,6 +51,9 @@ DESTRUCTIVE_TOOLS: FrozenSet[str] = frozenset({
     "game_updater",
     "mobile_send_message",
     "mobile_delete_files",
+    "application_submit",
+    "submit_job_application",
+    "canva_oauth_connect",
 })
 
 # Safe, read-only informative tools that carry zero side-effects
@@ -65,6 +68,13 @@ ALWAYS_ALLOWED_SAFE: FrozenSet[str] = frozenset({
     "web_search",
     "artifact_export",
     "artifact_list",
+    "career_profile_get",
+    "job_search",
+    "job_match",
+    "job_details",
+    "ats_score_resume",
+    "career_analytics_summary",
+    "interview_prep_generate",
 })
 
 
