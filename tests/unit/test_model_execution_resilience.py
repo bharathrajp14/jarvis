@@ -4,11 +4,11 @@ from __future__ import annotations
 import unittest
 from unittest.mock import MagicMock
 
-from gateway.client import ModelNotFoundError, ModelResponse, ProxyBrainClient, QuotaExceededError
-from gateway.execution import ModelExecutionService
-from gateway.health import ModelHealthService
-from router.smart_router import ModelSelection, SmartModelRouter
-from router.task_profile import TaskProfile
+from brjarvis.gateway.client import ModelNotFoundError, ModelResponse, ProxyBrainClient, QuotaExceededError
+from brjarvis.gateway.execution import ModelExecutionService
+from brjarvis.gateway.health import ModelHealthService
+from brjarvis.router.smart_router import ModelSelection, SmartModelRouter
+from brjarvis.router.task_profile import TaskProfile
 
 
 class TestModelExecutionResilience(unittest.TestCase):
