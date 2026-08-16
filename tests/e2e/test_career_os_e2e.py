@@ -8,14 +8,15 @@ from career.crm.followup_engine import get_followup_engine
 from career.crm.state_machine import ApplicationStateMachine
 from career.email_intelligence.service import get_email_career_intelligence
 from career.models import Application, ApplicationStatus, OfferStatus, PriorityLevel
-from career.spreadsheet.projection import get_spreadsheet_projection
+from career.spreadsheet.projection import CareerSpreadsheetProjection, get_spreadsheet_projection
 
 
-def test_complete_career_os_lifecycle_e2e():
+def test_complete_career_os_lifecycle_e2e(tmp_path):
     db = get_career_crm_db()
     pipeline = get_career_pipeline()
     email_service = get_email_career_intelligence()
-    projection = get_spreadsheet_projection()
+    test_wb_path = tmp_path / "BR_JARVIS_Career_Tracker_Test.xlsx"
+    projection = CareerSpreadsheetProjection(workbook_path=test_wb_path)
     followup_engine = get_followup_engine()
 
     app_id = f"APP-E2E-{uuid.uuid4().hex[:6].upper()}"

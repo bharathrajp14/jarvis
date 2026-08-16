@@ -122,18 +122,28 @@ class UnifiedMemoryManager:
 
     def recall(self, query: str, limit: int = 5) -> List[Dict[str, Any]]:
         """Search all memory tiers for query-relevant context with decay-aware ranking."""
-        import time, math
-        from memory.persistent_store import _SEARCH_CACHE
+        import time, math, os
+        from pathlib import Path
         results = []
         now = time.time()
+        q_lower = query.lower().strip()
 
         # 1. Search Persistent Markdown/SQLite memory (primary structured tier)
         persistent_hits = search_memory(query)
         for p in persistent_hits[:limit * 2]:
+            mtime = getattr(p, 'mtime_s', 0)
+            if not mtime and getattr(p, 'file_path', None):
+                try:
+                    mtime = os.path.getmtime(p.file_path)
+                except Exception:
+                    mtime = now
+            if not mtime:
+                mtime = now
             # Compute recency score (files modified recently rank higher)
-            age_days = max(0, (now - (getattr(p, 'mtime_s', 0) or 0)) / 86400)
+            age_days = max(0, (now - mtime) / 86400)
             recency_score = math.exp(-age_days / 30)  # 30-day half-life
-            rank = p.confidence * (0.7 + 0.3 * recency_score)
+            exact_boost = 0.3 if q_lower and q_lower in (f"{p.name} {p.description} {p.content}").lower() else 0.0
+            rank = p.confidence * (0.85 + 0.15 * recency_score) + exact_boost
             results.append({
                 "source": "persistent",
                 "name": p.name,
@@ -144,16 +154,22 @@ class UnifiedMemoryManager:
                 "_rank": rank,
             })
 
-        # 2. Search Lesson store (high-confidence operational learnings)
+        # 2. Search Lesson store (operational learnings)
         try:
             lesson_hits = self.lessons.get_relevant_lessons(query, limit=3)
+            seen_topics = set()
             for l in lesson_hits:
+                topic_key = l.get('topic', '')
+                if topic_key in seen_topics:
+                    continue
+                seen_topics.add(topic_key)
+                lesson_rank = 0.80 if q_lower and q_lower in (l.get('correction', '') + l.get('topic', '')).lower() else 0.65
                 results.append({
                     "source": "lesson",
                     "name": f"Lesson: {l['topic']}",
                     "content": l['correction'],
-                    "confidence": 0.9,
-                    "_rank": 0.9,
+                    "confidence": 0.85,
+                    "_rank": lesson_rank,
                 })
         except Exception:
             pass
@@ -169,7 +185,7 @@ class UnifiedMemoryManager:
                             "name": "Semantic Vector Memory",
                             "content": v_text,
                             "confidence": 0.75,
-                            "_rank": 0.75,
+                            "_rank": 0.70,
                         })
             except Exception as v_err:
                 logger.debug("Vector memory recall fallback: %s", v_err)

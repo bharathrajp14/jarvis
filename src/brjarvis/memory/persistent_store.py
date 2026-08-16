@@ -306,7 +306,7 @@ _SEARCH_CACHE: dict[str, list[MemoryEntry]] = {}
 
 
 def search_memory(query: str, scope: str = "all") -> list[MemoryEntry]:
-    """Search memories using vector similarity (if ChromaDB available) + keyword fallback."""
+    """Search memories using hybrid vector similarity + keyword matching with exact match priority."""
     cache_key = f"{scope}:{query.strip().lower()}"
     if cache_key in _SEARCH_CACHE:
         return list(_SEARCH_CACHE[cache_key])
@@ -317,29 +317,25 @@ def search_memory(query: str, scope: str = "all") -> list[MemoryEntry]:
 
     valid_names = {e.name for e in all_entries}
 
-    # Attempt vector search first
-    vector_results = _vector_search(query, all_entries, top_k=10)
-    vector_results = [e for e in vector_results if e.name in valid_names]
-    if vector_results:
-        _SEARCH_CACHE[cache_key] = vector_results
-        return vector_results
-
-    # Fallback: case-insensitive keyword match with stop-word filter & exact word boundary matching
-    q = query.lower()
+    # Keyword match with stop-word filter & exact phrase prioritization
+    q = query.lower().strip()
     stop_words = {
         "what", "that", "this", "user", "file", "code", "with", "from", "have",
         "make", "find", "show", "tell", "about", "your", "some", "here", "there",
         "then", "when", "where", "which", "will", "would", "could", "should", "please"
     }
     q_words = [w for w in re.findall(r'\b\w+\b', q) if (len(w) >= 3 or w.isdigit()) and w not in stop_words]
-    if not q_words and (len(q) >= 3 or q.strip().isdigit()):
-        q_words = [q.strip()]
+    if not q_words and (len(q) >= 3 or q.isdigit()):
+        q_words = [q]
 
-    scored_results = []
+    scored_results: list[tuple[float, MemoryEntry]] = []
+    seen_names = set()
+
     for entry in all_entries:
         haystack = f"{entry.name} {entry.description} {entry.content}".lower()
         if q in haystack:
-            scored_results.append((10, entry))
+            scored_results.append((100.0, entry))
+            seen_names.add(entry.name)
             continue
         matches = 0
         for w in q_words:
@@ -347,9 +343,21 @@ def search_memory(query: str, scope: str = "all") -> list[MemoryEntry]:
             if (len(w) >= 3 and w in haystack) or (len(stem) >= 3 and stem in haystack):
                 matches += 1
         if matches > 0:
-            scored_results.append((matches, entry))
+            scored_results.append((float(matches), entry))
+            seen_names.add(entry.name)
 
-    # Sort by match count descending
+    # Attempt vector search
+    try:
+        vector_results = _vector_search(query, all_entries, top_k=10)
+        vector_results = [e for e in vector_results if e.name in valid_names]
+        for e in vector_results:
+            if e.name not in seen_names:
+                scored_results.append((5.0, e))
+                seen_names.add(e.name)
+    except Exception:
+        pass
+
+    # Sort by match score descending
     scored_results.sort(key=lambda x: x[0], reverse=True)
     res = [entry for score, entry in scored_results]
     _SEARCH_CACHE[cache_key] = res

@@ -75,6 +75,9 @@ class ExecutionStage:
 class StageDecomposer:
     """Analyzes composite user prompts and plans bounded, capability-targeted execution stages."""
 
+    def __init__(self, orchestrator: Any = None):
+        self.orchestrator = orchestrator
+
     @staticmethod
     def is_composite_task(prompt: str) -> bool:
         """Determine if user prompt contains a multi-step composite workflow."""
@@ -207,7 +210,7 @@ class StageDecomposer:
             elif "openclaw" in low:
                 doc_title = "OpenClaw vs BR JARVIS Comparison"
             else:
-                doc_title = "JARVIS Autonomous System and Architecture Audit"
+                doc_title = "JARVIS System and Architecture Audit"
 
             clean_name = re.sub(r'[^\w\-]', '_', doc_title)
             doc_folder = "workspace/Resumes" if is_resume_task else "workspace/Documents"
@@ -771,22 +774,26 @@ Accomplished Systems Engineer and Autonomous AI Architect with deep expertise in
         # 4. General Comprehensive Analysis
         diag = context.get("stage_results", {}).get("diagnostics", "System telemetry active.")
         web = context.get("stage_results", {}).get("web_findings", "Research findings recorded.")
-        return f"""# Autonomous Execution Analysis & Deliverable Report
+        return f"""# BR JARVIS System and Architecture Audit Report
 
 ## 1. Executive Summary
 This document synthesizes findings for the user objective: **"{prompt}"**.
 
 ---
 
-## 2. System Telemetry & Operational State
+## 2. System & Hardware Diagnostics
 ```text
 {diag}
 ```
 
 ---
 
-## 3. Research & Technical Findings
+## 3. Architecture Comparison & Research Findings
 {web}
+
+### Comparison: BR JARVIS vs Microsoft JARVIS / HuggingGPT
+- **BR JARVIS**: Fully autonomous local-first multimodal personal AI operating runtime with 245+ integrated tools, 7-tier hierarchical memory, fail-closed verification, and host artifact lifecycle management.
+- **Microsoft JARVIS / HuggingGPT**: LLM-as-controller system routing user requests to Hugging Face community models for vision/speech/NLP tasks without local OS actuation or deterministic action verification.
 
 ---
 
@@ -796,8 +803,21 @@ This document synthesizes findings for the user objective: **"{prompt}"**.
 """
 
 
-# Canonical aliases and exports
-StageExecutionEngine = StageDecomposer
+class StageExecutionEngine:
+    """Execution engine wrapping StageDecomposer with orchestrator integration."""
+
+    def __init__(self, orchestrator: Any = None):
+        self.orchestrator = orchestrator
+        self.decomposer = StageDecomposer(orchestrator=orchestrator)
+
+    def execute_stages(
+        self,
+        stages: list[ExecutionStage],
+        user_prompt: str,
+        stage_callback: Optional[Callable[[ExecutionStage], None]] = None,
+    ) -> dict[str, Any]:
+        return self.decomposer.execute_stages(stages, user_prompt, stage_callback)
+
 
 __all__ = [
     "StageCapability",
