@@ -53,6 +53,18 @@ class CrossDevicePlanner:
         self.capability_reg = get_capability_registry()
         self.device_gateway = get_device_gateway()
 
+    @property
+    def devices(self) -> List[Any]:
+        """Return list of authorized connected devices."""
+        try:
+            return self.device_gateway.list_devices()
+        except Exception:
+            return []
+
+    def dispatch_plan(self, steps: List[CrossDeviceStep], task_id: str = "") -> bool:
+        """Alias to execute_cross_device_task."""
+        return self.execute_cross_device_task(steps, task_id=task_id)
+
     def plan_cross_device_task(self, goal: str) -> List[CrossDeviceStep]:
         """Decompose natural language goal into sequential cross-device steps."""
         g = goal.lower().strip()

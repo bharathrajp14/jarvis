@@ -50,19 +50,24 @@ class GmailAuthManager:
             except Exception as e:
                 logger.error(f"Error reading Gmail config: {e}")
 
-    def start_browser_login(self, target_url: str = "https://mail.google.com") -> str:
+    def start_browser_login(self, target_url: str = "https://mail.google.com", compose: bool = False) -> str:
         """
-        Launch Google Login in default system browser for user sign-in.
+        Launch Gmail directly in default system browser, opening inbox or compose window.
         """
-        login_url = "https://accounts.google.com/ServiceLogin?service=mail&continue=https://mail.google.com/mail/"
+        dest_url = "https://mail.google.com/mail/u/0/#inbox?compose=new" if compose else target_url
         try:
-            webbrowser.open(login_url)
+            webbrowser.open(dest_url)
+            if compose:
+                return (
+                    "🌐 Opened Gmail Compose window in your browser.\n"
+                    "You can write and review your email directly in the browser."
+                )
             return (
-                "🌐 Opened Google Sign-In page in browser.\n"
-                "Please complete sign-in in your browser window to access Gmail."
+                "🌐 Opened Gmail in your browser.\n"
+                "If you are already signed in to Google, your inbox is open. Otherwise, complete sign-in in the browser window."
             )
         except Exception as e:
-            return f"Error opening browser for Gmail login: {e}"
+            return f"Error opening browser for Gmail: {e}"
 
     def configure_credentials(self, email_address: str, app_password: str) -> str:
         """

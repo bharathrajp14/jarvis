@@ -1,26 +1,26 @@
 # backends/ollama.py — JARVIS MK37 Ollama (Local LLM) Backend
 """
 Ollama backend for local/private inference.
-Safe initialization, standardized error handling, and text streaming.
+Safe initialization, standardized error handling, JSON schema mode, and text streaming.
 """
 from __future__ import annotations
 
 import json
 import logging
 import os
-from typing import Generator
+from typing import Any, Dict, Generator, List, Optional
 
 import requests
 
 from .base import BaseBackend
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("JARVIS.OllamaBackend")
 
 
 class OllamaBackend(BaseBackend):
-    """Local Ollama backend for privacy-sensitive tasks."""
+    """Local Ollama backend for privacy-sensitive tasks and offline inference."""
 
-    def __init__(self, model: str = None, host: str = None):
+    def __init__(self, model: Optional[str] = None, host: Optional[str] = None):
         try:
             from config.models import get_model
             default_model = get_model("ollama") or "llama3"
@@ -51,18 +51,44 @@ class OllamaBackend(BaseBackend):
         except Exception:
             return False
 
-    def complete(self, messages: list, system: str = "", tools: list = None) -> str:
+    def list_models(self, timeout: float = 3.0) -> List[str]:
+        """List locally pulled models on the Ollama instance."""
+        try:
+            r = requests.get(f"{self.host}/api/tags", timeout=timeout)
+            if r.status_code == 200:
+                data = r.json()
+                return [m.get("name", "") for m in data.get("models", [])]
+            return []
+        except Exception as e:
+            logger.debug("[Ollama] Could not list models: %s", e)
+            return []
+
+    def complete(
+        self,
+        messages: list,
+        system: str = "",
+        tools: Optional[list] = None,
+        json_mode: bool = False,
+        temperature: float = 0.7,
+        **kwargs: Any,
+    ) -> str:
         try:
             full_messages = []
             if system:
                 full_messages.append({"role": "system", "content": system})
             full_messages.extend(messages)
 
-            payload = {
+            payload: Dict[str, Any] = {
                 "model": self.model,
                 "messages": full_messages,
                 "stream": False,
+                "options": {
+                    "temperature": temperature,
+                },
             }
+            if json_mode:
+                payload["format"] = "json"
+
             r = requests.post(f"{self.host}/api/chat", json=payload, timeout=60)
             if r.status_code != 200:
                 raise ValueError(f"Ollama HTTP error {r.status_code}: {r.text}")
@@ -73,20 +99,29 @@ class OllamaBackend(BaseBackend):
 
             return data["message"]["content"]
         except Exception as e:
-            logger.warning(f"[Ollama] Error: {e}")
+            logger.warning("[Ollama] Error: %s", e)
             raise
 
-    def stream(self, messages: list, system: str = "") -> Generator[str, None, None]:
+    def stream(
+        self,
+        messages: list,
+        system: str = "",
+        temperature: float = 0.7,
+        **kwargs: Any,
+    ) -> Generator[str, None, None]:
         try:
             full_messages = []
             if system:
                 full_messages.append({"role": "system", "content": system})
             full_messages.extend(messages)
 
-            payload = {
+            payload: Dict[str, Any] = {
                 "model": self.model,
                 "messages": full_messages,
                 "stream": True,
+                "options": {
+                    "temperature": temperature,
+                },
             }
             r = requests.post(f"{self.host}/api/chat", json=payload, stream=True, timeout=120)
             if r.status_code != 200:

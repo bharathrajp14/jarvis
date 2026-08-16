@@ -120,16 +120,24 @@ class ParallelExecutionEngine:
             try:
                 logger.info("▶ Executing Step #%s (Attempt %d): %s (Tool: %s)", step.step_id, attempt + 1, step.description, step.tool)
 
-                # Execute tool if resolver provided
+                # Execute tool via provided resolver or fallback to canonical ToolRuntime
                 if tool_resolver_fn:
                     if inspect.iscoroutinefunction(tool_resolver_fn):
                         res = await asyncio.wait_for(tool_resolver_fn(step.tool, step.parameters), timeout=60.0)
                     else:
                         res = await asyncio.to_thread(tool_resolver_fn, step.tool, step.parameters)
-                    step.result = res
+                    step.result = res.data if hasattr(res, "data") and res.data is not None else res
                 else:
-                    await asyncio.sleep(0.05)
-                    step.result = {"status": "success", "executed_tool": step.tool}
+                    from brjarvis.tools.runtime import get_canonical_tool_runtime
+                    tool_res = await get_canonical_tool_runtime().execute_tool_async(
+                        name=step.tool,
+                        args=step.parameters,
+                        task_id=tid,
+                        step_id=f"step_{step.step_id}",
+                    )
+                    step.result = tool_res.data if tool_res.data is not None else tool_res.output
+                    if not tool_res.success:
+                        raise RuntimeError(tool_res.error or f"Tool '{step.tool}' execution failed.")
 
                 step.status = StepStatus.SUCCESS
                 step.end_time = time.time()

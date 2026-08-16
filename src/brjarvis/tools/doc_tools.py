@@ -1074,10 +1074,19 @@ def _build_executive_html(
             "auto_open": {"type": "boolean", "description": "Whether to auto-launch the generated file (default: true)"}
         },
         "required": ["title", "content"]
-    }
+    },
+    category="document",
+    risk_level="low",
+    permission_required="USER_WRITE",
+    is_read_only=False,
+    idempotent=True,
+    verification_strategy="FILE_PARSED",
 )
-def document_creator(args: dict) -> str:
+def document_creator(args: dict) -> Any:
     """Universal Executive Document Engine."""
+    from tools.tool_result import ToolResult
+    from tools.domain import ToolErrorCode
+
     title = str(args.get("title") or "Document").strip()
     subtitle = str(args.get("subtitle") or "").strip()
     author = str(args.get("author") or "BR JARVIS Autonomous Intelligence").strip()
@@ -1087,16 +1096,19 @@ def document_creator(args: dict) -> str:
     auto_open = bool(args.get("auto_open", True))
     filename = str(args.get("filename") or "").strip()
 
+    if not title or not content:
+        return ToolResult.failed("document_creator", ToolErrorCode.INVALID_ARGUMENT, "Parameters 'title' and 'content' are required.")
+
     out_path = _resolve_doc_path(filename, title, fmt)
 
     try:
         if fmt == "docx":
             if not _DOCX_AVAILABLE:
-                return "Error: 'python-docx' library is not installed."
+                return ToolResult.failed("document_creator", ToolErrorCode.DEPENDENCY_MISSING, "'python-docx' library is not installed.")
             saved_path = _build_executive_docx(title, subtitle, author, content, out_path, cover_page=cover_page)
         elif fmt == "pdf":
             if not _FPDF_AVAILABLE:
-                return "Error: 'fpdf2' library is not installed."
+                return ToolResult.failed("document_creator", ToolErrorCode.DEPENDENCY_MISSING, "'fpdf2' library is not installed.")
             saved_path = _build_executive_pdf(title, subtitle, author, content, out_path)
         elif fmt == "html":
             saved_path = _build_executive_html(title, subtitle, author, content, out_path)
@@ -1106,16 +1118,16 @@ def document_creator(args: dict) -> str:
             out_path.write_text(md_text, encoding="utf-8")
             saved_path = str(out_path)
         else:
-            return f"Error: Unsupported format '{fmt}'. Choose from docx, pdf, html, md."
+            return ToolResult.failed("document_creator", ToolErrorCode.INVALID_ARGUMENT, f"Unsupported format '{fmt}'. Choose from docx, pdf, html, md.")
     except Exception as e:
         logger.exception("Document creation error: %s", e)
-        return f"Error building document ({fmt}): {e}"
+        return ToolResult.failed("document_creator", ToolErrorCode.EXECUTION_EXCEPTION, f"Error building document ({fmt}): {e}")
 
     # Verify generated document
     from agent.verifier import ActionVerifier
     v_res = ActionVerifier.verify_file_parsed(str(saved_path))
     if not v_res.verified:
-        return f"Document created but verification failed: {v_res.details}"
+        return ToolResult.failed("document_creator", ToolErrorCode.VERIFICATION_FAILED, f"Document created but verification failed: {v_res.details}")
 
     # Register in ArtifactManager
     try:
@@ -1129,7 +1141,16 @@ def document_creator(args: dict) -> str:
     if auto_open:
         open_status = _open_document(Path(saved_path))
 
-    return f"⚡ [SUCCESS_VERIFIED] Created Executive Document ({fmt.upper()}): '{saved_path}' | Evidence: {v_res.evidence} | Viewer: {open_status}"
+    evidence = f"Created Executive Document ({fmt.upper()}): '{saved_path}' | Evidence: {v_res.evidence} | Viewer: {open_status}"
+    return ToolResult.success(
+        tool_name="document_creator",
+        data={"path": str(saved_path), "format": fmt, "title": title, "verified": True},
+        output=f"⚡ [SUCCESS_VERIFIED] {evidence}",
+        evidence=evidence,
+        verified=True,
+        artifacts=[{"path": str(saved_path), "format": fmt, "title": title}],
+        metadata={"path": str(saved_path), "format": fmt},
+    )
 
 
 # ── Backward Compatibility Tool Wrappers ──────────────────────────────────
@@ -1145,9 +1166,15 @@ def document_creator(args: dict) -> str:
             "auto_open": {"type": "boolean", "description": "Whether to auto-launch Word"}
         },
         "required": ["title", "content"]
-    }
+    },
+    category="document",
+    risk_level="low",
+    permission_required="USER_WRITE",
+    is_read_only=False,
+    idempotent=True,
+    verification_strategy="FILE_PARSED",
 )
-def create_word_document(args: dict) -> str:
+def create_word_document(args: dict) -> Any:
     """Create Word document via document_creator engine."""
     args_copy = dict(args) if isinstance(args, dict) else {}
     args_copy["format"] = "docx"
@@ -1168,15 +1195,22 @@ def create_word_document(args: dict) -> str:
             "auto_open": {"type": "boolean", "description": "Whether to auto-launch PDF viewer"}
         },
         "required": ["title", "content"]
-    }
+    },
+    category="document",
+    risk_level="low",
+    permission_required="USER_WRITE",
+    is_read_only=False,
+    idempotent=True,
+    verification_strategy="FILE_PARSED",
 )
-def create_pdf_document(args: dict) -> str:
+def create_pdf_document(args: dict) -> Any:
     """Create PDF document via document_creator engine."""
     args_copy = dict(args) if isinstance(args, dict) else {}
     args_copy["format"] = "pdf"
     if not args_copy.get("content"):
         args_copy["content"] = args_copy.get("title", "Document Content")
     return document_creator(args_copy)
+
 
 
 @register_tool(

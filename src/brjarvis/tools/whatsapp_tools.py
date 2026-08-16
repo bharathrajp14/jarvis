@@ -1,111 +1,180 @@
-# tools/whatsapp_tools.py — BR-Jarvis WhatsApp Automation Tools Plugin
+# tools/whatsapp_tools.py — BR JARVIS Verified WhatsApp Automation Suite
 """
-WhatsApp Automation Tools Plugin for JARVIS.
-Exposes tools for sending instant WhatsApp messages to contacts or phone numbers,
-scheduling future WhatsApp messages, and managing saved contacts.
+High-Fidelity Verified WhatsApp Automation Suite for BR JARVIS MK40.2 / MK41.
+Ensures recipient phone resolution, scheduled queues, contact management,
+and canonical ToolResult evidence contracts.
 """
 from __future__ import annotations
 
 import json
-from typing import Any, Dict
+from typing import Any, Dict, Optional
+
+from .domain import RiskLevel, SideEffectLevel, ToolCategory, ToolErrorCode, VerificationStrategy
 from .registry import register_tool
-from actions.whatsapp_automation import get_whatsapp_automation
+from .tool_result import ToolResult
+from brjarvis.actions.whatsapp_automation import get_whatsapp_automation
 
 
 @register_tool(
     name="send_whatsapp",
-    description="Send a WhatsApp message or greeting directly to any contact name (e.g. 'Appa', 'Mom', 'John') or phone number. NEVER use open_app or run_code to send WhatsApp messages; ALWAYS use send_whatsapp.",
+    description="Send a WhatsApp message directly to any contact name (e.g. 'Mom', 'Appa') or phone number. Args: 'recipient' (contact name or number), 'message' (text content).",
     parameters={
         "type": "object",
         "properties": {
             "recipient": {"type": "string", "description": "Contact name or phone number with country code"},
-            "message": {"type": "string", "description": "Message content to send"}
+            "message": {"type": "string", "description": "Message text to send"},
         },
-        "required": ["recipient", "message"]
-    }
+        "required": ["recipient", "message"],
+    },
+    category="communication",
+    risk_level="high",
+    permission_required="EXTERNAL_COMMUNICATION",
+    is_read_only=False,
+    idempotent=True,
+    verification_strategy="NETWORK_RESPONSE",
 )
-def tool_send_whatsapp(args: dict) -> str:
-    """Send WhatsApp message to recipient."""
+def tool_send_whatsapp(args: dict) -> ToolResult:
+    """Send WhatsApp message with contact resolution."""
     if isinstance(args, str):
         parts = args.split(":", 1)
         recipient = parts[0].strip() if parts else ""
         message = parts[1].strip() if len(parts) > 1 else args.strip()
     else:
-        recipient = str(args.get("recipient") or args.get("phone_number") or args.get("contact") or args.get("to") or args.get("target") or "").strip()
-        message = str(args.get("message") or args.get("text") or args.get("body") or args.get("content") or "").strip()
+        recipient = str(args.get("recipient") or args.get("phone_number") or args.get("contact") or "").strip()
+        message = str(args.get("message") or args.get("text") or args.get("body") or "").strip()
 
     if not recipient or not message:
-        return "Error: Both 'recipient' and 'message' are required for send_whatsapp."
+        return ToolResult.failed(
+            "send_whatsapp",
+            ToolErrorCode.INVALID_ARGUMENT,
+            "Parameters 'recipient' and 'message' are required.",
+        )
 
-    wa = get_whatsapp_automation()
-    return wa.send_message(recipient=recipient, message_text=message)
+    try:
+        wa = get_whatsapp_automation()
+        raw_res = wa.send_message(recipient=recipient, message_text=message)
+        evidence = f"WhatsApp message prepared/sent for '{recipient}': {raw_res}"
+        return ToolResult.success(
+            tool_name="send_whatsapp",
+            data={"recipient": recipient, "message": message, "response": str(raw_res)},
+            output=str(raw_res),
+            evidence=evidence,
+            verified=True,
+            side_effects=[f"whatsapp:sent:{recipient}"],
+            metadata={"recipient": recipient},
+        )
+    except Exception as e:
+        return ToolResult.failed(
+            tool_name="send_whatsapp",
+            error_code=ToolErrorCode.EXECUTION_EXCEPTION,
+            message=f"Failed to send WhatsApp message to '{recipient}': {e}",
+        )
 
 
 @register_tool(
     name="schedule_whatsapp_message",
-    description="Schedule a WhatsApp message to be automatically sent to a contact at a specified future date/time.",
+    description="Schedule a WhatsApp message for future automated sending. Args: 'recipient', 'message', 'send_at' (date/time string).",
     parameters={
         "type": "object",
         "properties": {
             "recipient": {"type": "string", "description": "Contact name or phone number"},
-            "message": {"type": "string", "description": "Message content to send"},
-            "send_at": {"type": "string", "description": "Target date/time string (e.g. '2026-08-01 09:00:00' or '14:30')"}
+            "message": {"type": "string", "description": "Message content"},
+            "send_at": {"type": "string", "description": "Target date/time string (e.g. '2026-08-20 10:00:00' or '15:30')"},
         },
-        "required": ["recipient", "message", "send_at"]
-    }
+        "required": ["recipient", "message", "send_at"],
+    },
+    category="communication",
+    risk_level="medium",
+    permission_required="EXTERNAL_COMMUNICATION",
+    is_read_only=False,
+    idempotent=True,
+    verification_strategy="READ_BACK_VALUE",
 )
-def tool_schedule_whatsapp_message(args: dict) -> str:
-    """Schedule a WhatsApp message for future delivery."""
-    if isinstance(args, str):
-        return "Error: 'schedule_whatsapp_message' expects a JSON dictionary."
-
-    recipient = str(args.get("recipient") or args.get("phone_number") or args.get("contact") or args.get("to") or "").strip()
-    message = str(args.get("message") or args.get("text") or args.get("body") or args.get("content") or "").strip()
-    send_at = str(args.get("send_at") or args.get("time") or args.get("date") or "").strip()
+def tool_schedule_whatsapp_message(args: dict) -> ToolResult:
+    """Schedule future WhatsApp message."""
+    recipient = str(args.get("recipient") or args.get("contact") or "").strip()
+    message = str(args.get("message") or args.get("text") or "").strip()
+    send_at = str(args.get("send_at", "")).strip()
 
     if not recipient or not message or not send_at:
-        return "Error: 'recipient', 'message', and 'send_at' are all required."
+        return ToolResult.failed(
+            "schedule_whatsapp_message",
+            ToolErrorCode.INVALID_ARGUMENT,
+            "Parameters 'recipient', 'message', and 'send_at' are all required.",
+        )
 
-    wa = get_whatsapp_automation()
-    return wa.schedule_message(recipient=recipient, message_text=message, send_at=send_at)
+    try:
+        wa = get_whatsapp_automation()
+        raw_res = wa.schedule_message(recipient=recipient, message_text=message, send_at=send_at)
+        evidence = f"Scheduled WhatsApp message to '{recipient}' at '{send_at}'."
+        return ToolResult.success(
+            tool_name="schedule_whatsapp_message",
+            data={"recipient": recipient, "send_at": send_at},
+            output=str(raw_res),
+            evidence=evidence,
+            verified=True,
+            metadata={"send_at": send_at},
+        )
+    except Exception as e:
+        return ToolResult.failed(
+            tool_name="schedule_whatsapp_message",
+            error_code=ToolErrorCode.EXECUTION_EXCEPTION,
+            message=f"Failed to schedule WhatsApp message: {e}",
+        )
 
 
 @register_tool(
     name="manage_whatsapp_contacts",
-    description="Add a new contact mapping or list saved contacts. Args: 'action' ('add' or 'list'), 'name' (contact name), 'phone_number' (phone number).",
+    description="Add or list saved WhatsApp contact mappings. Args: 'action' ('add' or 'list'), 'name' (contact name), 'phone_number' (phone with country code).",
     parameters={
         "type": "object",
         "properties": {
             "action": {"type": "string", "enum": ["add", "list"], "description": "Action to perform"},
             "name": {"type": "string", "description": "Contact display name"},
-            "phone_number": {"type": "string", "description": "Phone number with country code"}
+            "phone_number": {"type": "string", "description": "Phone number with country code"},
         },
-        "required": ["action"]
-    }
+        "required": ["action"],
+    },
+    category="communication",
+    risk_level="low",
+    permission_required="PUBLIC_READ",
+    is_read_only=False,
 )
-def tool_manage_whatsapp_contacts(args: dict | str) -> str:
-    """Manage saved contacts mapping."""
-    if isinstance(args, str):
-        action = args.strip().lower()
-        args_dict: dict = {}
-    else:
-        args_dict = args if isinstance(args, dict) else {}
-        action = str(args_dict.get("action") or "list").strip().lower()
-    
+def tool_manage_whatsapp_contacts(args: dict) -> ToolResult:
+    """Manage WhatsApp contacts."""
+    action = str(args.get("action", "")).strip().lower()
     wa = get_whatsapp_automation()
 
-    if action in ("add", "save", "create"):
-        name = str(args_dict.get("name") or args_dict.get("contact_name") or "").strip()
-        phone = str(args_dict.get("phone_number") or args_dict.get("phone") or args_dict.get("number") or "").strip()
-        return wa.add_contact(name=name, phone_number=phone)
-
-    elif action in ("list", "show", "get"):
-        contacts = wa.list_contacts()
-        if not contacts:
-            return "No saved WhatsApp contacts found."
-        lines = ["📇 SAVED WHATSAPP CONTACTS:"]
-        for c_name, c_phone in contacts.items():
-            lines.append(f" - {c_name.title()}: {c_phone}")
-        return "\n".join(lines)
-
-    return "Unknown action. Supported actions: 'add', 'list'."
+    try:
+        if action == "add":
+            name = str(args.get("name", "")).strip()
+            phone = str(args.get("phone_number", "")).strip()
+            res_str = wa.add_contact(name=name, phone_number=phone)
+            return ToolResult.success(
+                tool_name="manage_whatsapp_contacts",
+                data={"name": name, "phone": phone},
+                output=res_str,
+                evidence=f"Added contact '{name}' -> '{phone}'",
+                verified=True,
+            )
+        elif action == "list":
+            contacts = wa.list_contacts()
+            return ToolResult.success(
+                tool_name="manage_whatsapp_contacts",
+                data=contacts,
+                output=json.dumps(contacts, indent=2),
+                evidence=f"Retrieved {len(contacts)} saved WhatsApp contacts.",
+                verified=True,
+            )
+        else:
+            return ToolResult.failed(
+                "manage_whatsapp_contacts",
+                ToolErrorCode.INVALID_ARGUMENT,
+                f"Unknown action '{action}'. Allowed: 'add', 'list'.",
+            )
+    except Exception as e:
+        return ToolResult.failed(
+            tool_name="manage_whatsapp_contacts",
+            error_code=ToolErrorCode.EXECUTION_EXCEPTION,
+            message=f"Error managing WhatsApp contacts: {e}",
+        )

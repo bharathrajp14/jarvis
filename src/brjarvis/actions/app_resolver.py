@@ -384,22 +384,37 @@ class ApplicationResolver:
 
         return None
 
-    def launch(self, app_query: str) -> Tuple[bool, str]:
+    def launch(self, app_query: str, url: Optional[str] = None) -> Tuple[bool, str]:
         """
-        Resolve and launch an application, verifying its start truthfully.
+        Resolve and launch an application, optionally navigating to a URL.
         Returns: (success: bool, status_message: str)
         """
-        resolved = self.resolve(app_query)
+        import webbrowser
+
+        q_clean = app_query.strip()
+        # Direct URL launch
+        if not url and any(q_clean.lower().startswith(p) for p in ("http://", "https://", "www.")):
+            url = q_clean
+            q_clean = "chrome"
+
+        resolved = self.resolve(q_clean)
         if not resolved:
             # Rescan once if missing
             self.rescan_system_applications()
-            resolved = self.resolve(app_query)
+            resolved = self.resolve(q_clean)
 
         if not resolved:
+            # If a URL is provided, fallback to default OS web browser
+            if url:
+                try:
+                    webbrowser.open(url)
+                    return True, f"Opened web URL '{url}' in default browser."
+                except Exception as w_err:
+                    return False, f"Failed to open URL '{url}': {w_err}"
             return False, f"Could not find or resolve executable path for '{app_query}'. Run sync_app_paths to refresh system index."
 
         target_path, target_type = resolved
-        logger.info("[AppResolver] Launching '%s' via resolved path: %s (%s)", app_query, target_path, target_type)
+        logger.info("[AppResolver] Launching '%s' via resolved path: %s (%s, url=%s)", app_query, target_path, target_type, url)
 
         try:
             if sys.platform == "win32":
@@ -411,36 +426,51 @@ class ApplicationResolver:
                     return True, f"Launched Windows application protocol '{target_path}'."
 
                 if target_path.lower().endswith(".lnk") or target_path.lower().endswith(".url"):
-                    if hasattr(os, "startfile"):
+                    if hasattr(os, "startfile") and not url:
                         os.startfile(target_path)
                     else:
-                        subprocess.Popen(["cmd.exe", "/c", "start", "", target_path], shell=False)
-                    return True, f"Launched application shortcut: '{target_path}'"
+                        cmd = ["cmd.exe", "/c", "start", "", target_path]
+                        if url:
+                            cmd.append(url)
+                        subprocess.Popen(cmd, shell=False)
+                    return True, f"Launched application shortcut: '{target_path}'" + (f" with URL '{url}'" if url else "")
 
                 # Direct executable
                 work_dir = str(Path(target_path).parent) if os.path.isfile(target_path) else None
+                cmd = [target_path]
+                if url:
+                    cmd.append(url)
                 subprocess.Popen(
-                    [target_path],
+                    cmd,
                     cwd=work_dir,
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
                     shell=False
                 )
-                return True, f"Launched executable: '{target_path}'"
+                return True, f"Launched '{app_query}' ({target_path})" + (f" -> {url}" if url else "")
 
             elif sys.platform == "darwin":
-                if target_type == "app_bundle" or target_path.endswith(".app"):
-                    subprocess.Popen(["open", target_path])
-                else:
-                    subprocess.Popen([target_path])
-                return True, f"Launched macOS application: '{target_path}'"
+                cmd = ["open", target_path]
+                if url:
+                    cmd.extend(["--args", url])
+                subprocess.Popen(cmd)
+                return True, f"Launched macOS application: '{target_path}'" + (f" -> {url}" if url else "")
 
             else:  # Linux
-                subprocess.Popen([target_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                return True, f"Launched Linux application: '{target_path}'"
+                cmd = [target_path]
+                if url:
+                    cmd.append(url)
+                subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                return True, f"Launched Linux application: '{target_path}'" + (f" -> {url}" if url else "")
 
         except Exception as e:
             logger.error("[AppResolver] Failed to launch '%s' at '%s': %s", app_query, target_path, e)
+            if url:
+                try:
+                    webbrowser.open(url)
+                    return True, f"Launched web URL '{url}' in fallback browser."
+                except Exception:
+                    pass
             return False, f"Failed to launch application '{app_query}' ({target_path}): {e}"
 
 

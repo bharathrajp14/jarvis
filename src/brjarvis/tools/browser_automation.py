@@ -143,7 +143,7 @@ async def _close_browser():
 
 @register_tool(
     name="browser_open_url",
-    description="Open a website in the interactive browser (e.g. Gmail, Microsoft 365, Outlook, or verified host HTML reports). Reuses logged-in sessions.",
+    description="Open a website in the interactive browser (e.g. Gmail, Microsoft 365, Outlook, or verified host HTML reports). Reuses logged-in sessions. Args: 'url' (required target URL or path), 'headless' (optional boolean).",
     parameters={
         "type": "object",
         "properties": {
@@ -151,11 +151,18 @@ async def _close_browser():
             "headless": {"type": "boolean", "description": "Run in background without opening window (default false)"}
         },
         "required": ["url"]
-    }
+    },
+    category="browser",
+    risk_level="low",
+    permission_required="PUBLIC_READ",
+    is_read_only=True,
+    verification_strategy="BROWSER_DOM",
 )
-def browser_open_url(args: dict) -> str:
-    """Open a URL or verified host artifact in the persistent browser."""
+def browser_open_url(args: dict) -> Any:
+    """Open a URL or verified host artifact in the persistent browser and return canonical ToolResult."""
     from agent.artifacts import get_artifact_manager
+    from tools.tool_result import ToolResult
+    from tools.domain import ToolErrorCode
     mgr = get_artifact_manager()
 
     if isinstance(args, str):
@@ -166,14 +173,14 @@ def browser_open_url(args: dict) -> str:
         headless = args.get("headless", False)
 
     if not raw_url:
-        return "Browser Open Error: 'url' parameter is required."
+        return ToolResult.failed("browser_open_url", ToolErrorCode.INVALID_ARGUMENT, "Parameter 'url' is required.")
 
     # Sandbox / Host Artifact Interception Gateway
     success, resolved_target, rec = mgr.ensure_host_artifact(raw_url)
     if not success:
         logger.warning("Browser open handoff rejected: %s", resolved_target)
         mgr.record_browser_result(raw_url, opened=False, observed=False, browser_verified=False, error=resolved_target)
-        return f"Browser Open Error: {resolved_target}"
+        return ToolResult.failed("browser_open_url", ToolErrorCode.PERMISSION_DENIED, f"Browser open rejected: {resolved_target}")
 
     # Convert local host paths to file:// URI for browser navigation
     if not (resolved_target.startswith("http://") or resolved_target.startswith("https://") or resolved_target.startswith("about:")):
@@ -188,9 +195,8 @@ def browser_open_url(args: dict) -> str:
             resp = await page.goto(nav_url, wait_until="domcontentloaded", timeout=30000)
         except Exception as nav_err:
             mgr.record_browser_result(resolved_target, opened=True, observed=True, browser_verified=False, error=str(nav_err))
-            return f"Browser Open Error: Could not navigate to '{nav_url}': {nav_err}"
+            return ToolResult.failed("browser_open_url", ToolErrorCode.EXECUTION_EXCEPTION, f"Could not navigate to '{nav_url}': {nav_err}")
 
-        # Capture browser state and inspect for error screens
         title = await page.title()
         content = ""
         try:
@@ -209,17 +215,25 @@ def browser_open_url(args: dict) -> str:
         for ind in err_indicators:
             if ind in content or ind in title.lower():
                 mgr.record_browser_result(resolved_target, opened=True, observed=True, browser_verified=False, error=f"Browser error indicator '{ind}' detected.")
-                return f"Browser Open Error: {ind.upper()} - The browser could not open the target file."
+                return ToolResult.failed("browser_open_url", ToolErrorCode.VERIFICATION_FAILED, f"Browser error screen: '{ind}'")
 
         # Verification succeeded
         mgr.record_browser_result(resolved_target, opened=True, observed=True, browser_verified=True)
-        return f"⚡ Opened '{title}' at {page.url} (Host Artifact Verified: {resolved_target})"
+        evidence = f"Opened '{title}' at {page.url} (Host target: {resolved_target})"
+        return ToolResult.success(
+            tool_name="browser_open_url",
+            data={"url": page.url, "title": title, "target": resolved_target},
+            output=f"⚡ {evidence}",
+            evidence=evidence,
+            verified=True,
+            metadata={"url": page.url, "title": title},
+        )
 
     try:
         return _run_async(_open())
     except Exception as e:
         mgr.record_browser_result(resolved_target, opened=False, observed=False, browser_verified=False, error=str(e))
-        return f"Browser Open Error: Artifact exported successfully, but the browser could not open it: {e}"
+        return ToolResult.failed("browser_open_url", ToolErrorCode.EXECUTION_EXCEPTION, f"Browser open error: {e}")
 
 
 @register_tool(
@@ -231,21 +245,28 @@ def browser_open_url(args: dict) -> str:
             "target": {"type": "string", "description": "Text, button label, or CSS selector to click (e.g., 'Compose', 'Send', 'Reply', '#btn')"}
         },
         "required": ["target"]
-    }
+    },
+    category="browser",
+    risk_level="medium",
+    permission_required="LOCAL_SYSTEM",
+    is_read_only=False,
+    verification_strategy="BROWSER_DOM",
 )
-def browser_click(args: dict) -> str:
+def browser_click(args: dict) -> Any:
     """Click an element on the current browser page."""
+    from tools.tool_result import ToolResult
+    from tools.domain import ToolErrorCode
+
     if isinstance(args, str):
         target = args.strip()
     else:
         target = str(args.get("target") or args.get("selector") or args.get("element") or args.get("text") or "").strip()
 
     if not target:
-        return "Click Error: 'target' parameter is required."
+        return ToolResult.failed("browser_click", ToolErrorCode.INVALID_ARGUMENT, "Parameter 'target' is required.")
 
     async def _click():
         page = await _get_or_create_page()
-        # Try text selector first, then CSS selector — reduced timeout to 1500ms per selector
         selectors = [
             f"text='{target}'",
             f"text={target}",
@@ -269,15 +290,26 @@ def browser_click(args: dict) -> str:
 
         if clicked:
             await page.wait_for_timeout(800)
-            return f"⚡ Clicked '{target}' on page {page.url}"
+            evidence = f"Clicked '{target}' on page {page.url}"
+            return ToolResult.success(
+                tool_name="browser_click",
+                data={"clicked": target, "url": page.url},
+                output=f"⚡ {evidence}",
+                evidence=evidence,
+                verified=True,
+            )
         else:
-            return f"Click Error: Could not find clickable element for '{target}'. (Error: {last_err})"
-
+            return ToolResult.failed(
+                tool_name="browser_click",
+                error_code=ToolErrorCode.VERIFICATION_FAILED,
+                message=f"Could not find clickable element for '{target}' (Error: {last_err})",
+            )
 
     try:
         return _run_async(_click())
     except Exception as e:
-        return f"Browser Click Error: {e}"
+        return ToolResult.failed("browser_click", ToolErrorCode.EXECUTION_EXCEPTION, f"Browser click error: {e}")
+
 
 
 @register_tool(

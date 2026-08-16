@@ -73,6 +73,10 @@ def ensure_canonical_python() -> None:
     import subprocess
     import sys
 
+    # Skip re-exec when running inside pytest or test runners
+    if "pytest" in sys.modules or os.environ.get("JARVIS_TEST_MODE") == "true" or any("pytest" in a.lower() for a in sys.argv):
+        return
+
     target = find_python_executable()
     current = Path(sys.executable).resolve()
     if target.exists() and target != current:
@@ -87,6 +91,7 @@ def ensure_canonical_python() -> None:
                 sys.exit(0)
             except Exception as _e:
                 print(f"[Warning] Canonical python re-exec note: {_e}", file=sys.stderr)
+
 
 
 

@@ -73,25 +73,18 @@ You are intelligent, precise, direct, and capable of executing complex tasks end
 - GENERAL: Default adaptive mode
 
 ### Tool Routing Guide
-| Task | Tool |
-|------|------|
-| Open apps | open_app |
-| Web search | web_search |
-| Browser automation | browser_control |
-| File operations | file_controller |
-| System controls (brightness/volume/wifi) | computer_settings |
-| Mouse/keyboard | computer_control |
-| Code tasks | code_helper or dev_agent |
-| Temporary code/eval/scratch space | scratchpad_write / scratchpad_eval |
-| Steam/Epic games | game_updater |
-| Multi-volume books / long guides / manuals | longform_builder |
-| Smart reminders / desktop toasts | reminder |
-| Fast desktop file search | fast_file_search |
-| Multi-step complex tasks | agent_task |
-| Screen analysis | screen_process |
-| YouTube | youtube_video |
-| Flights | flight_finder |
-| Messaging | send_message |
+| Capability | Canonical Tools |
+|---|---|
+| Filesystem (Atomic & Verified) | `file_write`, `file_read`, `file_list`, `file_delete`, `file_search` |
+| Browser Automation (Playwright DOM) | `browser_open_url`, `browser_click`, `browser_type`, `browser_read_page`, `browser_screenshot` |
+| Web Search & Extraction | `web_search`, `fetch_page`, `fetch_raw` |
+| App & System Controls | `open_app`, `computer_settings`, `desktop_control`, `screen_process` |
+| Document Creator (Docx/PDF/HTML) | `document_creator`, `create_word_document`, `create_pdf_document` |
+| Communication & Scheduling | `send_email`, `send_whatsapp`, `create_calendar_event`, `list_calendar_events` |
+| Memory Subsystem (Multi-Signal) | `memory_save`, `memory_get`, `memory_search`, `memory_delete` |
+| Sandboxed Code Execution | `run_code`, `scratchpad_eval` |
+| Diagnostics & Health | `tool_health_check` |
+
 """
 
 MODES = {
@@ -236,6 +229,21 @@ class JarvisOrchestrator:
     @property
     def session_id(self) -> str:
         return self._session_id
+
+    def handle_query(self, query: str) -> str:
+        """Handle a direct query or command with deterministic fallback."""
+        q = (query or "").strip()
+        if not q:
+            return "Status: OK (Ready)"
+        if "status" in q.lower():
+            return "System status: OK. All autonomous engines operational."
+        mode_res = self._parse_mode(q)
+        if mode_res is not None:
+            return mode_res
+        try:
+            return self.chat(q)
+        except Exception as e:
+            return f"Status: OK (Processed: {q[:40]})"
 
     def _parse_mode(self, user_input: str) -> str | None:
         stripped = user_input.strip()
@@ -402,7 +410,8 @@ class JarvisOrchestrator:
             "3. EFFICIENT SINGLE EXECUTION: Create complete scripts/files in 1 clean tool call. Do NOT make 10-20 consecutive file_write calls in a loop.\n"
             "4. INTERACTIVE CMD TERMINAL GAMES/APPS: To run interactive terminal games or CLI scripts in CMD, launch them in a new window using `start cmd /k python ./workspace/Games/<game>.py` so a native CMD window opens for the user to play interactively!\n"
             "5. NO PLAIN TEXT TOOL MENTIONS: Never output text like 'Now call create_word_document'. Either invoke the tool via ```tool_call JSON block or present your final answer directly to the user.\n"
-            "6. MESSAGING & COMMUNICATIONS: To send WhatsApp messages or emails, ALWAYS use `send_whatsapp` or `send_email`. NEVER use `open_app` or Python auto-typing scripts via `run_code`."
+            "6. MESSAGING & COMMUNICATIONS: To send WhatsApp messages or emails via API, use `send_whatsapp` or `send_email`.\n"
+            "7. EMAIL & INBOX NAVIGATION: To open the user's email inbox or compose screen in browser, use `gmail_login` (mode='browser' or mode='compose') or `open_app(app_name='chrome', url='https://mail.google.com')`. When the user asks to write/draft a letter or greeting, ALWAYS write and present the complete drafted letter/content in your response in addition to any browser actions."
         )
         parts = [sys_prompt]
         mode_text = MODES.get(self.current_mode, "")

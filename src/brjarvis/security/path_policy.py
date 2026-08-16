@@ -15,12 +15,12 @@ from typing import FrozenSet, List, Optional, Set, Union
 
 logger = logging.getLogger("JARVIS.PathPolicy")
 
-# Critical OS and secret paths permanently denied
 CRITICAL_RESOURCE_DENYLIST: FrozenSet[str] = frozenset({
-    "system32", "winsxs", "registry", "sam", "security",
+    "system32", "syswow64", "winsxs", "registry", "sam", "security",
     "login data", ".ssh", ".gnupg", ".aws", "credentials", "id_rsa", "id_ed25519", "id_dsa",
-    "wallet.dat", ".pfx", "shadow", "passwd", "/etc/shadow",
-    "/etc/sudoers", "/etc/passwd", "windows/system32", "windows/syswow64",
+    "wallet.dat", ".pfx", "shadow", "passwd", "etc/shadow",
+    "etc/sudoers", "etc/passwd", "windows/system32", "windows/syswow64",
+    "windows/win.ini", "win.ini", "system.ini", "boot.ini",
     ".env", ".env.local", ".env.production", ".git", ".npmrc", ".pypirc",
     "secrets.json", "secrets.yaml", "secrets.env"
 })
@@ -63,20 +63,15 @@ class PathSecurityPolicy:
                     pass
 
     def canonicalize(self, raw_path: Union[str, Path]) -> Path:
-        """Resolve a raw path string into a strictly normalized canonical Path.
-        Fails closed by raising PermissionError or ValueError on malformed paths.
-        """
+        """Resolve a raw path string into a strictly normalized canonical Path."""
         if not raw_path:
             raise ValueError("Empty path cannot be canonicalized.")
 
         p_str = str(raw_path).strip()
-        # Disallow UNC paths on Windows if they attempt network traversal
         if sys.platform == "win32" and (p_str.startswith(r"\\") or p_str.startswith("//")):
-            if not p_str.startswith("\\\\?\\"):  # allow extended length if local
+            if not p_str.startswith("\\\\?\\"):
                 raise PermissionError(f"UNC remote network paths are prohibited: {p_str}")
 
-
-        # Expand user and environment variables
         expanded = os.path.expandvars(os.path.expanduser(p_str))
         target_path = Path(expanded)
 
@@ -90,6 +85,19 @@ class PathSecurityPolicy:
 
     def is_safe_resource(self, path_input: Union[str, Path]) -> bool:
         """Check if path does not violate critical security deny lists."""
+        if not path_input:
+            return False
+
+        raw_str = str(path_input).strip().lower().replace("\\", "/")
+
+        # Direct string check on raw input for critical secrets or traversal
+        for bad in CRITICAL_RESOURCE_DENYLIST:
+            if bad in raw_str:
+                return False
+
+        if raw_str.startswith(".env") or "/.env" in raw_str:
+            return False
+
         try:
             resolved = self.canonicalize(path_input)
         except Exception:
@@ -97,11 +105,11 @@ class PathSecurityPolicy:
 
         norm_str = str(resolved).lower().replace("\\", "/")
 
-        # 1. Check extension denylist
+        # Check extension denylist
         if resolved.suffix.lower() in DENIED_EXTENSIONS:
             return False
 
-        # 2. Check filename and path components
+        # Check filename and path components
         name_lower = resolved.name.lower()
         if name_lower in CRITICAL_RESOURCE_DENYLIST or name_lower.startswith(".env"):
             return False
@@ -113,6 +121,13 @@ class PathSecurityPolicy:
 
         for bad in CRITICAL_RESOURCE_DENYLIST:
             if bad in norm_str:
+                return False
+
+        # Check Windows root and system root directory accesses
+        if sys.platform == "win32":
+            win_dir = os.environ.get("WINDIR", r"C:\Windows").lower().replace("\\", "/")
+            if norm_str.startswith(win_dir) or "/windows/" in norm_str or norm_str.endswith("/windows"):
+                # Prohibit access to Windows directory
                 return False
 
         return True
@@ -151,19 +166,16 @@ class PathSecurityPolicy:
         return tier == PathTier.TIER_0_WORKSPACE
 
     def allow_cloud_context(self, path_input: Union[str, Path]) -> bool:
-        """Return True if path is safe to send to cloud LLMs (Tier 0 or Tier 1). Return False for Tier 2."""
         tier = self.get_tier(path_input)
         return tier != PathTier.TIER_2_CRITICAL_SECRETS
 
     def is_sandbox_internal_path(self, path_input: Union[str, Path]) -> bool:
-        """Check if path is located inside temporary sandbox process jail directories."""
         if not path_input:
             return False
         p_str = str(path_input).replace("\\", "/").lower()
         return "jarvis_sandbox_jails" in p_str or "sandbox_jails" in p_str or "/jail_" in p_str or "\\jail_" in str(path_input).lower()
 
     def validate_artifact_export_path(self, source: Union[str, Path], destination: Union[str, Path], host_root: Union[str, Path]) -> bool:
-        """Ensure exported artifact destination is strictly confined inside host_root without traversal or junction escapes."""
         try:
             dest_res = Path(destination).resolve(strict=False)
             root_res = Path(host_root).resolve(strict=False)
@@ -174,7 +186,6 @@ class PathSecurityPolicy:
 
 
 def is_sandbox_internal_path(path_input: Union[str, Path]) -> bool:
-    """Module-level helper to detect sandbox internal jail paths."""
     if not path_input:
         return False
     p_str = str(path_input).replace("\\", "/").lower()
@@ -189,4 +200,3 @@ def get_path_policy() -> PathSecurityPolicy:
     if _GLOBAL_PATH_POLICY is None:
         _GLOBAL_PATH_POLICY = PathSecurityPolicy()
     return _GLOBAL_PATH_POLICY
-

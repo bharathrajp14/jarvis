@@ -17,7 +17,7 @@ _MODELS_FILE = _CONFIG_DIR / "models.json"
 DEFAULTS = {
     "voice_live": "models/gemini-3.1-flash-live-preview",
     "voice_name": "Charon",
-    "claude": "claude-sonnet-4-6",
+    "claude": "gemini-2.5-pro",
     "gpt": "gemini-3.6-flash-high",
     "gemini": "gemini-3.6-flash-high",
     "gemini_code": "gemini-3.1-pro-high",

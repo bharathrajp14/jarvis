@@ -407,6 +407,7 @@ class TerminalSession:
         t_start = time.monotonic()
 
         try:
+            handler_func = getattr(self.orchestrator, "handle_query", self.orchestrator.chat)
             # Live spinner during orchestrator call
             if HAS_RICH and self.renderer.console and getattr(sys.stdout, "isatty", lambda: False)():
                 spinner_label = self._get_spinner_label()
@@ -414,11 +415,11 @@ class TerminalSession:
                     f"[bold {COLOR_CYAN}]{spinner_label}[/] [dim]({self.current_mode.upper()})[/dim]",
                     spinner="dots",
                 ):
-                    response = self.orchestrator.chat(user_input)
+                    response = handler_func(user_input)
                     if asyncio.iscoroutine(response):
                         response = asyncio.run(response)
             else:
-                response = self.orchestrator.chat(user_input)
+                response = handler_func(user_input)
                 if asyncio.iscoroutine(response):
                     response = asyncio.run(response)
 

@@ -2,23 +2,24 @@
 """
 Central Database Manager for BR JARVIS.
 Consolidates system state into a unified, high-concurrency SQLite database operating in WAL mode.
-Tables managed:
+Authoritative Single Source of Truth for:
+- canonical_memories (28-field temporal memory model)
 - tasks & task_steps & checkpoints
-- persistent_memories
-- contacts
-- routines & routine_runs
-- devices & paired_keys
-- skills & skill_versions
-- audit_events
+- decisions & decision_receipts
+- execution_ledger
+- experience_trajectories & lessons
+- contacts & devices & routines
+- workspace projects, conversations, messages, artifacts
 """
 from __future__ import annotations
 
-import os
-import time
 import json
-import sqlite3
 import logging
+import os
+import shutil
+import sqlite3
 import threading
+import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -52,7 +53,77 @@ class CanonicalDatabaseManager:
         """Initialize and migrate all canonical tables."""
         with self._lock:
             with self.get_connection() as conn:
-                # 1. Tasks & Step Checkpoints
+                # 1. Canonical Memories (28-field authoritative schema)
+                conn.execute("""
+                    CREATE TABLE IF NOT EXISTS canonical_memories (
+                        memory_id TEXT PRIMARY KEY,
+                        user_id TEXT NOT NULL DEFAULT 'default_user',
+                        project_id TEXT NOT NULL DEFAULT 'global',
+                        scope TEXT NOT NULL DEFAULT 'user',
+                        namespace TEXT NOT NULL DEFAULT 'default',
+                        memory_type TEXT NOT NULL,
+                        entity TEXT,
+                        attribute TEXT,
+                        value TEXT,
+                        content TEXT NOT NULL,
+                        source_type TEXT NOT NULL,
+                        source_id TEXT,
+                        evidence TEXT,
+                        confidence REAL DEFAULT 1.0,
+                        reliability REAL DEFAULT 1.0,
+                        importance REAL DEFAULT 0.5,
+                        created_at REAL NOT NULL,
+                        observed_at REAL NOT NULL,
+                        effective_from REAL NOT NULL,
+                        effective_until REAL,
+                        updated_at REAL NOT NULL,
+                        last_accessed_at REAL NOT NULL,
+                        last_validated_at REAL NOT NULL,
+                        status TEXT NOT NULL DEFAULT 'ACTIVE',
+                        version INTEGER DEFAULT 1,
+                        supersedes_memory_id TEXT,
+                        superseded_by_memory_id TEXT,
+                        conflict_group_id TEXT,
+                        session_id TEXT,
+                        task_id TEXT,
+                        decision_id TEXT,
+                        tags_json TEXT DEFAULT '[]',
+                        content_hash TEXT,
+                        embedding_id TEXT
+                    )
+                """)
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_cm_user_proj_scope ON canonical_memories(user_id, project_id, scope);")
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_cm_status_effective ON canonical_memories(status, effective_from, effective_until);")
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_cm_type ON canonical_memories(memory_type);")
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_cm_entity_attr ON canonical_memories(entity, attribute);")
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_cm_conflict ON canonical_memories(conflict_group_id);")
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_cm_hash ON canonical_memories(content_hash);")
+
+                # 2. Legacy Persistent Memories Compatibility Table
+                conn.execute("""
+                    CREATE TABLE IF NOT EXISTS persistent_memories (
+                        name TEXT PRIMARY KEY,
+                        type TEXT NOT NULL,
+                        description TEXT,
+                        content TEXT NOT NULL,
+                        scope TEXT DEFAULT 'user',
+                        tags TEXT,
+                        created_at TEXT NOT NULL,
+                        updated_at REAL NOT NULL
+                    )
+                """)
+
+                # 3. Preferences Store
+                conn.execute("""
+                    CREATE TABLE IF NOT EXISTS preferences (
+                        key TEXT PRIMARY KEY,
+                        value TEXT NOT NULL,
+                        scope TEXT DEFAULT 'user',
+                        updated_at REAL NOT NULL
+                    )
+                """)
+
+                # 4. Tasks & Step Checkpoints
                 conn.execute("""
                     CREATE TABLE IF NOT EXISTS tasks (
                         task_id TEXT PRIMARY KEY,
@@ -95,21 +166,112 @@ class CanonicalDatabaseManager:
                     )
                 """)
 
-                # 2. Canonical Memories
+                # 5. Decisions & Decision Receipts
                 conn.execute("""
-                    CREATE TABLE IF NOT EXISTS persistent_memories (
-                        name TEXT PRIMARY KEY,
-                        type TEXT NOT NULL,
-                        description TEXT,
-                        content TEXT NOT NULL,
-                        scope TEXT DEFAULT 'user',
-                        tags TEXT,
-                        created_at TEXT NOT NULL,
+                    CREATE TABLE IF NOT EXISTS decisions (
+                        decision_id TEXT PRIMARY KEY,
+                        task_id TEXT,
+                        question TEXT NOT NULL,
+                        goal TEXT NOT NULL,
+                        options_json TEXT NOT NULL,
+                        selected_option TEXT NOT NULL,
+                        rejected_options_json TEXT NOT NULL,
+                        evidence TEXT,
+                        constraints_json TEXT,
+                        risk_level TEXT DEFAULT 'low',
+                        confidence REAL DEFAULT 1.0,
+                        expected_outcome TEXT,
+                        verification_plan TEXT,
+                        reversible INTEGER DEFAULT 1,
+                        approval_required INTEGER DEFAULT 0,
+                        status TEXT NOT NULL DEFAULT 'ACTIVE',
+                        actual_outcome TEXT,
+                        receipt_json TEXT NOT NULL,
+                        created_at REAL NOT NULL,
+                        updated_at REAL NOT NULL
+                    )
+                """)
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_decisions_task ON decisions(task_id);")
+
+                # 6. Append-Only Execution Ledger
+                conn.execute("""
+                    CREATE TABLE IF NOT EXISTS execution_ledger_entries (
+                        execution_id TEXT PRIMARY KEY,
+                        task_id TEXT NOT NULL,
+                        step_id TEXT NOT NULL,
+                        tool_name TEXT NOT NULL,
+                        status TEXT NOT NULL,
+                        arguments_hash TEXT NOT NULL,
+                        parameters_json TEXT NOT NULL,
+                        result_preview TEXT,
+                        stdout TEXT,
+                        stderr TEXT,
+                        return_code INTEGER DEFAULT 0,
+                        duration_seconds REAL DEFAULT 0.0,
+                        side_effects_json TEXT DEFAULT '[]',
+                        evidence TEXT,
+                        verification_status TEXT NOT NULL,
+                        error TEXT,
+                        timestamp REAL NOT NULL
+                    )
+                """)
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_ledger_task_step ON execution_ledger_entries(task_id, step_id);")
+                conn.execute("CREATE INDEX IF NOT EXISTS idx_ledger_tool ON execution_ledger_entries(tool_name);")
+
+                # 7. Learned Lessons & Experience Trajectories
+                conn.execute("""
+                    CREATE TABLE IF NOT EXISTS lessons (
+                        lesson_id TEXT PRIMARY KEY,
+                        topic TEXT NOT NULL,
+                        rule TEXT NOT NULL,
+                        reason TEXT,
+                        evidence TEXT,
+                        scope TEXT DEFAULT 'global',
+                        source TEXT DEFAULT 'user',
+                        confidence REAL DEFAULT 0.8,
+                        success_count INTEGER DEFAULT 0,
+                        failure_count INTEGER DEFAULT 0,
+                        status TEXT DEFAULT 'ACTIVE',
+                        created_at REAL NOT NULL,
+                        updated_at REAL NOT NULL,
+                        last_used_at REAL
+                    )
+                """)
+                conn.execute("""
+                    CREATE TABLE IF NOT EXISTS experience_trajectories (
+                        trajectory_id TEXT PRIMARY KEY,
+                        goal_query TEXT NOT NULL,
+                        tool_sequence_json TEXT NOT NULL,
+                        success_status INTEGER NOT NULL,
+                        failure_reason TEXT,
+                        execution_context_json TEXT,
+                        duration_seconds REAL DEFAULT 0.0,
+                        side_effects_json TEXT DEFAULT '[]',
+                        timestamp REAL NOT NULL
+                    )
+                """)
+
+                # 8. Session Lifecycle Records (Non-destructive)
+                conn.execute("""
+                    CREATE TABLE IF NOT EXISTS session_records (
+                        session_id TEXT PRIMARY KEY,
+                        start_time REAL NOT NULL,
+                        end_time REAL,
+                        summary TEXT,
+                        goals_json TEXT DEFAULT '[]',
+                        decisions_json TEXT DEFAULT '[]',
+                        constraints_json TEXT DEFAULT '[]',
+                        unfinished_tasks_json TEXT DEFAULT '[]',
+                        errors_json TEXT DEFAULT '[]',
+                        successful_actions_json TEXT DEFAULT '[]',
+                        next_actions_json TEXT DEFAULT '[]',
+                        consumed INTEGER DEFAULT 0,
+                        created_at REAL NOT NULL,
                         updated_at REAL NOT NULL
                     )
                 """)
 
-                # 3. Unified Contacts
+                # 9. Unified Contacts
                 conn.execute("""
                     CREATE TABLE IF NOT EXISTS contacts (
                         id TEXT PRIMARY KEY,
@@ -123,7 +285,7 @@ class CanonicalDatabaseManager:
                     )
                 """)
 
-                # 4. Background Routines
+                # 10. Background Routines
                 conn.execute("""
                     CREATE TABLE IF NOT EXISTS routines (
                         routine_id TEXT PRIMARY KEY,
@@ -153,7 +315,7 @@ class CanonicalDatabaseManager:
                     )
                 """)
 
-                # 5. Paired Devices
+                # 11. Paired Devices
                 conn.execute("""
                     CREATE TABLE IF NOT EXISTS devices (
                         device_id TEXT PRIMARY KEY,
@@ -167,7 +329,7 @@ class CanonicalDatabaseManager:
                     )
                 """)
 
-                # 6. Immutable Audit Trail
+                # 12. Immutable Audit Trail
                 conn.execute("""
                     CREATE TABLE IF NOT EXISTS audit_events (
                         event_id TEXT PRIMARY KEY,
@@ -184,7 +346,7 @@ class CanonicalDatabaseManager:
                     )
                 """)
 
-                # 7. Workspace Projects
+                # 13. Workspace Projects, Files, Conversations, Messages, Artifacts
                 conn.execute("""
                     CREATE TABLE IF NOT EXISTS projects (
                         project_id TEXT PRIMARY KEY,
@@ -197,8 +359,6 @@ class CanonicalDatabaseManager:
                         updated_at REAL NOT NULL
                     )
                 """)
-
-                # 8. Workspace Project Files
                 conn.execute("""
                     CREATE TABLE IF NOT EXISTS project_files (
                         file_id TEXT PRIMARY KEY,
@@ -214,8 +374,6 @@ class CanonicalDatabaseManager:
                         FOREIGN KEY (project_id) REFERENCES projects(project_id) ON DELETE CASCADE
                     )
                 """)
-
-                # 9. Workspace Conversations
                 conn.execute("""
                     CREATE TABLE IF NOT EXISTS conversations (
                         conversation_id TEXT PRIMARY KEY,
@@ -230,8 +388,6 @@ class CanonicalDatabaseManager:
                         FOREIGN KEY (project_id) REFERENCES projects(project_id) ON DELETE SET NULL
                     )
                 """)
-
-                # 10. Conversation Branches
                 conn.execute("""
                     CREATE TABLE IF NOT EXISTS conversation_branches (
                         branch_id TEXT NOT NULL,
@@ -243,8 +399,6 @@ class CanonicalDatabaseManager:
                         FOREIGN KEY (conversation_id) REFERENCES conversations(conversation_id) ON DELETE CASCADE
                     )
                 """)
-
-                # 11. Conversation Messages
                 conn.execute("""
                     CREATE TABLE IF NOT EXISTS messages (
                         message_id TEXT PRIMARY KEY,
@@ -262,8 +416,6 @@ class CanonicalDatabaseManager:
                         FOREIGN KEY (conversation_id) REFERENCES conversations(conversation_id) ON DELETE CASCADE
                     )
                 """)
-
-                # 12. Workspace Artifacts
                 conn.execute("""
                     CREATE TABLE IF NOT EXISTS artifacts (
                         artifact_id TEXT PRIMARY KEY,
@@ -285,8 +437,6 @@ class CanonicalDatabaseManager:
                         FOREIGN KEY (project_id) REFERENCES projects(project_id) ON DELETE SET NULL
                     )
                 """)
-
-                # 13. System & Task Notifications
                 conn.execute("""
                     CREATE TABLE IF NOT EXISTS notifications (
                         notification_id TEXT PRIMARY KEY,
@@ -301,16 +451,7 @@ class CanonicalDatabaseManager:
                     )
                 """)
 
-                # 14. Indexes for optimal workspace query speed
-                conn.execute("CREATE INDEX IF NOT EXISTS idx_conv_project ON conversations(project_id);")
-                conn.execute("CREATE INDEX IF NOT EXISTS idx_conv_updated ON conversations(updated_at);")
-                conn.execute("CREATE INDEX IF NOT EXISTS idx_msg_conv ON messages(conversation_id);")
-                conn.execute("CREATE INDEX IF NOT EXISTS idx_msg_branch ON messages(branch_id);")
-                conn.execute("CREATE INDEX IF NOT EXISTS idx_artifacts_conv ON artifacts(conversation_id);")
-                conn.execute("CREATE INDEX IF NOT EXISTS idx_artifacts_task ON artifacts(task_id);")
-                conn.execute("CREATE INDEX IF NOT EXISTS idx_notifications_read ON notifications(is_read);")
-
-                # 15. Full-Text Search (FTS5) for Instant Global Search
+                # 14. Workspace FTS5 Virtual Table
                 try:
                     conn.execute("""
                         CREATE VIRTUAL TABLE IF NOT EXISTS workspace_fts USING fts5(
@@ -323,10 +464,71 @@ class CanonicalDatabaseManager:
                         );
                     """)
                 except Exception as _fts_err:
-                    logger.debug("FTS5 table setup note: %s", _fts_err)
+                    logger.debug("FTS5 table setup notice: %s", _fts_err)
 
                 conn.commit()
-        logger.info("Canonical database schema verified at %s", self.db_path)
+
+    # ── Preferences API ────────────────────────────────────────────────────────
+
+    def set_preference(self, key: str, value: str, scope: str = "user") -> None:
+        """Store or update a user/system preference."""
+        with self._lock:
+            with self.get_connection() as conn:
+                conn.execute(
+                    """
+                    INSERT INTO preferences (key, value, scope, updated_at)
+                    VALUES (?, ?, ?, ?)
+                    ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at
+                    """,
+                    (key, str(value), scope, time.time()),
+                )
+                conn.commit()
+
+    def get_preference(self, key: str, default: Optional[str] = None) -> Optional[str]:
+        """Retrieve a preference value by key."""
+        with self.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT value FROM preferences WHERE key = ?", (key,))
+            row = cursor.fetchone()
+            if row:
+                return row["value"]
+            return default
+
+    # ── Database Maintenance, Integrity & Backups ─────────────────────────────
+
+    def check_integrity(self) -> bool:
+        """Run SQLite integrity check."""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("PRAGMA integrity_check;")
+                res = cursor.fetchall()
+                is_ok = len(res) == 1 and res[0][0] == "ok"
+                if not is_ok:
+                    logger.error("Canonical DB integrity check failed: %s", res)
+                return is_ok
+        except Exception as e:
+            logger.error("Canonical DB integrity check error: %s", e)
+            return False
+
+    def create_backup(self, target_path: Optional[Path] = None) -> Path:
+        """Create a safe snapshot backup of the canonical database."""
+        with self._lock:
+            if target_path is None:
+                backup_dir = self.db_path.parent / "backups"
+                backup_dir.mkdir(parents=True, exist_ok=True)
+                timestamp = time.strftime("%Y%m%d_%H%M%S")
+                target_path = backup_dir / f"canonical_backup_{timestamp}.db"
+
+            target_path.parent.mkdir(parents=True, exist_ok=True)
+            with self.get_connection() as src:
+                dst = sqlite3.connect(str(target_path))
+                try:
+                    src.backup(dst)
+                finally:
+                    dst.close()
+            logger.info("Canonical DB snapshot backup created at %s", target_path)
+            return target_path
 
 
 _GLOBAL_CANONICAL_DB: Optional[CanonicalDatabaseManager] = None

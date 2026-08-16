@@ -330,7 +330,10 @@ class SubAgentManager:
                 "message": f"Unknown agent type '{agent_type}'. Available types: {available}"
             }
 
-        from tools.registry import get_orchestrator_ref
+        try:
+            from brjarvis.tools.registry import get_orchestrator_ref
+        except ImportError:
+            from tools.registry import get_orchestrator_ref
         orch = get_orchestrator_ref()
 
         task = self.spawn(
@@ -357,7 +360,7 @@ class SubAgentManager:
             "message": f"Sub-agent '{agent_def.name}' initialized for task: '{prompt[:60]}...'"
         }
 
-    def wait(self, task_id: str, timeout: float = None) -> Optional[SubAgentTask]:
+    def wait(self, task_id: str, timeout: Optional[float] = None) -> Optional[SubAgentTask]:
         """Block until a task completes or timeout expires."""
         task = self.tasks.get(task_id)
         if task is None:

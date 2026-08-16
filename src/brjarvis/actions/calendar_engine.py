@@ -201,11 +201,13 @@ class CalendarEngine:
             logger.error(f"Error creating calendar event: {e}")
             return {"success": False, "error": str(e)}
 
-    def list_events(self, days: int = 7) -> List[Dict[str, Any]]:
+    def list_events(self, days_ahead: int = 7, days: int = 7, include_past: bool = False, **kwargs) -> List[Dict[str, Any]]:
         """List upcoming events within specified number of days."""
+        num_days = days_ahead if days_ahead != 7 else days
         results = []
         now_ts = time.time()
-        future_ts = now_ts + (days * 86400)
+        future_ts = now_ts + (num_days * 86400)
+        min_ts = 0.0 if include_past else (now_ts - 3600)
 
         try:
             with self._db_session() as conn:
@@ -217,7 +219,7 @@ class CalendarEngine:
                     WHERE start_timestamp >= ? AND start_timestamp <= ?
                     ORDER BY start_timestamp ASC
                     """,
-                    (now_ts - 3600, future_ts)
+                    (min_ts, future_ts)
                 )
                 rows = cursor.fetchall()
                 for r in rows:

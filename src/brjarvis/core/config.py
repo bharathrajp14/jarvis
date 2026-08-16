@@ -41,7 +41,7 @@ class ModelConfig(BaseModel):
     gemini: str = Field(default="gemini-2.5-flash", description="Gemini model ID")
     gemini_code: str = Field(default="gemini-2.5-pro", description="Gemini Code model ID")
     gemini_reasoning: str = Field(default="gemini-2.5-pro", description="Gemini Reasoning model ID")
-    claude: str = Field(default="claude-sonnet-4-6", description="Claude model ID")
+    claude: str = Field(default="gemini-2.5-pro", description="Claude model ID")
     gpt: str = Field(default="gpt-4o-mini", description="GPT model ID")
     ollama: str = Field(default="llama3.3", description="Ollama local model ID")
     nvidia: str = Field(default="meta/llama-3.1-70b-instruct", description="NVIDIA NIM model ID")

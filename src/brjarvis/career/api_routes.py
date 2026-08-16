@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -500,7 +501,7 @@ def generate_followup_draft_endpoint(req: FollowupDraftRequest):
 
 @router.post("/spreadsheet/sync")
 def sync_spreadsheet():
-    from career.spreadsheet.projection import get_spreadsheet_projection
+    from .spreadsheet.projection import get_spreadsheet_projection
     proj = get_spreadsheet_projection()
     return proj.project_database_to_excel()
 
@@ -510,7 +511,7 @@ def download_master_spreadsheet():
     from brjarvis.core.paths import paths
     p = paths.DOCUMENTS_DIR / "BR_JARVIS_Career_Tracker.xlsx"
     if not p.exists():
-        from career.spreadsheet.projection import get_spreadsheet_projection
+        from .spreadsheet.projection import get_spreadsheet_projection
         get_spreadsheet_projection().project_database_to_excel()
 
     return FileResponse(
@@ -522,8 +523,9 @@ def download_master_spreadsheet():
 
 @router.get("/notifications")
 def get_career_notifications(unread_only: bool = False):
-    from career.notifications import get_career_notification_engine
+    from .notifications import get_career_notification_engine
     engine = get_career_notification_engine()
     notifs = engine.list_notifications(unread_only=unread_only)
     return {"count": len(notifs), "notifications": [n.to_dict() for n in notifs]}
+
 

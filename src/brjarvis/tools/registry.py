@@ -26,6 +26,10 @@ _REGISTRATION_ERRORS: dict[str, str] = {}
 # Thread-safe lock protecting TOOL_SCHEMAS and TOOL_REGISTRY mutations
 _REGISTRY_LOCK = threading.RLock()
 
+def get_tool_registry() -> dict[str, Callable[[dict], Any]]:
+    """Return dictionary of all registered tools."""
+    return TOOL_REGISTRY
+
 # Cache references
 _orchestrator_ref: Any = None
 
@@ -37,12 +41,21 @@ _OSS_MESSAGE_RE = re.compile(r'<\|message\|>\s*(\{.*?\})', re.DOTALL)
 _OSS_TOOL_HINT_RE = re.compile(r'(?:to|call)=?([\w\.\-]+)')
 
 
-def register_tool(name: str, description: str, parameters: dict | None = None) -> Callable:
-    """Decorator to register a tool function in the JARVIS registry (thread-safe).
-
-    Logs a WARNING if an existing tool is overwritten, so silent clobbering is
-    visible during debugging.
-    """
+def register_tool(
+    name: str,
+    description: str,
+    parameters: dict | None = None,
+    category: str = "general",
+    risk_level: str = "low",
+    permission_required: str = "PUBLIC_READ",
+    approval_required: bool = False,
+    is_read_only: bool = False,
+    idempotent: bool = True,
+    timeout_sec: float = 30.0,
+    verification_strategy: str = "NONE",
+    **kwargs: Any,
+) -> Callable:
+    """Decorator to register a tool function in the JARVIS registry and ToolRuntime (thread-safe)."""
     def decorator(func: Callable[[dict], Any]) -> Callable[[dict], Any]:
         schema = {
             "name": name,
@@ -57,8 +70,6 @@ def register_tool(name: str, description: str, parameters: dict | None = None) -
                 if "_lazy_wrapper" in existing_name or "_lazy_register_tool" in existing_name:
                     logger.debug(f"[ToolRegistry] Resolved lazy tool '{name}' -> {func.__module__}.{func.__qualname__}")
                 else:
-                    # If the same underlying function is re-registered (identical impl),
-                    # downgrade to DEBUG to prevent startup log spam.
                     same_module = getattr(existing, '__module__', None) == getattr(func, '__module__', None)
                     same_name = getattr(existing, '__qualname__', None) == getattr(func, '__qualname__', None)
                     if same_module and same_name:
@@ -67,7 +78,7 @@ def register_tool(name: str, description: str, parameters: dict | None = None) -
                             f"{func.__module__}.{func.__qualname__} — skipping re-registration"
                         )
                     else:
-                        logger.warning(
+                        logger.debug(
                             f"[ToolRegistry] Tool '{name}' is being re-registered by "
                             f"{func.__module__}.{func.__qualname__} (was {existing_name})"
                         )
@@ -80,18 +91,42 @@ def register_tool(name: str, description: str, parameters: dict | None = None) -
                 TOOL_SCHEMAS.append(schema)
             TOOL_REGISTRY[name] = func
 
-
-        # Also register in the unified ToolRuntimeEngine
+        # Register in the canonical ToolRuntime
         try:
-            from tools.tool_runtime import get_tool_runtime
-            get_tool_runtime().register_tool(
+            from .runtime import get_canonical_tool_runtime
+            from .domain import ToolCategory, RiskLevel, VerificationStrategy
+            cat_enum = ToolCategory.GENERAL
+            try:
+                cat_enum = ToolCategory(category.lower())
+            except Exception:
+                pass
+            risk_enum = RiskLevel.LOW
+            try:
+                risk_enum = RiskLevel(risk_level.lower())
+            except Exception:
+                pass
+            ver_enum = VerificationStrategy.NONE
+            try:
+                ver_enum = VerificationStrategy(verification_strategy.upper())
+            except Exception:
+                pass
+
+            get_canonical_tool_runtime().register_tool(
                 name=name,
                 description=description,
                 handler=func,
-                parameters=parameters
+                parameters=parameters or {},
+                category=cat_enum,
+                risk_level=risk_enum,
+                permission_required=permission_required,
+                approval_required=approval_required,
+                is_read_only=is_read_only,
+                idempotent=idempotent,
+                timeout_sec=timeout_sec,
+                verification_strategy=ver_enum,
             )
         except Exception as exc:
-            logger.debug("[ToolRegistry] ToolRuntimeEngine registration fallback: %s", exc)
+            logger.debug("[ToolRegistry] Canonical ToolRuntime registration note: %s", exc)
 
         return func
     return decorator
@@ -253,23 +288,22 @@ def get_pruned_tool_prompt_block(user_prompt: str = "") -> str:
     # Core high-frequency tools always available
     essential_tools = {
         "open_app", "web_search", "file_read", "file_write", "run_code", "computer_settings", "window_manager",
-        "list_installed_applications", "list_running_applications", "send_whatsapp", "create_calendar_event",
-        "list_calendar_events", "send_email", "gmail_login", "automate_app", "run_automation_workflow",
-        "create_word_document", "create_pdf_document", "document_creator"
+        "computer_control", "list_installed_applications", "list_running_applications", "send_whatsapp",
+        "create_calendar_event", "list_calendar_events", "send_email", "gmail_login", "automate_app",
+        "run_automation_workflow", "create_word_document", "create_pdf_document", "document_creator"
     }
     
     # Domain keyword matching for targeted tool inclusion
     domain_map = {
         ("search", "google", "find", "who is", "what is", "news", "price", "weather"): {"web_search", "fetch_page"},
         ("file", "read", "write", "save", "folder", "directory", "txt", "csv", "json"): {"file_read", "file_write", "file_list", "file_delete", "file_search"},
-        ("doc", "docx", "word", "document", "report", "pdf", "walkthrough", "paper", "compare", "comparison", "recommendation"): {"create_word_document", "create_pdf_document", "document_creator", "generate_walkthrough", "file_read", "file_write"},
+        ("doc", "docx", "word", "document", "report", "pdf", "walkthrough", "paper", "compare", "comparison", "recommendation", "letter", "greeting"): {"create_word_document", "create_pdf_document", "document_creator", "generate_walkthrough", "file_read", "file_write"},
         ("git", "repo", "github", "repository", "codebase", "branch", "commit"): {"git_repo_mgr", "file_read", "file_write", "file_list"},
-        ("app", "open", "launch", "close", "brave", "chrome", "edge", "notepad", "calculator", "window", "process", "installed", "running"): {"open_app", "computer_settings", "window_manager", "list_installed_applications", "list_running_applications", "search_applications", "get_app_launch_history", "get_app_usage_statistics"},
+        ("app", "open", "launch", "close", "brave", "chrome", "edge", "notepad", "calculator", "window", "process", "installed", "running"): {"open_app", "computer_settings", "window_manager", "list_installed_applications", "list_running_applications", "search_applications", "get_app_launch_history", "get_app_usage_statistics", "automate_app"},
         ("whatsapp", "watsapp", "whats app", "wats app", "wapp", "wp", "chat", "message", "contact", "text", "send", "say", "tell", "hii", "hiii", "hello"): {"send_whatsapp", "schedule_whatsapp_message", "manage_whatsapp_contacts"},
         ("calendar", "event", "schedule", "task", "meeting", "reminder"): {"create_calendar_event", "list_calendar_events", "search_calendar_events", "delete_calendar_event"},
-        ("email", "gmail", "g-mail", "mail", "inbox", "smtp", "login", "send", "say", "tell", "draft"): {"send_email", "schedule_email", "manage_email_contacts", "gmail_login", "get_gmail_auth_status", "gmail_logout"},
-        ("automate", "workflow", "macro", "script", "system"): {"automate_app", "run_automation_workflow", "execute_system_automation"},
-        ("screen", "see", "look", "click", "vision", "ocr", "capture", "display"): {"screen_find", "screen_click", "smart_click"},
+        ("email", "gmail", "g-mail", "mail", "inbox", "compose", "letter", "greeting", "greetings", "smtp", "login", "send", "say", "tell", "draft"): {"send_email", "schedule_email", "manage_email_contacts", "gmail_login", "get_gmail_auth_status", "gmail_logout", "open_app", "automate_app", "computer_control"},
+        ("screen", "see", "look", "click", "clik", "button", "tap", "press", "type", "mouse", "keyboard", "vision", "ocr", "capture", "display"): {"screen_find", "screen_click", "smart_click", "computer_control", "automate_app", "window_manager"},
         ("code", "python", "script", "execute", "eval", "debug", "run"): {"run_code", "scratchpad_write", "scratchpad_eval"},
         ("system", "volume", "brightness", "wifi", "battery", "restart", "shutdown", "diagnostic", "health", "cpu", "ram", "audit"): {"computer_settings", "system_diagnostic", "system_health"},
         ("youtube", "video", "play"): {"youtube_video"},
@@ -326,255 +360,105 @@ You will then receive the tool result and can continue.
 """
 
 
-def execute_tool(name: str, args: dict) -> str:
-    """Execute a registered tool by name. All errors are caught and returned as strings."""
+def execute_tool(
+    name: str,
+    args: dict | None = None,
+    task_id: str = "",
+    step_id: str = "",
+    confirmed: bool = False,
+) -> str:
+    """
+    Execute a tool through the canonical ToolRuntime and return a structured agent string.
+    Never returns unverified raw success placeholders.
+    """
     # Ensure core plugins are loaded
     _import_plugins(full=False)
 
+    args_dict = dict(args) if isinstance(args, dict) else {}
 
-    # Map aliases for ReAct loop execution
-    if name in ("browser_control", "open_browser", "web_browser"):
-        name = "open_app"
-        url = args.get("url") or args.get("query") or args.get("app_name") or args.get("path") or ""
-        if url:
-            try:
-                from agent.artifacts import get_artifact_manager
-                mgr = get_artifact_manager()
-                success, resolved_url, _ = mgr.ensure_host_artifact(url)
-                if success:
-                    url = resolved_url
-            except Exception as e:
-                logger.debug("Artifact interception note in registry: %s", e)
-        args = {"app_name": f"chrome {url}".strip() if url else "chrome"}
-    elif name in ("system_control", "desktop_type"):
-        name = "computer_settings"
-        text = args.get("text") or args.get("value") or args.get("description") or ""
-        act = args.get("action", "type_text")
-        if act in ("type", "write", "type_text", "write_text"):
-            act = "type_text"
-        args = {"action": act, "value": text}
-    elif name in ("file_controller", "file_manager", "file_control"):
-        act = str(args.get("action", "read")).lower()
-        if act in ("create", "write", "create_file", "save"):
-            name = "file_write"
-            args = {"path": args.get("name") or args.get("path") or "file.txt", "content": args.get("content", "")}
-        elif act in ("read", "get", "view", "cat", "open_read"):
-            name = "file_read"
-            args = {"path": args.get("path") or args.get("name") or "file.txt"}
-        elif act in ("list", "dir", "ls", "search"):
-            name = "file_list"
-            args = {"path": args.get("path", ".")}
-        elif act in ("open", "launch", "open_file", "view_doc"):
-            name = "open_app"
-            target_path = args.get("path") or args.get("name") or args.get("file") or ""
-            args = {"app_name": f"start {target_path}".strip() if target_path else "explorer"}
-        else:
-            name = "file_list"
-            args = {"path": args.get("path", ".")}
-    elif name in ("screen_process", "screen_processor", "screen_share", "screen_shot"):
-        name = "screen_find"
-        desc = args.get("description") or args.get("query") or args.get("text") or "screen"
-        args = {"description": str(desc)}
-    elif name in ("doc_creator", "make_document", "create_doc", "generate_doc"):
-        name = "document_creator"
-    elif name in ("git", "git_tool", "git_repo"):
-        name = "git_repo_mgr"
-    elif name == "window_control":  # keep only the non-registered alias
-        name = "window_manager"
-        args = {"action": args.get("action", "list"), "title": args.get("title", "")}
+    # Check lazy loading map if tool not loaded yet
+    tool_to_module = {
+        "send_whatsapp": "tools.whatsapp_tools",
+        "schedule_whatsapp_message": "tools.whatsapp_tools",
+        "manage_whatsapp_contacts": "tools.whatsapp_tools",
+        "create_calendar_event": "tools.calendar_tools",
+        "list_calendar_events": "tools.calendar_tools",
+        "search_calendar_events": "tools.calendar_tools",
+        "delete_calendar_event": "tools.calendar_tools",
+        "send_email": "tools.smart_email_tools",
+        "gmail_login": "tools.gmail_auth_tools",
+        "gmail_logout": "tools.gmail_auth_tools",
+        "get_gmail_auth_status": "tools.gmail_auth_tools",
+        "create_word_document": "tools.doc_tools",
+        "create_pdf_document": "tools.doc_tools",
+        "document_creator": "tools.doc_tools",
+        "generate_walkthrough": "tools.doc_tools",
+        "pdf_extract_text": "tools.pdf_tools",
+        "excel_analyze": "tools.excel_tools",
+        "screen_find": "tools.image_tools",
+        "screen_click": "tools.image_tools",
+        "smart_click": "tools.image_tools",
+        "git_repo_tool": "tools.git_repo_tool",
+        "git_repo_mgr": "tools.git_repo_tool",
+        "system_diagnostic": "tools.system_diagnostic_tool",
+        "tool_health": "tools.system_diagnostic_tool",
+        "mcp_connector": "tools.mcp_connector",
+        "mcp_call_tool": "tools.mcp_connector",
+        "file_read": "tools.file_tools",
+        "file_write": "tools.file_tools",
+        "file_list": "tools.file_tools",
+        "file_delete": "tools.file_tools",
+        "file_search": "tools.file_tools",
+        "career_profile_get": "career.tools",
+        "career_job_search": "career.tools",
+        "career_resume_build": "career.tools",
+    }
 
+    if name in tool_to_module and name not in TOOL_REGISTRY:
+        _import_plugins(plugin_name=tool_to_module[name])
 
-    # ── Lazy Loading Resolve ──
-    if name not in TOOL_REGISTRY:
-        tool_to_module = {
-            # WhatsApp
-            "send_whatsapp": "tools.whatsapp_tools",
-            "schedule_whatsapp_message": "tools.whatsapp_tools",
-            "manage_whatsapp_contacts": "tools.whatsapp_tools",
-            # Calendar
-            "create_calendar_event": "tools.calendar_tools",
-            "list_calendar_events": "tools.calendar_tools",
-            "search_calendar_events": "tools.calendar_tools",
-            "delete_calendar_event": "tools.calendar_tools",
-            # Email / Gmail
-            "send_email": "tools.smart_email_tools",
-            "gmail_login": "tools.gmail_auth_tools",
-            "gmail_logout": "tools.gmail_auth_tools",
-            "get_gmail_auth_status": "tools.gmail_auth_tools",
-            # Document / PDF / Walkthrough / Excel
-            "create_word_document": "tools.doc_tools",
-            "create_pdf_document": "tools.doc_tools",
-            "document_creator": "tools.doc_tools",
-            "generate_walkthrough": "tools.doc_tools",
-            "generate_project_product_analysis": "tools.doc_tools",
-            "pdf_extract_text": "tools.pdf_tools",
-            "excel_analyze": "tools.excel_tools",
-            "flight_finder": "tools.legacy_actions_tools",
-            "screen_find": "tools.image_tools",
-            "screen_click": "tools.image_tools",
-            "smart_click": "tools.image_tools",
-            "git_repo_tool": "tools.git_repo_tool",
-            "git_repo_mgr": "tools.git_repo_tool",
-            "system_diagnostic": "tools.system_diagnostic_tool",
-            "tool_health": "tools.system_diagnostic_tool",
-            "mcp_connector": "tools.mcp_connector",
-            "mcp_call_tool": "tools.mcp_connector",
-            "start_multichannel_listener": "tools.proactive_listener_tools",
-            "stop_multichannel_listener": "tools.proactive_listener_tools",
-            "get_pending_channel_actions": "tools.proactive_listener_tools",
-            "respond_channel_action": "tools.proactive_listener_tools",
-            # Artifacts
-            "artifact_export": "tools.export_tools",
-            "artifact_list": "tools.export_tools",
-            # System & Health & Inspection
-            "system_health": "tools.system_health",
-            "web_extractor": "tools.web_extractor",
-            "semantic_file_search": "tools.file_search_semantic",
-            "file_search_semantic": "tools.file_search_semantic",
-            "pdf_tool": "tools.pdf_tools",
-            "window_manager": "tools.window_manager",
-            "system_optimizer": "tools.system_tools",
-            "system_cleanup": "tools.system_tools",
-            "port_scan": "tools.redteam_tools",
-            "dns_enum": "tools.recon_tools",
-            "headers_audit": "tools.recon_tools",
-            "whois_lookup": "tools.recon_tools",
-            "nmap_scan": "tools.pentest_tools",
-            "generate_report": "tools.reporting_tools",
-            "run_skill": "tools.skill_runner",
-            "list_skills": "tools.skill_runner",
-            # Repaired Missing Tools
-            "add_background_monitor": "tools.background_monitor_tools",
-            "remove_background_monitor": "tools.background_monitor_tools",
-            "list_monitored_topics": "tools.background_monitor_tools",
-            "check_monitored_topics": "tools.background_monitor_tools",
-            "connector_status": "tools.connector_tools",
-            "connector_call": "tools.connector_tools",
-            "connector_search": "tools.connector_tools",
-            "connector_add_mcp": "tools.connector_tools",
-            "connector_list_tools": "tools.connector_tools",
-            "import_contacts": "tools.contact_tools",
-            "manage_contacts": "tools.contact_tools",
-            "resolve_contact": "tools.contact_tools",
-            "import_file_to_knowledge": "tools.file_import_tools",
-            "process_universal_file": "tools.file_processor_tools",
-            "remember_that": "tools.recall_tools",
-            "schedule_reminder": "tools.reminder_tools",
-            "manage_reminders": "tools.reminder_tools",
-            "scratchpad_write": "tools.scratchpad_tools",
-            "scratchpad_read": "tools.scratchpad_tools",
-            "scratchpad_eval": "tools.scratchpad_tools",
-            "scratchpad_list": "tools.scratchpad_tools",
-            "scratchpad_clear": "tools.scratchpad_tools",
-            # File Tools
-            "file_read": "tools.file_tools",
-            "file_write": "tools.file_tools",
-            "file_list": "tools.file_tools",
-            "file_delete": "tools.file_tools",
-            "file_search": "tools.file_tools",
-            "file_editor": "tools.file_tools",
-            # Career OS Tools
-            "career_email_process": "career.tools",
-            "career_offer_confirm": "career.tools",
-            "career_spreadsheet_sync": "career.tools",
-            "career_followup_generate_draft": "career.tools",
-            "career_learning_insights": "career.tools",
-            "career_profile_get": "career.tools",
-            "career_profile_update": "career.tools",
-            "career_job_search": "career.tools",
-            "career_job_match": "career.tools",
-            "career_resume_build": "career.tools",
-            "career_resume_tailor": "career.tools",
-            "career_resume_export": "career.tools",
-            "career_ats_evaluate": "career.tools",
-            "career_cover_letter_generate": "career.tools",
-            "career_application_prepare": "career.tools",
-            "career_application_submit": "career.tools",
-            "career_application_verify": "career.tools",
-            "career_application_track": "career.tools",
-            "career_interview_prep": "career.tools",
-            "career_analytics_report": "career.tools",
-            "job_search": "career.tools",
-            "job_match": "career.tools",
-            "job_details": "career.tools",
-            "ats_score_resume": "career.tools",
-            "career_analytics_summary": "career.tools",
-            "interview_prep_generate": "career.tools",
-            "submit_job_application": "career.tools",
-            "application_submit": "career.tools",
-        }
+    from .runtime import get_canonical_tool_runtime
+    runtime = get_canonical_tool_runtime()
 
-        if name in tool_to_module:
-            _import_plugins(plugin_name=tool_to_module[name])
-        if name not in TOOL_REGISTRY:
-            _import_plugins(full=True)
+    # If not registered in ToolRuntime yet but in legacy TOOL_REGISTRY, bridge it
+    if not runtime.get_tool_definition(name) and name in TOOL_REGISTRY:
+        schema = next((s for s in TOOL_SCHEMAS if s.get("name") == name), {})
+        runtime.register_tool(
+            name=name,
+            description=schema.get("description", ""),
+            handler=TOOL_REGISTRY[name],
+            parameters=schema.get("parameters"),
+        )
 
-    if name not in TOOL_REGISTRY:
-        return f"ERROR: Unknown tool '{name}'"
+    res = runtime.execute_tool(
+        name=name,
+        args=args_dict,
+        task_id=task_id,
+        step_id=step_id,
+        confirmed=confirmed,
+    )
+    return res.to_agent_str()
 
 
-    # ── Permission enforcement (Fail-Closed) ──────────────────────────────
-    try:
-        from permissions import check_permission
-        if not check_permission(name, args):
-            return f"PERMISSION DENIED: Tool '{name}' is blocked by current security policy. Change JARVIS_PERMISSION_MODE in .env to allow_all to override."
-    except Exception as perm_err:
-        logger.error("Permission check failed closed for tool '%s': %s", name, perm_err)
-        return f"PERMISSION DENIED: Tool '{name}' verification failed (Fail-Closed Policy Engine)."
+def execute_tool_raw(
+    name: str,
+    args: dict | None = None,
+    task_id: str = "",
+    step_id: str = "",
+    confirmed: bool = False,
+) -> Any:
+    """Execute tool and return the canonical ToolResult object directly."""
+    _import_plugins(full=False)
+    args_dict = dict(args) if isinstance(args, dict) else {}
+    from .runtime import get_canonical_tool_runtime
+    return get_canonical_tool_runtime().execute_tool(
+        name=name,
+        args=args_dict,
+        task_id=task_id,
+        step_id=step_id,
+        confirmed=confirmed,
+    )
 
-
-    try:
-        func = TOOL_REGISTRY[name]
-        if not isinstance(args, dict):
-            args = {}
-        
-        import inspect
-        sig = inspect.signature(func)
-        params = list(sig.parameters.keys())
-
-        if len(params) == 1 and params[0] in ("args", "kwargs", "data", "payload", "input_data"):
-            result = func(args)
-        else:
-            try:
-                result = func(**args)
-            except TypeError:
-                result = func(args)
-
-        if inspect_is_coroutine(result):
-            result = _run_async(result)
-        
-        str_res = str(result)
-        try:
-            from brjarvis.core.execution.verifier import get_universal_verifier
-            v_out = get_universal_verifier().verify_execution(name, args, str_res, return_code=0)
-            if not v_out.verified:
-                logger.warning("[ToolRegistry] Tool '%s' verification warning: %s", name, v_out.details)
-        except Exception:
-            pass
-
-        return str_res
-    except PermissionError as e:
-        return f"SCOPE VIOLATION: {e}"
-    except Exception as e:
-        tb = traceback.format_exc()
-        # Attempt auto-repair if ModuleNotFoundError / missing package
-        try:
-            from brjarvis.core.execution.recovery_manager import get_recovery_manager
-            from brjarvis.core.execution.types import ExecutionResult
-            rec_mgr = get_recovery_manager()
-            rep_action = rec_mgr.diagnose_failure(ExecutionResult(stderr=str(e) + "\n" + tb))
-            if rep_action and rec_mgr.execute_repair(rep_action):
-                func = TOOL_REGISTRY[name]
-                try:
-                    retry_res = func(args)
-                    if inspect_is_coroutine(retry_res):
-                        retry_res = _run_async(retry_res)
-                    return str(retry_res)
-                except Exception:
-                    pass
-        except Exception:
-            pass
-        return f"TOOL ERROR ({name}): {e}\n{tb}"
 
 
 def inspect_is_coroutine(obj) -> bool:

@@ -4,7 +4,7 @@ import logging
 import os
 import threading
 from dataclasses import dataclass
-from typing import Optional
+from typing import Any, Optional
 
 from .runtime import CoreRuntime, get_runtime
 from brjarvis.events.bus import EventBus, get_event_bus
@@ -15,13 +15,23 @@ from brjarvis.router import AgentRouter, load_available_backends
 logger = logging.getLogger(__name__)
 
 
-@dataclass(slots=True)
+@dataclass
 class AssistantRuntime:
     backends: dict
     router: AgentRouter
     orchestrator: JarvisOrchestrator
     core_runtime: Optional[CoreRuntime] = None
     event_bus: Optional[EventBus] = None
+    memory: Optional[Any] = None
+    tools: Optional[Any] = None
+
+    def __post_init__(self):
+        if self.memory is None:
+            from brjarvis.memory.unified_memory import get_unified_memory
+            self.memory = get_unified_memory()
+        if self.tools is None:
+            from brjarvis.tools.registry import get_tool_registry
+            self.tools = get_tool_registry()
 
 
 # ── Singleton Guard ──────────────────────────────────────────────────────────

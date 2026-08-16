@@ -352,6 +352,7 @@ class MatchBreakdown:
 
 class ApplicationStatus(str, Enum):
     DISCOVERED               = "DISCOVERED"
+    MATCHED                  = "MATCHED"
     SHORTLISTED              = "SHORTLISTED"
     PREPARING                = "PREPARING"
     READY_FOR_REVIEW         = "READY_FOR_REVIEW"

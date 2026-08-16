@@ -31,6 +31,9 @@ def _get_chat_lock() -> asyncio.Lock:
 
 class ChatRequest(BaseModel):
     message: str
+    conversation_id: Optional[str] = None
+    branch_id: Optional[str] = "main"
+    backend: Optional[str] = None
 
 
 class SwitchBackendRequest(BaseModel):
@@ -74,20 +77,72 @@ async def run_generator_in_thread(gen_func, *args, **kwargs) -> AsyncGenerator[s
 
 @router.post("/api/chat")
 async def chat(req: ChatRequest):
-    """Main conversational endpoint."""
+    """Main conversational ReAct endpoint."""
     orchestrator = get_orchestrator()
     if not orchestrator:
         raise HTTPException(status_code=503, detail="JARVIS not initialized")
+
+    from brjarvis.memory.workspace_store import get_workspace_store
+    store = get_workspace_store()
+    conv_id = req.conversation_id
+    t_start = time.time()
+
+    if conv_id and store.get_conversation(conv_id):
+        store.add_message(
+            conversation_id=conv_id,
+            role="user",
+            content=req.message,
+            branch_id=req.branch_id or "main",
+            backend=req.backend or "gemini",
+        )
+
+    if req.backend and getattr(orchestrator, "router", None):
+        try:
+            orchestrator.router.switch_backend(req.backend)
+        except Exception:
+            pass
+
+    async with _get_chat_lock():
+        response = await asyncio.to_thread(orchestrator.chat, req.message)
+
+    latency_ms = int((time.time() - t_start) * 1000)
+
+    if conv_id and store.get_conversation(conv_id):
+        store.add_message(
+            conversation_id=conv_id,
+            role="assistant",
+            content=response,
+            branch_id=req.branch_id or "main",
+            backend=req.backend or "gemini",
+            latency_ms=latency_ms,
+        )
+
+    return {
+        "response": response,
+        "conversation_id": conv_id,
+        "latency_ms": latency_ms,
+        "nodes": [],
+    }
+
+
+@router.post("/api/galaxy/chat")
+async def galaxy_chat_endpoint(req: ChatRequest):
+    """Dedicated 3D Knowledge Galaxy document chat endpoint."""
     try:
         from brjarvis.actions.rag_library import galaxy_chat
         res = galaxy_chat(req.message, str(paths.PROJECT_ROOT))
-        response = res.get("answer")
-        nodes = res.get("nodes", [])
-        return {"response": response, "nodes": nodes}
-    except Exception:
-        async with _get_chat_lock():
+        return {
+            "response": res.get("answer", ""),
+            "nodes": res.get("nodes", []),
+            "sources": res.get("sources", []),
+        }
+    except Exception as exc:
+        logger.warning("Galaxy chat fallback: %s", exc)
+        orchestrator = get_orchestrator()
+        if orchestrator:
             response = await asyncio.to_thread(orchestrator.chat, req.message)
-        return {"response": response, "nodes": []}
+            return {"response": response, "nodes": []}
+        raise HTTPException(status_code=500, detail=str(exc))
 
 
 @router.get("/api/chat/stream")
@@ -99,8 +154,7 @@ async def chat_stream_get(message: str = Query(..., description="Message content
 
     async def sse_event_generator():
         try:
-            chat_gen = orchestrator.chat_stream(message)
-            async for token in run_generator_in_thread(lambda: chat_gen):
+            async for token in run_generator_in_thread(orchestrator.chat_stream, message):
                 yield f"data: {json.dumps({'token': token})}\n\n"
         except Exception as e:
             yield f"data: {json.dumps({'error': str(e)})}\n\n"

@@ -15,33 +15,33 @@ _CONFIG_DIR = paths.CONFIG_ROOT
 _MODELS_YAML = _CONFIG_DIR / "models.yaml"
 _MODELS_JSON = _CONFIG_DIR / "models.json"
 
-# ── Defaults (Calibrated from Live Proxy Benchmark) ─────────────────────────
+# ── Defaults (Calibrated from Live Proxy Benchmark & Gemini-First) ───────────
 _DEFAULTS = {
-    "voice_live":       "gemini-3.6-flash-tiered",
+    "voice_live":       "gemini-2.5-flash",
     "voice_name":       "Charon",
-    "gemini":           "gemini-3.6-flash-tiered",
-    "gemini_code":      "claude-sonnet-4-6",
-    "gemini_reasoning": "claude-opus-4-6-thinking",
-    "gemini_general":   "gemini-3.6-flash-tiered",
-    "gemini_agent":     "gemini-3-flash-agent",
-    "gemini_fast":      "gemini-3.6-flash-tiered",
-    "gemini_vision":    "gemini-3.1-flash-image",
-    "gemini_lite":      "gemini-3.5-flash-extra-low",
-    "claude":           "claude-sonnet-4-6",
-    "claude_opus":      "claude-opus-4-6-thinking",
-    "gpt":              "gemini-3.6-flash-tiered",
-    "gpt_mini":         "gemini-3.5-flash-extra-low",
-    "gpt_4o":           "gemini-3.6-flash-tiered",
+    "gemini":           "gemini-2.5-flash",
+    "gemini_code":      "gemini-2.5-pro",
+    "gemini_reasoning": "gemini-2.5-pro",
+    "gemini_general":   "gemini-2.5-flash",
+    "gemini_agent":     "gemini-2.5-flash",
+    "gemini_fast":      "gemini-2.5-flash",
+    "gemini_vision":    "gemini-2.5-flash",
+    "gemini_lite":      "gemini-2.0-flash",
+    "claude":           "gemini-2.5-pro",
+    "claude_opus":      "gemini-2.5-pro",
+    "gpt":              "gemini-2.5-flash",
+    "gpt_mini":         "gemini-2.0-flash",
+    "gpt_4o":           "gemini-2.5-pro",
     "ollama":           "llama3.3",
     "nvidia":           "meta/llama-3.1-70b-instruct",
     "mistral":          "mistral-large-latest",
     "default_backend":  "gpt",
-    "planner_model":    "gemini-3-flash-agent",
-    "fast_model":       "gemini-3.6-flash-tiered",
+    "planner_model":    "gemini-2.5-pro",
+    "fast_model":       "gemini-2.5-flash",
     "proxy_base_url":   "http://localhost:8045/v1",
     "proxy_api_key":    "sk-5ec70bf9fa324084b7a7326babf52c45",
     "openai_base_url":  "http://localhost:8045/v1",
-    "openai_model":     "gemini-3.6-flash-tiered",
+    "openai_model":     "gemini-2.5-flash",
 }
 
 _ENV_MAP = {
@@ -146,16 +146,16 @@ def get_model_for_task(
     task = (task_type or "general").lower()
 
     if task in ("code", "coding", "architecture", "refactor", "debug"):
-        return cfg.get("gemini_code", "claude-sonnet-4-6")
+        return cfg.get("gemini_code", "gemini-2.5-pro")
     elif task in ("reasoning", "math", "logic", "audit", "security"):
-        return cfg.get("gemini_reasoning", "claude-opus-4-6-thinking")
+        return cfg.get("gemini_reasoning", "gemini-2.5-pro")
     elif task in ("agent", "planner", "workflow", "dag", "multi_step"):
-        return cfg.get("gemini_agent", "gemini-3-flash-agent")
+        return cfg.get("gemini_agent", "gemini-2.5-flash")
     elif task in ("vision", "ocr", "screen", "image", "ui_scan"):
-        return cfg.get("gemini_vision", "gemini-3.1-flash-image")
+        return cfg.get("gemini_vision", "gemini-2.5-flash")
     elif task in ("fast", "status", "quick", "summary", "log"):
-        return cfg.get("gemini_fast", "gemini-3.6-flash-tiered")
+        return cfg.get("gemini_fast", "gemini-2.5-flash")
     elif task in ("lite", "autocomplete", "prefix", "token"):
-        return cfg.get("gemini_lite", "gemini-3.5-flash-extra-low")
+        return cfg.get("gemini_lite", "gemini-2.0-flash")
     else:
-        return cfg.get("gemini_general", "gemini-3.6-flash-tiered")
+        return cfg.get("gemini_general", "gemini-2.5-flash")

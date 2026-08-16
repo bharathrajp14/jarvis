@@ -1,21 +1,27 @@
 # memory/lessons.py — Persistent Lesson & Correction Store
 """
 LessonStore for storing and semantically retrieving explicit and implicit user corrections.
-Used by ContextEngine at Priority 6 to ensure past corrections prevent repeating errors.
+Used by ContextEngine and Task Planner to prevent repeating errors and enforce learned rules.
 """
 from __future__ import annotations
 
 import json
+import logging
 import sqlite3
 import threading
 import time
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
 from brjarvis.core.paths import paths
+
+logger = logging.getLogger("JARVIS.LessonStore")
 
 LESSONS_DB_FILE = paths.MEMORY_ROOT / "lessons.db"
 
 
 class LessonStore:
-    """Stores and retrieves user corrections and architectural lessons."""
+    """Stores and retrieves user corrections, architectural lessons, and adaptive weights."""
 
     def __init__(self, db_path: Path = LESSONS_DB_FILE):
         self.db_path = db_path
@@ -68,7 +74,7 @@ class LessonStore:
         source: str = "user_correction",
         weight: float = 1.0,
     ) -> int:
-        """Store a new lesson learned from a user correction."""
+        """Store a new lesson learned from a user correction or operational feedback."""
         def _do_write():
             with self._lock:
                 conn = self._get_conn()
@@ -85,9 +91,39 @@ class LessonStore:
         from memory.sqlite_lock import run_sqlite_write
         return run_sqlite_write(_do_write)
 
-    def get_relevant_lessons(self, query: str, limit: int = 5) -> list[dict]:
-        """Retrieve relevant lessons matching query keywords."""
-        query_words = [w.lower() for w in query.split() if len(w) > 2]
+    def strengthen_lesson(self, lesson_id: int, factor: float = 1.25) -> bool:
+        """Increase lesson weight when it successfully prevents an error or guides a task."""
+        with self._lock:
+            conn = self._get_conn()
+            cur = conn.execute(
+                "UPDATE lessons SET weight = MIN(5.0, weight * ?) WHERE id = ?",
+                (factor, lesson_id),
+            )
+            conn.commit()
+            return cur.rowcount > 0
+
+    def weaken_lesson(self, lesson_id: int, factor: float = 0.80) -> bool:
+        """Decrease lesson weight if it is superseded or contradicted by newer feedback."""
+        with self._lock:
+            conn = self._get_conn()
+            cur = conn.execute(
+                "UPDATE lessons SET weight = MAX(0.1, weight * ?) WHERE id = ?",
+                (factor, lesson_id),
+            )
+            conn.commit()
+            return cur.rowcount > 0
+
+    def delete_lesson(self, lesson_id: int) -> bool:
+        """Delete an obsolete lesson from the database."""
+        with self._lock:
+            conn = self._get_conn()
+            cur = conn.execute("DELETE FROM lessons WHERE id = ?", (lesson_id,))
+            conn.commit()
+            return cur.rowcount > 0
+
+    def get_relevant_lessons(self, query: str, limit: int = 5) -> List[Dict[str, Any]]:
+        """Retrieve relevant lessons matching query keywords with score ranking."""
+        query_words = [w.lower() for w in query.split() if len(w) >= 2]
         if not query_words:
             return self.get_latest_lessons(limit=limit)
 
@@ -107,14 +143,14 @@ class LessonStore:
                     score = sum(1 for w in query_words if w in text)
                     if score > 0:
                         item = dict(row)
-                        matched.append((score, item))
+                        matched.append((score * float(row["weight"] or 1.0), item))
                 except Exception:
                     continue
 
             matched.sort(key=lambda x: x[0], reverse=True)
             return [m[1] for m in matched[:limit]]
 
-    def get_latest_lessons(self, limit: int = 5) -> list[dict]:
+    def get_latest_lessons(self, limit: int = 5) -> List[Dict[str, Any]]:
         """Get latest lessons sorted by timestamp."""
         with self._lock:
             conn = self._get_conn()
@@ -130,7 +166,6 @@ class LessonStore:
         correction = f"[{status_tag}] Workflow sequence: {sequence_desc}"
         return self.store_lesson(topic=topic, correction=correction, source="workflow_orchestrator", weight=1.5 if success else 0.8)
 
-    def get_workflow_patterns(self, query: str = "") -> list[dict]:
+    def get_workflow_patterns(self, query: str = "") -> List[Dict[str, Any]]:
         """Retrieve verified workflow lessons."""
         return self.get_relevant_lessons(f"workflow {query}", limit=5)
-

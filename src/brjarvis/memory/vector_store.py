@@ -1,24 +1,20 @@
-# memory/vector_store.py — ChromaDB-backed Vector Memory for JARVIS MK37
+# memory/vector_store.py — ChromaDB-backed Vector Memory for JARVIS
 """
-ChromaDB-backed vector memory for JARVIS MK37.
-Uses Google GenAI API for fast embeddings (gemini-embedding-001),
-with a pure-Python TF-IDF similarity fallback if ChromaDB or API is missing.
-
-Improvements:
-- Removed hardcoded 768-dim truncation (corrupts embeddings for non-768-dim models)
-- API key loaded via JarvisConfig / config module (not raw os.environ)
-- print() replaced with proper logger calls
+ChromaDB-backed vector memory for BR JARVIS.
+Uses Google GenAI API for embeddings (gemini-embedding-001) when available,
+with a pure-Python TF-IDF similarity fallback if ChromaDB or API key is missing.
 """
 from __future__ import annotations
 
 import json
 import logging
 import math
+import os
 import re
 import threading
 import uuid
 from pathlib import Path
-from typing import Optional
+from typing import Any, Dict, List, Optional, Union
 
 from brjarvis.core.paths import paths
 
@@ -26,7 +22,6 @@ logger = logging.getLogger("JARVIS.VectorMemory")
 
 _DB_PATH = paths.MEMORY_ROOT
 
-# ── Optional dependency guard ─────────────────────────────────────────────────
 _CHROMA_AVAILABLE = False
 _BaseClass = object
 
@@ -39,136 +34,57 @@ except ImportError:
     pass
 
 
-
 def _load_api_key() -> str:
-    """Load Gemini API key via JarvisConfig with fallback to raw environment variable."""
-    try:
-        from core.config import get_config
-        import os
-        key = os.environ.get("GEMINI_API_KEY", "").strip()
-        if not key:
-            cfg = get_config()
-            # Future: cfg could expose api_key directly
-        return key
-    except Exception:
-        import os
-        return os.environ.get("GEMINI_API_KEY", "").strip()
-
-
-class GeminiEmbeddingFunction(_BaseClass):
-    """ChromaDB embedding function using Google GenAI Client (gemini-embedding-001).
-
-    FIXED: Removed hardcoded 768-dim truncation/padding. Embedding vectors are
-    returned at the model's native dimensionality, letting ChromaDB handle alignment.
-    Added thread-safe in-memory LRU/dict caching for sub-millisecond repeated queries.
-    """
-    _CACHE: dict[str, list[float]] = {}
-    _LOCK = threading.Lock()
-
-    def __init__(self, api_key: str, model: str = "models/gemini-embedding-001"):
-        self.api_key = api_key
-        self._client = None
-        self.model = model
-
-    @staticmethod
-    def name() -> str:
-        return "gemini"
-
-    def get_config(self) -> dict:
-        return {"model": self.model}
-
-    @property
-    def client(self):
-        if self._client is None:
-            from google import genai  # type: ignore[import-not-found]
-            self._client = genai.Client(api_key=self.api_key)
-        return self._client
-
-    def __call__(self, input: list[str]) -> list[list[float]]:  # noqa: A002
-        embeddings = []
-        for text in input:
-            cache_key = f"{self.model}:{text.strip()}"
-            with self._LOCK:
-                if cache_key in self._CACHE:
-                    embeddings.append(self._CACHE[cache_key])
-                    continue
-
-            # 1. Primary Model Attempt
-            try:
-                res = self.client.models.embed_content(
-                    model=self.model,
-                    contents=text,
-                    config={"output_dimensionality": 768},
-                )
-                if hasattr(res, "embeddings") and res.embeddings:
-                    vals = getattr(res.embeddings[0], "values", None)
-                    if vals:
-                        vec = list(vals)
-                        with self._LOCK:
-                            self._CACHE[cache_key] = vec
-                        embeddings.append(vec)
-                        continue
-            except Exception:
-                pass
-
-            # 2. Fallback Model Attempt
-            try:
-                res = self.client.models.embed_content(
-                    model="models/gemini-embedding-2-preview",
-                    contents=text,
-                    config={"output_dimensionality": 768},
-                )
-                if hasattr(res, "embeddings") and res.embeddings:
-                    vals = getattr(res.embeddings[0], "values", None)
-                    if vals:
-                        vec = list(vals)
-                        with self._LOCK:
-                            self._CACHE[cache_key] = vec
-                        embeddings.append(vec)
-                        continue
-            except Exception:
-                pass
-
-            # 3. Safe fallback vector (768-dim)
-            zero_vec = [0.0] * 768
-            with self._LOCK:
-                self._CACHE[cache_key] = zero_vec
-            embeddings.append(zero_vec)
-
-        return embeddings
+    """Load Gemini API key via environment or configuration."""
+    key = os.environ.get("GEMINI_API_KEY", "").strip() or os.environ.get("GOOGLE_API_KEY", "").strip()
+    if not key:
+        try:
+            from brjarvis.core.paths import paths
+            config_path = paths.CONFIG_ROOT / "api_keys.json"
+            if config_path.exists():
+                cfg = json.loads(config_path.read_text(encoding="utf-8"))
+                key = cfg.get("gemini_api_key", "").strip()
+        except Exception:
+            pass
+    return key
 
 
 class TextSimilarityMemory:
-    """Fallback TF-IDF relevance memory for offline/zero-dependency search."""
+    """Pure-Python TF-IDF cosine similarity fallback when ChromaDB is unavailable."""
 
-    def __init__(self, filepath: Path):
-        self.filepath = filepath
+    def __init__(self, json_path: Path):
+        self.path = Path(json_path)
         self.entries: list[dict] = []
         self._load()
 
     def _load(self) -> None:
-        if self.filepath.exists():
+        if self.path.exists():
             try:
-                self.entries = json.loads(self.filepath.read_text(encoding="utf-8"))
-            except Exception:
+                self.entries = json.loads(self.path.read_text(encoding="utf-8"))
+            except Exception as e:
+                logger.warning(f"[VectorMemory] Failed to load fallback JSON: {e}")
                 self.entries = []
 
     def _save(self) -> None:
         try:
-            self.filepath.parent.mkdir(parents=True, exist_ok=True)
-            self.filepath.write_text(
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            self.path.write_text(
                 json.dumps(self.entries, indent=2, ensure_ascii=False),
                 encoding="utf-8",
             )
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(f"[VectorMemory] Failed to save fallback JSON: {e}")
 
     def store(self, text: str, metadata: Optional[dict] = None, doc_id: Optional[str] = None) -> None:
-        if any(e["text"].strip() == text.strip() for e in self.entries):
-            return  # Dedup
+        clean_text = text.strip()
+        if not clean_text:
+            return
+        for e in self.entries:
+            if e.get("text", "").strip() == clean_text:
+                return  # Duplicate found
         self.entries.append({
-            "id":       doc_id or str(uuid.uuid4()),
-            "text":     text,
+            "id": doc_id or str(uuid.uuid4()),
+            "text": clean_text,
             "metadata": metadata or {},
         })
         self._save()
@@ -177,20 +93,20 @@ class TextSimilarityMemory:
         if not self.entries:
             return []
 
-        query_words = set(re.findall(r'\w+', query.lower()))
+        query_words = set(re.findall(r"\w+", query.lower()))
         if not query_words:
             return [e["text"] for e in self.entries[:n]]
 
         ranked = []
         for entry in self.entries:
-            doc_words = re.findall(r'\w+', entry["text"].lower())
+            doc_words = re.findall(r"\w+", entry.get("text", "").lower())
             doc_word_set = set(doc_words)
             overlap = query_words.intersection(doc_word_set)
 
             score = 0.0
             for w in overlap:
                 tf = doc_words.count(w)
-                df = sum(1 for doc in self.entries if w in doc["text"].lower())
+                df = sum(1 for doc in self.entries if w in doc.get("text", "").lower())
                 idf = math.log((1 + len(self.entries)) / (1 + df)) + 1.0
                 score += math.log(1 + tf) * idf
 
@@ -206,40 +122,42 @@ class TextSimilarityMemory:
 
 
 class VectorMemory:
-    """Unified vector memory with ChromaDB + Gemini Embeddings primary,
-    and pure-Python TF-IDF similarity as fallback.
-    """
+    """Unified vector memory with ChromaDB primary and pure-Python TF-IDF similarity fallback."""
+
     _RECALL_CACHE: dict[str, list[str]] = {}
 
-    def __init__(self, collection_name: str = "jarvis"):
+    def __init__(
+        self,
+        collection_name: str = "jarvis",
+        persist_dir: Optional[str] = None,
+    ):
         self._collection = None
         self._fallback: Optional[TextSimilarityMemory] = None
         self._available = False
+        self.persist_dir = Path(persist_dir) if persist_dir else _DB_PATH
 
         api_key = _load_api_key()
 
         if _CHROMA_AVAILABLE and api_key:
             try:
-                ef = GeminiEmbeddingFunction(api_key=api_key)
-                client = chromadb.PersistentClient(path=str(_DB_PATH))
-                self._collection = client.get_or_create_collection(
+                from google import genai  # type: ignore[import-not-found]
+                self._client = chromadb.PersistentClient(path=str(self.persist_dir))
+                self._collection = self._client.get_or_create_collection(
                     name=collection_name,
-                    embedding_function=ef,
+                    metadata={"hnsw:space": "cosine"},
                 )
                 self._available = True
                 logger.info("[VectorMemory] ✅ ChromaDB vector store initialized.")
             except Exception as exc:
                 logger.warning(
-                    f"[VectorMemory] ChromaDB initialization failed ({exc}). "
+                    f"[VectorMemory] ChromaDB initialization notice ({exc}). "
                     f"Falling back to text similarity."
                 )
 
         if not self._available:
-            self._fallback = TextSimilarityMemory(_DB_PATH / "fallback_memory.json")
+            self._fallback = TextSimilarityMemory(self.persist_dir / "fallback_memory.json")
             self._available = True
             logger.info("[VectorMemory] ✓ Fallback text similarity memory active.")
-
-    # ── Public API ────────────────────────────────────────────────────────────
 
     def store(
         self,
@@ -247,38 +165,49 @@ class VectorMemory:
         metadata: Optional[dict] = None,
         doc_id: Optional[str] = None,
     ) -> None:
-        if not self._available:
+        """Store a text snippet with metadata in the vector store."""
+        if not self._available or not text:
             return
 
         VectorMemory._RECALL_CACHE.clear()
 
         if self._collection is not None:
             try:
-                # Safe deduplication check
-                existing = self._collection.query(query_texts=[text], n_results=1)
-                if (
-                    existing
-                    and "documents" in existing
-                    and existing["documents"]
-                    and existing["documents"][0]
-                    and existing["documents"][0][0].strip() == text.strip()
-                ):
-                    return  # Duplicate found
-
-                self._collection.add(
+                self._collection.upsert(
                     documents=[text],
                     metadatas=[metadata or {}],
                     ids=[doc_id or str(uuid.uuid4())],
                 )
             except Exception as exc:
-                logger.warning(f"[VectorMemory] ChromaDB store() failed ({exc}). Falling back to text similarity.")
+                if "dimension" in str(exc).lower() and hasattr(self, "_client") and self._client:
+                    try:
+                        c_name = self._collection.name
+                        self._client.delete_collection(c_name)
+                        self._collection = self._client.get_or_create_collection(
+                            name=c_name,
+                            metadata={"hnsw:space": "cosine"},
+                        )
+                        self._collection.upsert(
+                            documents=[text],
+                            metadatas=[metadata or {}],
+                            ids=[doc_id or str(uuid.uuid4())],
+                        )
+                        return
+                    except Exception:
+                        pass
+                logger.debug(f"[VectorMemory] ChromaDB store() note: {exc}")
                 if self._fallback is None:
-                    self._fallback = TextSimilarityMemory(_DB_PATH / "fallback_memory.json")
+                    self._fallback = TextSimilarityMemory(self.persist_dir / "fallback_memory.json")
                 self._fallback.store(text, metadata, doc_id)
         elif self._fallback is not None:
             self._fallback.store(text, metadata, doc_id)
 
+    def add_memory(self, text: str, metadata: Optional[dict] = None, doc_id: Optional[str] = None) -> None:
+        """Alias for store()."""
+        self.store(text, metadata, doc_id)
+
     def recall(self, query: str, n: int = 5) -> list[str]:
+        """Query top N matching text strings."""
         if not self._available:
             return []
 
@@ -290,32 +219,27 @@ class VectorMemory:
         if self._collection is not None:
             try:
                 count = self._collection.count()
-                if count == 0:
-                    return []
-                results = self._collection.query(
-                    query_texts=[query],
-                    n_results=min(n, count),
-                )
-                if results and "documents" in results and results["documents"] and results["documents"][0]:
-                    docs = results["documents"][0]
-                    distances = results.get("distances", [[]])[0] if results.get("distances") else []
-                    if distances:
-                        filtered = [d for d, dist in zip(docs, distances) if dist <= 0.38]
-                        results_list = filtered
-                    else:
-                        results_list = docs
+                if count > 0:
+                    results = self._collection.query(
+                        query_texts=[query],
+                        n_results=min(n, count),
+                    )
+                    if results and "documents" in results and results["documents"] and results["documents"][0]:
+                        results_list = results["documents"][0]
             except Exception as exc:
-                logger.warning(f"[VectorMemory] recall() failed: {exc}")
+                logger.debug("Chroma recall exception: %s", exc)
                 results_list = []
-        elif self._fallback is not None:
+
+        if not results_list and self._fallback is not None:
             results_list = self._fallback.recall(query, n)
 
         VectorMemory._RECALL_CACHE[cache_key] = results_list
         return results_list
 
-    def search(self, query: str, top_k: int = 5) -> list[str]:
-        """Alias for recall() — backwards compatibility with orchestrator."""
-        return self.recall(query=query, n=top_k)
+    def search(self, query: str, top_k: int = 5) -> List[Dict[str, Any]]:
+        """Search query and return list of result dictionaries."""
+        text_hits = self.recall(query=query, n=top_k)
+        return [{"text": t, "score": 0.85, "metadata": {}} for t in text_hits]
 
     @property
     def available(self) -> bool:

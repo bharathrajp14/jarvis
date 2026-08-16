@@ -274,12 +274,16 @@ _OS_LAUNCHERS = {
 }
 
 def open_app(
-    parameters=None,
-    response=None,
+    parameters: dict,
     player=None,
+    active_character=None,
     session_memory=None,
 ) -> str:
     app_name = (parameters or {}).get("app_name", "").strip()
+    url = (parameters or {}).get("url", "").strip()
+
+    if not app_name and url:
+        app_name = "chrome"
 
     if not app_name:
         return "No application name provided."
@@ -310,7 +314,7 @@ def open_app(
     try:
         from actions.app_resolver import get_app_resolver
         resolver = get_app_resolver()
-        success, msg = resolver.launch(app_name)
+        success, msg = resolver.launch(app_name, url=url)
         if success:
             if player:
                 player.write_log(f"[open_app] {app_name} -> {msg}")

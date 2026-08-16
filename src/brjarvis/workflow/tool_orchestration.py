@@ -609,7 +609,10 @@ class TaskCheckpointer:
         if db_path:
             self.db_path = Path(db_path)
         else:
-            from memory.persistent_store import get_memory_dir
+            try:
+                from brjarvis.memory.persistent_store import get_memory_dir
+            except ImportError:
+                from memory.persistent_store import get_memory_dir
             db_dir = get_memory_dir("user")
             db_dir.mkdir(parents=True, exist_ok=True)
             self.db_path = db_dir / "tool_orchestration.db"
@@ -805,7 +808,10 @@ class ParallelToolExecutor:
 
     @staticmethod
     def _default_tool_runner(tool_name: str, args: Dict[str, Any]) -> Any:
-        from tools.registry import execute_tool
+        try:
+            from brjarvis.tools.registry import execute_tool
+        except ImportError:
+            from tools.registry import execute_tool
         return execute_tool(tool_name, args)
 
     def execute_plan(

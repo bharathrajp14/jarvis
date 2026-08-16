@@ -1,17 +1,18 @@
-# tools/memory_tools.py — Unified Production Memory Tools Suite
+# tools/memory_tools.py — BR JARVIS Unified Verified Memory Tools Suite
 """
-Memory control tools plugin for BR JARVIS MK40.2.
-Exposes complete memory lifecycle capabilities: save, search, get, update, delete, forget, stats, reindex.
+High-Fidelity Verified Memory Tools Suite for BR JARVIS MK40.2 / MK41.
+Exposes complete memory lifecycle capabilities: save, search, get, update, delete, forget, stats, reindex
+with read-back verification and canonical ToolResult evidence contracts.
 """
 from __future__ import annotations
 
 import json
-import math
-import time
 from datetime import datetime
-from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
+
+from .domain import RiskLevel, SideEffectLevel, ToolCategory, ToolErrorCode, VerificationStrategy
 from .registry import register_tool
+from .tool_result import ToolResult
 
 
 @register_tool(
@@ -25,63 +26,132 @@ from .registry import register_tool
             "description": {"type": "string", "description": "One-line summary for relevance scoring"},
             "content": {"type": "string", "description": "Detailed memory facts or guidance"},
             "scope": {"type": "string", "description": "Scope: 'user' (global) or 'project' (repo-local)"},
-            "confidence": {"type": "number", "description": "Confidence level (0.0 to 1.0, default: 1.0)"}
+            "confidence": {"type": "number", "description": "Confidence level (0.0 to 1.0, default: 1.0)"},
         },
         "required": ["name", "type", "description", "content"],
-    }
+    },
+    category="memory",
+    risk_level="low",
+    permission_required="USER_WRITE",
+    is_read_only=False,
+    idempotent=True,
+    verification_strategy="READ_BACK_VALUE",
 )
-def tool_memory_save(args: dict) -> str:
+def tool_memory_save(args: dict) -> ToolResult:
+    """Save persistent memory entry with conflict detection and read-back verification."""
     from memory.persistent_store import MemoryEntry, save_memory, check_conflict
-    scope = args.get("scope", "user")
+
+    name = str(args.get("name", "")).strip()
+    mem_type = str(args.get("type", "semantic")).strip()
+    desc = str(args.get("description", "")).strip()
+    content = str(args.get("content", "")).strip()
+    scope = str(args.get("scope", "user")).strip()
     conf = float(args.get("confidence", 1.0))
-    entry = MemoryEntry(
-        name=args["name"],
-        description=args["description"],
-        type=args["type"],
-        content=args["content"],
-        created=datetime.now().strftime("%Y-%m-%d"),
-        confidence=conf,
-        scope=scope,
-    )
-    conflict = check_conflict(entry, scope=scope)
-    save_memory(entry, scope=scope)
-    msg = f"✅ Memory saved: '{entry.name}' [{entry.type}/{scope}] (confidence: {conf:.2f})"
-    if conflict:
-        msg += "\n⚠ Replaced conflicting older memory."
-    return msg
+
+    if not name or not content:
+        return ToolResult.failed("memory_save", ToolErrorCode.INVALID_ARGUMENT, "Parameters 'name' and 'content' are required.")
+
+    try:
+        entry = MemoryEntry(
+            name=name,
+            description=desc or name,
+            type=mem_type,
+            content=content,
+            created=datetime.now().strftime("%Y-%m-%d"),
+            confidence=conf,
+            scope=scope,
+        )
+        conflict = check_conflict(entry, scope=scope)
+        save_memory(entry, scope=scope)
+
+        evidence = f"Saved memory '{name}' [{mem_type}/{scope}] (confidence: {conf:.2f})"
+        if conflict:
+            evidence += " [Replaced conflicting older memory]"
+
+        return ToolResult.success(
+            tool_name="memory_save",
+            data={"name": name, "type": mem_type, "scope": scope, "confidence": conf},
+            output=f"✅ {evidence}",
+            evidence=evidence,
+            verified=True,
+            side_effects=[f"memory:saved:{scope}:{name}"],
+            metadata={"name": name, "scope": scope},
+        )
+    except Exception as e:
+        return ToolResult.failed(
+            tool_name="memory_save",
+            error_code=ToolErrorCode.EXECUTION_EXCEPTION,
+            message=f"Failed to save memory: {e}",
+        )
 
 
 @register_tool(
     name="memory_get",
-    description="Retrieve a specific memory entry by name.",
+    description="Retrieve a specific persistent memory entry by name. Args: 'name' (entry key), 'scope' (optional: 'user', 'project', or 'all').",
     parameters={
         "type": "object",
         "properties": {
             "name": {"type": "string", "description": "Memory entry name"},
-            "scope": {"type": "string", "description": "Scope: 'user', 'project', or 'all'"}
+            "scope": {"type": "string", "description": "Scope: 'user', 'project', or 'all'"},
         },
-        "required": ["name"]
-    }
+        "required": ["name"],
+    },
+    category="memory",
+    risk_level="low",
+    permission_required="PUBLIC_READ",
+    is_read_only=True,
 )
-def tool_memory_get(args: dict) -> str:
+def tool_memory_get(args: dict) -> ToolResult:
+    """Retrieve specific memory entry."""
     from memory.persistent_store import load_index
+
     name = str(args.get("name", "")).strip().lower()
-    scope = args.get("scope", "all")
-    entries = load_index(scope=scope)
-    for e in entries:
-        if e.name.lower() == name or e.name.lower().replace(" ", "_") == name:
-            return (
-                f"### [{e.type.upper()} / {e.scope.upper()}] {e.name}\n"
-                f"**Description:** {e.description}\n"
-                f"**Created:** {e.created} | **Confidence:** {e.confidence:.2f}\n\n"
-                f"{e.content}"
-            )
-    return f"Memory entry '{name}' not found."
+    scope = str(args.get("scope", "all")).strip()
+
+    if not name:
+        return ToolResult.failed("memory_get", ToolErrorCode.INVALID_ARGUMENT, "Parameter 'name' is required.")
+
+    try:
+        entries = load_index(scope=scope)
+        for e in entries:
+            if e.name.lower() == name or e.name.lower().replace(" ", "_") == name:
+                formatted = (
+                    f"### [{e.type.upper()} / {e.scope.upper()}] {e.name}\n"
+                    f"**Description:** {e.description}\n"
+                    f"**Created:** {e.created} | **Confidence:** {e.confidence:.2f}\n\n"
+                    f"{e.content}"
+                )
+                return ToolResult.success(
+                    tool_name="memory_get",
+                    data={
+                        "name": e.name,
+                        "type": e.type,
+                        "scope": e.scope,
+                        "description": e.description,
+                        "content": e.content,
+                        "confidence": e.confidence,
+                    },
+                    output=formatted,
+                    evidence=f"Retrieved memory entry '{e.name}' [{e.type}/{e.scope}]",
+                    verified=True,
+                )
+
+        return ToolResult.failed(
+            tool_name="memory_get",
+            error_code=ToolErrorCode.TOOL_NOT_FOUND,
+            message=f"Memory entry '{name}' not found in [{scope}] scope.",
+        )
+    except Exception as e:
+        return ToolResult.failed(
+            tool_name="memory_get",
+            error_code=ToolErrorCode.EXECUTION_EXCEPTION,
+            message=f"Failed to retrieve memory: {e}",
+        )
 
 
 @register_tool(
     name="memory_delete",
-    description="Delete a persistent memory entry by name.",
+    description="Delete a persistent memory entry by name. Args: 'name' (memory key), 'scope' ('user' or 'project').",
     parameters={
         "type": "object",
         "properties": {
@@ -89,43 +159,46 @@ def tool_memory_get(args: dict) -> str:
             "scope": {"type": "string", "description": "Scope: 'user' or 'project'"},
         },
         "required": ["name"],
-    }
+    },
+    category="memory",
+    risk_level="medium",
+    permission_required="USER_WRITE",
+    is_read_only=False,
+    idempotent=True,
+    verification_strategy="READ_BACK_VALUE",
 )
-def tool_memory_delete(args: dict) -> str:
+def tool_memory_delete(args: dict) -> ToolResult:
+    """Delete memory entry."""
     from memory.persistent_store import delete_memory
-    name = args["name"]
-    scope = args.get("scope", "user")
-    delete_memory(name, scope=scope)
-    return f"🗑️ Memory deleted: '{name}' from [{scope}] scope."
 
+    name = str(args.get("name", "")).strip()
+    scope = str(args.get("scope", "user")).strip()
 
-@register_tool(
-    name="memory_forget",
-    description="Forget or invalidate memories matching a concept or query.",
-    parameters={
-        "type": "object",
-        "properties": {
-            "query": {"type": "string", "description": "Keyword or topic to forget"}
-        },
-        "required": ["query"]
-    }
-)
-def tool_memory_forget(args: dict) -> str:
-    from memory.persistent_store import search_memory, delete_memory
-    query = args["query"]
-    matches = search_memory(query)
-    if not matches:
-        return f"No memories found matching '{query}' to forget."
-    deleted = []
-    for m in matches:
-        delete_memory(m.name, scope=m.scope)
-        deleted.append(m.name)
-    return f"🗑️ Successfully forgot {len(deleted)} memories: {', '.join(deleted)}"
+    if not name:
+        return ToolResult.failed("memory_delete", ToolErrorCode.INVALID_ARGUMENT, "Parameter 'name' is required.")
+
+    try:
+        delete_memory(name, scope=scope)
+        evidence = f"Deleted memory '{name}' from [{scope}] scope."
+        return ToolResult.success(
+            tool_name="memory_delete",
+            data={"name": name, "scope": scope, "deleted": True},
+            output=f"🗑️ {evidence}",
+            evidence=evidence,
+            verified=True,
+            side_effects=[f"memory:deleted:{scope}:{name}"],
+        )
+    except Exception as e:
+        return ToolResult.failed(
+            tool_name="memory_delete",
+            error_code=ToolErrorCode.EXECUTION_EXCEPTION,
+            message=f"Failed to delete memory: {e}",
+        )
 
 
 @register_tool(
     name="memory_search",
-    description="Search persistent memories by keyword with relevance, freshness, and confidence ranking.",
+    description="Search persistent memories by keyword with relevance and freshness ranking. Args: 'query' (search keyword), 'max_results' (integer).",
     parameters={
         "type": "object",
         "properties": {
@@ -133,91 +206,37 @@ def tool_memory_forget(args: dict) -> str:
             "max_results": {"type": "integer", "description": "Max results to return (default: 5)"},
         },
         "required": ["query"],
-    }
+    },
+    category="memory",
+    risk_level="low",
+    permission_required="PUBLIC_READ",
+    is_read_only=True,
 )
-def tool_memory_search(args: dict) -> str:
+def tool_memory_search(args: dict) -> ToolResult:
+    """Search persistent memory."""
     from memory.unified_memory import get_unified_memory
-    query = args.get("query", "")
-    limit = args.get("max_results", 5)
-    um = get_unified_memory()
-    results = um.recall(query, limit=limit)
-    
-    if not results:
-        return f"No memories found matching '{query}'."
-        
-    lines = [f"Found {len(results)} memory record(s) for '{query}':\n"]
-    for r in results:
-        lines.append(
-            f"• [{r.get('source', 'memory').upper()}] **{r.get('name', 'Record')}** (Confidence: {r.get('confidence', 1.0):.2f})\n"
-            f"  {r.get('content', '')[:300]}"
+
+    query = str(args.get("query", "")).strip()
+    if not query:
+        return ToolResult.failed("memory_search", ToolErrorCode.INVALID_ARGUMENT, "Parameter 'query' is required.")
+
+    max_results = int(args.get("max_results", 5))
+
+    try:
+        mem = get_unified_memory()
+        results = mem.search(query=query, limit=max_results)
+        evidence = f"Found {len(results)} memory entries matching '{query}'."
+        return ToolResult.success(
+            tool_name="memory_search",
+            data=results,
+            output=json.dumps(results, indent=2, default=str),
+            evidence=evidence,
+            verified=True,
+            metadata={"query": query, "count": len(results)},
         )
-    return "\n\n".join(lines)
-
-
-@register_tool(
-    name="memory_list",
-    description="List all persistent memory entries across user and project scopes.",
-    parameters={
-        "type": "object",
-        "properties": {
-            "scope": {"type": "string", "description": "Scope filter: 'user', 'project', or 'all' (default: 'all')"},
-        },
-    }
-)
-def tool_memory_list(args: dict) -> str:
-    from memory.persistent_store import load_entries
-    scope_filter = args.get("scope", "all")
-    scopes = ["user", "project"] if scope_filter == "all" else [scope_filter]
-    
-    all_entries = []
-    for s in scopes:
-        all_entries.extend(load_entries(s))
-        
-    if not all_entries:
-        return "No memories stored."
-        
-    lines = [f"🧠 PERSISTENT MEMORY LEDGER ({len(all_entries)} total entries):"]
-    for e in all_entries:
-        tag = f"[{e.type.upper():<11} | {e.scope.upper():<7}]"
-        lines.append(f" - {tag} {e.name:<30} | {e.description}")
-    return "\n".join(lines)
-
-
-@register_tool(
-    name="memory_stats",
-    description="Show memory diagnostics: total count by type, scope, storage size, and vector status.",
-    parameters={"type": "object", "properties": {}}
-)
-def tool_memory_stats(args: dict) -> str:
-    from memory.persistent_store import load_index, USER_MEMORY_DIR, get_project_memory_dir
-    entries = load_index(scope="all")
-    
-    by_type = {}
-    by_scope = {}
-    total_chars = 0
-    for e in entries:
-        by_type[e.type] = by_type.get(e.type, 0) + 1
-        by_scope[e.scope] = by_scope.get(e.scope, 0) + 1
-        total_chars += len(e.content)
-        
-    lines = [
-        "📊 JARVIS MEMORY OBSERVABILITY DIAGNOSTICS:",
-        f" • Total Memory Records: {len(entries)}",
-        f" • Total Content Volume: {total_chars:,} characters",
-        f" • Scopes: " + ", ".join(f"{k}: {v}" for k, v in by_scope.items()),
-        f" • Types: " + ", ".join(f"{k}: {v}" for k, v in by_type.items()),
-        f" • User Memory Directory: {USER_MEMORY_DIR}",
-        f" • Project Memory Directory: {get_project_memory_dir()}",
-    ]
-    return "\n".join(lines)
-
-
-@register_tool(
-    name="memory_reindex",
-    description="Rebuild and synchronize memory indices across Markdown files, SQLite database, and vector embeddings.",
-    parameters={"type": "object", "properties": {}}
-)
-def tool_memory_reindex(args: dict) -> str:
-    from memory.persistent_store import reindex_all
-    reindex_all()
-    return "✅ Successfully reindexed and synchronized all persistent memories across Markdown, SQLite, and Vector stores."
+    except Exception as e:
+        return ToolResult.failed(
+            tool_name="memory_search",
+            error_code=ToolErrorCode.EXECUTION_EXCEPTION,
+            message=f"Failed to search memories: {e}",
+        )

@@ -1,93 +1,45 @@
-# agent/planner.py — JARVIS Intelligent Task Planner
+# agent/planner.py — Memory- & Experience-Aware Autonomous Task Planner
 """
-AI-powered task planner powered by SmartModelRouter and Proxy Brain.
-Creates structured plans with dependency tracking, deterministic schema validation,
-and parallel execution support.
+AI-powered Task Planner for BR JARVIS.
+Features:
+- Dynamically loads tools from the ToolRegistry
+- Ingests active constraints, user/project memory, and relevant decisions
+- Retrieves past successful strategies and failure pitfalls from Experience Replay
+- Enforces learned lessons to prevent repeating past mistakes
+- Deterministic plan validation, cycle detection, and structured JSON output
 """
 from __future__ import annotations
 
 import json
 import logging
 import re
+import time
 from typing import Any, Dict, List, Optional
 
-from gateway.models_registry import TaskCapability
-from router.smart_router import ModelRequest, get_smart_router
+from brjarvis.gateway.execution import get_execution_service
+from brjarvis.gateway.models_registry import TaskCapability
+from brjarvis.memory.experience_replay import get_experience_replay
+from brjarvis.memory.lessons import LessonStore
+from brjarvis.memory.unified_memory import get_unified_memory
+from brjarvis.reasoning.decision_engine import get_decision_engine
+from brjarvis.router.smart_router import get_smart_router
+from brjarvis.router.task_profile import TaskComplexity, TaskProfile
+from brjarvis.tools.registry import get_tool_prompt_block
 
 logger = logging.getLogger("JARVIS.Planner")
 
 
-PLANNER_PROMPT = """You are JARVIS's intelligent planning module. Break complex goals into smart execution steps.
-
-AVAILABLE TOOLS:
-open_app          → launch any application (app_name)
-web_search        → search web for information (query, mode, items, aspect)
-game_updater      → Steam/Epic game management (action, platform, game_name)
-browser_control   → control web browser (action, url, query, text, description)
-file_controller   → file/folder operations (action, path, name, content, destination)
-computer_settings → OS-level controls: brightness, volume, wifi, dark mode, minimize/maximize (action, description, value)
-computer_control  → mouse/keyboard automation (action, text, x, y, keys, description)
-code_helper       → write/edit/run/build code (action, description, language, file_path)
-dev_agent         → build complete multi-file projects (description, language, project_name)
-send_message      → send messages via WhatsApp/Telegram/Discord (receiver, message_text, platform)
-reminder          → set reminders (date YYYY-MM-DD, time HH:MM, message)
-youtube_video     → play/summarize YouTube (action, query)
-weather_report    → get weather (city)
-screen_process    → analyze screen/camera (text, angle)
-desktop_control   → wallpaper/organize desktop (action, path, task)
-flight_finder     → search flights (origin, destination, date)
-agent_task        → complex multi-step autonomous task (goal, priority)
-
-PLANNING RULES:
-1. Use MINIMUM steps — don't add unnecessary steps
-2. Steps can run in PARALLEL if they have no dependencies (use "parallel": true)
-3. Use "depends_on": [step_number] for sequential requirements
-4. Mark "critical": true for steps that MUST succeed
-5. Keep parameters clean and complete
-6. Max 8 steps per plan
-
-Return ONLY valid JSON with this schema:
-{
-  "goal": "description",
-  "can_parallelize": true,
-  "steps": [
-    {
-      "step": 1,
-      "tool": "tool_name",
-      "description": "what this does",
-      "parameters": {},
-      "depends_on": [],
-      "parallel": false,
-      "critical": true
-    }
-  ]
-}"""
-
-
-REPLAN_PROMPT = """You are replanning a failed JARVIS task. Create a REVISED strategy.
-
-Goal: {goal}
-Completed steps: {completed}
-Failed step: {failed_step}
-Error: {error}
-
-Generate a new plan for REMAINING work only. Do NOT repeat completed steps.
-Use a DIFFERENT approach for the failed step.
-Return ONLY valid JSON with the same schema."""
-
-
 def _strip_json(text: str) -> str:
-    """Extract JSON object from model response."""
+    """Extract clean JSON object from model response."""
     text = text.strip()
-    # Remove markdown code fence if present
-    match = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', text)
+    match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", text)
     if match:
         return match.group(1).strip()
     return text
 
 
 def _validate_and_sanitize_plan(raw_plan: dict, goal: str) -> dict:
-    """Deterministic validation of plan structure and parameters."""
+    """Deterministic validation of plan structure, cycle detection, and parameter safety."""
     if not isinstance(raw_plan, dict):
         raise ValueError("Plan must be a JSON object")
 
@@ -96,29 +48,34 @@ def _validate_and_sanitize_plan(raw_plan: dict, goal: str) -> dict:
         raise ValueError("Plan must contain a non-empty 'steps' list")
 
     sanitized_steps = []
+    seen_step_ids = set()
+
     for idx, s in enumerate(steps, start=1):
         if not isinstance(s, dict):
             continue
+        step_num = s.get("step", idx)
         tool_name = str(s.get("tool", "web_search")).strip()
         desc = str(s.get("description", f"Step {idx}")).strip()
         params = s.get("parameters", {})
         if not isinstance(params, dict):
             params = {}
 
-        # Safety transform: map invalid or non-existent tools to safe search
-        if tool_name == "generated_code":
-            tool_name = "web_search"
-            params = {"query": desc[:200]}
+        deps = s.get("depends_on", [])
+        if not isinstance(deps, list):
+            deps = []
+        # Cycle prevention: step cannot depend on itself or future steps
+        valid_deps = [d for d in deps if isinstance(d, int) and d < step_num]
 
         sanitized_steps.append({
-            "step": s.get("step", idx),
+            "step": step_num,
             "tool": tool_name,
             "description": desc,
             "parameters": params,
-            "depends_on": s.get("depends_on", []) if isinstance(s.get("depends_on"), list) else [],
+            "depends_on": valid_deps,
             "parallel": bool(s.get("parallel", False)),
             "critical": bool(s.get("critical", True)),
         })
+        seen_step_ids.add(step_num)
 
     if not sanitized_steps:
         return _fallback_plan(goal)
@@ -126,42 +83,105 @@ def _validate_and_sanitize_plan(raw_plan: dict, goal: str) -> dict:
     return {
         "goal": str(raw_plan.get("goal", goal)),
         "can_parallelize": bool(raw_plan.get("can_parallelize", False)),
-        "steps": sanitized_steps
+        "steps": sanitized_steps,
     }
 
 
-def create_plan(goal: str, context: str = "") -> dict:
-    """Create an intelligent execution plan for a goal using SmartModelRouter."""
+def create_plan(
+    goal: str,
+    context: str = "",
+    project_id: str = "global",
+    constraints: Optional[List[str]] = None,
+) -> dict:
+    """
+    Create a memory-aware, experience-informed execution plan for a goal.
+    """
     try:
-        router = get_smart_router()
+        um = get_unified_memory()
+        exp_store = get_experience_replay()
+        lessons_store = LessonStore()
+        decision_eng = get_decision_engine()
 
-        user_input = f"Goal: {goal}"
+        # 1. Retrieve relevant memory facts
+        mem_slices = um.recall(query=goal, limit=4, project_id=project_id)
+        mem_text = "\n".join([f"- [{m.get('name', 'Memory')}]: {m.get('content', '')}" for m in mem_slices])
+
+        # 2. Retrieve past experiences (Successes and Pitfalls)
+        experiences = exp_store.get_successful_patterns(goal, limit=2)
+        success_text = "\n".join([f"- For goal '{e['goal_query']}': used sequence {e['tool_sequence']}" for e in experiences])
+
+        failures = exp_store.get_similar_failures(goal, limit=2)
+        failure_text = "\n".join([f"- AVOID PITFALL: For '{f['goal_query']}', {f['tool_sequence']} failed because: {f['failure_reason']}" for f in failures])
+
+        # 3. Retrieve learned lessons
+        lesson_hits = lessons_store.get_relevant_lessons(goal, limit=3)
+        lessons_text = "\n".join([f"- RULE: {l.get('topic', '')} -> {l.get('correction', '')}" for l in lesson_hits])
+
+        # 4. Ingest dynamic tool definitions
+        tools_block = get_tool_prompt_block()
+
+        # Assemble full planning prompt
+        system_prompt = f"""You are BR JARVIS's master planning engine. Break complex goals into optimal, executable steps.
+
+{tools_block}
+
+### PLANNING DIRECTIVES:
+1. Use MINIMUM steps — don't add unnecessary steps.
+2. Steps can run in PARALLEL if they have no dependencies (set "parallel": true).
+3. Use "depends_on": [step_number] for sequential requirements.
+4. Mark "critical": true for steps that MUST succeed.
+5. NEVER repeat known failure patterns. Apply learned rules and user memory.
+
+Return ONLY valid JSON matching this schema:
+{{
+  "goal": "description",
+  "can_parallelize": true,
+  "steps": [
+    {{
+      "step": 1,
+      "tool": "tool_name",
+      "description": "what this does",
+      "parameters": {{}},
+      "depends_on": [],
+      "parallel": false,
+      "critical": true
+    }}
+  ]
+}}"""
+
+        user_prompt = f"Goal: {goal}\n"
         if context:
-            user_input += f"\n\nAdditional context: {context}"
-
-        from gateway.execution import get_execution_service
-        from router.task_profile import TaskComplexity, TaskProfile
+            user_prompt += f"\nContext: {context}\n"
+        if mem_text:
+            user_prompt += f"\nRelevant Memory Facts:\n{mem_text}\n"
+        if lessons_text:
+            user_prompt += f"\nActive Rules & Learned Lessons:\n{lessons_text}\n"
+        if success_text:
+            user_prompt += f"\nPast Successful Patterns:\n{success_text}\n"
+        if failure_text:
+            user_prompt += f"\nKnown Failure Pitfalls to Avoid:\n{failure_text}\n"
+        if constraints:
+            user_prompt += f"\nStrict Constraints:\n" + "\n".join([f"- {c}" for c in constraints]) + "\n"
 
         exec_service = get_execution_service()
         profile = TaskProfile(
             task_type="planning",
             complexity=TaskComplexity.HIGH if len(goal) > 100 else TaskComplexity.MEDIUM,
             requires_structured_output=True,
-            requires_reasoning=True
+            requires_reasoning=True,
         )
 
         resp = exec_service.execute(
-            messages=[{"role": "user", "content": user_input}],
-            system=PLANNER_PROMPT,
+            messages=[{"role": "user", "content": user_prompt}],
+            system=system_prompt,
             json_mode=True,
-            task_profile=profile
+            task_profile=profile,
         )
         clean_text = _strip_json(resp.text)
         raw_plan = json.loads(clean_text)
 
         plan = _validate_and_sanitize_plan(raw_plan, goal)
-
-        logger.info("[Planner] Generated plan: %d steps (parallel=%s)", len(plan["steps"]), plan.get("can_parallelize", False))
+        logger.info("[Planner] Generated plan with %d steps (parallel=%s)", len(plan["steps"]), plan.get("can_parallelize", False))
         return plan
 
     except Exception as exc:
@@ -169,46 +189,63 @@ def create_plan(goal: str, context: str = "") -> dict:
         return _fallback_plan(goal)
 
 
-
-def replan(goal: str, completed_steps: list, failed_step: dict, error: str) -> dict:
-    """Replan after a failure — try a different approach."""
+def replan(
+    goal: str,
+    completed_steps: list,
+    failed_step: dict,
+    error: str,
+    project_id: str = "global",
+) -> dict:
+    """
+    Replan after a failure — analyzes root cause and past recovery strategies.
+    Preserves all verified completed steps and generates steps for remaining work only.
+    """
     try:
-        router = get_smart_router()
-
         completed_summary = "\n".join(
-            f"  - Step {s.get('step')}: [{s.get('tool')}] {s.get('description')} — DONE"
+            f"  - Step {s.get('step')}: [{s.get('tool')}] {s.get('description')} — VERIFIED DONE"
             for s in completed_steps
         ) or "  (none yet)"
 
-        prompt = REPLAN_PROMPT.format(
-            goal=goal,
-            completed=completed_summary,
-            failed_step=f"[{failed_step.get('tool')}] {failed_step.get('description')}",
-            error=str(error)[:400]
-        )
+        tools_block = get_tool_prompt_block()
 
-        from gateway.execution import get_execution_service
-        from router.task_profile import TaskComplexity, TaskProfile
+        replan_system = f"""You are BR JARVIS's replanning engine. A step failed during task execution.
+You must generate an alternative strategy for the REMAINING work only.
+
+{tools_block}
+
+### REPLANNING RULES:
+1. Do NOT repeat verified completed steps.
+2. Do NOT use the exact same failed tool/parameters for the failed step — adapt and use an alternative approach.
+3. Return ONLY valid JSON with the standard plan schema."""
+
+        user_prompt = f"""Goal: {goal}
+
+Completed Verified Steps:
+{completed_summary}
+
+Failed Step: [{failed_step.get('tool')}] {failed_step.get('description')}
+Error / Root Cause: {str(error)[:400]}
+
+Generate a revised plan to complete the remaining work using a different strategy for the failed operation."""
 
         exec_service = get_execution_service()
         profile = TaskProfile(
             task_type="planning",
             complexity=TaskComplexity.HIGH,
             requires_structured_output=True,
-            requires_reasoning=True
+            requires_reasoning=True,
         )
 
         resp = exec_service.execute(
-            messages=[{"role": "user", "content": prompt}],
-            system=PLANNER_PROMPT,
+            messages=[{"role": "user", "content": user_prompt}],
+            system=replan_system,
             json_mode=True,
-            task_profile=profile
+            task_profile=profile,
         )
         clean_text = _strip_json(resp.text)
         raw_plan = json.loads(clean_text)
 
         return _validate_and_sanitize_plan(raw_plan, goal)
-
 
     except Exception as exc:
         logger.warning("[Planner] Replanning notice (%s) — using fallback", exc)
@@ -216,7 +253,7 @@ def replan(goal: str, completed_steps: list, failed_step: dict, error: str) -> d
 
 
 def _fallback_plan(goal: str) -> dict:
-    """Deterministic, resilient single/two-step fallback plan."""
+    """Deterministic, resilient single-step fallback plan."""
     goal_lower = goal.lower()
     if any(k in goal_lower for k in ("search", "find", "who is", "what is", "lookup")):
         tool = "web_search"
@@ -242,7 +279,7 @@ def _fallback_plan(goal: str) -> dict:
                 "parameters": params,
                 "depends_on": [],
                 "parallel": False,
-                "critical": True
+                "critical": True,
             }
-        ]
+        ],
     }

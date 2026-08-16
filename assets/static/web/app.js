@@ -838,16 +838,20 @@
             const backendVal = backendSelector ? backendSelector.value : 'gemini';
 
             if (!currentConversationId) {
-                const res = await window.apiFetch(`${API_BASE}/api/conversations`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ title: 'New Chat', project_id: currentProjectId }),
-                });
-                if (res.ok) {
-                    const d = await res.json();
-                    currentConversationId = d.conversation.conversation_id;
-                    localStorage.setItem('jarvis_active_conversation_id', currentConversationId);
-                    updateConversationHeader(d.conversation);
+                try {
+                    const res = await window.apiFetch(`${API_BASE}/api/conversations`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ title: text.slice(0, 30) || 'New Chat', project_id: currentProjectId }),
+                    });
+                    if (res.ok) {
+                        const d = await res.json();
+                        currentConversationId = d.conversation.conversation_id;
+                        localStorage.setItem('jarvis_active_conversation_id', currentConversationId);
+                        updateConversationHeader(d.conversation);
+                    }
+                } catch (e) {
+                    console.debug('Auto-conversation init note:', e);
                 }
             }
 
@@ -876,17 +880,24 @@
                     const res = await window.apiFetch(`${API_BASE}/api/chat`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ message: text }),
+                        body: JSON.stringify({
+                            message: text,
+                            conversation_id: currentConversationId,
+                            branch_id: currentBranchId,
+                            backend: backendVal,
+                        }),
                     });
                     const d = await res.json();
                     appendStreamToken(d.response || 'Task completed.');
                     finalizeStreamingAssistantBubble();
+                    fetchConversations();
                 } catch (e) {
                     appendStreamToken('Server communication error.');
                     finalizeStreamingAssistantBubble();
                 }
             }
         }
+        window.handleSendMessage = handleSendMessage;
 
         // ── INITIAL FETCHES ──
         fetchConversations();

@@ -1,42 +1,25 @@
-# tools/tool_result.py — BR JARVIS MK40.2 Tool Evidence Contract
+# tools/tool_result.py — BR JARVIS Canonical Tool Evidence & Result Contract
 """
-Every tool execution must produce a ToolResult, not a raw string.
-
-The ToolResult carries:
-  - Observed status (SUCCESS / FAILED / PARTIAL / BLOCKED / TIMEOUT / UNAVAILABLE /
-                     REQUIRES_USER / UNVERIFIED)
-  - Actual stdout and stderr from the operation
-  - Duration in seconds
-  - Side effects (files created, processes started, commits pushed, etc.)
-  - Evidence string (machine-verifiable proof of the claimed state)
-  - Verification status (set by the verifier after fact-checking)
-
-This is the §5 Tool Evidence Contract from BR JARVIS MK40.2 spec.
+Canonical unified ToolResult contract for BR JARVIS MK40.2 / MK41.
+Every tool execution produces a structured ToolResult. Never guess success — always observe and verify.
 """
 from __future__ import annotations
 
+import json
 import re
 import time
+import uuid
 from dataclasses import asdict, dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Union
+
+from .domain import Observation, ToolErrorCode, ToolExecutionStatus
+
+# Backward compatibility alias
+ToolStatus = ToolExecutionStatus
 
 
-# ── Status vocabulary ─────────────────────────────────────────────────────────
-
-class ToolStatus(str, Enum):
-    SUCCESS        = "SUCCESS"
-    FAILED         = "FAILED"
-    PARTIAL        = "PARTIAL"
-    BLOCKED        = "BLOCKED"
-    TIMEOUT        = "TIMEOUT"
-    UNAVAILABLE    = "UNAVAILABLE"
-    REQUIRES_USER  = "REQUIRES_USER"
-    UNVERIFIED     = "UNVERIFIED"
-
-
-# ── Error indicator patterns used to auto-detect failures in raw string output ─
-
+# ── Error indicator patterns for legacy output parsing ────────────────────────
 _ERROR_PATTERNS = [
     r"\berror\b",
     r"\bfailed\b",
@@ -56,7 +39,6 @@ _ERROR_PATTERNS = [
 ]
 _ERROR_RE = re.compile("|".join(_ERROR_PATTERNS), re.IGNORECASE)
 
-# Patterns that indicate the tool was blocked by a permission/policy layer
 _BLOCKED_PATTERNS = [
     r"permission denied",
     r"access denied",
@@ -67,7 +49,6 @@ _BLOCKED_PATTERNS = [
 ]
 _BLOCKED_RE = re.compile("|".join(_BLOCKED_PATTERNS), re.IGNORECASE)
 
-# Patterns that indicate user action is required
 _REQUIRES_USER_PATTERNS = [
     r"requires_user",
     r"waiting for user",
@@ -80,181 +61,376 @@ _REQUIRES_USER_PATTERNS = [
 _REQUIRES_USER_RE = re.compile("|".join(_REQUIRES_USER_PATTERNS), re.IGNORECASE)
 
 
-# ── ToolResult dataclass ──────────────────────────────────────────────────────
+class _HybridSuccessAccessor:
+    """Hybrid descriptor allowing ToolResult.success(...) classmethod and res.success bool property."""
+    def __init__(self, func: Callable):
+        self.func = func
+
+    def __get__(self, instance, owner=None):
+        if instance is None:
+            return self.func.__get__(owner, owner)
+        return instance.status == ToolExecutionStatus.SUCCESS
+
+    def __set__(self, instance, value):
+        pass
+
+
+class _HybridFailedAccessor:
+    """Hybrid descriptor allowing ToolResult.failed(...) classmethod and res.failed bool property."""
+    def __init__(self, func: Callable):
+        self.func = func
+
+    def __get__(self, instance, owner=None):
+        if instance is None:
+            return self.func.__get__(owner, owner)
+        return instance.status == ToolExecutionStatus.FAILED
+
+    def __set__(self, instance, value):
+        pass
+
 
 @dataclass
 class ToolResult:
     """
-    Structured result from a tool execution. Never guess success — always observe.
-
-    The `status` field is the canonical verdict. It must be set by the executor
-    or the registry wrapper — never assumed to be SUCCESS merely because no
-    exception was raised.
+    Canonical unified result contract returned by all tool invocations.
+    Carries structured payload, verifiable evidence, timing, observation, and factual status.
     """
     tool_name:           str
-    status:              ToolStatus = ToolStatus.UNVERIFIED
-    output:              str = ""          # primary text output (stdout equivalent)
+    status:              ToolExecutionStatus = ToolExecutionStatus.SUCCESS
+    task_id:             str = ""
+    step_id:             str = ""
+    invocation_id:       str = field(default_factory=lambda: uuid.uuid4().hex[:10])
+    data:                Any = None                          # Structured return payload
+    evidence:            str = ""                            # Physical proof string
+    verified:            bool = False                        # True if physically verified
+    error_code:          Optional[Union[str, ToolErrorCode]] = None
+    message:             str = ""                            # Human-readable summary
+    stdout:              str = ""
     stderr:              str = ""
     return_code:         int = 0
-    duration_seconds:    float = 0.0
+    execution_ms:        float = 0.0
+    observation:         Optional[Observation] = None
+    artifacts:           List[Dict[str, Any]] = field(default_factory=list)
+    warnings:            List[str] = field(default_factory=list)
     side_effects:        List[str] = field(default_factory=list)
-    evidence:            str = ""          # concise proof: "File exists at /path (4,231 bytes)"
-    verification_status: ToolStatus = ToolStatus.UNVERIFIED
-    error:               Optional[str] = None
     metadata:            Dict[str, Any] = field(default_factory=dict)
     timestamp:           float = field(default_factory=time.time)
 
-    # ── Convenience accessors ──────────────────────────────────────────────────
+    # ── Backward Compatibility Properties ──────────────────────────────────────
 
     @property
     def is_success(self) -> bool:
-        return self.status == ToolStatus.SUCCESS
+        return self.status == ToolExecutionStatus.SUCCESS
 
     @property
     def is_verified(self) -> bool:
-        return self.verification_status == ToolStatus.SUCCESS
+        return self.verified
 
     @property
     def is_blocked(self) -> bool:
-        return self.status in (ToolStatus.BLOCKED, ToolStatus.REQUIRES_USER, ToolStatus.UNAVAILABLE)
+        return self.status in (ToolExecutionStatus.BLOCKED, ToolExecutionStatus.DENIED, ToolExecutionStatus.REQUIRES_APPROVAL)
+
+    @property
+    def output(self) -> str:
+        """String representation of stdout or payload for textual agents."""
+        if self.stdout:
+            return self.stdout
+        if self.data is not None:
+            if isinstance(self.data, str):
+                return self.data
+            try:
+                return json.dumps(self.data, indent=2, default=str)
+            except Exception:
+                return str(self.data)
+        return self.message or ("Success" if self.is_success else "Failed")
+
+    @property
+    def error(self) -> Optional[str]:
+        if self.error_code:
+            code_str = self.error_code.value if hasattr(self.error_code, "value") else str(self.error_code)
+            return f"{code_str}: {self.message}" if self.message else code_str
+        return self.message if not self.is_success else None
+
+    @property
+    def duration_seconds(self) -> float:
+        return self.execution_ms / 1000.0
+
+    @property
+    def duration(self) -> float:
+        return self.execution_ms / 1000.0
+
+    @property
+    def duration_ms(self) -> float:
+        return self.execution_ms
+
+    @property
+    def tool(self) -> str:
+        return self.tool_name
+
+    @property
+    def execution_id(self) -> str:
+        return self.invocation_id
+
+    @property
+    def verification_status(self) -> ToolExecutionStatus:
+        return ToolExecutionStatus.SUCCESS if self.verified else self.status
+
+    # ── String Serialization for Agents / LLMs ─────────────────────────────────
+
+    def to_agent_str(self) -> str:
+        """
+        Produce a clean, deterministic string representation for the ReAct/Agent loop.
+        Includes status tag, evidence, and primary data.
+        """
+        if self.status == ToolExecutionStatus.SUCCESS:
+            body = self.output
+            if self.evidence and self.evidence not in body:
+                return f"[SUCCESS_VERIFIED] {self.evidence}\n{body}".strip()
+            return body or f"[SUCCESS] {self.tool_name} completed."
+
+        elif self.status == ToolExecutionStatus.REQUIRES_APPROVAL:
+            return f"[APPROVAL_REQUIRED] {self.message or 'Action requires user confirmation.'}"
+
+        elif self.status in (ToolExecutionStatus.BLOCKED, ToolExecutionStatus.DENIED):
+            return f"[BLOCKED] {self.error or 'Operation blocked by security policy.'}"
+
+        elif self.status == ToolExecutionStatus.TIMEOUT:
+            return f"[TIMEOUT] {self.tool_name} exceeded timeout limit ({self.execution_ms:.0f}ms)."
+
+        elif self.status == ToolExecutionStatus.NOT_FOUND:
+            return f"[NOT_FOUND] Unknown tool '{self.tool_name}'."
+
+        elif self.status == ToolExecutionStatus.NOT_AVAILABLE:
+            return f"[NOT_AVAILABLE] Tool '{self.tool_name}' is not available: {self.message}"
+
+        elif self.status == ToolExecutionStatus.VERIFICATION_FAILED:
+            return f"[VERIFICATION_FAILED] {self.message or 'Physical verification mismatch'}\n{self.stderr or self.output}".strip()
+
+        else:
+            return f"[FAILED] Tool '{self.tool_name}' failed: {self.error or self.message or self.stderr}".strip()
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Produce clean JSON serializable dictionary."""
+        return {
+            "tool_name": self.tool_name,
+            "tool": self.tool_name,
+            "task_id": self.task_id,
+            "step_id": self.step_id,
+            "invocation_id": self.invocation_id,
+            "execution_id": self.invocation_id,
+            "status": self.status.value,
+            "success": self.is_success,
+            "data": self.data,
+            "output": self.output,
+            "evidence": self.evidence,
+            "verified": self.verified,
+            "error_code": self.error_code.value if hasattr(self.error_code, "value") else self.error_code,
+            "error": self.error,
+            "message": self.message,
+            "stdout": self.stdout,
+            "stderr": self.stderr,
+            "return_code": self.return_code,
+            "execution_ms": self.execution_ms,
+            "duration_seconds": self.duration_seconds,
+            "observation": self.observation.to_dict() if self.observation else None,
+            "artifacts": self.artifacts,
+            "warnings": self.warnings,
+            "side_effects": self.side_effects,
+            "metadata": self.metadata,
+            "timestamp": self.timestamp,
+        }
 
     # ── Factories ──────────────────────────────────────────────────────────────
 
     @classmethod
-    def from_raw_output(
+    def _create_success(
         cls,
         tool_name: str,
-        raw_output: str,
-        duration_seconds: float = 0.0,
-        return_code: int = 0,
-        stderr: str = "",
-    ) -> "ToolResult":
-        """
-        Parse a raw string output from a legacy tool and infer the ToolStatus.
-
-        This bridges older tools that return plain strings so they can participate
-        in the evidence contract without requiring immediate refactoring.
-        """
-        output = raw_output or ""
-
-        # Determine status from output content
-        if return_code != 0:
-            status = ToolStatus.FAILED
-            error = f"Non-zero return code: {return_code}"
-        elif _BLOCKED_RE.search(output):
-            status = ToolStatus.BLOCKED
-            error = f"Blocked: {output[:200]}"
-        elif _REQUIRES_USER_RE.search(output):
-            status = ToolStatus.REQUIRES_USER
-            error = None
-        elif _ERROR_RE.search(output):
-            status = ToolStatus.FAILED
-            error = f"Error pattern in output: {output[:200]}"
-        elif not output.strip():
-            # Empty output is ambiguous — treat as UNVERIFIED, not SUCCESS
-            status = ToolStatus.UNVERIFIED
-            error = None
-        else:
-            status = ToolStatus.SUCCESS
-            error = None
-
-        return cls(
-            tool_name=tool_name,
-            status=status,
-            output=output,
-            stderr=stderr,
-            return_code=return_code,
-            duration_seconds=duration_seconds,
-            error=error,
-        )
-
-    @classmethod
-    def success(
-        cls,
-        tool_name: str,
+        data: Any = None,
         output: str = "",
         evidence: str = "",
+        verified: bool = True,
+        observation: Optional[Observation] = None,
+        artifacts: Optional[List[Dict[str, Any]]] = None,
         side_effects: Optional[List[str]] = None,
-        duration_seconds: float = 0.0,
+        execution_ms: float = 0.0,
+        metadata: Optional[Dict[str, Any]] = None,
     ) -> "ToolResult":
-        """Factory for a known-good result."""
+        """Factory for verified successful executions."""
+        out_str = output or (json.dumps(data, indent=2, default=str) if isinstance(data, (dict, list)) else str(data or ""))
         return cls(
             tool_name=tool_name,
-            status=ToolStatus.SUCCESS,
-            verification_status=ToolStatus.SUCCESS,
-            output=output,
-            evidence=evidence or output[:200],
+            status=ToolExecutionStatus.SUCCESS,
+            data=data if data is not None else out_str,
+            stdout=out_str,
+            evidence=evidence or (f"Verified {tool_name}" if verified else ""),
+            verified=verified,
+            observation=observation,
+            artifacts=artifacts or [],
             side_effects=side_effects or [],
-            duration_seconds=duration_seconds,
+            execution_ms=execution_ms,
+            metadata=metadata or {},
         )
 
     @classmethod
-    def failed(
+    def _create_failed(
         cls,
         tool_name: str,
-        error: str,
-        output: str = "",
-        duration_seconds: float = 0.0,
+        error_code: Union[str, ToolErrorCode] = ToolErrorCode.EXECUTION_EXCEPTION,
+        message: str = "",
+        stderr: str = "",
+        return_code: int = 1,
+        execution_ms: float = 0.0,
+        data: Any = None,
     ) -> "ToolResult":
-        """Factory for a known-bad result."""
+        """Factory for failed executions."""
         return cls(
             tool_name=tool_name,
-            status=ToolStatus.FAILED,
-            verification_status=ToolStatus.FAILED,
-            output=output,
-            error=error,
-            duration_seconds=duration_seconds,
+            status=ToolExecutionStatus.FAILED,
+            error_code=error_code,
+            message=message or str(error_code),
+            stderr=stderr or message,
+            return_code=return_code,
+            verified=False,
+            execution_ms=execution_ms,
+            data=data,
         )
+
+    # Attach hybrid descriptors
+    success = _HybridSuccessAccessor(_create_success)
+    failed = _HybridFailedAccessor(_create_failed)
 
     @classmethod
     def blocked(
         cls,
         tool_name: str,
-        reason: str,
+        reason: str = "Blocked by security policy",
+        error_code: ToolErrorCode = ToolErrorCode.POLICY_DENIED,
     ) -> "ToolResult":
-        """Factory for a blocked result (permission / policy)."""
+        """Factory for blocked / denied actions."""
         return cls(
             tool_name=tool_name,
-            status=ToolStatus.BLOCKED,
-            verification_status=ToolStatus.BLOCKED,
-            error=reason,
-            output=f"BLOCKED: {reason}",
+            status=ToolExecutionStatus.BLOCKED,
+            error_code=error_code,
+            message=reason,
+            verified=False,
         )
 
     @classmethod
-    def unavailable(cls, tool_name: str, reason: str = "") -> "ToolResult":
-        """Factory for a tool that is not registered or has missing dependencies."""
+    def requires_approval(
+        cls,
+        tool_name: str,
+        reason: str = "Action requires user confirmation",
+        data: Any = None,
+    ) -> "ToolResult":
+        """Factory for operations halted pending human approval."""
         return cls(
             tool_name=tool_name,
-            status=ToolStatus.UNAVAILABLE,
-            verification_status=ToolStatus.UNAVAILABLE,
-            error=reason or f"Tool '{tool_name}' is not available on this system.",
-            output=f"UNAVAILABLE: {tool_name}",
+            status=ToolExecutionStatus.REQUIRES_APPROVAL,
+            error_code=ToolErrorCode.APPROVAL_REQUIRED,
+            message=reason,
+            data=data,
+            verified=False,
         )
 
     @classmethod
-    def requires_user(cls, tool_name: str, prompt: str) -> "ToolResult":
-        """Factory for operations that need human input to proceed."""
+    def timeout(
+        cls,
+        tool_name: str,
+        timeout_sec: float,
+        execution_ms: float = 0.0,
+    ) -> "ToolResult":
+        """Factory for timed-out actions."""
         return cls(
             tool_name=tool_name,
-            status=ToolStatus.REQUIRES_USER,
-            verification_status=ToolStatus.REQUIRES_USER,
-            output=prompt,
-            error=None,
+            status=ToolExecutionStatus.TIMEOUT,
+            error_code=ToolErrorCode.TIMEOUT_EXCEEDED,
+            message=f"Tool '{tool_name}' timed out after {timeout_sec:.1f}s",
+            execution_ms=execution_ms or (timeout_sec * 1000.0),
+            verified=False,
         )
 
-    # ── Serialisation ──────────────────────────────────────────────────────────
+    @classmethod
+    def not_found(cls, tool_name: str) -> "ToolResult":
+        """Factory for missing tools."""
+        return cls(
+            tool_name=tool_name,
+            status=ToolExecutionStatus.NOT_FOUND,
+            error_code=ToolErrorCode.TOOL_NOT_FOUND,
+            message=f"Tool '{tool_name}' is not registered in the catalog.",
+            verified=False,
+        )
 
-    def to_dict(self) -> Dict[str, Any]:
-        d = asdict(self)
-        d["status"] = self.status.value
-        d["verification_status"] = self.verification_status.value
-        return d
+    @classmethod
+    def from_raw_output(
+        cls,
+        tool_name: str,
+        raw_output: Any,
+        duration_seconds: float = 0.0,
+        return_code: int = 0,
+        stderr: str = "",
+        verified: bool = False,
+    ) -> "ToolResult":
+        """Bridge raw output or string from legacy tools into the canonical ToolResult contract."""
+        if isinstance(raw_output, ToolResult):
+            return raw_output
 
-    def to_ledger_side_effects(self) -> List[str]:
-        """
-        Return side_effects augmented with any evidence text, ready to
-        store in the ExecutionLedger.
-        """
-        effects = list(self.side_effects)
-        return effects
+        exec_ms = duration_seconds * 1000.0
+        if isinstance(raw_output, dict):
+            status_val = str(raw_output.get("status", "")).upper()
+            if status_val in ToolExecutionStatus._value2member_map_:
+                status = ToolExecutionStatus(status_val)
+            elif raw_output.get("success") is True:
+                status = ToolExecutionStatus.SUCCESS
+            elif raw_output.get("success") is False:
+                status = ToolExecutionStatus.FAILED
+            else:
+                status = ToolExecutionStatus.SUCCESS if return_code == 0 else ToolExecutionStatus.FAILED
+
+            return cls(
+                tool_name=tool_name,
+                status=status,
+                data=raw_output,
+                stdout=json.dumps(raw_output, indent=2, default=str),
+                stderr=stderr or str(raw_output.get("error", "")),
+                return_code=return_code,
+                execution_ms=exec_ms,
+                evidence=str(raw_output.get("evidence", "")),
+                verified=bool(raw_output.get("verified", verified)),
+                message=str(raw_output.get("message", "")),
+            )
+
+        str_output = str(raw_output or "")
+        if return_code != 0:
+            status = ToolExecutionStatus.FAILED
+            error_code = ToolErrorCode.EXECUTION_EXCEPTION
+            err_msg = stderr or f"Non-zero return code {return_code}"
+        elif _BLOCKED_RE.search(str_output):
+            status = ToolExecutionStatus.BLOCKED
+            error_code = ToolErrorCode.POLICY_DENIED
+            err_msg = str_output[:200]
+        elif _REQUIRES_USER_RE.search(str_output):
+            status = ToolExecutionStatus.REQUIRES_APPROVAL
+            error_code = ToolErrorCode.APPROVAL_REQUIRED
+            err_msg = str_output[:200]
+        elif _ERROR_RE.search(str_output) and not str_output.startswith("[SUCCESS_VERIFIED]"):
+            status = ToolExecutionStatus.FAILED
+            error_code = ToolErrorCode.EXECUTION_EXCEPTION
+            err_msg = str_output[:200]
+        else:
+            status = ToolExecutionStatus.SUCCESS
+            error_code = None
+            err_msg = ""
+
+        return cls(
+            tool_name=tool_name,
+            status=status,
+            data=str_output,
+            stdout=str_output,
+            stderr=stderr,
+            return_code=return_code,
+            execution_ms=exec_ms,
+            error_code=error_code,
+            message=err_msg,
+            verified=verified or (status == ToolExecutionStatus.SUCCESS and bool(str_output.strip())),
+        )

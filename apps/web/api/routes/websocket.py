@@ -298,8 +298,7 @@ async def websocket_endpoint(websocket: WebSocket):
                         full_text = ""
 
                         if active_orch:
-                            chat_gen = active_orch.chat_stream(command)
-                            async for token_str in run_generator_in_thread(lambda: chat_gen):
+                            async for token_str in run_generator_in_thread(active_orch.chat_stream, command):
                                 full_text += token_str
                                 await safe_ws_send(ws, {
                                     "event_id": str(uuid.uuid4()),
@@ -416,16 +415,27 @@ async def mobile_websocket_endpoint(websocket: WebSocket):
     """Real-time WebSocket endpoint for paired mobile clients."""
     from starlette.websockets import WebSocketDisconnect
     token = websocket.query_params.get("token") or websocket.query_params.get("key")
-    if not token:
-        await websocket.close(code=4001, reason="Missing auth token")
+    device_id = websocket.query_params.get("device_id") or websocket.query_params.get("id")
+    if not token or not device_id:
+        await websocket.close(code=4001, reason="Missing auth token or device_id")
         return
 
-    session_mgr = get_mobile_session_manager()
-    device_id = session_mgr.validate_session(token)
-    if not device_id:
-        await websocket.close(code=4001, reason="Invalid or expired session token")
+    gateway = get_device_gateway()
+    if not gateway.verify_auth_token(device_id, token):
+        await websocket.close(code=4001, reason="Invalid or revoked device credentials")
         return
 
     await websocket.accept()
-    gateway = get_device_gateway()
-    await gateway.handle_connection(websocket, device_id)
+    session_mgr = get_mobile_session_manager()
+    session = await session_mgr.register_session(device_id, websocket)
+
+    try:
+        while True:
+            raw = await websocket.receive_text()
+            session.handle_incoming_message(raw)
+    except WebSocketDisconnect:
+        await session_mgr.remove_session(device_id)
+    except Exception as e:
+        logger.error("Mobile websocket error for %s: %s", device_id, e)
+        await session_mgr.remove_session(device_id)
+
