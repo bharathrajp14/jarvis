@@ -17,9 +17,11 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-logger = logging.getLogger("JARVIS.AppResolver")
+from brjarvis.core.paths import paths
 
-_CONFIG_DIR = Path(__file__).resolve().parent.parent / "config"
+logger = logging.getLogger("JARVIS.Actions.AppResolver")
+
+_CONFIG_DIR = paths.CONFIG_ROOT
 _APP_PATHS_FILE = _CONFIG_DIR / "app_paths.json"
 
 # Common Windows App Aliases & Protocol URI fallbacks

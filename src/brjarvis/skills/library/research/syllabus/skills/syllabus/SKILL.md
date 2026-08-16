@@ -20,9 +20,9 @@ triggers:
 - syllabus skill
 tools:
 - web_search
-- browser_control
-- rag_library
-- doc_tools
+- browser_auto_navigate_and_extract
+- rag_query
+- document_creator
 argument-hint: '[syllabus details]'
 when_to_use: Use when user requests syllabus guidance or task execution.
 user-invocable: true

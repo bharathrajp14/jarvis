@@ -13,10 +13,10 @@ triggers:
 - run business growth skills
 - business growth skills skill
 tools:
-- doc_tools
-- excel_tools
+- document_creator
+- create_excel_sheet
 - web_search
-- browser_control
+- browser_auto_navigate_and_extract
 argument-hint: '[business growth skills details]'
 when_to_use: Use when user requests business growth skills guidance or task execution.
 user-invocable: true

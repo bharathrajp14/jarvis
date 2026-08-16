@@ -13,7 +13,7 @@ triggers:
 - adversarial reviewer skill
 tools:
 - code_helper
-- doc_tools
+- document_creator
 - web_search
 argument-hint: '[adversarial reviewer details]'
 when_to_use: Use when user requests adversarial reviewer guidance or task execution.

@@ -22,9 +22,8 @@ _OS = platform.system()  # "Windows" | "Darwin" | "Linux"
 
 
 def _get_base_dir() -> Path:
-    if getattr(sys, "frozen", False):
-        return Path(sys.executable).parent
-    return Path(__file__).resolve().parent.parent
+    from brjarvis.core.paths import paths
+    return paths.PROJECT_ROOT
 
 def _get_api_key() -> str:
     path = _get_base_dir() / "config" / "api_keys.json"

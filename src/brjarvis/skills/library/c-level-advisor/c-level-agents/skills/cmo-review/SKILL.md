@@ -10,10 +10,10 @@ triggers:
 - run cmo review
 - cmo review skill
 tools:
-- doc_tools
-- excel_tools
+- document_creator
+- create_excel_sheet
 - web_search
-- rag_library
+- rag_query
 argument-hint: '[cmo review details]'
 when_to_use: Use when user requests cmo review guidance or task execution.
 user-invocable: true

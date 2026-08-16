@@ -19,11 +19,15 @@ from .registry import register_tool, _run_async
 _PLAYWRIGHT_AVAILABLE = False
 try:
     from playwright.async_api import async_playwright, BrowserContext, Page, ElementHandle  # type: ignore[import-not-found]
-    _PLAYWRIGHT_AVAILABLE = True
 except ImportError:
     _PLAYWRIGHT_AVAILABLE = False
 
-_USER_DATA_DIR = Path(__file__).resolve().parent.parent / "workspace" / "browser_user_data"
+import logging
+from brjarvis.core.paths import paths
+
+logger = logging.getLogger("JARVIS.Tools.BrowserAutomation")
+
+_USER_DATA_DIR = paths.WORKSPACE_ROOT / "browser_user_data"
 _active_browser_context: Optional[Any] = None
 _active_page: Optional[Any] = None
 _playwright_instance: Optional[Any] = None
@@ -541,7 +545,7 @@ def browser_screenshot(args: dict) -> str:
 
     async def _screenshot():
         page = await _get_or_create_page()
-        out_dir = Path(__file__).resolve().parent.parent / "workspace"
+        out_dir = paths.WORKSPACE_ROOT
         out_dir.mkdir(exist_ok=True)
         out_path = out_dir / filename
         await page.screenshot(path=str(out_path), full_page=False)

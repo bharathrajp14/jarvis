@@ -5,10 +5,8 @@ Unified gateway client, discovery, health, capability, benchmark, and execution 
 from __future__ import annotations
 
 import sys
-_mod = sys.modules.get(__name__)
-if _mod:
-    sys.modules["gateway"] = _mod
-    sys.modules["brjarvis.gateway"] = _mod
+if __name__ in sys.modules:
+    sys.modules.setdefault("gateway", sys.modules[__name__])
 
 from .client import (
     GatewayAuthenticationError,

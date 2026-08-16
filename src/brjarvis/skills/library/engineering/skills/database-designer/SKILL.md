@@ -11,8 +11,8 @@ triggers:
 tools:
 - dev_agent
 - code_helper
-- repo_controller
-- file_processor
+- git_repo_mgr
+- batch_file_ops
 argument-hint: '[database designer details]'
 when_to_use: Use when user requests database designer guidance or task execution.
 user-invocable: true

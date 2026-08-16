@@ -8,8 +8,8 @@ triggers:
 - run md slides
 - md slides skill
 tools:
-- doc_tools
-- file_processor
+- document_creator
+- batch_file_ops
 - code_helper
 argument-hint: '[md slides details]'
 when_to_use: Use when user requests md slides guidance or task execution.

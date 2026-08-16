@@ -18,10 +18,12 @@ import sys
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Union
 
+from brjarvis.core.paths import paths
+
 logger = logging.getLogger("JARVIS.NativeBridge")
 
-BASE_DIR   = Path(__file__).resolve().parent.parent
-NATIVE_DIR = BASE_DIR / "native"
+BASE_DIR   = paths.PROJECT_ROOT
+NATIVE_DIR = paths.SOURCE_ROOT / "native"
 
 system = platform.system()
 if system == "Windows":

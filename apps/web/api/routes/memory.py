@@ -9,10 +9,12 @@ from typing import Optional, List
 from fastapi import APIRouter, HTTPException, Query, UploadFile, File, Form
 from pydantic import BaseModel
 
+from brjarvis.core.paths import paths
+
 logger = logging.getLogger("JARVIS.API.Memory")
 router = APIRouter(tags=["Memory"])
 
-_BASE_DIR = Path(__file__).resolve().parent.parent.parent
+_BASE_DIR = paths.PROJECT_ROOT
 
 
 class SaveMemoryRequest(BaseModel):
@@ -37,7 +39,7 @@ class AddContactRequest(BaseModel):
 @router.get("/api/memory")
 async def list_memories(scope: str = "all"):
     """List persistent memories."""
-    from memory.persistent_store import load_entries
+    from brjarvis.memory.persistent_store import load_entries
     scopes = ["user", "project"] if scope == "all" else [scope]
     entries = []
     for s in scopes:
@@ -56,7 +58,7 @@ async def list_memories(scope: str = "all"):
 @router.post("/api/memory")
 async def save_memory_entry(req: SaveMemoryRequest):
     """Save/update a persistent memory entry."""
-    from memory.persistent_store import MemoryEntry, save_memory
+    from brjarvis.memory.persistent_store import MemoryEntry, save_memory
     entry = MemoryEntry(
         name=req.name,
         description=req.description,
@@ -71,7 +73,7 @@ async def save_memory_entry(req: SaveMemoryRequest):
 @router.delete("/api/memory/{name}")
 async def delete_memory_entry(name: str, scope: str = "user"):
     """Delete a persistent memory entry."""
-    from memory.persistent_store import delete_memory
+    from brjarvis.memory.persistent_store import delete_memory
     delete_memory(name, scope=scope)
     return {"message": f"Memory '{name}' deleted successfully."}
 
@@ -79,7 +81,7 @@ async def delete_memory_entry(name: str, scope: str = "user"):
 @router.get("/api/contacts")
 async def get_contacts_endpoint(query: str = Query("", description="Search filter query")):
     """Get contacts list from UnifiedContactStore with optional search filter."""
-    from memory.contact_manager import get_contact_store
+    from brjarvis.memory.contact_manager import get_contact_store
     store = get_contact_store()
     results = store.search_contacts(query) if query else store.get_all_contacts()
     return {"total": len(results), "contacts": results}
@@ -88,7 +90,7 @@ async def get_contacts_endpoint(query: str = Query("", description="Search filte
 @router.post("/api/contacts")
 async def add_contact_endpoint(req: AddContactRequest):
     """Add a new contact directly to the UnifiedContactStore."""
-    from memory.contact_manager import get_contact_store
+    from brjarvis.memory.contact_manager import get_contact_store
     store = get_contact_store()
     try:
         result = store.add_contact(
@@ -109,7 +111,7 @@ async def import_contacts_endpoint(
     file_path: str = Form(None),
 ):
     """Import contacts from uploaded .vcf/.csv file or file path."""
-    from memory.contact_manager import get_contact_store
+    from brjarvis.memory.contact_manager import get_contact_store
     store = get_contact_store()
 
     if file:
@@ -147,10 +149,10 @@ async def import_file_endpoint(
     file_path: str = Form(None),
 ):
     """Import document or knowledge file (.pdf, .docx, .txt, .md, .csv, .vcf) into memory & vector store."""
-    from actions.file_importer import import_file_to_knowledge
+    from brjarvis.actions.file_importer import import_file_to_knowledge
 
     if file:
-        temp_dir = Path.cwd() / "workspace" / "uploads"
+        temp_dir = paths.TEMP_ROOT / "uploads"
         temp_dir.mkdir(parents=True, exist_ok=True)
         save_path = temp_dir / file.filename
         file_bytes = await file.read()
@@ -167,7 +169,7 @@ async def import_file_endpoint(
 
 @router.post("/api/remember")
 async def remember_note(req: RememberRequest):
-    """Save a voice or text note into ./captures/ and update 3D galaxy live."""
+    """Save a voice or text note into captures/ and update 3D galaxy live."""
     try:
         text = req.text.strip()
         if text.lower().startswith("remember that "):
@@ -179,7 +181,7 @@ async def remember_note(req: RememberRequest):
         title_slug = "_".join(words[:4]).lower() if words else "note"
         title_slug = re.sub(r'[^a-z0-9_]', '', title_slug) or "capture"
 
-        captures_dir = _BASE_DIR / "captures"
+        captures_dir = paths.CAPTURE_ROOT
         captures_dir.mkdir(parents=True, exist_ok=True)
         filename = f"{title_slug}_{int(time.time())}.md"
         filepath = captures_dir / filename
@@ -188,7 +190,7 @@ async def remember_note(req: RememberRequest):
         content = f"# {title}\n\n**Captured**: {time.strftime('%Y-%m-%d %H:%M:%S')}\n\n{text}\n"
         filepath.write_text(content, encoding="utf-8")
 
-        from actions.rag_library import scan_markdown_notes
+        from brjarvis.actions.rag_library import scan_markdown_notes
         graph_data = scan_markdown_notes(str(_BASE_DIR))
         new_node_index = len(graph_data["nodes"]) - 1
 
@@ -209,7 +211,7 @@ async def remember_note(req: RememberRequest):
 async def get_galaxy_data():
     """Return 3D Knowledge Galaxy nodes and links from scanned notes."""
     try:
-        from actions.rag_library import scan_markdown_notes
+        from brjarvis.actions.rag_library import scan_markdown_notes
         return scan_markdown_notes(str(_BASE_DIR))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

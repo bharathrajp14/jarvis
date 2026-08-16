@@ -15,9 +15,9 @@ triggers:
 - schema markup skill
 tools:
 - web_search
-- doc_tools
-- file_processor
-- browser_control
+- document_creator
+- batch_file_ops
+- browser_auto_navigate_and_extract
 argument-hint: '[schema markup details]'
 when_to_use: Use when user requests schema markup guidance or task execution.
 user-invocable: true

@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+from brjarvis.core.paths import paths
 
 # Ensure UTF-8 output on Windows consoles
 if sys.platform == "win32":
@@ -118,7 +118,7 @@ def setup_logger(name: str = "JARVIS", level: str = "INFO", log_to_file: bool = 
     # File Handler (JSONL) — created lazily here, not at import time
     if log_to_file:
         try:
-            logs_dir = BASE_DIR / "logs"
+            logs_dir = paths.LOG_ROOT
             logs_dir.mkdir(parents=True, exist_ok=True)
             file_path = logs_dir / "jarvis.jsonl"
             file_handler = logging.FileHandler(file_path, encoding="utf-8")
@@ -153,3 +153,6 @@ class LogTimer:
             self.logger.info(
                 f"✓ Completed: {self.operation_name} in {duration_ms:.2f}ms"
             )
+
+
+logger = setup_logger("JARVIS")

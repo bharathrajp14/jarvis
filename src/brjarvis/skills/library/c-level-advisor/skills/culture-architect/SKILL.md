@@ -13,10 +13,10 @@ triggers:
 - run culture architect
 - culture architect skill
 tools:
-- doc_tools
-- excel_tools
+- document_creator
+- create_excel_sheet
 - web_search
-- rag_library
+- rag_query
 argument-hint: '[culture architect details]'
 when_to_use: Use when user requests culture architect guidance or task execution.
 user-invocable: true

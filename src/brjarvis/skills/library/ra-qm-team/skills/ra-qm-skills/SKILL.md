@@ -13,10 +13,10 @@ triggers:
 - run ra qm skills
 - ra qm skills skill
 tools:
-- doc_tools
-- excel_tools
-- rag_library
-- file_processor
+- document_creator
+- create_excel_sheet
+- rag_query
+- batch_file_ops
 argument-hint: '[ra qm skills details]'
 when_to_use: Use when user requests ra qm skills guidance or task execution.
 user-invocable: true

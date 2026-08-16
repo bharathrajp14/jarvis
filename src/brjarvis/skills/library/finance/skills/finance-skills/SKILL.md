@@ -12,10 +12,10 @@ triggers:
 - run finance skills
 - finance skills skill
 tools:
-- excel_tools
-- doc_tools
+- create_excel_sheet
+- document_creator
 - web_search
-- file_processor
+- batch_file_ops
 argument-hint: '[finance skills details]'
 when_to_use: Use when user requests finance skills guidance or task execution.
 user-invocable: true

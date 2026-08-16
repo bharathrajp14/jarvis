@@ -10,10 +10,10 @@ triggers:
 - run cpo review
 - cpo review skill
 tools:
-- doc_tools
-- excel_tools
+- document_creator
+- create_excel_sheet
 - web_search
-- rag_library
+- rag_query
 argument-hint: '[cpo review details]'
 when_to_use: Use when user requests cpo review guidance or task execution.
 user-invocable: true

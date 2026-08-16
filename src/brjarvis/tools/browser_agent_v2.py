@@ -182,7 +182,8 @@ class StrawberryBrowserAgent:
 
         screenshot_path = ""
         if capture_screenshot:
-            captures_dir = Path(__file__).resolve().parent.parent / "workspace" / "screenshots"
+            from brjarvis.core.paths import paths
+            captures_dir = paths.CAPTURE_ROOT
             captures_dir.mkdir(parents=True, exist_ok=True)
             shot_file = captures_dir / f"browser_{int(time.time()*1000)}.png"
             await page.screenshot(path=str(shot_file), full_page=False)

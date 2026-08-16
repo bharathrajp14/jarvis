@@ -19,9 +19,8 @@ logger = logging.getLogger(__name__)
 
 
 def get_base_dir() -> Path:
-    if getattr(sys, "frozen", False):
-        return Path(sys.executable).parent
-    return Path(__file__).resolve().parent.parent
+    from brjarvis.core.paths import paths
+    return paths.PROJECT_ROOT
 
 
 def import_file_to_knowledge(file_path: str | Path) -> Dict[str, Any]:

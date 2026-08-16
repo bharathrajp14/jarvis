@@ -71,30 +71,53 @@ _LEGACY_ALIASES = {
 }
 
 
+class _ShimAliasLoader(_abc.Loader):
+    def __init__(self, canonical_name: str):
+        self.canonical_name = canonical_name
+
+    def create_module(self, spec):
+        mod = _il.import_module(self.canonical_name)
+        sys.modules[spec.name] = mod
+        return mod
+
+    def exec_module(self, module):
+        pass
+
+
 class _ShimLegacyFinder(_abc.MetaPathFinder):
     """Transparent import router: bare legacy names -> brjarvis.* canonical paths."""
     def find_spec(self, fullname: str, path=None, target=None):
         for legacy, canonical in _LEGACY_ALIASES.items():
             if fullname == legacy:
                 try:
-                    spec = _ilu.find_spec(canonical)
-                    if spec is not None:
-                        sys.modules[legacy] = _il.import_module(canonical)
+                    canonical_spec = _ilu.find_spec(canonical)
+                    if canonical_spec is None:
+                        return None
+                    spec = _ilu.spec_from_loader(
+                        fullname,
+                        _ShimAliasLoader(canonical),
+                        is_package=bool(canonical_spec.submodule_search_locations),
+                    )
+                    if spec is not None and canonical_spec.submodule_search_locations:
+                        spec.submodule_search_locations = list(canonical_spec.submodule_search_locations)
                     return spec
                 except Exception:
                     pass
             elif fullname.startswith(legacy + "."):
                 suffix = fullname[len(legacy):]
-                target_name = canonical + suffix
+                canonical_sub = canonical + suffix
                 try:
-                    if legacy not in sys.modules:
-                        try:
-                            sys.modules[legacy] = _il.import_module(canonical)
-                        except Exception:
-                            pass
-                    mod = _il.import_module(target_name)
-                    sys.modules[fullname] = mod
-                    return getattr(mod, "__spec__", None)
+                    canonical_spec = _ilu.find_spec(canonical_sub)
+                    if canonical_spec is None:
+                        return None
+                    spec = _ilu.spec_from_loader(
+                        fullname,
+                        _ShimAliasLoader(canonical_sub),
+                        is_package=bool(canonical_spec.submodule_search_locations),
+                    )
+                    if spec is not None and canonical_spec.submodule_search_locations:
+                        spec.submodule_search_locations = list(canonical_spec.submodule_search_locations)
+                    return spec
                 except Exception:
                     pass
         return None
@@ -126,5 +149,15 @@ def main() -> int:
     return cli_main()
 
 
+def __getattr__(name: str):
+    try:
+        mod = _il.import_module(f"brjarvis.{name}")
+        globals()[name] = mod
+        return mod
+    except Exception:
+        raise AttributeError(f"module 'brjarvis' has no attribute '{name}'")
+
+
 if __name__ == "__main__":
     sys.exit(main())
+

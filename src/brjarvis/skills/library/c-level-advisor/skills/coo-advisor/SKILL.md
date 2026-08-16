@@ -12,10 +12,10 @@ triggers:
 - run coo advisor
 - coo advisor skill
 tools:
-- doc_tools
-- excel_tools
+- document_creator
+- create_excel_sheet
 - web_search
-- rag_library
+- rag_query
 argument-hint: '[coo advisor details]'
 when_to_use: Use when user requests coo advisor guidance or task execution.
 user-invocable: true

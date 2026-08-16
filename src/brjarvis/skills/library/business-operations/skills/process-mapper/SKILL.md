@@ -17,10 +17,10 @@ triggers:
 - run process mapper
 - process mapper skill
 tools:
-- doc_tools
-- excel_tools
-- calendar_engine
-- file_processor
+- document_creator
+- create_excel_sheet
+- calendar_create_event
+- batch_file_ops
 argument-hint: '[process mapper details]'
 when_to_use: Use when user requests process mapper guidance or task execution.
 user-invocable: true

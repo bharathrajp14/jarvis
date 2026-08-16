@@ -11,10 +11,12 @@ import time
 from pathlib import Path
 from typing import Any
 
-BASE_DIR = Path(__file__).resolve().parent.parent
-NOTES_DIR = BASE_DIR / "notes"
-CAPTURES_DIR = BASE_DIR / "captures"
-WEB_DIR = BASE_DIR / "web"
+from brjarvis.core.paths import paths
+
+BASE_DIR = paths.PROJECT_ROOT
+NOTES_DIR = paths.WORKSPACE_ROOT / "notes"
+CAPTURES_DIR = paths.CAPTURE_ROOT
+WEB_DIR = paths.PROJECT_ROOT / "assets" / "static" / "web"
 DATA_JS_PATH = WEB_DIR / "graph-data.js"
 
 

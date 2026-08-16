@@ -12,8 +12,8 @@ triggers:
 tools:
 - dev_agent
 - code_helper
-- repo_controller
-- file_processor
+- git_repo_mgr
+- batch_file_ops
 argument-hint: '[merge details]'
 when_to_use: Use when user requests merge guidance or task execution.
 user-invocable: true

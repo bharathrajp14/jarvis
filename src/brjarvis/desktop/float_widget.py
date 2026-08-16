@@ -586,41 +586,34 @@ def create_float_widget(orchestrator=None):
         return HeadlessFloat()
 
 
-if __name__ == "__main__":
-    import argparse
-    parser = argparse.ArgumentParser(description="JARVIS MK38 Float Widget")
-    parser.add_argument("--with-jarvis", action="store_true",
-                        help="Launch JARVIS Core + voice engine")
-    args = parser.parse_args()
-
-    try:
-        from dotenv import load_dotenv
-        load_dotenv()
-    except ImportError:
-        pass
-
+def main(argv: list[str] | None = None) -> int:
+    """Canonical entry point to launch the Floating HUD Widget."""
     if not _HAS_QT:
         logger.warning("ERROR: PySide6 required. Run: pip install PySide6")
-        sys.exit(1)
+        print("ERROR: PySide6 required to run Floating Widget. Install via: pip install PySide6", file=sys.stderr)
+        return 1
 
-    app = QApplication.instance() or QApplication(sys.argv)
+    app = QApplication.instance() or QApplication(sys.argv if argv is None else [sys.argv[0]] + argv)
     app.setQuitOnLastWindowClosed(False)
     app.setStyleSheet("* { font-family: 'Inter', 'Segoe UI', sans-serif; }")
 
     orchestrator = None
-    if args.with_jarvis:
-        try:
-            from core.bootstrap import build_assistant_runtime
-            rt = build_assistant_runtime()
-            orchestrator = rt.orchestrator
-            logger.info("[Float] JARVIS Core ready")
-        except Exception as e:
-            logger.warning("[Float] Core failed (%s) -- API-only mode", e)
+    try:
+        from brjarvis.core.bootstrap import build_assistant_runtime
+        rt = build_assistant_runtime()
+        orchestrator = rt.orchestrator
+        logger.info("[Float] JARVIS Core ready")
+    except Exception as e:
+        logger.debug("[Float] Standalone widget note: %s", e)
 
     widget = JarvisFloat(orchestrator=orchestrator)
-    widget.write_log("JARVIS MK38 Float Widget online")
+    widget.write_log("JARVIS MK40.2 Float Widget online")
     widget.set_state("LISTENING")
     widget.show()
 
     logger.info("JARVIS Float Widget running. Alt+Space to toggle. Right-click tray to quit.")
-    sys.exit(app.exec())
+    return app.exec()
+
+
+if __name__ == "__main__":
+    sys.exit(main())

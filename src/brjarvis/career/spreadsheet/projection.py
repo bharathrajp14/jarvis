@@ -15,10 +15,11 @@ from .tracker_excel import CareerTrackerWorkbook
 
 logger = logging.getLogger("JARVIS.CareerSpreadsheet.Projection")
 
-_WORKSPACE_DIR = Path(__file__).resolve().parent.parent.parent
-_DEFAULT_WORKBOOK_PATH = _WORKSPACE_DIR / "BR_JARVIS_Career_Tracker.xlsx"
-_BACKUPS_DIR = _WORKSPACE_DIR / ".jarvis" / "backups"
-_BACKUPS_DIR.mkdir(parents=True, exist_ok=True)
+from brjarvis.core.paths import paths
+
+_WORKSPACE_DIR = paths.WORKSPACE_ROOT
+_DEFAULT_WORKBOOK_PATH = paths.DOCUMENTS_DIR / "BR_JARVIS_Career_Tracker.xlsx"
+_BACKUPS_DIR = paths.PROJECT_ROOT / ".jarvis" / "backups"
 
 
 class CareerSpreadsheetProjection:

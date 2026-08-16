@@ -14,9 +14,9 @@ triggers:
 - run confluence expert
 - confluence expert skill
 tools:
-- doc_tools
-- excel_tools
-- calendar_engine
+- document_creator
+- create_excel_sheet
+- calendar_create_event
 - web_search
 argument-hint: '[confluence expert details]'
 when_to_use: Use when user requests confluence expert guidance or task execution.

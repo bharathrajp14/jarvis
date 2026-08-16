@@ -93,5 +93,13 @@ src/brjarvis/workspace/browser_user_data/
 workspace/screenshots/
 workspace/snapshots/
 workspace/test_temp/
+workspace/test_temp_*/
+workspace/tmp_*/
 runtime/screenshots/
 runtime/snapshots/
+src/brjarvis/logs/
+src/brjarvis/memory_db/
+src/brjarvis/.jarvis/
+src/brjarvis/captures/
+src/brjarvis/notes/
+src/brjarvis/reports/

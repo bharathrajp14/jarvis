@@ -13,9 +13,9 @@ triggers:
 - run apple hig expert
 - apple hig expert skill
 tools:
-- doc_tools
-- excel_tools
-- file_processor
+- document_creator
+- create_excel_sheet
+- batch_file_ops
 - web_search
 argument-hint: '[apple hig expert details]'
 when_to_use: Use when user requests apple hig expert guidance or task execution.

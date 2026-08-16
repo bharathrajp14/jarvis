@@ -18,8 +18,8 @@ triggers:
 tools:
 - dev_agent
 - code_helper
-- repo_controller
-- file_processor
+- git_repo_mgr
+- batch_file_ops
 argument-hint: '[skill security auditor details]'
 when_to_use: Use when user requests skill security auditor guidance or task execution.
 user-invocable: true

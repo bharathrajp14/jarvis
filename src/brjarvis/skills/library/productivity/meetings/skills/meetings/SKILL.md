@@ -13,10 +13,10 @@ triggers:
 - run meetings
 - meetings skill
 tools:
-- calendar_engine
+- calendar_create_event
 - reminder
-- doc_tools
-- smart_email_sender
+- document_creator
+- send_email
 argument-hint: '[the meeting to gate, or the notes to extract actions from]'
 when_to_use: Use when user requests meetings guidance or task execution.
 user-invocable: true

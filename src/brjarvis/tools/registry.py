@@ -18,20 +18,10 @@ from typing import Callable, Any
 
 logger = logging.getLogger("JARVIS.ToolRegistry")
 
-# Ensure project root in path
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
 # Global registry mappings
 TOOL_SCHEMAS: list[dict] = []
 TOOL_REGISTRY: dict[str, Callable[[dict], Any]] = {}
 _REGISTRATION_ERRORS: dict[str, str] = {}
-
-# Self-alias in sys.modules so both 'tools.registry' and 'brjarvis.tools.registry' write to the exact same dictionaries
-import sys
-_current_mod = sys.modules.get(__name__)
-if _current_mod is not None:
-    sys.modules["tools.registry"] = _current_mod
-    sys.modules["brjarvis.tools.registry"] = _current_mod
 
 # Thread-safe lock protecting TOOL_SCHEMAS and TOOL_REGISTRY mutations
 _REGISTRY_LOCK = threading.RLock()
@@ -473,6 +463,13 @@ def execute_tool(name: str, args: dict) -> str:
             "scratchpad_eval": "tools.scratchpad_tools",
             "scratchpad_list": "tools.scratchpad_tools",
             "scratchpad_clear": "tools.scratchpad_tools",
+            # File Tools
+            "file_read": "tools.file_tools",
+            "file_write": "tools.file_tools",
+            "file_list": "tools.file_tools",
+            "file_delete": "tools.file_tools",
+            "file_search": "tools.file_tools",
+            "file_editor": "tools.file_tools",
             # Career OS Tools
             "career_email_process": "career.tools",
             "career_offer_confirm": "career.tools",
@@ -506,6 +503,8 @@ def execute_tool(name: str, args: dict) -> str:
 
         if name in tool_to_module:
             _import_plugins(plugin_name=tool_to_module[name])
+        if name not in TOOL_REGISTRY:
+            _import_plugins(full=True)
 
     if name not in TOOL_REGISTRY:
         return f"ERROR: Unknown tool '{name}'"
@@ -543,7 +542,7 @@ def execute_tool(name: str, args: dict) -> str:
         
         str_res = str(result)
         try:
-            from core.execution.verifier import get_universal_verifier
+            from brjarvis.core.execution.verifier import get_universal_verifier
             v_out = get_universal_verifier().verify_execution(name, args, str_res, return_code=0)
             if not v_out.verified:
                 logger.warning("[ToolRegistry] Tool '%s' verification warning: %s", name, v_out.details)
@@ -557,8 +556,8 @@ def execute_tool(name: str, args: dict) -> str:
         tb = traceback.format_exc()
         # Attempt auto-repair if ModuleNotFoundError / missing package
         try:
-            from core.execution.recovery_manager import get_recovery_manager
-            from core.execution.types import ExecutionResult
+            from brjarvis.core.execution.recovery_manager import get_recovery_manager
+            from brjarvis.core.execution.types import ExecutionResult
             rec_mgr = get_recovery_manager()
             rep_action = rec_mgr.diagnose_failure(ExecutionResult(stderr=str(e) + "\n" + tb))
             if rep_action and rec_mgr.execute_repair(rep_action):
@@ -838,10 +837,12 @@ def _import_plugins(*, full: bool = False, plugin_name: str | None = None):
     def _import_single(mod_name: str) -> None:
         try:
             importlib.import_module(mod_name)
+            _REGISTRATION_ERRORS.pop(mod_name, None)
         except (ImportError, ModuleNotFoundError):
             if not mod_name.startswith("brjarvis."):
                 alt = f"brjarvis.{mod_name}"
                 importlib.import_module(alt)
+                _REGISTRATION_ERRORS.pop(mod_name, None)
             else:
                 raise
 

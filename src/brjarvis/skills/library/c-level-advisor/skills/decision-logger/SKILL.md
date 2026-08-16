@@ -12,10 +12,10 @@ triggers:
 - run decision logger
 - decision logger skill
 tools:
-- doc_tools
-- excel_tools
+- document_creator
+- create_excel_sheet
 - web_search
-- rag_library
+- rag_query
 argument-hint: '[decision logger details]'
 when_to_use: Use when user requests decision logger guidance or task execution.
 user-invocable: true

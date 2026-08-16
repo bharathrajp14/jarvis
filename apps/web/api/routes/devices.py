@@ -6,8 +6,8 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from mobile.gateway import get_device_gateway
-from mobile.session import get_mobile_session_manager
+from brjarvis.integrations.mobile.gateway import get_device_gateway
+from brjarvis.integrations.mobile.session import get_mobile_session_manager
 
 router = APIRouter(tags=["Devices"])
 

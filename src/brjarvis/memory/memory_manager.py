@@ -23,14 +23,14 @@ import sys
 logger = logging.getLogger(__name__)
 
 
+from brjarvis.core.paths import paths
+
 def get_base_dir() -> Path:
-    if getattr(sys, "frozen", False):
-        return Path(sys.executable).parent
-    return Path(__file__).resolve().parent.parent
+    return paths.PROJECT_ROOT
 
 
 BASE_DIR         = get_base_dir()
-MEMORY_PATH      = BASE_DIR / "memory" / "long_term.json"
+MEMORY_PATH      = paths.STATE_ROOT / "long_term.json"
 _lock            = RLock()
 MAX_VALUE_LENGTH = 380
 MEMORY_MAX_CHARS = 2200

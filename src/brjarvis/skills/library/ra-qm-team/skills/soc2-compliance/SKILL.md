@@ -10,10 +10,10 @@ triggers:
 - run soc2 compliance
 - soc2 compliance skill
 tools:
-- doc_tools
-- excel_tools
-- rag_library
-- file_processor
+- document_creator
+- create_excel_sheet
+- rag_query
+- batch_file_ops
 argument-hint: '[soc2 compliance details]'
 when_to_use: Use when user requests soc2 compliance guidance or task execution.
 user-invocable: true

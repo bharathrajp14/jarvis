@@ -19,9 +19,9 @@ triggers:
 - run product skills
 - product skills skill
 tools:
-- doc_tools
-- excel_tools
-- file_processor
+- document_creator
+- create_excel_sheet
+- batch_file_ops
 - web_search
 argument-hint: '[product skills details]'
 when_to_use: Use when user requests product skills guidance or task execution.

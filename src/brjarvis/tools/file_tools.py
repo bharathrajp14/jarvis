@@ -5,11 +5,12 @@ File tools plugin for JARVIS MK37. Contains file_read, file_write, and file_list
 from __future__ import annotations
 
 from pathlib import Path
+from brjarvis.core.paths import paths
 from .registry import register_tool
 from .files import FileManager
 
-# Initialize the file manager relative to the project root directory
-WORKSPACE_DIR = Path(__file__).resolve().parent.parent
+# Initialize the file manager relative to the project workspace directory
+WORKSPACE_DIR = paths.WORKSPACE_ROOT
 _files = FileManager(workspace=str(WORKSPACE_DIR))
 
 

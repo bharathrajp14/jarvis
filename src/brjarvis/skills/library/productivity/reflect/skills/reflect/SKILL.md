@@ -18,10 +18,10 @@ triggers:
 - run reflect
 - reflect skill
 tools:
-- calendar_engine
+- calendar_create_event
 - reminder
-- doc_tools
-- smart_email_sender
+- document_creator
+- send_email
 argument-hint: '[reflect details]'
 when_to_use: Use when user requests reflect guidance or task execution.
 user-invocable: true

@@ -14,10 +14,10 @@ triggers:
 - run vendor management
 - vendor management skill
 tools:
-- doc_tools
-- excel_tools
-- calendar_engine
-- file_processor
+- document_creator
+- create_excel_sheet
+- calendar_create_event
+- batch_file_ops
 argument-hint: '[vendor management details]'
 when_to_use: Use when user requests vendor management guidance or task execution.
 user-invocable: true

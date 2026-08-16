@@ -948,8 +948,8 @@ class ParallelToolExecutor:
         # 6. Overall Workflow Status Determination with TaskCompletionGate
         duration = time.monotonic() - t_start
         try:
-            from core.execution.completion_gate import get_task_completion_gate
-            from core.execution.types import ExecutionStatus
+            from brjarvis.core.execution.completion_gate import get_task_completion_gate
+            from brjarvis.core.execution.types import ExecutionStatus
             
             step_dicts = [s.to_dict() for s in plan.steps]
             gate_res = get_task_completion_gate().evaluate_task(plan.goal, step_dicts, step_outputs)

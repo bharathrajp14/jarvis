@@ -17,7 +17,9 @@ from .snapshot import SnapshotManager
 
 logger = logging.getLogger("JARVIS.GuardianCore")
 
-BASE_DIR = Path(__file__).resolve().parent.parent
+from brjarvis.core.paths import paths
+
+BASE_DIR = paths.SOURCE_ROOT
 
 PROTECTED_CORE_PATHS = [
     "guardian/core.py",
@@ -25,7 +27,6 @@ PROTECTED_CORE_PATHS = [
     "guardian/snapshot.py",
     "guardian/rollback.py",
     "guardian/audit_log.py",
-    "permissions.py",
     "security/capabilities.py",
     "security/policy_engine.py",
     "security/path_policy.py",
@@ -38,8 +39,8 @@ class GuardianCore:
     Requires release-authorization or administrator confirmation to update baseline hashes.
     """
 
-    _HASH_FILE = BASE_DIR / ".guardian_hashes.json"
-    _TRUST_MANIFEST = BASE_DIR / "config" / "release_manifest.json"
+    _HASH_FILE = paths.STATE_ROOT / ".guardian_hashes.json"
+    _TRUST_MANIFEST = paths.CONFIG_ROOT / "release_manifest.json"
 
     def __init__(self, integrity_interval: int = 300):
         self.integrity_interval = integrity_interval

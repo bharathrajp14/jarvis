@@ -53,10 +53,9 @@ try:
 except Exception:
     pass
 
-# Register legacy aliases AFTER all imports are complete (avoids partially-initialized module)
-_self = sys.modules[__name__]
-sys.modules.setdefault("career", _self)
-sys.modules["brjarvis.career"] = _self
+# Register legacy aliases AFTER all imports are complete
+if __name__ in sys.modules:
+    sys.modules.setdefault("career", sys.modules[__name__])
 
 __all__ = [
     "CareerProfile",

@@ -14,9 +14,11 @@ import json
 import re
 from pathlib import Path
 
+from brjarvis.core.paths import paths
+
 logger = logging.getLogger(__name__)
 
-_WORKSPACE_DIR = Path(__file__).resolve().parent.parent / "workspace"
+_WORKSPACE_DIR = paths.WORKSPACE_ROOT
 
 
 def _sanitize_folder_name(name: str) -> str:

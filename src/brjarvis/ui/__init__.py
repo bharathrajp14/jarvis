@@ -44,14 +44,11 @@ def _base_dir() -> Path:
     """
     Return the project root directory regardless of whether the app is
     frozen (PyInstaller) or running from source.
-
-    The ui/ package lives at <project_root>/ui/, so we go two levels up
-    from this file (__file__ → ui/__init__.py → ui/ → project root).
     """
     if getattr(sys, "frozen", False):
         return Path(sys.executable).parent
-    # __file__ is  <root>/ui/__init__.py  → .parent = ui/  → .parent = root
-    return Path(__file__).resolve().parent.parent
+    from brjarvis.core.paths import paths
+    return paths.PROJECT_ROOT
 
 
 # ── Platform-specific subprocess flag ────────────────────────────────────────

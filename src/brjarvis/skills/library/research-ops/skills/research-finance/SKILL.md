@@ -16,9 +16,9 @@ triggers:
 - research finance skill
 tools:
 - web_search
-- browser_control
-- rag_library
-- excel_tools
+- browser_auto_navigate_and_extract
+- rag_query
+- create_excel_sheet
 argument-hint: '[research finance details]'
 when_to_use: Use when user requests research finance guidance or task execution.
 user-invocable: true

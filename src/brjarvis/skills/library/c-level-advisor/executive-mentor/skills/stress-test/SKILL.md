@@ -10,10 +10,10 @@ triggers:
 - run stress test
 - stress test skill
 tools:
-- doc_tools
-- excel_tools
+- document_creator
+- create_excel_sheet
 - web_search
-- rag_library
+- rag_query
 argument-hint: '[stress test details]'
 when_to_use: Use when user requests stress test guidance or task execution.
 user-invocable: true

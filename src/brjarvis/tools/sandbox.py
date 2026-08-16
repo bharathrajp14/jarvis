@@ -10,8 +10,8 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, List, Optional
 
-from core.execution.types import ExecutionStatus
-from core.execution.universal_runtime import get_universal_runtime
+from brjarvis.core.execution.types import ExecutionStatus
+from brjarvis.core.execution.universal_runtime import get_universal_runtime
 from .sandbox_process import get_sandbox_runner, SandboxedProcessRunner
 
 logger = logging.getLogger(__name__)

@@ -6,13 +6,13 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
+from brjarvis.core.paths import paths
+
 def get_base_dir() -> Path:
-    if getattr(sys, "frozen", False):
-        return Path(sys.executable).parent
-    return Path(__file__).resolve().parent.parent
+    return paths.PROJECT_ROOT
 
 BASE_DIR    = get_base_dir()
-CONFIG_DIR  = BASE_DIR / "config"
+CONFIG_DIR  = paths.CONFIG_ROOT
 CONFIG_FILE = CONFIG_DIR / "api_keys.json"
 
 def ensure_config_dir() -> None:

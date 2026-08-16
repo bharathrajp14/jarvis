@@ -13,9 +13,9 @@ triggers:
 - run atlassian admin
 - atlassian admin skill
 tools:
-- doc_tools
-- excel_tools
-- calendar_engine
+- document_creator
+- create_excel_sheet
+- calendar_create_event
 - web_search
 argument-hint: '[atlassian admin details]'
 when_to_use: Use when user requests atlassian admin guidance or task execution.

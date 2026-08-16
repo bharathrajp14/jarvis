@@ -49,11 +49,12 @@ class RollbackEngine:
                 logger.exception('Boot critical exception encountered in guardian/rollback.py')
                 raise e
         # 2. Restore Database files
+        from brjarvis.core.paths import paths
         restored_dbs = []
         for db_name in ["workflows.db", "conversation_history.db"]:
             snap_db = latest_snap / db_name
             if snap_db.exists():
-                target_db = Path("memory_db") / db_name
+                target_db = paths.MEMORY_ROOT / db_name
                 target_db.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(snap_db, target_db)
                 restored_dbs.append(db_name)

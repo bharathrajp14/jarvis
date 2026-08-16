@@ -23,9 +23,11 @@ from .browser_automation import (
     _PLAYWRIGHT_AVAILABLE,
 )
 
-logger = logging.getLogger(__name__)
+from brjarvis.core.paths import paths
 
-REPORTS_DIR = Path(__file__).resolve().parent.parent / "reports"
+logger = logging.getLogger("JARVIS.Tools.QATesting")
+
+REPORTS_DIR = paths.REPORT_ROOT
 
 
 @register_tool(

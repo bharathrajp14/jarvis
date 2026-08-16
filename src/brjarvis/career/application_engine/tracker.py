@@ -12,9 +12,11 @@ from ..crm.database import get_career_crm_db
 from ..crm.state_machine import ApplicationStateMachine
 from ..models import Application, ApplicationRecord, ApplicationStatus, JobPosting, PriorityLevel
 
+from brjarvis.core.paths import paths
+
 logger = logging.getLogger("JARVIS.ApplicationTracker")
 
-_DEFAULT_STORAGE_DIR = Path(__file__).resolve().parent.parent.parent / "workspace" / "Career" / "applications"
+_DEFAULT_STORAGE_DIR = paths.CAREER_DIR / "applications"
 
 
 class ApplicationTracker:

@@ -43,7 +43,8 @@ def _get_bot_token() -> str:
     if not token:
         # Try loading .env manually as a fallback
         try:
-            env_path = Path(__file__).resolve().parent.parent / ".env"
+            from brjarvis.core.paths import paths
+            env_path = paths.ENV_FILE
             if env_path.exists():
                 for line in env_path.read_text(encoding="utf-8").splitlines():
                     line = line.strip()
@@ -58,13 +59,15 @@ def _get_bot_token() -> str:
 
 
 def _get_contacts_file() -> Path:
-    cfg_dir = Path(__file__).resolve().parent.parent / ".jarvis"
+    from brjarvis.core.paths import paths
+    cfg_dir = paths.PROJECT_ROOT / ".jarvis"
     cfg_dir.mkdir(parents=True, exist_ok=True)
     return cfg_dir / "telegram_contacts.json"
 
 
 def _get_scheduled_file() -> Path:
-    cfg_dir = Path(__file__).resolve().parent.parent / ".jarvis"
+    from brjarvis.core.paths import paths
+    cfg_dir = paths.PROJECT_ROOT / ".jarvis"
     cfg_dir.mkdir(parents=True, exist_ok=True)
     return cfg_dir / "scheduled_telegram.json"
 

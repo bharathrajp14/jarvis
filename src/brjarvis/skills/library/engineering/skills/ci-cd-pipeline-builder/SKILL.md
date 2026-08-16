@@ -13,8 +13,8 @@ triggers:
 tools:
 - dev_agent
 - code_helper
-- repo_controller
-- file_processor
+- git_repo_mgr
+- batch_file_ops
 argument-hint: '[ci cd pipeline builder details]'
 when_to_use: Use when user requests ci cd pipeline builder guidance or task execution.
 user-invocable: true

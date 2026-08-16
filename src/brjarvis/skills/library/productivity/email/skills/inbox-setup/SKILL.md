@@ -18,10 +18,10 @@ triggers:
 - run inbox setup
 - inbox setup skill
 tools:
-- calendar_engine
+- calendar_create_event
 - reminder
-- doc_tools
-- smart_email_sender
+- document_creator
+- send_email
 argument-hint: '[inbox setup details]'
 when_to_use: Use when user requests inbox setup guidance or task execution.
 user-invocable: true

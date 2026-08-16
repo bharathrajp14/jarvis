@@ -19,9 +19,8 @@ from typing import Any
 
 
 def _get_project_root() -> Path:
-    if getattr(sys, "frozen", False):
-        return Path(sys.executable).parent
-    return Path(__file__).resolve().parent.parent
+    from brjarvis.core.paths import paths
+    return paths.PROJECT_ROOT
 
 
 class CognitiveWorkspaceEngine:

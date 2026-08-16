@@ -9,10 +9,9 @@ from typing import Any, Dict, List
 
 logger = logging.getLogger("JARVIS.MemoryArchiver")
 
-BASE_DIR = Path(__file__).resolve().parent.parent
-WORKSPACE_DIR = BASE_DIR / "workspace"
-ARCHIVE_FILE = WORKSPACE_DIR / "logs" / "memory_archive.jsonl"
-ARCHIVE_FILE.parent.mkdir(parents=True, exist_ok=True)
+from brjarvis.core.paths import paths
+
+ARCHIVE_FILE = paths.LOG_ROOT / "memory_archive.jsonl"
 
 
 class MemoryArchiver:

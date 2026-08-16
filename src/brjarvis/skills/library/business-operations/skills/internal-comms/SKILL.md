@@ -17,10 +17,10 @@ triggers:
 - run internal comms
 - internal comms skill
 tools:
-- doc_tools
-- excel_tools
-- calendar_engine
-- file_processor
+- document_creator
+- create_excel_sheet
+- calendar_create_event
+- batch_file_ops
 argument-hint: '[internal comms details]'
 when_to_use: Use when user requests internal comms guidance or task execution.
 user-invocable: true

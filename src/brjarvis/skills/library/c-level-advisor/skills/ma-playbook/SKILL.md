@@ -10,10 +10,10 @@ triggers:
 - run ma playbook
 - ma playbook skill
 tools:
-- doc_tools
-- excel_tools
+- document_creator
+- create_excel_sheet
 - web_search
-- rag_library
+- rag_query
 argument-hint: '[ma playbook details]'
 when_to_use: Use when user requests ma playbook guidance or task execution.
 user-invocable: true

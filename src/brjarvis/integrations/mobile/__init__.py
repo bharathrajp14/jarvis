@@ -1,8 +1,6 @@
 import sys
-_mod = sys.modules.get(__name__)
-if _mod:
-    sys.modules["mobile"] = _mod
-    sys.modules["brjarvis.integrations.mobile"] = _mod
+if __name__ in sys.modules:
+    sys.modules.setdefault("mobile", sys.modules[__name__])
 
 from .protocol import MobileMessage, MobileMessageType, AccessibilityNode, DeviceState
 from .gateway import get_device_gateway, DeviceGateway, PairedDevice

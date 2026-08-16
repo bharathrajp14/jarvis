@@ -7,7 +7,7 @@ from typing import Dict, Any, Optional
 from fastapi import APIRouter
 from pydantic import BaseModel
 
-from skills.skill_engine import get_skill_engine
+from brjarvis.skills.skill_engine import get_skill_engine
 
 router = APIRouter(tags=["Skills"])
 
@@ -28,7 +28,7 @@ async def get_skills_list():
     if _SKILLS_CACHE is not None and (now - _SKILLS_CACHE_TS) < _CACHE_TTL_SECONDS:
         return _SKILLS_CACHE
 
-    from skills import load_skills
+    from brjarvis.skills import load_skills
     skills = [s for s in load_skills() if s.user_invocable]
     payload = [{"name": s.name, "description": s.description, "triggers": s.triggers} for s in skills]
     _SKILLS_CACHE = payload

@@ -10,10 +10,10 @@ triggers:
 - run aims audit
 - aims audit skill
 tools:
-- doc_tools
-- excel_tools
-- rag_library
-- file_processor
+- document_creator
+- create_excel_sheet
+- rag_query
+- batch_file_ops
 argument-hint: '[aims audit details]'
 when_to_use: Use when user requests aims audit guidance or task execution.
 user-invocable: true

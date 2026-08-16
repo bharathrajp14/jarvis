@@ -42,9 +42,8 @@ _OS = platform.system()
 
 
 def _base_dir() -> Path:
-    if getattr(sys, "frozen", False):
-        return Path(sys.executable).parent
-    return Path(__file__).resolve().parent.parent
+    from brjarvis.core.paths import paths
+    return paths.PROJECT_ROOT
 
 
 from config import get_gemini_api_key as _get_api_key

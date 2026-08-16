@@ -13,10 +13,10 @@ triggers:
 - run strategic alignment
 - strategic alignment skill
 tools:
-- doc_tools
-- excel_tools
+- document_creator
+- create_excel_sheet
 - web_search
-- rag_library
+- rag_query
 argument-hint: '[strategic alignment details]'
 when_to_use: Use when user requests strategic alignment guidance or task execution.
 user-invocable: true

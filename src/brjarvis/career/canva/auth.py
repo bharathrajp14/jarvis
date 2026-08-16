@@ -8,9 +8,11 @@ import time
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-logger = logging.getLogger("JARVIS.CanvaAuth")
+from brjarvis.core.paths import paths
 
-_CREDENTIALS_FILE = Path(__file__).resolve().parent.parent.parent / "config" / "canva_credentials.json"
+logger = logging.getLogger("JARVIS.Career.CanvaAuth")
+
+_CREDENTIALS_FILE = paths.CONFIG_ROOT / "canva_credentials.json"
 
 
 class CanvaCredentialStore:

@@ -106,8 +106,8 @@ class VoicePromptRefiner:
         """Load vocabulary corrections from config/vocabulary.json merged with built-in technical terms."""
         vocab = dict(DEFAULT_TECH_VOCAB)
         try:
-            base_dir = Path(__file__).resolve().parent.parent
-            vocab_path = base_dir / "config" / "vocabulary.json"
+            from brjarvis.core.paths import paths
+            vocab_path = paths.CONFIG_ROOT / "vocabulary.json"
             if vocab_path.exists():
                 data = json.loads(vocab_path.read_text(encoding="utf-8"))
                 corrections = data.get("corrections", {})

@@ -18,8 +18,8 @@ logger = logging.getLogger(__name__)
 
 
 def _get_scratch_dir() -> Path:
-    base = Path(__file__).resolve().parent.parent
-    scratch_dir = base / "scratch"
+    from brjarvis.core.paths import paths
+    scratch_dir = paths.PROJECT_ROOT / "scratch"
     scratch_dir.mkdir(parents=True, exist_ok=True)
     return scratch_dir
 

@@ -8,7 +8,7 @@ import asyncio
 from pathlib import Path
 from typing import Set, Optional
 from starlette.websockets import WebSocket
-from orchestrator import JarvisOrchestrator
+from brjarvis.orchestrator import JarvisOrchestrator
 
 logger = logging.getLogger("JARVIS.API.State")
 
@@ -49,7 +49,7 @@ def get_orchestrator() -> Optional[JarvisOrchestrator]:
     global ORCHESTRATOR
     if ORCHESTRATOR is None:
         try:
-            from core.bootstrap import build_assistant_runtime
+            from brjarvis.core.bootstrap import build_assistant_runtime
             runtime = build_assistant_runtime()
             ORCHESTRATOR = runtime.orchestrator
         except Exception as e:
@@ -61,3 +61,4 @@ def set_orchestrator(orchestrator: JarvisOrchestrator) -> None:
     """Explicitly set the active Orchestrator singleton."""
     global ORCHESTRATOR
     ORCHESTRATOR = orchestrator
+

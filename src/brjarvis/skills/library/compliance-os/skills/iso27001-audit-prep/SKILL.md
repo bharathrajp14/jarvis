@@ -10,10 +10,10 @@ triggers:
 - run iso27001 audit prep
 - iso27001 audit prep skill
 tools:
-- doc_tools
-- excel_tools
-- rag_library
-- file_processor
+- document_creator
+- create_excel_sheet
+- rag_query
+- batch_file_ops
 argument-hint: '[iso27001 audit prep details]'
 when_to_use: Use when user requests iso27001 audit prep guidance or task execution.
 user-invocable: true

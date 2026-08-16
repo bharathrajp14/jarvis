@@ -16,8 +16,8 @@ triggers:
 - run md document
 - md document skill
 tools:
-- doc_tools
-- file_processor
+- document_creator
+- batch_file_ops
 - code_helper
 argument-hint: '[md document details]'
 when_to_use: Use when user requests md document guidance or task execution.

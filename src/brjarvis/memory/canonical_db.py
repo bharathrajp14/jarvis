@@ -22,11 +22,11 @@ import threading
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+from brjarvis.core.paths import paths
+
 logger = logging.getLogger("JARVIS.CanonicalDB")
 
-_BASE_DIR = Path(__file__).resolve().parent.parent
-_CANONICAL_DIR = _BASE_DIR / ".jarvis"
-_CANONICAL_DIR.mkdir(parents=True, exist_ok=True)
+_CANONICAL_DIR = paths.PROJECT_ROOT / ".jarvis"
 CANONICAL_DB_PATH = _CANONICAL_DIR / "jarvis_canonical.db"
 
 

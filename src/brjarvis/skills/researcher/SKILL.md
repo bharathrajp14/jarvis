@@ -1,15 +1,19 @@
 ---
 name: researcher
 description: Autonomous deep multi-source web researcher, article extractor, and structured markdown digest generator.
-user_invocable: true
+category: research
+domain: Web Intelligence
+allowed-tools: [web_search, fetch_page, fetch_raw, browser_auto_navigate_and_extract, file_write]
+triggers: [/deep-research, /research-digest, /web-intel, deep web research]
+user-invocable: true
 ---
 
 # 🔍 Automated Multi-Source Research Digest Skill
 
 When the user asks for deep research, market analysis, topic exploration, or technical digests:
 
-## Execution Steps:
-1. **Multi-Query Web Search**: Use `web_search` to query 2-3 distinct perspectives on the topic.
+## Execution Protocol:
+1. **Multi-Query Web Search**: Use `web_search` to query 2-3 distinct perspectives on the topic (technical architecture, industry benchmarks, practical challenges).
 2. **Page Content Extraction**: Fetch primary sources using `fetch_page` or `browser_auto_navigate_and_extract`.
 3. **Synthesis & Fact Verification**: Synthesize findings across sources, highlighting key metrics, breakthroughs, and architectural insights.
 4. **Structured Markdown Deliverable**: Produce a clean, publishable report formatted as follows:
@@ -18,16 +22,16 @@ When the user asks for deep research, market analysis, topic exploration, or tec
 # 📊 Research Digest: [Topic Name]
 
 ## Executive Summary
-- Key takeaway 1
-- Key takeaway 2
+- Key breakthrough / finding 1
+- Key breakthrough / finding 2
 
-## Key Findings & Data Points
-- Detailed technical breakdown
+## Key Findings & Deep Dive
+- Detailed technical breakdown with citations
 
 ## Comparative Analysis Table
-| Metric / Feature | Option A | Option B |
+| Metric / Feature | Approach A | Approach B |
 | :--- | :--- | :--- |
 
-## References & Sources
-- Source 1 URL
+## Verified Sources & References
+- [Source Title](https://...)
 ```

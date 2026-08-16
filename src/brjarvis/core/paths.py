@@ -18,7 +18,7 @@ def find_project_root() -> Path:
         if (parent / "pyproject.toml").exists() or (parent / ".git").exists() or (parent / "start.py").exists():
             return parent
 
-    return Path(__file__).resolve().parent.parent.parent.parent
+    return Path(__file__).resolve().parent.parent.parent
 
 
 def find_python_executable(root: Optional[Path] = None) -> Path:

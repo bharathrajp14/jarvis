@@ -19,7 +19,8 @@ class SkillHotReloader:
     """Runtime observer for dynamic skill hot-reloading."""
 
     def __init__(self, workspace_root: Optional[Path] = None):
-        self.workspace_root = workspace_root or Path(__file__).resolve().parent.parent
+        from brjarvis.core.paths import paths
+        self.workspace_root = workspace_root or paths.PROJECT_ROOT
         self.skills_dir = self.workspace_root / "skills"
         self.agent_skills_dir = self.workspace_root / ".agents" / "skills"
         self._last_scan_mtime: float = 0.0

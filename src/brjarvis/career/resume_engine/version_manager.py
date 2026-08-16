@@ -11,11 +11,12 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from .models import ResumeSchema, ResumeVersionRecord
-from memory.canonical_db import get_canonical_db
+from brjarvis.memory.canonical_db import get_canonical_db
+from brjarvis.core.paths import paths
 
 logger = logging.getLogger("JARVIS.ResumeVersionManager")
 
-_DEFAULT_STORAGE_DIR = Path(__file__).resolve().parent.parent.parent / "workspace" / "Career" / "versions"
+_DEFAULT_STORAGE_DIR = paths.CAREER_DIR / "versions"
 
 
 class ResumeVersionManager:

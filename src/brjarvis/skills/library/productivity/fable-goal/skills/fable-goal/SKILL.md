@@ -14,10 +14,10 @@ triggers:
 - run fable goal
 - fable goal skill
 tools:
-- calendar_engine
+- calendar_create_event
 - reminder
-- doc_tools
-- smart_email_sender
+- document_creator
+- send_email
 argument-hint: '[fable goal details]'
 when_to_use: Use when user requests fable goal guidance or task execution.
 user-invocable: true

@@ -13,10 +13,10 @@ triggers:
 - run pricing strategist
 - pricing strategist skill
 tools:
-- doc_tools
-- excel_tools
+- document_creator
+- create_excel_sheet
 - web_search
-- smart_email_sender
+- send_email
 argument-hint: '[pricing strategist details]'
 when_to_use: Use when user requests pricing strategist guidance or task execution.
 user-invocable: true

@@ -16,8 +16,8 @@ triggers:
 - run md review
 - md review skill
 tools:
-- doc_tools
-- file_processor
+- document_creator
+- batch_file_ops
 - code_helper
 argument-hint: '[md review details]'
 when_to_use: Use when user requests md review guidance or task execution.

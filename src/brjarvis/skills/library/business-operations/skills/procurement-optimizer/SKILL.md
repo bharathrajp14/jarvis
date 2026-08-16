@@ -15,10 +15,10 @@ triggers:
 - run procurement optimizer
 - procurement optimizer skill
 tools:
-- doc_tools
-- excel_tools
-- calendar_engine
-- file_processor
+- document_creator
+- create_excel_sheet
+- calendar_create_event
+- batch_file_ops
 argument-hint: '[procurement optimizer details]'
 when_to_use: Use when user requests procurement optimizer guidance or task execution.
 user-invocable: true

@@ -17,7 +17,7 @@ triggers:
 tools:
 - dev_agent
 - code_helper
-- doc_tools
+- document_creator
 argument-hint: '[loop library details]'
 when_to_use: Use when user requests loop library guidance or task execution.
 user-invocable: true

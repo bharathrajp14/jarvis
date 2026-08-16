@@ -86,8 +86,8 @@ except ImportError:
             def remove_agent_task(self, task_id: str) -> None:
                 pass
 
-from core.bootstrap import build_assistant_runtime
-from agent.task_queue import get_queue, TaskPriority
+from brjarvis.core.bootstrap import build_assistant_runtime
+from brjarvis.agent.task_queue import get_queue, TaskPriority
 from .tts import NeuralTTS
 from .stt import SounddeviceMicrophone, STTConfidence
 
@@ -196,8 +196,8 @@ class BRVoiceAssistant:
     def _load_vocab_cache(self) -> dict:
         """Load vocabulary json cache using project root absolute path."""
         try:
-            base_dir = Path(__file__).resolve().parent.parent
-            vocab_path = base_dir / "config" / "vocabulary.json"
+            from brjarvis.core.paths import paths
+            vocab_path = paths.CONFIG_ROOT / "vocabulary.json"
             if vocab_path.exists():
                 data = json.loads(vocab_path.read_text(encoding="utf-8"))
                 return data.get("corrections", {})

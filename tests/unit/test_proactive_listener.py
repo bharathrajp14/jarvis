@@ -21,7 +21,7 @@ class TestProactiveListener(unittest.TestCase):
 
     def setUp(self):
         self.listener = get_proactive_listener()
-        self.dispatcher = get_channel_action_dispatcher()
+        self.dispatcher = ChannelActionDispatcher(listener=self.listener)
         _import_plugins(full=True)
 
     def test_01_listener_singleton_and_status(self):

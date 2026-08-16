@@ -16,9 +16,9 @@ triggers:
 - run team communications
 - team communications skill
 tools:
-- doc_tools
-- excel_tools
-- calendar_engine
+- document_creator
+- create_excel_sheet
+- calendar_create_event
 - web_search
 argument-hint: '[team communications details]'
 when_to_use: Use when user requests team communications guidance or task execution.

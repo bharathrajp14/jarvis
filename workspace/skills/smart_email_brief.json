@@ -1,0 +1,35 @@
+{
+  "name": "smart_email_brief",
+  "version": "1.0.0",
+  "description": "Compose and send high-priority executive email or status brief.",
+  "inputs": [
+    "recipient",
+    "subject",
+    "body"
+  ],
+  "steps": [
+    {
+      "step_id": "step_1",
+      "tool": "send_email",
+      "description": "Dispatch formatted email",
+      "parameters": {
+        "recipient": "{recipient}",
+        "subject": "{subject}",
+        "body": "{body}"
+      },
+      "target_device": "pc",
+      "target_app": "Email",
+      "depends_on": []
+    }
+  ],
+  "verification": [
+    "email_sent"
+  ],
+  "tags": [
+    "email",
+    "communication",
+    "briefing"
+  ],
+  "scope": "user",
+  "author": "BR JARVIS"
+}

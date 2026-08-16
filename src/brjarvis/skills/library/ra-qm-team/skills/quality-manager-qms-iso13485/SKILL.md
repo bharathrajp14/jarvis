@@ -23,10 +23,10 @@ triggers:
 - supplier qualification
 - quality records
 tools:
-- doc_tools
-- excel_tools
-- rag_library
-- file_processor
+- document_creator
+- create_excel_sheet
+- rag_query
+- batch_file_ops
 argument-hint: '[quality manager qms iso13485 details]'
 when_to_use: Use when user requests quality manager qms iso13485 guidance or task
   execution.

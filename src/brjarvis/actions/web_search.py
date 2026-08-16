@@ -7,10 +7,10 @@ from ._gemini_client import get_gemini_client, get_proxy_model
 
 logger = logging.getLogger("JARVIS.Actions.WebSearch")
 
+from brjarvis.core.paths import paths
+
 def _get_base_dir() -> Path:
-    if getattr(sys, "frozen", False):
-        return Path(sys.executable).parent
-    return Path(__file__).resolve().parent.parent
+    return paths.PROJECT_ROOT
 
 
 BASE_DIR = _get_base_dir()

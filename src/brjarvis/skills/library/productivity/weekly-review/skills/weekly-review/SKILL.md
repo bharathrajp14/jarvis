@@ -12,10 +12,10 @@ triggers:
 - run weekly review
 - weekly review skill
 tools:
-- calendar_engine
+- calendar_create_event
 - reminder
-- doc_tools
-- smart_email_sender
+- document_creator
+- send_email
 argument-hint: '[optional: directory or notes to review]'
 when_to_use: Use when user requests weekly review guidance or task execution.
 user-invocable: true

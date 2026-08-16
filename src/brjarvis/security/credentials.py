@@ -14,8 +14,9 @@ from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger("JARVIS.Credentials")
 
-CONFIG_DIR = Path(__file__).resolve().parent.parent / "config"
-CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+from brjarvis.core.paths import paths
+
+CONFIG_DIR = paths.CONFIG_ROOT
 CREDENTIALS_FILE = CONFIG_DIR / "credential_vault.json"
 
 

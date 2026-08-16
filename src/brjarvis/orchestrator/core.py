@@ -20,19 +20,19 @@ import time
 import uuid
 from typing import Generator, Iterator, Optional
 
-from agent.step_planner import StepPlanner
-from context.token_manager import TokenBudgetManager
-from core.intent_engine import DeterministicIntentEngine
-from events.bus import get_event_bus
-from events.types import TaskEvent
-from memory.working import WorkingMemory
-from memory.task_memory_router import get_task_memory_router, MemoryMode
-from router import AgentRouter
-from tools.registry import get_tool_prompt_block, parse_tool_call, execute_tool, set_orchestrator_ref
+from brjarvis.agent.step_planner import StepPlanner
+from brjarvis.context.token_manager import TokenBudgetManager
+from brjarvis.core.intent_engine import DeterministicIntentEngine
+from brjarvis.events.bus import get_event_bus
+from brjarvis.events.types import TaskEvent
+from brjarvis.memory.working import WorkingMemory
+from brjarvis.memory.task_memory_router import get_task_memory_router, MemoryMode
+from brjarvis.router import AgentRouter
+from brjarvis.tools.registry import get_tool_prompt_block, parse_tool_call, execute_tool, set_orchestrator_ref
 
 # Auto-register connector tools into the tool registry on import
 try:
-    import tools.connector_tools  # noqa: F401 — side-effect: registers connector_* tools
+    import brjarvis.tools.connector_tools  # noqa: F401 — side-effect: registers connector_* tools
 except Exception as _ct_err:
     logging.getLogger("JARVIS.Orchestrator").debug("Connector tools not loaded: %s", _ct_err)
 

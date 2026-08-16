@@ -14,10 +14,10 @@ triggers:
 - run founder coach
 - founder coach skill
 tools:
-- doc_tools
-- excel_tools
+- document_creator
+- create_excel_sheet
 - web_search
-- rag_library
+- rag_query
 argument-hint: '[founder coach details]'
 when_to_use: Use when user requests founder coach guidance or task execution.
 user-invocable: true

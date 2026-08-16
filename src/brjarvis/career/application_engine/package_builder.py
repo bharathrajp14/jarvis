@@ -16,9 +16,11 @@ from ..resume_engine.exporter import ResumeExportPipeline
 from ..resume_engine.models import TemplateType, ThemeConfig
 from ..resume_engine.tailoring import ResumeTailoringEngine
 
+from brjarvis.core.paths import paths
+
 logger = logging.getLogger("JARVIS.PackageBuilder")
 
-_DEFAULT_APP_DIR = Path(__file__).resolve().parent.parent.parent / "workspace" / "Applications"
+_DEFAULT_APP_DIR = paths.CAREER_DIR / "applications"
 
 
 class ApplicationPackageBuilder:

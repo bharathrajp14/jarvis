@@ -14,9 +14,11 @@ from .renderer import ResumeRenderer
 from brjarvis.core.execution.types import ExecutionStatus, VerificationOutcome
 from brjarvis.core.execution.verifier import get_universal_verifier
 
+from brjarvis.core.paths import paths
+
 logger = logging.getLogger("JARVIS.ResumeExporter")
 
-_DEFAULT_RESUME_DIR = Path(__file__).resolve().parent.parent.parent / "workspace" / "Resumes"
+_DEFAULT_RESUME_DIR = paths.RESUMES_DIR
 
 
 class ResumeExportPipeline:

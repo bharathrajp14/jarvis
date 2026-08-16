@@ -11,9 +11,9 @@ triggers:
 - run ux researcher designer
 - ux researcher designer skill
 tools:
-- doc_tools
-- excel_tools
-- file_processor
+- document_creator
+- create_excel_sheet
+- batch_file_ops
 - web_search
 argument-hint: '[ux researcher designer details]'
 when_to_use: Use when user requests ux researcher designer guidance or task execution.

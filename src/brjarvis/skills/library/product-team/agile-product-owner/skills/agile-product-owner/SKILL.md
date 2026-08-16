@@ -23,9 +23,9 @@ triggers:
 - sprint capacity
 - velocity tracking
 tools:
-- doc_tools
-- excel_tools
-- file_processor
+- document_creator
+- create_excel_sheet
+- batch_file_ops
 - web_search
 argument-hint: '[agile product owner details]'
 when_to_use: Use when user requests agile product owner guidance or task execution.

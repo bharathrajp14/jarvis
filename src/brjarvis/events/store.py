@@ -10,10 +10,9 @@ from .types import BaseEvent
 
 logger = logging.getLogger("JARVIS.EventStore")
 
-BASE_DIR = Path(__file__).resolve().parent.parent
-LOGS_DIR = BASE_DIR / "logs"
-LOGS_DIR.mkdir(parents=True, exist_ok=True)
-EVENTS_FILE = LOGS_DIR / "events.jsonl"
+from brjarvis.core.paths import paths
+
+EVENTS_FILE = paths.LOG_ROOT / "events.jsonl"
 
 
 class EventStore:
@@ -28,6 +27,7 @@ class EventStore:
         self._events.append(event)
         if self.persist_to_disk:
             try:
+                EVENTS_FILE.parent.mkdir(parents=True, exist_ok=True)
                 with open(EVENTS_FILE, "a", encoding="utf-8") as f:
                     f.write(event.model_dump_json() + "\n")
             except Exception as e:

@@ -11,10 +11,10 @@ triggers:
 - run office hours
 - office hours skill
 tools:
-- doc_tools
-- excel_tools
+- document_creator
+- create_excel_sheet
 - web_search
-- rag_library
+- rag_query
 argument-hint: '[office hours details]'
 when_to_use: Use when user requests office hours guidance or task execution.
 user-invocable: true

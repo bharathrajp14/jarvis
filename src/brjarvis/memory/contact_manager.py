@@ -34,10 +34,10 @@ from typing import Any, Dict, List, Optional
 logger = logging.getLogger(__name__)
 
 
+from brjarvis.core.paths import paths
+
 def get_base_dir() -> Path:
-    if getattr(sys, "frozen", False):
-        return Path(sys.executable).parent
-    return Path(__file__).resolve().parent.parent
+    return paths.PROJECT_ROOT
 
 
 BASE_DIR = get_base_dir()

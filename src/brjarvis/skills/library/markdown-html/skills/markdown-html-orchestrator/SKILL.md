@@ -19,8 +19,8 @@ triggers:
 - run markdown html orchestrator
 - markdown html orchestrator skill
 tools:
-- doc_tools
-- file_processor
+- document_creator
+- batch_file_ops
 - code_helper
 argument-hint: '[markdown html orchestrator details]'
 when_to_use: Use when user requests markdown html orchestrator guidance or task execution.

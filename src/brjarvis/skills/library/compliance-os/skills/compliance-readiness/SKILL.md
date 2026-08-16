@@ -11,10 +11,10 @@ triggers:
 - run compliance readiness
 - compliance readiness skill
 tools:
-- doc_tools
-- excel_tools
-- rag_library
-- file_processor
+- document_creator
+- create_excel_sheet
+- rag_query
+- batch_file_ops
 argument-hint: '[compliance readiness details]'
 when_to_use: Use when user requests compliance readiness guidance or task execution.
 user-invocable: true

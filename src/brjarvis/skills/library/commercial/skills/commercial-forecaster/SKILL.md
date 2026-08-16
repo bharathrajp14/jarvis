@@ -19,10 +19,10 @@ triggers:
 - run commercial forecaster
 - commercial forecaster skill
 tools:
-- doc_tools
-- excel_tools
+- document_creator
+- create_excel_sheet
 - web_search
-- smart_email_sender
+- send_email
 argument-hint: '[commercial forecaster details]'
 when_to_use: Use when user requests commercial forecaster guidance or task execution.
 user-invocable: true

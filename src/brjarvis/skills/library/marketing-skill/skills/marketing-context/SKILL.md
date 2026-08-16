@@ -13,9 +13,9 @@ triggers:
 - marketing context skill
 tools:
 - web_search
-- doc_tools
-- file_processor
-- browser_control
+- document_creator
+- batch_file_ops
+- browser_auto_navigate_and_extract
 argument-hint: '[marketing context details]'
 when_to_use: Use when user requests marketing context guidance or task execution.
 user-invocable: true

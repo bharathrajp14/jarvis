@@ -1,14 +1,14 @@
 @echo off
-:: BR JARVIS MK38 -- Environment Setup Script
+:: BR JARVIS MK40.2+ -- Environment Setup Script
 :: Detects Python, creates .venv, installs all requirements
 :: Run once after cloning: setup_env.bat
 
 setlocal EnableDelayedExpansion
-title BR JARVIS MK38 -- Environment Setup
+title BR JARVIS MK40.2+ -- Environment Setup
 
 echo.
 echo  ========================================================
-echo   BR JARVIS MK38 -- Environment Setup
+echo   BR JARVIS MK40.2+ -- Environment Setup
 echo  ========================================================
 echo.
 
@@ -92,8 +92,9 @@ echo.
 echo  ========================================================
 echo   Setup complete!
 echo   Activate venv: .venv\Scripts\activate.bat
-echo   Run JARVIS:    python ui_mark.py
-echo   Run Float:     python float_widget.py --with-jarvis
+echo   Run JARVIS:    python start.py
+echo   Run Floating:  python start.py floating
+echo   Run Web:       python start.py web
 echo  ========================================================
 echo.
 pause

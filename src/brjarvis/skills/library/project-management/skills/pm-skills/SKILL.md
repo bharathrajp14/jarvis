@@ -17,9 +17,9 @@ triggers:
 - run pm skills
 - pm skills skill
 tools:
-- doc_tools
-- excel_tools
-- calendar_engine
+- document_creator
+- create_excel_sheet
+- calendar_create_event
 - web_search
 argument-hint: '[pm skills details]'
 when_to_use: Use when user requests pm skills guidance or task execution.

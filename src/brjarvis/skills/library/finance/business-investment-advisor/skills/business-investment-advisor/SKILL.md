@@ -12,10 +12,10 @@ triggers:
 - run business investment advisor
 - business investment advisor skill
 tools:
-- excel_tools
-- doc_tools
+- create_excel_sheet
+- document_creator
 - web_search
-- file_processor
+- batch_file_ops
 argument-hint: '[business investment advisor details]'
 when_to_use: Use when user requests business investment advisor guidance or task execution.
 user-invocable: true

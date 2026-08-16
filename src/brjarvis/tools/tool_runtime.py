@@ -34,8 +34,11 @@ class ToolExecutionStatus(str, Enum):
     SUCCESS = "SUCCESS"
     PARTIAL = "PARTIAL"
     FAILED = "FAILED"
-    DENIED = "DENIED"
     TIMEOUT = "TIMEOUT"
+    BLOCKED = "BLOCKED"
+    NOT_AVAILABLE = "NOT_AVAILABLE"
+    REQUIRES_APPROVAL = "REQUIRES_APPROVAL"
+    DENIED = "DENIED"
     CANCELLED = "CANCELLED"
     UNSUPPORTED = "UNSUPPORTED"
     NOT_FOUND = "NOT_FOUND"
@@ -57,6 +60,8 @@ class Observation:
 class ToolResult:
     """Canonical unified result contract returned by all tool invocations."""
     tool_name: str
+    task_id: str = ""
+    step_id: str = ""
     invocation_id: str = field(default_factory=lambda: str(uuid.uuid4())[:8])
     status: ToolExecutionStatus = ToolExecutionStatus.SUCCESS
     data: Any = None
@@ -89,13 +94,23 @@ class ToolResult:
         return self.error_code or self.message
 
     @property
+    def duration(self) -> float:
+        return self.execution_ms / 1000.0
+
+    @property
     def duration_ms(self) -> float:
         return self.execution_ms
+
+    @property
+    def verification(self) -> bool:
+        return self.verified
 
     def to_dict(self) -> Dict[str, Any]:
         return {
             "tool_name": self.tool_name,
             "tool": self.tool_name,
+            "task_id": self.task_id,
+            "step_id": self.step_id,
             "invocation_id": self.invocation_id,
             "execution_id": self.invocation_id,
             "status": self.status.value,
@@ -107,10 +122,13 @@ class ToolResult:
             "message": self.message,
             "evidence": self.evidence,
             "execution_ms": self.execution_ms,
+            "duration": self.duration,
             "duration_ms": self.execution_ms,
             "verified": self.verified,
+            "verification": self.verified,
             "metadata": self.metadata,
         }
+
 
 
 @dataclass

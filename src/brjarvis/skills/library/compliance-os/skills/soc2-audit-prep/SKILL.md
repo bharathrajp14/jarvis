@@ -10,10 +10,10 @@ triggers:
 - run soc2 audit prep
 - soc2 audit prep skill
 tools:
-- doc_tools
-- excel_tools
-- rag_library
-- file_processor
+- document_creator
+- create_excel_sheet
+- rag_query
+- batch_file_ops
 argument-hint: '[soc2 audit prep details]'
 when_to_use: Use when user requests soc2 audit prep guidance or task execution.
 user-invocable: true

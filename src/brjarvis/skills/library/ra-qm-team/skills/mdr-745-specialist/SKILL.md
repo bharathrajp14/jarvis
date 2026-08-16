@@ -21,10 +21,10 @@ triggers:
 - UDI
 - notified body
 tools:
-- doc_tools
-- excel_tools
-- rag_library
-- file_processor
+- document_creator
+- create_excel_sheet
+- rag_query
+- batch_file_ops
 argument-hint: '[mdr 745 specialist details]'
 when_to_use: Use when user requests mdr 745 specialist guidance or task execution.
 user-invocable: true

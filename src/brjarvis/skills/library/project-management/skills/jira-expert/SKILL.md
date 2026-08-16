@@ -12,9 +12,9 @@ triggers:
 - run jira expert
 - jira expert skill
 tools:
-- doc_tools
-- excel_tools
-- calendar_engine
+- document_creator
+- create_excel_sheet
+- calendar_create_event
 - web_search
 argument-hint: '[jira expert details]'
 when_to_use: Use when user requests jira expert guidance or task execution.

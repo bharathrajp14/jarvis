@@ -13,8 +13,8 @@ triggers:
 tools:
 - dev_agent
 - code_helper
-- repo_controller
-- file_processor
+- git_repo_mgr
+- batch_file_ops
 argument-hint: What will the next session be used for?
 when_to_use: Use when user requests handoff guidance or task execution.
 user-invocable: true

@@ -20,7 +20,8 @@ _EXCLUDE_DIRS = {".git", "__pycache__", "node_modules", "AppData", "Windows", "P
 def search_files_by_name(query: str, root_dir: str = "", max_results: int = 20) -> list[str]:
     """Fast recursive filename search."""
     if not root_dir or not os.path.exists(root_dir):
-        root_dir = str(Path(__file__).resolve().parent.parent)
+        from brjarvis.core.paths import paths
+        root_dir = str(paths.WORKSPACE_ROOT)
 
     query_low = query.lower().strip()
     results = []
@@ -43,7 +44,8 @@ def search_files_by_name(query: str, root_dir: str = "", max_results: int = 20) 
 def search_file_contents(query: str, search_path: str = "", extension: str = "", max_results: int = 15) -> list[dict]:
     """Search inside text files for target string."""
     if not search_path or not os.path.exists(search_path):
-        search_path = str(Path(__file__).resolve().parent.parent)
+        from brjarvis.core.paths import paths
+        search_path = str(paths.WORKSPACE_ROOT)
 
     query_low = query.lower().strip()
     ext_pattern = f"*.{extension.lstrip('.')}" if extension else "*.*"

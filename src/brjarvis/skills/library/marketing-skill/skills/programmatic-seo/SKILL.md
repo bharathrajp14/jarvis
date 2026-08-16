@@ -13,9 +13,9 @@ triggers:
 - programmatic seo skill
 tools:
 - web_search
-- doc_tools
-- file_processor
-- browser_control
+- document_creator
+- batch_file_ops
+- browser_auto_navigate_and_extract
 argument-hint: '[programmatic seo details]'
 when_to_use: Use when user requests programmatic seo guidance or task execution.
 user-invocable: true

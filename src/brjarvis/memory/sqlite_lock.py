@@ -11,7 +11,15 @@ import asyncio
 
 # Centralized single-worker thread pool to serialize all SQLite write operations
 _WRITE_EXECUTOR = concurrent.futures.ThreadPoolExecutor(max_workers=1, thread_name_prefix="sqlite_writer")
-_ASYNC_SQLITE_LOCK = asyncio.Lock()
+_ASYNC_SQLITE_LOCK: asyncio.Lock | None = None
+
+
+def _get_async_sqlite_lock() -> asyncio.Lock:
+    global _ASYNC_SQLITE_LOCK
+    if _ASYNC_SQLITE_LOCK is None:
+        _ASYNC_SQLITE_LOCK = asyncio.Lock()
+    return _ASYNC_SQLITE_LOCK
+
 
 def run_sqlite_write(func: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
     """
@@ -33,7 +41,8 @@ async def async_run_sqlite_write(func: Callable[..., Any], *args: Any, **kwargs:
     """
     max_retries = 3
     delay = 0.05
-    async with _ASYNC_SQLITE_LOCK:
+    lock = _get_async_sqlite_lock()
+    async with lock:
         for attempt in range(max_retries):
             try:
                 loop = asyncio.get_running_loop()

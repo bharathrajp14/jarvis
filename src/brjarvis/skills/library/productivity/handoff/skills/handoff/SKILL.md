@@ -17,10 +17,10 @@ triggers:
 - run handoff
 - handoff skill
 tools:
-- calendar_engine
+- calendar_create_event
 - reminder
-- doc_tools
-- smart_email_sender
+- document_creator
+- send_email
 argument-hint: What will the next session be used for?
 when_to_use: Use when user requests handoff guidance or task execution.
 user-invocable: true

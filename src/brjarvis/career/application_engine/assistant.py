@@ -22,7 +22,7 @@ from ..models import (
     PlatformPolicyState,
 )
 from ..profile_manager import get_profile_manager
-from core.execution.verifier import get_universal_verifier
+from brjarvis.core.execution.verifier import get_universal_verifier
 
 logger = logging.getLogger("JARVIS.ApplicationAssistant")
 

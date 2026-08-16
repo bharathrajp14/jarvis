@@ -5,10 +5,8 @@ Re-exports SmartModelRouter, TaskProfile, ModelSelection, and AgentRouter envelo
 from __future__ import annotations
 
 import sys
-_mod = sys.modules.get(__name__)
-if _mod:
-    sys.modules["router"] = _mod
-    sys.modules["brjarvis.router"] = _mod
+if __name__ in sys.modules:
+    sys.modules.setdefault("router", sys.modules[__name__])
 
 from .task_profile import (
     TaskComplexity,

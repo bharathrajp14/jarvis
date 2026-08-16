@@ -10,10 +10,10 @@ triggers:
 - run saas metrics coach
 - saas metrics coach skill
 tools:
-- excel_tools
-- doc_tools
+- create_excel_sheet
+- document_creator
 - web_search
-- file_processor
+- batch_file_ops
 argument-hint: '[saas metrics coach details]'
 when_to_use: Use when user requests saas metrics coach guidance or task execution.
 user-invocable: true

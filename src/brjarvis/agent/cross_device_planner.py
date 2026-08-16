@@ -15,9 +15,9 @@ from enum import Enum
 from typing import Any, Callable, Dict, List, Optional
 
 from .task_state import get_task_state_manager, TaskAction, TaskState, TaskStatus
-from connectors.capabilities import get_capability_registry
-from mobile.device_controller import AndroidDeviceController
-from mobile.gateway import get_device_gateway
+from brjarvis.connectors.capabilities import get_capability_registry
+from brjarvis.integrations.mobile.device_controller import AndroidDeviceController
+from brjarvis.integrations.mobile.gateway import get_device_gateway
 
 logger = logging.getLogger("JARVIS.CrossDevicePlanner")
 

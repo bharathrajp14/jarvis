@@ -4,8 +4,8 @@ from __future__ import annotations
 import logging
 from typing import Any, Dict, Optional
 
-from core.execution.types import ExecutionStatus, VerificationOutcome
-from core.execution.verifier import get_universal_verifier
+from brjarvis.core.execution.types import ExecutionStatus, VerificationOutcome
+from brjarvis.core.execution.verifier import get_universal_verifier
 
 logger = logging.getLogger("JARVIS.SubmissionVerifier")
 

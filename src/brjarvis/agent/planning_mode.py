@@ -16,8 +16,8 @@ from .artifacts import ArtifactDocument, ArtifactMetadata, make_file_link
 
 
 def _get_planning_dir() -> Path:
-    base = Path(__file__).resolve().parent.parent
-    pdir = base / "scratch"
+    from brjarvis.core.paths import paths
+    pdir = paths.PROJECT_ROOT / "scratch"
     pdir.mkdir(parents=True, exist_ok=True)
     return pdir
 

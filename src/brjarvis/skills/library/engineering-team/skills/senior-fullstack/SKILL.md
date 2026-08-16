@@ -15,8 +15,8 @@ triggers:
 tools:
 - dev_agent
 - code_helper
-- repo_controller
-- file_processor
+- git_repo_mgr
+- batch_file_ops
 argument-hint: '[senior fullstack details]'
 when_to_use: Use when user requests senior fullstack guidance or task execution.
 user-invocable: true

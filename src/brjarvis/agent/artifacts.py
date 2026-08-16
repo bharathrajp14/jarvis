@@ -96,7 +96,8 @@ class ArtifactManager:
             if env_dir:
                 self._host_artifacts_dir = Path(env_dir).resolve()
             else:
-                self._host_artifacts_dir = (Path.home() / "Documents" / "BR-JARVIS" / "artifacts").resolve()
+                from brjarvis.core.paths import paths
+                self._host_artifacts_dir = paths.ARTIFACT_ROOT
 
         try:
             self._host_artifacts_dir.mkdir(parents=True, exist_ok=True)

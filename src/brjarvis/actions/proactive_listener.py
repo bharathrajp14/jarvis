@@ -86,6 +86,11 @@ class ProactiveMultiChannelListener:
             return "Listener is not running."
 
         self.running = False
+        if self._thread and self._thread.is_alive() and threading.current_thread() != self._thread:
+            try:
+                self._thread.join(timeout=1.0)
+            except Exception:
+                pass
         logger.info("Proactive Multi-Channel Listener stopping...")
         return "Proactive Multi-Channel Listener stopped."
 

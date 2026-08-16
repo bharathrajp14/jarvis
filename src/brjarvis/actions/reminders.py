@@ -17,9 +17,11 @@ import subprocess
 from pathlib import Path
 from datetime import datetime, timedelta
 
+from brjarvis.core.paths import paths
+
 logger = logging.getLogger("JARVIS.Reminders")
 
-_REMINDERS_FILE = Path(__file__).resolve().parent.parent / "workspace" / "reminders.json"
+_REMINDERS_FILE = paths.STATE_ROOT / "reminders.json"
 
 
 

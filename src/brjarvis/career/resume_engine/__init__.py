@@ -2,10 +2,8 @@
 from __future__ import annotations
 
 import sys
-_mod = sys.modules.get(__name__)
-if _mod:
-    sys.modules["career.resume_engine"] = _mod
-    sys.modules["brjarvis.career.resume_engine"] = _mod
+if __name__ in sys.modules:
+    sys.modules.setdefault("career.resume_engine", sys.modules[__name__])
 
 from .models import (
     ResumeSchema,

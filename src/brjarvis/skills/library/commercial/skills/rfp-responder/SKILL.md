@@ -17,10 +17,10 @@ triggers:
 - run rfp responder
 - rfp responder skill
 tools:
-- doc_tools
-- excel_tools
+- document_creator
+- create_excel_sheet
 - web_search
-- smart_email_sender
+- send_email
 argument-hint: '[rfp responder details]'
 when_to_use: Use when user requests rfp responder guidance or task execution.
 user-invocable: true

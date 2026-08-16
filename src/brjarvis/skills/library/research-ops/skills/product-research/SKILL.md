@@ -17,9 +17,9 @@ triggers:
 - product research skill
 tools:
 - web_search
-- browser_control
-- rag_library
-- excel_tools
+- browser_auto_navigate_and_extract
+- rag_query
+- create_excel_sheet
 argument-hint: '[product research details]'
 when_to_use: Use when user requests product research guidance or task execution.
 user-invocable: true

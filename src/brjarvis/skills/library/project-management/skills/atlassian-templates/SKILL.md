@@ -11,9 +11,9 @@ triggers:
 - run atlassian templates
 - atlassian templates skill
 tools:
-- doc_tools
-- excel_tools
-- calendar_engine
+- document_creator
+- create_excel_sheet
+- calendar_create_event
 - web_search
 argument-hint: '[atlassian templates details]'
 when_to_use: Use when user requests atlassian templates guidance or task execution.

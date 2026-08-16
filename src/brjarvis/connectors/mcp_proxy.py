@@ -19,7 +19,9 @@ from .base import BaseConnector, ConnectorTool
 
 logger = logging.getLogger("JARVIS.Connectors.MCPProxy")
 
-_CONFIG_PATH = Path(__file__).resolve().parent.parent / "config" / "mcp_servers.json"
+from brjarvis.core.paths import paths
+
+_CONFIG_PATH = paths.CONFIG_ROOT / "mcp_servers.json"
 
 
 class MCPServerProxy:

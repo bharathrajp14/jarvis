@@ -8,8 +8,8 @@ triggers:
 - run design system
 - design system skill
 tools:
-- doc_tools
-- file_processor
+- document_creator
+- batch_file_ops
 - code_helper
 argument-hint: '[design system details]'
 when_to_use: Use when user requests design system guidance or task execution.

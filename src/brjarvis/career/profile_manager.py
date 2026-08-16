@@ -23,11 +23,12 @@ from .models import (
     ProfileFact,
     FactSource,
 )
-from memory.canonical_db import get_canonical_db
+from brjarvis.memory.canonical_db import get_canonical_db
+from brjarvis.core.paths import paths
 
 logger = logging.getLogger("JARVIS.CareerProfileManager")
 
-_DEFAULT_STORAGE_DIR = Path(__file__).resolve().parent.parent / "workspace" / "Career"
+_DEFAULT_STORAGE_DIR = paths.CAREER_DIR
 
 
 class CareerProfileManager:

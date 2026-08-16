@@ -16,9 +16,9 @@ triggers:
 - run meeting analyzer
 - meeting analyzer skill
 tools:
-- doc_tools
-- excel_tools
-- calendar_engine
+- document_creator
+- create_excel_sheet
+- calendar_create_event
 - web_search
 argument-hint: '[meeting analyzer details]'
 when_to_use: Use when user requests meeting analyzer guidance or task execution.

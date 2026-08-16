@@ -13,9 +13,9 @@ triggers:
 - run research summarizer
 - research summarizer skill
 tools:
-- doc_tools
-- excel_tools
-- file_processor
+- document_creator
+- create_excel_sheet
+- batch_file_ops
 - web_search
 argument-hint: '[research summarizer details]'
 when_to_use: Use when user requests research summarizer guidance or task execution.

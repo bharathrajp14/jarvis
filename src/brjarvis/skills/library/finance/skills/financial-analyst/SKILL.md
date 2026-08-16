@@ -13,10 +13,10 @@ triggers:
 - run financial analyst
 - financial analyst skill
 tools:
-- excel_tools
-- doc_tools
+- create_excel_sheet
+- document_creator
 - web_search
-- file_processor
+- batch_file_ops
 argument-hint: '[financial analyst details]'
 when_to_use: Use when user requests financial analyst guidance or task execution.
 user-invocable: true

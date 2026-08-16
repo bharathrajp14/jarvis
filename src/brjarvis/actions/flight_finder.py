@@ -10,14 +10,14 @@ logger = logging.getLogger("JARVIS.Actions.FlightFinder")
 
 from config import is_windows, is_mac, is_linux
 
+from brjarvis.core.paths import paths
+
 def _get_base_dir() -> Path:
-    if getattr(sys, "frozen", False):
-        return Path(sys.executable).parent
-    return Path(__file__).resolve().parent.parent
+    return paths.PROJECT_ROOT
 
 
 BASE_DIR        = _get_base_dir()
-API_CONFIG_PATH = BASE_DIR / "config" / "api_keys.json"
+API_CONFIG_PATH = paths.CONFIG_ROOT / "api_keys.json"
 
 
 def _get_api_key() -> str:

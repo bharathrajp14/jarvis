@@ -14,9 +14,9 @@ triggers:
 - free tool strategy skill
 tools:
 - web_search
-- doc_tools
-- file_processor
-- browser_control
+- document_creator
+- batch_file_ops
+- browser_auto_navigate_and_extract
 argument-hint: '[free tool strategy details]'
 when_to_use: Use when user requests free tool strategy guidance or task execution.
 user-invocable: true

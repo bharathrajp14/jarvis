@@ -22,10 +22,12 @@ import os
 from pathlib import Path
 from typing import Any
 
-logger = logging.getLogger("JARVIS.GeminiClient")
+from brjarvis.core.paths import paths
 
-_BASE_DIR = Path(__file__).resolve().parent.parent
-_API_CONFIG = _BASE_DIR / "config" / "api_keys.json"
+logger = logging.getLogger("JARVIS.Actions.GeminiClient")
+
+_BASE_DIR = paths.PROJECT_ROOT
+_API_CONFIG = paths.CONFIG_ROOT / "api_keys.json"
 
 
 def _load_gemini_key() -> str:

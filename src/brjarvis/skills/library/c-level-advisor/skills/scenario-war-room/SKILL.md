@@ -11,10 +11,10 @@ triggers:
 - run scenario war room
 - scenario war room skill
 tools:
-- doc_tools
-- excel_tools
+- document_creator
+- create_excel_sheet
 - web_search
-- rag_library
+- rag_query
 argument-hint: '[scenario war room details]'
 when_to_use: Use when user requests scenario war room guidance or task execution.
 user-invocable: true

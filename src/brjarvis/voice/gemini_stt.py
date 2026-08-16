@@ -26,8 +26,8 @@ def get_listen_api_key() -> str:
         return key
 
     try:
-        base_dir = Path(__file__).resolve().parent.parent
-        config_path = base_dir / "config" / "api_keys.json"
+        from brjarvis.core.paths import paths
+        config_path = paths.CONFIG_ROOT / "api_keys.json"
         if config_path.exists():
             data = json.loads(config_path.read_text(encoding="utf-8"))
             listen_key = data.get("gemini_listen_api_key", "").strip()

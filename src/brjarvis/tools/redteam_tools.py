@@ -11,9 +11,12 @@ from .registry import register_tool
 
 
 def _get_scope_enforcer():
-    scope_path = Path(__file__).resolve().parent.parent / "current_scope.json"
+    from brjarvis.core.paths import paths
+    scope_path = paths.STATE_ROOT / "current_scope.json"
+    if not scope_path.exists():
+        scope_path = paths.CONFIG_ROOT / "current_scope.json"
     if scope_path.exists():
-        from redteam.scope import ScopeEnforcer
+        from brjarvis.guardian.redteam.scope import ScopeEnforcer
         return ScopeEnforcer(str(scope_path))
     return None
 

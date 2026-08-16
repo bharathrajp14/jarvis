@@ -12,9 +12,11 @@ import subprocess
 import time
 from pathlib import Path
 
-logger = logging.getLogger(__name__)
+from brjarvis.core.paths import paths
 
-SNAPSHOT_DIR = Path("workspace/snapshots")
+logger = logging.getLogger("JARVIS.Guardian.Snapshot")
+
+SNAPSHOT_DIR = paths.WORKSPACE_ROOT / "snapshots"
 
 
 class SnapshotManager:
@@ -30,10 +32,9 @@ class SnapshotManager:
         snap_path.mkdir(parents=True, exist_ok=True)
 
         # 1. Back up database files if present
-        db_files = ["memory_db/workflows.db", "memory_db/conversation_history.db"]
+        db_files = [paths.MEMORY_ROOT / "workflows.db", paths.MEMORY_ROOT / "conversation_history.db"]
         backed_up = []
-        for db in db_files:
-            db_path = Path(db)
+        for db_path in db_files:
             if db_path.exists():
                 dest = snap_path / db_path.name
                 shutil.copy2(db_path, dest)

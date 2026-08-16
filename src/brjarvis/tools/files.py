@@ -2,16 +2,17 @@
 from __future__ import annotations
 
 from pathlib import Path
+from brjarvis.core.paths import paths
 
 class FileManager:
-    def __init__(self, workspace: str = "."):
-        self.workspace = Path(workspace).resolve()
+    def __init__(self, workspace: str | Path | None = None):
+        self.workspace = Path(workspace or paths.WORKSPACE_ROOT).resolve()
 
-    def _safe(self, path: str) -> Path:
+    def _safe(self, path: str | Path) -> Path:
         p_str = str(path).replace("\\", "/")
         if p_str.startswith("/tmp") or p_str.startswith("tmp/"):
             p_rel = p_str.lstrip("/").replace("tmp/", "", 1).lstrip("/")
-            p = (self.workspace / "workspace" / "tmp" / p_rel).resolve()
+            p = (paths.TEMP_ROOT / p_rel).resolve()
         else:
             p = Path(path)
             if not p.is_absolute():

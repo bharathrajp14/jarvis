@@ -17,6 +17,8 @@ import queue
 import threading
 import time
 
+logger = logging.getLogger("JARVIS.Voice.STT")
+
 _HAS_SR = False
 try:
     import speech_recognition as sr  # type: ignore[import-not-found]

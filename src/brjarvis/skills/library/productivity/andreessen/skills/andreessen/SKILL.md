@@ -20,10 +20,10 @@ triggers:
 - run andreessen
 - andreessen skill
 tools:
-- calendar_engine
+- calendar_create_event
 - reminder
-- doc_tools
-- smart_email_sender
+- document_creator
+- send_email
 argument-hint: '[andreessen details]'
 when_to_use: Use when user requests andreessen guidance or task execution.
 user-invocable: true

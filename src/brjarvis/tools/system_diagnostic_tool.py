@@ -295,7 +295,7 @@ def system_diagnostic(args: dict) -> str:
 def runtime_diagnostics(args: dict) -> str:
     """Inspect and report tested runtime environment capabilities."""
     try:
-        from core.execution.universal_runtime import get_universal_runtime
+        from brjarvis.core.execution.universal_runtime import get_universal_runtime
         rt = get_universal_runtime()
         diag = rt.diagnose_runtime()
         
@@ -354,9 +354,9 @@ def runtime_diagnostics(args: dict) -> str:
 def dependency_diagnostics(args: dict) -> str:
     """Diagnose dependency availability in target execution environment."""
     try:
-        from core.execution.dependency_resolver import get_dependency_resolver
-        from core.execution.environment_resolver import get_environment_resolver
-        from core.execution.types import DependencyDeclaration, RuntimeType
+        from brjarvis.core.execution.dependency_resolver import get_dependency_resolver
+        from brjarvis.core.execution.environment_resolver import get_environment_resolver
+        from brjarvis.core.execution.types import DependencyDeclaration, RuntimeType
 
         dep_resolver = get_dependency_resolver()
         env_resolver = get_environment_resolver()

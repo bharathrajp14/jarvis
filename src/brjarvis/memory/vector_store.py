@@ -20,9 +20,11 @@ import uuid
 from pathlib import Path
 from typing import Optional
 
+from brjarvis.core.paths import paths
+
 logger = logging.getLogger("JARVIS.VectorMemory")
 
-_DB_PATH = Path(__file__).resolve().parent.parent / "memory_db"
+_DB_PATH = paths.MEMORY_ROOT
 
 # ── Optional dependency guard ─────────────────────────────────────────────────
 _CHROMA_AVAILABLE = False

@@ -14,9 +14,11 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
+from brjarvis.core.paths import paths
+
 logger = logging.getLogger("JARVIS.SkillEngine")
 
-SKILLS_DIR = Path(__file__).resolve().parent.parent / "workspace" / "skills"
+SKILLS_DIR = paths.WORKSPACE_ROOT / "skills"
 SKILLS_DIR.mkdir(parents=True, exist_ok=True)
 
 
@@ -62,22 +64,31 @@ class SkillSchema:
 class SkillEngine:
     """Manager and executor for declarative reusable skills."""
 
-    def __init__(self, storage_dir: Path = SKILLS_DIR):
-        self.storage_dir = storage_dir
+    def __init__(self, storage_dir: Optional[Path] = None):
+        self.storage_dir = storage_dir or (paths.PROJECT_ROOT / "skills")
         self.storage_dir.mkdir(parents=True, exist_ok=True)
         self._skills_cache: Dict[str, SkillSchema] = {}
         self.reload_skills()
 
     def reload_skills(self) -> None:
-        """Scan skills directory and load all .json / .yaml files."""
+        """Scan skills directories and load all .json declarative skill files."""
         self._skills_cache.clear()
-        for f in self.storage_dir.glob("*.json"):
-            try:
-                data = json.loads(f.read_text(encoding="utf-8"))
-                skill = SkillSchema.from_dict(data)
-                self._skills_cache[skill.name.lower()] = skill
-            except Exception as e:
-                logger.warning("Failed to load skill file %s: %s", f.name, e)
+        search_dirs = [
+            paths.PROJECT_ROOT / "skills",
+            paths.WORKSPACE_ROOT / "skills",
+            self.storage_dir,
+        ]
+        for s_dir in search_dirs:
+            if not s_dir.exists():
+                continue
+            for f in s_dir.glob("*.json"):
+                try:
+                    data = json.loads(f.read_text(encoding="utf-8"))
+                    if isinstance(data, dict) and "name" in data and "steps" in data:
+                        skill = SkillSchema.from_dict(data)
+                        self._skills_cache[skill.name.lower()] = skill
+                except Exception as e:
+                    logger.warning("Failed to load skill file %s: %s", f.name, e)
 
     def list_skills(self, tag: Optional[str] = None) -> List[SkillSchema]:
         skills = list(self._skills_cache.values())

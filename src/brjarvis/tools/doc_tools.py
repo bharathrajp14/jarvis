@@ -41,7 +41,7 @@ logger = logging.getLogger(__name__)
 from brjarvis.core.paths import paths
 
 def _get_workspace_dir() -> Path:
-    return paths.PROJECT_ROOT
+    return paths.DOCUMENTS_DIR
 
 
 # ── XML Styling Helpers for DOCX ──────────────────────────────────────────

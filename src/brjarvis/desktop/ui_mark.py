@@ -192,8 +192,12 @@ def _start_backend_server() -> threading.Thread:
             port_to_use = port
 
         try:
-            import uvicorn  # type: ignore[import-not-found]
-            from server import app as _fastapi_app  # type: ignore[import-not-found]
+            import uvicorn
+            try:
+                from apps.web.api.server import create_app
+                _fastapi_app = create_app()
+            except Exception:
+                from apps.web.api.app import app as _fastapi_app
             print(f"[Server] ⚙ Starting embedded JARVIS backend on http://127.0.0.1:{port_to_use}")
             uvicorn.run(
                 _fastapi_app,
@@ -229,8 +233,9 @@ def _generate_remote_credentials() -> tuple[str, str, str, str] | None:
     except Exception:
         pass
 
+    from brjarvis.core.paths import paths
     key = os.environ.get("JARVIS_SERVER_API_KEY")
-    api_file = _ROOT / "config" / "api_keys.json"
+    api_file = paths.CONFIG_ROOT / "api_keys.json"
     if not key and api_file.exists():
         try:
             cfg = json.loads(api_file.read_text(encoding="utf-8"))

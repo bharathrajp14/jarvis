@@ -39,14 +39,14 @@ except ImportError:
 from google import genai
 from google.genai import types as gtypes
 
+from brjarvis.core.paths import paths
+
 def _base_dir() -> Path:
-    if getattr(sys, "frozen", False):
-        return Path(sys.executable).parent
-    return Path(__file__).resolve().parent.parent
+    return paths.PROJECT_ROOT
 
 
 _BASE        = _base_dir()
-_CONFIG_PATH = _BASE / "config" / "api_keys.json"
+_CONFIG_PATH = paths.CONFIG_ROOT / "api_keys.json"
 
 
 def _load_config() -> dict:

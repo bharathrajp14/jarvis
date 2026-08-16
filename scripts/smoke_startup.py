@@ -110,10 +110,15 @@ def main() -> int:
         assert rms >= 0.0
 
     def check_pwa_assets():
-        manifest = root / "web" / "manifest.json"
-        sw = root / "web" / "sw.js"
-        assert manifest.exists(), "web/manifest.json missing"
-        assert sw.exists(), "web/sw.js missing"
+        from brjarvis.core.paths import paths
+        manifest = paths.PROJECT_ROOT / "assets" / "static" / "web" / "manifest.json"
+        sw = paths.PROJECT_ROOT / "assets" / "static" / "web" / "sw.js"
+        if not manifest.exists():
+            manifest = root / "web" / "manifest.json"
+        if not sw.exists():
+            sw = root / "web" / "sw.js"
+        assert manifest.exists(), "PWA manifest.json missing"
+        assert sw.exists(), "PWA sw.js missing"
 
     def check_di_container():
         from core.di import Container

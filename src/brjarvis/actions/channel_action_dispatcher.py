@@ -16,8 +16,8 @@ logger = logging.getLogger("JARVIS.ChannelActionDispatcher")
 class ChannelActionDispatcher:
     """Handles user approval choices for queued proactive channel messages."""
 
-    def __init__(self):
-        pass
+    def __init__(self, listener: Optional[Any] = None):
+        self._listener = listener
 
     def process_user_decision(
         self,
@@ -38,8 +38,10 @@ class ChannelActionDispatcher:
         Returns:
             Status result dictionary
         """
-        from actions.proactive_listener import get_proactive_listener
-        listener = get_proactive_listener()
+        listener = self._listener
+        if listener is None:
+            from actions.proactive_listener import get_proactive_listener
+            listener = get_proactive_listener()
 
         # Find target pending item
         target_item = None

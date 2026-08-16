@@ -9,9 +9,9 @@ import json
 import sqlite3
 import threading
 import time
-from pathlib import Path
+from brjarvis.core.paths import paths
 
-LESSONS_DB_FILE = Path("memory_db/lessons.db")
+LESSONS_DB_FILE = paths.MEMORY_ROOT / "lessons.db"
 
 
 class LessonStore:

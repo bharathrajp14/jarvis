@@ -16,8 +16,10 @@ from .registry import register_tool
 logger = logging.getLogger(__name__)
 
 
+from brjarvis.core.paths import paths
+
 def _get_workspace_dir() -> Path:
-    return Path(__file__).resolve().parent.parent
+    return paths.PROJECT_ROOT
 
 
 @register_tool(

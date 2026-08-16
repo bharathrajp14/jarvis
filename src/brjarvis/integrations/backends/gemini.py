@@ -104,7 +104,7 @@ class GeminiBackend(BaseBackend):
         if self._explicit_model:
             return self._explicit_model
         try:
-            from config.complexity_router import select_model_for_prompt
+            from brjarvis.config.complexity_router import select_model_for_prompt
             chosen = select_model_for_prompt(messages=messages, system=system)
             if chosen == "gemini-3.5-flash":
                 return "gemini-3.6-flash-high"
@@ -119,7 +119,7 @@ class GeminiBackend(BaseBackend):
     def complete(self, messages: list, system: str = "", tools: list = None, max_tokens: int = None) -> str:
         """Standard completion — used by the ReAct orchestrator with flexible token budget."""
         try:
-            from config.complexity_router import (
+            from brjarvis.config.complexity_router import (
                 analyze_complexity,
                 get_recommended_token_limit,
                 prune_messages_to_fit_budget,

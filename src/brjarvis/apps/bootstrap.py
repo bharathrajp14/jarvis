@@ -156,23 +156,51 @@ def launch_cli():
     run_cli()
 
 
+def find_available_port(start_port: int = 8000, max_attempts: int = 20) -> int:
+    import socket
+    for p in range(start_port, start_port + max_attempts):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            try:
+                s.bind(("127.0.0.1", p))
+                return p
+            except OSError:
+                continue
+    return start_port
+
+
 def launch_web_server(open_url: Optional[str] = None):
-    port = int(os.environ.get("PORT", os.environ.get("BR_SERVER_PORT", "8000")))
-    target_url = open_url or f"http://127.0.0.1:{port}"
+    requested_port = int(os.environ.get("PORT", os.environ.get("BR_SERVER_PORT", "8000")))
+    port = find_available_port(requested_port)
+    if port != requested_port:
+        console.print(f"[yellow]⚠ Port {requested_port} is busy. Automatically re-routing to port {port}.[/]")
+
+    base_url = f"http://127.0.0.1:{port}"
+    if open_url:
+        if "/career" in open_url:
+            target_url = f"{base_url}/career"
+        elif "/galaxy" in open_url:
+            target_url = f"{base_url}/galaxy"
+        else:
+            target_url = open_url
+    else:
+        target_url = base_url
+
     console.print("\n[bold cyan]▶ Starting BR Web Core Server[/]")
-    console.print(f"  [green]Server Running on[/] http://127.0.0.1:{port}")
+    console.print(f"  [green]Server Running on[/] {base_url}")
     console.print(f"  [green]Interface URL[/] Access [cyan]{target_url}[/]")
     console.print("[dim]Press Ctrl+C to shut down.[/]\n")
 
     import uvicorn
-    from apps.web.api.app import app
+    try:
+        from apps.web.api.server import create_app
+        app = create_app()
+    except Exception:
+        from apps.web.api.app import app
     uvicorn.run(app, host="127.0.0.1", port=port, log_level="info")
 
 
 def launch_career_studio(open_url: Optional[str] = None):
-    port = int(os.environ.get("PORT", os.environ.get("BR_SERVER_PORT", "8000")))
-    target_url = open_url or f"http://127.0.0.1:{port}/career"
-    launch_web_server(open_url=target_url)
+    launch_web_server(open_url="/career")
 
 
 def launch_voice():
@@ -186,16 +214,116 @@ def launch_voice():
         console.print(f"[red]Error launching Voice Assistant: {e}[/]")
 
 
+def show_help():
+    banner()
+    table = Table(title="BR JARVIS MK40.2+ Commands & Modes", title_style="bold cyan")
+    table.add_column("Command / Argument", style="bold green")
+    table.add_column("Description")
+
+    table.add_row("python start.py", "Display system status and diagnostics overview")
+    table.add_row("python start.py doctor [--fix]", "Run comprehensive diagnostic audit and dependency checks")
+    table.add_row("python start.py cli", "Launch interactive CLI REPL session")
+    table.add_row("python start.py web", "Launch BR Web Server and REST API (:8000)")
+    table.add_row("python start.py career", "Launch Career OS Studio and CRM portal")
+    table.add_row("python start.py sync", "Synchronize Career CRM applications and spreadsheets")
+    table.add_row("python start.py voice", "Launch Voice Assistant and HUD interface")
+    table.add_row("python start.py <query>", "Execute a one-shot natural language query or task")
+    table.add_row("python start.py --help", "Show this help and usage message")
+
+    console.print(table)
+    console.print()
+
+
+def interactive_menu() -> int:
+    """Display an interactive multi-option selection menu when run without CLI arguments."""
+    show_status()
+    console.print("\n[bold cyan]⚡ SELECT AN OPERATIONAL MODE TO LAUNCH ⚡[/]")
+
+    menu_table = Table(box=None, show_header=False, padding=(0, 2))
+    menu_table.add_column("Key", style="bold cyan", justify="right")
+    menu_table.add_column("Option", style="bold white")
+    menu_table.add_column("Description", style="dim")
+
+    menu_table.add_row("[1]", "🌐 Web Dashboard & 3D Galaxy", "FastAPI web control plane & Three.js graph (:8000)")
+    menu_table.add_row("[2]", "💼 Career OS Studio & ATS Scorer", "Resume engine, job matching & CRM portal (/career)")
+    menu_table.add_row("[3]", "🎙️ Cyberpunk Voice Assistant HUD", "PySide6 real-time audio waveform & EdgeTTS")
+    menu_table.add_row("[4]", "💻 Interactive CLI Terminal REPL", "Command session with 30+ slash commands")
+    menu_table.add_row("[5]", "🪟 Floating Desktop HUD Widget", "Compact desktop widget with quick triggers")
+    menu_table.add_row("[6]", "📊 System Status & Health", "Environment, active AI backends & registries")
+    menu_table.add_row("[7]", "🩺 Comprehensive Diagnostics (Doctor)", "Diagnostic audit with auto-repair advice")
+    menu_table.add_row("[8]", "⚡ Lifecycle Smoke Verification", "12 non-destructive startup invariant tests")
+    menu_table.add_row("[9]", "🎤 Microphone & Audio Hardware Probe", "Audio driver, input/output device test")
+    menu_table.add_row("[10]", "🔄 Sync Career CRM & Spreadsheets", "Synchronize applications and Excel tracker")
+    menu_table.add_row("[0]", "🚪 Exit", "Close launcher session")
+
+    console.print(menu_table)
+    console.print()
+
+    try:
+        choice = Prompt.ask(
+            "[bold green]▶ Enter option number[/]",
+            default="1",
+            choices=["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "0", "q", "exit", "quit", "web", "career", "voice", "cli", "status", "doctor", "smoke", "audio", "sync"]
+        ).strip().lower()
+    except (KeyboardInterrupt, EOFError):
+        console.print("\n[dim]Session closed.[/]")
+        return 0
+
+    if choice in ("1", "web"):
+        launch_web_server()
+    elif choice in ("2", "career", "careeros"):
+        launch_career_studio()
+    elif choice in ("3", "voice", "hud"):
+        launch_voice()
+    elif choice in ("4", "cli", "repl", "terminal"):
+        launch_cli()
+    elif choice in ("5", "floating", "widget"):
+        try:
+            from brjarvis.desktop.float_widget import main as float_main
+            return float_main() or 0
+        except Exception as exc:
+            console.print(f"[red]Error launching Floating Widget: {exc}[/]")
+            return 1
+    elif choice in ("6", "status", "info"):
+        show_status()
+    elif choice in ("7", "doctor", "check"):
+        rep = run_diagnostics_audit(auto_repair=False)
+        show_doctor(rep)
+    elif choice in ("8", "smoke", "verify"):
+        try:
+            from scripts.smoke_startup import main as smoke_main
+            return smoke_main()
+        except Exception as exc:
+            console.print(f"[red]Error executing smoke verification: {exc}[/]")
+            return 1
+    elif choice in ("9", "audio", "sound", "mic"):
+        try:
+            from scripts.probe_voice_env import main as probe_main
+            return probe_main()
+        except Exception as exc:
+            console.print(f"[red]Error executing audio probe: {exc}[/]")
+            return 1
+    elif choice in ("10", "sync"):
+        from brjarvis.career.crm.database import get_career_crm_db
+        db = get_career_crm_db()
+        console.print(f"[green]✓ Career CRM synchronized. Total applications: {len(db.list_applications())}[/]")
+    elif choice in ("0", "q", "exit", "quit"):
+        console.print("[dim]Exiting BR JARVIS. Have a great day![/]")
+        return 0
+    return 0
+
+
 def main() -> int:
     """Canonical Application Bootstrap CLI Dispatcher."""
     args = sys.argv[1:]
     if not args:
-        show_status()
-        return 0
+        return interactive_menu()
 
     cmd = args[0].lower().strip().lstrip("-")
     if cmd in ("status", "info"):
         show_status()
+    elif cmd in ("help", "h", "?"):
+        show_help()
     elif cmd in ("doctor", "check"):
         auto_fix = "--fix" in args or "-f" in args
         rep = run_diagnostics_audit(auto_repair=auto_fix)

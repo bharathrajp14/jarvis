@@ -12,10 +12,10 @@ triggers:
 - run board meeting
 - board meeting skill
 tools:
-- doc_tools
-- excel_tools
+- document_creator
+- create_excel_sheet
 - web_search
-- rag_library
+- rag_query
 argument-hint: '[board meeting details]'
 when_to_use: Use when user requests board meeting guidance or task execution.
 user-invocable: true

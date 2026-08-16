@@ -16,9 +16,9 @@ triggers:
 - run senior pm
 - senior pm skill
 tools:
-- doc_tools
-- excel_tools
-- calendar_engine
+- document_creator
+- create_excel_sheet
+- calendar_create_event
 - web_search
 argument-hint: '[senior pm details]'
 when_to_use: Use when user requests senior pm guidance or task execution.

@@ -42,9 +42,13 @@ class PathSecurityPolicy:
     def __init__(
         self,
         workspace_root: Optional[Union[str, Path]] = None,
-        allowed_roots: Optional[List[Union[str, Path]]] = None
+        allowed_roots: Optional[List[Union[str, Path]]] = None,
     ):
-        base = Path(workspace_root) if workspace_root else Path.cwd()
+        if workspace_root:
+            base = Path(workspace_root)
+        else:
+            from brjarvis.core.paths import paths
+            base = paths.WORKSPACE_ROOT
         try:
             self.workspace_root = base.resolve()
         except Exception:

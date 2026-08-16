@@ -324,8 +324,8 @@ def get_canva_capabilities():
 @router.get("/download/{file_path:path}")
 def download_career_file(file_path: str):
     p = Path(file_path).resolve()
-    # Path traversal check
-    workspace_dir = Path(__file__).resolve().parent.parent / "workspace"
+    from brjarvis.core.paths import paths
+    workspace_dir = paths.WORKSPACE_ROOT
     if not str(p).startswith(str(workspace_dir)) and not p.exists():
         raise HTTPException(status_code=403, detail="Access denied or file does not exist.")
 
@@ -507,7 +507,8 @@ def sync_spreadsheet():
 
 @router.get("/spreadsheet/download")
 def download_master_spreadsheet():
-    p = Path(__file__).resolve().parent.parent / "BR_JARVIS_Career_Tracker.xlsx"
+    from brjarvis.core.paths import paths
+    p = paths.DOCUMENTS_DIR / "BR_JARVIS_Career_Tracker.xlsx"
     if not p.exists():
         from career.spreadsheet.projection import get_spreadsheet_projection
         get_spreadsheet_projection().project_database_to_excel()

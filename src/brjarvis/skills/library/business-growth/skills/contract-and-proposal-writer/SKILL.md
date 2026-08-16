@@ -13,10 +13,10 @@ triggers:
 - run contract and proposal writer
 - contract and proposal writer skill
 tools:
-- doc_tools
-- excel_tools
+- document_creator
+- create_excel_sheet
 - web_search
-- browser_control
+- browser_auto_navigate_and_extract
 argument-hint: '[contract and proposal writer details]'
 when_to_use: Use when user requests contract and proposal writer guidance or task
   execution.

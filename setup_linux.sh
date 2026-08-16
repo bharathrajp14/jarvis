@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# BR JARVIS MK37 — Universal Multi-Distro Linux Installer & Setup Helper
+# BR JARVIS MK40.2+ — Universal Multi-Distro Linux Installer & Setup Helper
 # Supports: Ubuntu/Debian/Mint, Arch/Manjaro, Fedora/RHEL, openSUSE, Alpine
 # ==============================================================================
 
 set -e
 
 echo -e "\033[1;36m========================================================\033[0m"
-echo -e "\033[1;36m   BR JARVIS MK37 — Multi-Distro Linux Setup Assistant  \033[0m"
+echo -e "\033[1;36m   BR JARVIS MK40.2+ — Multi-Distro Linux Setup Helper   \033[0m"
 echo -e "\033[1;36m========================================================\033[0m"
 
 # Detect Distro & Package Manager

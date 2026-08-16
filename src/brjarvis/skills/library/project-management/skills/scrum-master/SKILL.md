@@ -15,9 +15,9 @@ triggers:
 - run scrum master
 - scrum master skill
 tools:
-- doc_tools
-- excel_tools
-- calendar_engine
+- document_creator
+- create_excel_sheet
+- calendar_create_event
 - web_search
 argument-hint: '[scrum master details]'
 when_to_use: Use when user requests scrum master guidance or task execution.

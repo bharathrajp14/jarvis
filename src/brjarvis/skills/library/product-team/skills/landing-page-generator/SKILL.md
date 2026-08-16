@@ -16,9 +16,9 @@ triggers:
 - run landing page generator
 - landing page generator skill
 tools:
-- doc_tools
-- excel_tools
-- file_processor
+- document_creator
+- create_excel_sheet
+- batch_file_ops
 - web_search
 argument-hint: '[landing page generator details]'
 when_to_use: Use when user requests landing page generator guidance or task execution.

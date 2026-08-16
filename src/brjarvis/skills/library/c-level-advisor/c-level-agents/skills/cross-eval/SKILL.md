@@ -11,10 +11,10 @@ triggers:
 - run cross eval
 - cross eval skill
 tools:
-- doc_tools
-- excel_tools
+- document_creator
+- create_excel_sheet
 - web_search
-- rag_library
+- rag_query
 argument-hint: '[cross eval details]'
 when_to_use: Use when user requests cross eval guidance or task execution.
 user-invocable: true

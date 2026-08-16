@@ -6,7 +6,7 @@ from typing import Optional, Dict, Any
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from actions.routine_engine import get_routine_engine, TriggerType
+from brjarvis.actions.routine_engine import get_routine_engine, TriggerType
 
 router = APIRouter(tags=["Routines"])
 

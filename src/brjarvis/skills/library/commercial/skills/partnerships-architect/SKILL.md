@@ -16,10 +16,10 @@ triggers:
 - run partnerships architect
 - partnerships architect skill
 tools:
-- doc_tools
-- excel_tools
+- document_creator
+- create_excel_sheet
 - web_search
-- smart_email_sender
+- send_email
 argument-hint: '[partnerships architect details]'
 when_to_use: Use when user requests partnerships architect guidance or task execution.
 user-invocable: true

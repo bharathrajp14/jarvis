@@ -13,10 +13,10 @@ triggers:
 - run deep work
 - deep work skill
 tools:
-- calendar_engine
+- calendar_create_event
 - reminder
-- doc_tools
-- smart_email_sender
+- document_creator
+- send_email
 argument-hint: '[today''s task list]'
 when_to_use: Use when user requests deep work guidance or task execution.
 user-invocable: true

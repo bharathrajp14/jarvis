@@ -18,9 +18,9 @@ triggers:
 - research ops skills skill
 tools:
 - web_search
-- browser_control
-- rag_library
-- excel_tools
+- browser_auto_navigate_and_extract
+- rag_query
+- create_excel_sheet
 argument-hint: '[research ops skills details]'
 when_to_use: Use when user requests research ops skills guidance or task execution.
 user-invocable: true

@@ -17,9 +17,9 @@ triggers:
 - run code to prd
 - code to prd skill
 tools:
-- doc_tools
-- excel_tools
-- file_processor
+- document_creator
+- create_excel_sheet
+- batch_file_ops
 - web_search
 argument-hint: '[code to prd details]'
 when_to_use: Use when user requests code to prd guidance or task execution.

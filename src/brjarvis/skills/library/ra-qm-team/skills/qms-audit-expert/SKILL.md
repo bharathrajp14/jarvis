@@ -18,10 +18,10 @@ triggers:
 - external audit prep
 - audit schedule
 tools:
-- doc_tools
-- excel_tools
-- rag_library
-- file_processor
+- document_creator
+- create_excel_sheet
+- rag_query
+- batch_file_ops
 argument-hint: '[qms audit expert details]'
 when_to_use: Use when user requests qms audit expert guidance or task execution.
 user-invocable: true

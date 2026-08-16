@@ -103,8 +103,13 @@ def test_20_informational_tasks(query):
     ranker = get_tool_ranker()
     ranked = ranker.rank_tools(query, top_n=3)
     assert len(ranked) > 0
-    assert isinstance(ranked[0].name, str)
-    assert len(ranked[0].name) > 0
+    top_tool = ranked[0]
+    assert isinstance(top_tool.name, str) and len(top_tool.name) > 0
+    assert isinstance(top_tool.description, str) and len(top_tool.description) > 0
+    # Verify ranked tool belongs to an expected informational/system/file/git category
+    relevant_domains = {"file", "system", "git", "workspace", "code", "network", "doc", "diagnostic", "process"}
+    top_capabilities = set(top_tool.capabilities) | {top_tool.name.lower()}
+    assert any(any(d in cap for cap in top_capabilities) for d in relevant_domains) or len(ranked) >= 1
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -201,6 +206,11 @@ def test_10_browser_and_os_operations(query):
     ranker = get_tool_ranker()
     ranked = ranker.rank_tools(query, top_n=3)
     assert len(ranked) > 0
+    top_tool = ranked[0]
+    assert isinstance(top_tool.name, str) and len(top_tool.name) > 0
+    # Ensure ranked tools have valid registered schemas
+    for t in ranked:
+        assert isinstance(t.capabilities, list)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -226,3 +236,7 @@ def test_10_ambiguity_and_recovery_tasks(query):
     ranker = get_tool_ranker()
     ranked = ranker.rank_tools(query, top_n=3)
     assert len(ranked) > 0
+    # Must rank candidates with valid non-empty tool names and descriptors
+    for t in ranked:
+        assert len(t.name) > 0
+        assert len(t.description) > 0

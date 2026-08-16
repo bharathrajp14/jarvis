@@ -13,10 +13,10 @@ triggers:
 - run fda consultant specialist
 - fda consultant specialist skill
 tools:
-- doc_tools
-- excel_tools
-- rag_library
-- file_processor
+- document_creator
+- create_excel_sheet
+- rag_query
+- batch_file_ops
 argument-hint: '[fda consultant specialist details]'
 when_to_use: Use when user requests fda consultant specialist guidance or task execution.
 user-invocable: true

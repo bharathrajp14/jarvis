@@ -11,15 +11,15 @@ from ._gemini_client import get_gemini_client, get_proxy_model
 logger = logging.getLogger("JARVIS.Actions.DevAgent")
 
 
+from brjarvis.core.paths import paths
+
 def get_base_dir():
-    if getattr(sys, "frozen", False):
-        return Path(sys.executable).parent
-    return Path(__file__).resolve().parent.parent
+    return paths.PROJECT_ROOT
 
 
 BASE_DIR         = get_base_dir()
-API_CONFIG_PATH  = BASE_DIR / "config" / "api_keys.json"
-PROJECTS_DIR     = Path.home() / "Desktop" / "JarvisProjects"
+API_CONFIG_PATH  = paths.CONFIG_ROOT / "api_keys.json"
+PROJECTS_DIR     = paths.WORKSPACE_ROOT / "projects"
 MAX_FIX_ATTEMPTS = 5
 MODEL_PLANNER    = get_proxy_model("gemini-3.6-flash-high", "gemini-2.5-flash")
 MODEL_WRITER     = get_proxy_model("gemini-3.5-flash", "gemini-2.5-flash")

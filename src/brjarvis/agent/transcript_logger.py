@@ -15,8 +15,8 @@ from typing import Dict, Any, List, Optional
 
 
 def _get_log_dir() -> Path:
-    base = Path(__file__).resolve().parent.parent
-    ldir = base / "logs" / "transcripts"
+    from brjarvis.core.paths import paths
+    ldir = paths.LOG_ROOT / "transcripts"
     ldir.mkdir(parents=True, exist_ok=True)
     return ldir
 

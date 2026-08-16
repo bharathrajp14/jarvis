@@ -12,10 +12,10 @@ triggers:
 - run context engine
 - context engine skill
 tools:
-- doc_tools
-- excel_tools
+- document_creator
+- create_excel_sheet
 - web_search
-- rag_library
+- rag_query
 argument-hint: '[context engine details]'
 when_to_use: Use when user requests context engine guidance or task execution.
 user-invocable: true

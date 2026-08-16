@@ -4,10 +4,8 @@ from __future__ import annotations
 from typing import Optional
 
 import sys
-_mod = sys.modules.get(__name__)
-if _mod:
-    sys.modules["core.terminal"] = _mod
-    sys.modules["brjarvis.core.terminal"] = _mod
+if __name__ in sys.modules:
+    sys.modules.setdefault("core.terminal", sys.modules[__name__])
 
 from ..runtime import ApplicationRuntime
 from .commands import SlashCommandHandler, VALID_MODES

@@ -1,15 +1,16 @@
 from __future__ import annotations
 
 import logging
+import os
 import threading
 from dataclasses import dataclass
 from typing import Optional
 
 from .runtime import CoreRuntime, get_runtime
-from events.bus import EventBus, get_event_bus
-from events.types import SystemEvent
-from orchestrator import JarvisOrchestrator
-from router import AgentRouter, load_available_backends
+from brjarvis.events.bus import EventBus, get_event_bus
+from brjarvis.events.types import SystemEvent
+from brjarvis.orchestrator import JarvisOrchestrator
+from brjarvis.router import AgentRouter, load_available_backends
 
 logger = logging.getLogger(__name__)
 
@@ -161,7 +162,7 @@ class CoreBootstrapper:
             "initialized": cls._initialized,
             "platform": platform.system(),
             "python_version": sys.version.split()[0],
-            "base_dir": str(base_dir),
+            "base_dir": str(paths.PROJECT_ROOT),
             "api_keys": api_keys,
         }
 

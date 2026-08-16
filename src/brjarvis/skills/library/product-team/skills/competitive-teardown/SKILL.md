@@ -16,9 +16,9 @@ triggers:
 - run competitive teardown
 - competitive teardown skill
 tools:
-- doc_tools
-- excel_tools
-- file_processor
+- document_creator
+- create_excel_sheet
+- batch_file_ops
 - web_search
 argument-hint: '[competitive teardown details]'
 when_to_use: Use when user requests competitive teardown guidance or task execution.

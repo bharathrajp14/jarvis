@@ -1,4 +1,3 @@
-# core/sanitizer.py
-from security.sanitizer import InputSanitizer
+from brjarvis.security.sanitizer import InputSanitizer
 
 __all__ = ["InputSanitizer"]

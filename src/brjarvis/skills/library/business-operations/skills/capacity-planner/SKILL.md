@@ -16,10 +16,10 @@ triggers:
 - run capacity planner
 - capacity planner skill
 tools:
-- doc_tools
-- excel_tools
-- calendar_engine
-- file_processor
+- document_creator
+- create_excel_sheet
+- calendar_create_event
+- batch_file_ops
 argument-hint: '[capacity planner details]'
 when_to_use: Use when user requests capacity planner guidance or task execution.
 user-invocable: true

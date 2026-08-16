@@ -30,9 +30,11 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
+from brjarvis.core.paths import paths
+
 logger = logging.getLogger("JARVIS.RoutineEngine")
 
-DB_DIR = Path(__file__).resolve().parent.parent / "workspace" / "routines"
+DB_DIR = paths.WORKSPACE_ROOT / "routines"
 DB_DIR.mkdir(parents=True, exist_ok=True)
 DB_PATH = DB_DIR / "routines.db"
 

@@ -22,8 +22,10 @@ from typing import Callable
 logger = logging.getLogger("JARVIS.AgentExecutor")
 
 
-# Ensure project root in path
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from brjarvis.core.paths import paths
+
+if str(paths.PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(paths.PROJECT_ROOT))
 
 from .planner import create_plan, replan
 from .error_handler import analyze_error, generate_fix, ErrorDecision
@@ -37,7 +39,7 @@ def _call_tool(tool: str, parameters: dict, speak: Callable | None = None) -> st
     All tool name aliasing (e.g., browser_control → open_app) is handled
     centrally in tools/registry.execute_tool() to avoid duplication.
     """
-    from tools.registry import execute_tool
+    from brjarvis.tools.registry import execute_tool
     
     params = dict(parameters or {})
     

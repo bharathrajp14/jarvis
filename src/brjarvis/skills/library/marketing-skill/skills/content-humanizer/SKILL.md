@@ -14,9 +14,9 @@ triggers:
 - content humanizer skill
 tools:
 - web_search
-- doc_tools
-- file_processor
-- browser_control
+- document_creator
+- batch_file_ops
+- browser_auto_navigate_and_extract
 argument-hint: '[content humanizer details]'
 when_to_use: Use when user requests content humanizer guidance or task execution.
 user-invocable: true

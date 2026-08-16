@@ -1,0 +1,43 @@
+{
+  "name": "workspace_code_audit",
+  "version": "1.0.0",
+  "description": "Exhaustive automated workspace AST syntax compilation, vulnerability detection, and code health audit.",
+  "inputs": [
+    "target_dir"
+  ],
+  "steps": [
+    {
+      "step_id": "step_1",
+      "tool": "audit_codebase",
+      "description": "Scan codebase for syntax errors and AST compilation",
+      "parameters": {
+        "target_dir": "{target_dir}"
+      },
+      "target_device": "pc",
+      "target_app": "",
+      "depends_on": []
+    },
+    {
+      "step_id": "step_2",
+      "tool": "audit_prompt_security",
+      "description": "Inspect prompt security defenses and guardrails",
+      "parameters": {},
+      "target_device": "pc",
+      "target_app": "",
+      "depends_on": [
+        "step_1"
+      ]
+    }
+  ],
+  "verification": [
+    "steps_completed"
+  ],
+  "tags": [
+    "audit",
+    "security",
+    "ast",
+    "quality"
+  ],
+  "scope": "workspace",
+  "author": "BR JARVIS"
+}

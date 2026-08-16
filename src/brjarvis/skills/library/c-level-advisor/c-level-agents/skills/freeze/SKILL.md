@@ -11,10 +11,10 @@ triggers:
 - run freeze
 - freeze skill
 tools:
-- doc_tools
-- excel_tools
+- document_creator
+- create_excel_sheet
 - web_search
-- rag_library
+- rag_query
 argument-hint: '[freeze details]'
 when_to_use: Use when user requests freeze guidance or task execution.
 user-invocable: true

@@ -13,10 +13,10 @@ triggers:
 - run gdpr dsgvo expert
 - gdpr dsgvo expert skill
 tools:
-- doc_tools
-- excel_tools
-- rag_library
-- file_processor
+- document_creator
+- create_excel_sheet
+- rag_query
+- batch_file_ops
 argument-hint: '[gdpr dsgvo expert details]'
 when_to_use: Use when user requests gdpr dsgvo expert guidance or task execution.
 user-invocable: true

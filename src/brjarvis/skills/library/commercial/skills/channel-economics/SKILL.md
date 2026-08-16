@@ -17,10 +17,10 @@ triggers:
 - run channel economics
 - channel economics skill
 tools:
-- doc_tools
-- excel_tools
+- document_creator
+- create_excel_sheet
 - web_search
-- smart_email_sender
+- send_email
 argument-hint: '[channel economics details]'
 when_to_use: Use when user requests channel economics guidance or task execution.
 user-invocable: true

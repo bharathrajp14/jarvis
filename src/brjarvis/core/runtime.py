@@ -12,8 +12,8 @@ from .health import HealthMonitor
 from .lifecycle import LifecycleManager
 from .logging import setup_logger
 from .process import ProcessSupervisor
-from events.bus import EventBus, get_event_bus
-from events.types import SystemEvent
+from brjarvis.events.bus import EventBus, get_event_bus
+from brjarvis.events.types import SystemEvent
 
 logger = logging.getLogger("JARVIS.Runtime")
 
@@ -72,7 +72,7 @@ class ApplicationRuntime:
     @property
     def router(self) -> Any:
         if self._router is None:
-            from router import AgentRouter, load_available_backends
+            from brjarvis.router import AgentRouter, load_available_backends
             backends = load_available_backends()
             self._router = AgentRouter(backends)
             self.container.register_instance(AgentRouter, self._router)
@@ -81,7 +81,7 @@ class ApplicationRuntime:
     @property
     def orchestrator(self) -> Any:
         if self._orchestrator is None:
-            from orchestrator import JarvisOrchestrator
+            from brjarvis.orchestrator import JarvisOrchestrator
             self._orchestrator = JarvisOrchestrator(self.router, use_vector_memory=self._use_vector_memory)
             self.container.register_instance(JarvisOrchestrator, self._orchestrator)
             
@@ -99,7 +99,7 @@ class ApplicationRuntime:
     def gateway(self) -> Any:
         if self._gateway is None:
             try:
-                from gateway.model_gateway import ModelGateway
+                from brjarvis.gateway.model_gateway import ModelGateway
                 self._gateway = ModelGateway()
             except Exception as e:
                 self.logger.debug("ModelGateway init notice: %s", e)
@@ -109,7 +109,7 @@ class ApplicationRuntime:
     def tool_runtime(self) -> Any:
         if self._tool_runtime is None:
             try:
-                from tools.tool_runtime import ToolRuntime
+                from brjarvis.tools.tool_runtime import ToolRuntime
                 self._tool_runtime = ToolRuntime()
             except Exception as e:
                 self.logger.debug("ToolRuntime init notice: %s", e)
@@ -119,7 +119,7 @@ class ApplicationRuntime:
     def memory(self) -> Any:
         if self._memory is None:
             try:
-                from memory.unified_memory import UnifiedMemoryManager
+                from brjarvis.memory.unified_memory import UnifiedMemoryManager
                 self._memory = UnifiedMemoryManager()
             except Exception as e:
                 self.logger.debug("UnifiedMemoryManager init notice: %s", e)
@@ -129,7 +129,7 @@ class ApplicationRuntime:
     def security(self) -> Any:
         if self._security is None:
             try:
-                from security.policy_engine import SecurityPolicyEngine
+                from brjarvis.security.policy_engine import SecurityPolicyEngine
                 self._security = SecurityPolicyEngine()
             except Exception as e:
                 self.logger.debug("SecurityPolicyEngine init notice: %s", e)
@@ -139,7 +139,7 @@ class ApplicationRuntime:
     def guardian(self) -> Any:
         if self._guardian is None:
             try:
-                from guardian.core import GuardianCore
+                from brjarvis.guardian.core import GuardianCore
                 self._guardian = GuardianCore()
             except Exception as e:
                 self.logger.debug("GuardianCore init notice: %s", e)
@@ -148,7 +148,7 @@ class ApplicationRuntime:
     @property
     def voice(self) -> Any:
         try:
-            from voice.assistant import get_voice_assistant
+            from brjarvis.voice.assistant import get_voice_assistant
             return get_voice_assistant()
         except Exception as e:
             self.logger.debug("VoiceAssistant init notice: %s", e)
@@ -157,7 +157,7 @@ class ApplicationRuntime:
     @property
     def vision(self) -> Any:
         try:
-            from vision.engine import get_vision_engine
+            from brjarvis.vision.engine import get_vision_engine
             return get_vision_engine()
         except Exception as e:
             self.logger.debug("VisionEngine init notice: %s", e)
@@ -183,7 +183,7 @@ class ApplicationRuntime:
         """Boot the master runtime and publish system startup event."""
         _ = self.orchestrator
         await self.lifecycle.startup()
-        from core.version import VERSION
+        from brjarvis.core.version import VERSION
         self.event_bus.publish(SystemEvent(
             topic="system.startup",
             state="RUNNING",

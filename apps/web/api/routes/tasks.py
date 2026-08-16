@@ -7,8 +7,8 @@ from typing import List, Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from agent.task_state import get_task_state_manager
-from agent.task_queue import get_queue, TaskPriority
+from brjarvis.agent.task_state import get_task_state_manager
+from brjarvis.agent.task_queue import get_queue, TaskPriority
 
 logger = logging.getLogger("JARVIS.API.Tasks")
 router = APIRouter(tags=["Tasks"])
@@ -77,7 +77,7 @@ async def get_agent_task(task_id: str):
 @router.post("/api/agent/tasks")
 async def create_agent_task(req: CreateTaskRequest):
     """Create and trigger an autonomous task via AgentExecutor."""
-    from agent.executor import AgentExecutor
+    from brjarvis.agent.executor import AgentExecutor
     mgr = get_task_state_manager()
     task = mgr.create_task(req.goal, active_devices=req.active_devices)
 

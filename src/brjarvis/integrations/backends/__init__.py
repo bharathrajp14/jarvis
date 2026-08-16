@@ -7,10 +7,8 @@ when their underlying SDK packages aren't installed.
 from __future__ import annotations
 
 import sys
-_mod = sys.modules.get(__name__)
-if _mod:
-    sys.modules["backends"] = _mod
-    sys.modules["brjarvis.integrations.backends"] = _mod
+if __name__ in sys.modules:
+    sys.modules.setdefault("backends", sys.modules[__name__])
 
 from .base import BaseBackend
 from .gemini import GeminiBackend

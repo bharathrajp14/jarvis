@@ -561,7 +561,7 @@ class StageDecomposer:
 
                 # ── 9. Action Verification ────────────────────────────────────
                 elif stage.capability == StageCapability.ACTION_VERIFICATION:
-                    from core.execution.verifier import DocumentVerifier, FileVerifier
+                    from brjarvis.core.execution.verifier import DocumentVerifier, FileVerifier
                     art_path = collected_context["exported_artifacts"][-1] if collected_context["exported_artifacts"] else ""
                     if art_path and Path(art_path).exists():
                         v_res = DocumentVerifier.verify_document(art_path)

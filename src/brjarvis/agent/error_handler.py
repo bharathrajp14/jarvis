@@ -12,14 +12,14 @@ from enum import Enum
 logger = logging.getLogger(__name__)
 
 
+from brjarvis.core.paths import paths
+
 def get_base_dir() -> Path:
-    if getattr(sys, "frozen", False):
-        return Path(sys.executable).parent
-    return Path(__file__).resolve().parent.parent
+    return paths.PROJECT_ROOT
 
 
 BASE_DIR        = get_base_dir()
-API_CONFIG_PATH = BASE_DIR / "config" / "api_keys.json"
+API_CONFIG_PATH = paths.CONFIG_ROOT / "api_keys.json"
 
 
 class ErrorDecision(Enum):

@@ -15,10 +15,10 @@ triggers:
 - run commercial skills
 - commercial skills skill
 tools:
-- doc_tools
-- excel_tools
+- document_creator
+- create_excel_sheet
 - web_search
-- smart_email_sender
+- send_email
 argument-hint: '[commercial skills details]'
 when_to_use: Use when user requests commercial skills guidance or task execution.
 user-invocable: true
