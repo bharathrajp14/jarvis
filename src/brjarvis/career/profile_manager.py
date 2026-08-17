@@ -139,7 +139,7 @@ class CareerProfileManager:
 
         # 3. Synchronize key facts to UnifiedMemory
         try:
-            from career.memory_integration import sync_profile_to_memory
+            from brjarvis.career.memory_integration import sync_profile_to_memory
             sync_profile_to_memory(profile)
         except Exception as mem_err:
             logger.debug(f"Memory sync notice: {mem_err}")

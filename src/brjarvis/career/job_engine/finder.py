@@ -21,7 +21,7 @@ from .models import JobMatchResult, SearchFilters
 from .ranker import JobRanker
 from ..models import CareerProfile, JobPosting
 from ..profile_manager import get_profile_manager
-from memory.canonical_db import get_canonical_db
+from brjarvis.memory.canonical_db import get_canonical_db
 
 logger = logging.getLogger("JARVIS.JobFinder")
 

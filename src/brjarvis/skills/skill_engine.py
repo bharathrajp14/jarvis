@@ -153,7 +153,7 @@ class SkillEngine:
         if not skill:
             return {"success": False, "error": f"Skill '{skill_name}' not found"}
 
-        from tools.registry import execute_tool
+        from brjarvis.tools.registry import execute_tool
         dispatch_fn = tool_caller or execute_tool
 
         results = {}

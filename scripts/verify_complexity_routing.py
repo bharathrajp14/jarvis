@@ -1,12 +1,22 @@
 
-import logging
-import sys
-import os
-import time
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from backends.gemini import GeminiBackend
+# scripts/verify_complexity_routing.py — Verify Dynamic Model Switching
+from __future__ import annotations
 
-logger = logging.getLogger(__name__)
+import logging
+import os
+import sys
+import time
+from pathlib import Path
+
+logging.basicConfig(level=logging.INFO, format="%(message)s")
+logger = logging.getLogger("JARVIS.ComplexityRouting")
+
+root_dir = Path(__file__).resolve().parent.parent
+for p in [str(root_dir / "src"), str(root_dir)]:
+    if p not in sys.path:
+        sys.path.insert(0, p)
+
+from brjarvis.integrations.backends.gemini import GeminiBackend
 
 logger.info("=== VERIFYING DYNAMIC COMPLEXITY-BASED MODEL SWITCHING ===")
 

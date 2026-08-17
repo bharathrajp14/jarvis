@@ -36,7 +36,7 @@ from .computer_control import (
     _clear_field,
 )
 
-from core.native_bridge import fast_hash, grid_transform
+from brjarvis.core.native_bridge import fast_hash, grid_transform
 
 _OS = platform.system()
 
@@ -46,7 +46,7 @@ def _base_dir() -> Path:
     return paths.PROJECT_ROOT
 
 
-from config import get_gemini_api_key as _get_api_key
+from brjarvis.config import get_gemini_api_key as _get_api_key
 
 
 
@@ -374,7 +374,7 @@ def _snap_target_to_ocr_or_accessibility(px_x: int | None, px_y: int | None, tho
         return px_x, px_y
 
     try:
-        from vision.ocr_engine import OCREngine
+        from brjarvis.vision.ocr_engine import OCREngine
         ocr = OCREngine()
         raw_bytes = _take_screenshot_bytes()
         if raw_bytes:
@@ -594,7 +594,7 @@ class LiveOSController:
         if not api_key:
             return "Error: No API key available for Live OS Vision Controller."
 
-        from config.models import get_model_for_task
+        from brjarvis.config.models import get_model_for_task
         model_name = get_model_for_task("vision") or "gemini-3.6-flash"
 
         screen_w, screen_h = _screen_size()

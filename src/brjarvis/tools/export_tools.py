@@ -7,7 +7,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from .registry import register_tool
-from agent.artifacts import get_artifact_manager
+from brjarvis.agent.artifacts import get_artifact_manager
 
 
 @register_tool(
@@ -23,7 +23,7 @@ from agent.artifacts import get_artifact_manager
     }
 )
 def tool_export_chat(args: dict) -> str:
-    from actions.chat_export import export_chat
+    from brjarvis.actions.chat_export import export_chat
     result = export_chat(
         format=args["format"],
         max_turns=args.get("max_turns", 100),

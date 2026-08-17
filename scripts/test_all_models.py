@@ -1,10 +1,22 @@
 
+# scripts/test_all_models.py — Test All Proxy Models
+from __future__ import annotations
+
 import json
+import logging
 import os
 import time
-from openai import OpenAI
 
-BASE_URL = "http://127.0.0.1:8045/v1"
+logging.basicConfig(level=logging.INFO, format="%(message)s")
+logger = logging.getLogger("JARVIS.TestAllModels")
+
+try:
+    from openai import OpenAI
+except ImportError:
+    logger.error("openai package is not installed. Install with: pip install openai")
+    raise SystemExit(1)
+
+BASE_URL = os.environ.get("BRJARVIS_PROXY_BASE_URL", os.environ.get("OPENAI_BASE_URL", "http://127.0.0.1:8045/v1"))
 API_KEY = os.environ.get("OPENAI_API_KEY", "") or "local-key"
 
 client = OpenAI(
@@ -20,8 +32,6 @@ try:
         logger.info(f"  - {m.id}")
 except Exception as e:
     logger.warning(f"client.models.list() failed: {e}")
-
-logger = logging.getLogger(__name__)
 
 models_to_test = [
     "claude-opus-4-6",

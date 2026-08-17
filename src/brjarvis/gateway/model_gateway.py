@@ -206,7 +206,7 @@ class ModelGateway:
     def complete(
         self,
         messages: list[dict],
-        model: str = "gemini-3.6-flash-high",
+        model: str = "gemini-3.1-pro-high",
         system: str = "",
         tools: Optional[list[dict]] = None,
         max_tokens: Optional[int] = None,

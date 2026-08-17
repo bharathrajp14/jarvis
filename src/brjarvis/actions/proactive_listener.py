@@ -143,7 +143,7 @@ class ProactiveMultiChannelListener:
     def _check_unread_emails(self):
         """Poll unread emails and classify intent."""
         try:
-            from actions.smart_email_sender import get_smart_email_sender
+            from brjarvis.actions.smart_email_sender import get_smart_email_sender
             sender_engine = get_smart_email_sender()
             # Mock or actual check
             # For demonstration & resilience, check IMAP or environment state
@@ -180,7 +180,7 @@ class ProactiveMultiChannelListener:
     def _check_whatsapp_messages(self):
         """Poll incoming WhatsApp messages."""
         try:
-            from actions.whatsapp_automation import get_whatsapp_automation
+            from brjarvis.actions.whatsapp_automation import get_whatsapp_automation
             wa = get_whatsapp_automation()
             unread_msgs = wa.fetch_unread_messages() if hasattr(wa, "fetch_unread_messages") else []
             for msg in unread_msgs:
@@ -255,7 +255,7 @@ class ProactiveMultiChannelListener:
 
         # Voice notification fallback
         try:
-            from voice.tts import TextToSpeechEngine
+            from brjarvis.voice.tts import TextToSpeechEngine
             tts = TextToSpeechEngine()
             tts.speak(msg)
         except Exception:

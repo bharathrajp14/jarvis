@@ -62,6 +62,35 @@ async def broadcast_ws_event(event_type: str, payload: dict, conversation_id: Op
         asyncio.create_task(safe_ws_send(ws, data))
 
 
+def _forward_eventbus_to_ws(event: Any) -> None:
+    """Forward EventBus events to active WebSockets."""
+    try:
+        topic = getattr(event, "topic", "event")
+        payload = (
+            event.model_dump()
+            if hasattr(event, "model_dump")
+            else (event.dict() if hasattr(event, "dict") else getattr(event, "payload", {}))
+        )
+        cid = getattr(event, "session_id", None)
+        tid = getattr(event, "task_id", None)
+        # Schedule broadcast on running loop
+        try:
+            loop = asyncio.get_running_loop()
+            loop.create_task(broadcast_ws_event(topic, payload, conversation_id=cid, task_id=tid))
+        except RuntimeError:
+            pass
+    except Exception:
+        pass
+
+
+try:
+    _bus = get_event_bus()
+    for topic_pattern in ("agent.*", "tool.*", "permission.*", "verification.*", "artifact.*", "task.*", "session.*"):
+        _bus.subscribe(topic_pattern, _forward_eventbus_to_ws)
+except Exception as _sub_err:
+    logger.debug("EventBus WS forwarder subscription notice: %s", _sub_err)
+
+
 def _check_ws_auth(websocket: WebSocket) -> bool:
     """Validate WebSocket handshake credentials against server security policy."""
     if not SERVER_API_KEY:

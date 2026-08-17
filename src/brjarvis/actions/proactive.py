@@ -57,7 +57,7 @@ class ProactiveEngine:
         Build a context snapshot for Gemini.
         Rotates through three focus areas so proactive messages don't repeat.
         """
-        from memory.memory_manager import format_memory_for_prompt
+        from brjarvis.memory.memory_manager import format_memory_for_prompt
 
         now      = datetime.now()
         hour     = now.hour

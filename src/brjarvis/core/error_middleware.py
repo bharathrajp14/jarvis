@@ -24,7 +24,7 @@ class ErrorMiddleware:
 
         # Log lesson to LessonStore
         try:
-            from memory.lessons import LessonStore
+            from brjarvis.memory.lessons import LessonStore
             ls = LessonStore()
             ls.add_lesson(
                 topic=f"System Error: {exc_type.__name__}",

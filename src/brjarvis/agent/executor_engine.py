@@ -8,10 +8,10 @@ import time
 from typing import Any, Callable, Dict, List, Optional
 from .types import ExecutionReport, GoalGraph, StepStatus, TaskStepNode
 from .task_state import get_task_state_manager, TaskStatus
-from core.runtime import get_runtime
-from events.bus import get_event_bus
-from events.types import TaskEvent
-from permissions import evaluate_action_policy, ActionDecision, RiskLevel
+from brjarvis.core.runtime import get_runtime
+from brjarvis.events.bus import get_event_bus
+from brjarvis.events.types import TaskEvent
+from brjarvis.security.permissions import evaluate_action_policy, ActionDecision, RiskLevel
 
 logger = logging.getLogger("JARVIS.ExecutorEngine")
 

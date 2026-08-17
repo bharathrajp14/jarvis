@@ -130,8 +130,8 @@ def _strip_json(text: str) -> str:
 def _decompose_via_llm(goal: str) -> Optional[GoalSpec]:
     """Attempt LLM-based decomposition. Returns None on any failure."""
     try:
-        from gateway.execution import get_execution_service
-        from router.task_profile import TaskComplexity, TaskProfile
+        from brjarvis.gateway.execution import get_execution_service
+        from brjarvis.router.task_profile import TaskComplexity, TaskProfile
 
         exec_service = get_execution_service()
         profile = TaskProfile(

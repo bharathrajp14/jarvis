@@ -208,7 +208,7 @@ def get_tool_prompt_block() -> str:
         try:
             from brjarvis.skills import load_skills
         except ImportError:
-            from skills import load_skills
+            from brjarvis.skills import load_skills
         skills = [s for s in load_skills() if getattr(s, "user_invocable", True)]
         if skills:
             skills_lines = [
@@ -780,7 +780,7 @@ def _import_plugins(*, full: bool = False, plugin_name: str | None = None):
 
             # Load custom plugins
             try:
-                from plugins import load_custom_plugins
+                from brjarvis.plugins import load_custom_plugins
                 load_custom_plugins()
             except Exception as exc:
                 logger.debug("[ToolRegistry] Custom plugins load notice: %s", exc)

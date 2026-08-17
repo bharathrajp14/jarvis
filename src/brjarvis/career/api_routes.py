@@ -375,7 +375,7 @@ class FollowupDraftRequest(BaseModel):
 
 @router.post("/email/process")
 def process_career_email(req: EmailProcessRequest):
-    from career.email_intelligence.service import get_email_career_intelligence
+    from brjarvis.career.email_intelligence.service import get_email_career_intelligence
     service = get_email_career_intelligence()
     res = service.process_incoming_email(
         provider=req.provider,
@@ -389,14 +389,14 @@ def process_career_email(req: EmailProcessRequest):
 
 @router.post("/email/sync")
 def sync_career_emails(limit: int = 15):
-    from career.email_intelligence.service import get_email_career_intelligence
+    from brjarvis.career.email_intelligence.service import get_email_career_intelligence
     service = get_email_career_intelligence()
     return service.sync_career_emails(limit=limit)
 
 
 @router.get("/email/events")
 def list_email_events(limit: int = 100):
-    from career.crm.database import get_career_crm_db
+    from brjarvis.career.crm.database import get_career_crm_db
     db = get_career_crm_db()
     records = db.list_email_records(limit=limit)
     return {"count": len(records), "events": [r.to_dict() for r in records]}
@@ -404,7 +404,7 @@ def list_email_events(limit: int = 100):
 
 @router.get("/crm/events")
 def list_career_events(limit: int = 50):
-    from career.crm.database import get_career_crm_db
+    from brjarvis.career.crm.database import get_career_crm_db
     db = get_career_crm_db()
     events = db.list_recent_events(limit=limit)
     return {"count": len(events), "events": [e.to_dict() for e in events]}
@@ -412,7 +412,7 @@ def list_career_events(limit: int = 50):
 
 @router.get("/crm/events/{application_id}")
 def get_application_events(application_id: str):
-    from career.crm.database import get_career_crm_db
+    from brjarvis.career.crm.database import get_career_crm_db
     db = get_career_crm_db()
     events = db.get_events_for_application(application_id)
     return {"application_id": application_id, "count": len(events), "events": [e.to_dict() for e in events]}
@@ -420,7 +420,7 @@ def get_application_events(application_id: str):
 
 @router.get("/interviews")
 def list_interviews(application_id: Optional[str] = None):
-    from career.crm.database import get_career_crm_db
+    from brjarvis.career.crm.database import get_career_crm_db
     db = get_career_crm_db()
     interviews = db.list_interviews(application_id=application_id)
     return {"count": len(interviews), "interviews": [i.to_dict() for i in interviews]}
@@ -428,8 +428,8 @@ def list_interviews(application_id: Optional[str] = None):
 
 @router.post("/interviews")
 def schedule_interview(req: InterviewCreateRequest):
-    from career.calendar_engine.manager import get_career_calendar_manager
-    from career.models import InterviewSchedule
+    from brjarvis.career.calendar_engine.manager import get_career_calendar_manager
+    from brjarvis.career.models import InterviewSchedule
     import uuid
 
     schedule = InterviewSchedule(
@@ -453,7 +453,7 @@ def schedule_interview(req: InterviewCreateRequest):
 
 @router.get("/offers")
 def list_offers(application_id: Optional[str] = None):
-    from career.crm.database import get_career_crm_db
+    from brjarvis.career.crm.database import get_career_crm_db
     db = get_career_crm_db()
     offers = db.list_offers(application_id=application_id)
     return {"count": len(offers), "offers": [o.to_dict() for o in offers]}
@@ -461,9 +461,9 @@ def list_offers(application_id: Optional[str] = None):
 
 @router.post("/offers/confirm")
 def confirm_offer(req: OfferConfirmRequest):
-    from career.crm.database import get_career_crm_db
-    from career.models import OfferStatus
-    from career.spreadsheet.projection import get_spreadsheet_projection
+    from brjarvis.career.crm.database import get_career_crm_db
+    from brjarvis.career.models import OfferStatus
+    from brjarvis.career.spreadsheet.projection import get_spreadsheet_projection
 
     if not req.user_confirmed:
         raise HTTPException(status_code=400, detail="Offer confirmation requires user_confirmed=True.")
@@ -482,7 +482,7 @@ def confirm_offer(req: OfferConfirmRequest):
 
 @router.get("/followups")
 def list_followups(status: Optional[str] = None):
-    from career.crm.database import get_career_crm_db
+    from brjarvis.career.crm.database import get_career_crm_db
     db = get_career_crm_db()
     followups = db.list_followups(status=status)
     return {"count": len(followups), "followups": [f.to_dict() for f in followups]}
@@ -490,7 +490,7 @@ def list_followups(status: Optional[str] = None):
 
 @router.post("/followups/draft")
 def generate_followup_draft_endpoint(req: FollowupDraftRequest):
-    from career.crm.followup_engine import get_followup_engine
+    from brjarvis.career.crm.followup_engine import get_followup_engine
     engine = get_followup_engine()
     try:
         draft = engine.generate_followup_draft(req.followup_id, candidate_name=req.candidate_name)

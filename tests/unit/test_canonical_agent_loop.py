@@ -1,0 +1,82 @@
+# tests/unit/test_canonical_agent_loop.py — Unit Tests for Canonical AgentLoop
+from __future__ import annotations
+
+import pytest
+from unittest.mock import MagicMock
+from brjarvis.agent.agent_loop import AgentLoop
+from brjarvis.agent.session import AgentSession
+from brjarvis.events.bus import get_event_bus
+from brjarvis.security.permission_request import PermissionDecision
+
+
+class MockRouter:
+    def __init__(self, responses: list[str]):
+        self.responses = responses
+        self.call_count = 0
+
+    def run(self, profile, history, system_prompt):
+        resp = self.responses[self.call_count % len(self.responses)]
+        self.call_count += 1
+        return resp
+
+
+class TestCanonicalAgentLoop:
+    """Test suite for AgentLoop execution, verification, and event emission."""
+
+    def test_fast_path_execution(self):
+        sess = AgentSession(session_id="test-loop-fast")
+        loop = AgentLoop(session=sess)
+
+        # "open chrome" or volume commands trigger fast path
+        res = loop.run_turn("volume up")
+        assert res is not None
+        assert len(sess.turns) >= 2
+        assert sess.turns[-1].role == "assistant"
+
+    def test_react_turn_with_tool_call(self):
+        sess = AgentSession(session_id="test-loop-react")
+        loop = AgentLoop(session=sess)
+
+        # Mock router that calls file_read then gives response
+        mock_router = MockRouter([
+            '```tool_call\n{"tool": "file_read", "args": {"path": "readme.md"}}\n```',
+            "I read the readme file and found project details.",
+        ])
+
+        events_received = []
+        bus = get_event_bus()
+
+        def _handler(ev):
+            events_received.append(ev.topic)
+
+        bus.subscribe("agent.*", _handler)
+        bus.subscribe("tool.*", _handler)
+        bus.subscribe("verification.*", _handler)
+
+        res = loop.run_turn("Read the readme file", router=mock_router)
+
+        assert "read the readme" in res.lower() or "completed" in res.lower() or len(res) > 0
+        assert len(sess.tool_history) >= 1
+        assert sess.tool_history[0]["tool_name"] == "file_read"
+        assert len(sess.turns) == 2
+
+        # Verify event stream
+        assert "agent.started" in events_received
+        assert "agent.completed" in events_received
+        assert "tool.started" in events_received
+
+    def test_action_verification(self, tmp_path):
+        sess = AgentSession(session_id="test-loop-ver")
+        loop = AgentLoop(session=sess)
+
+        test_file = tmp_path / "verified_output.txt"
+        test_file.write_text("JARVIS verified content", encoding="utf-8")
+
+        verified, evidence = loop.verify_action("file_write", {"path": str(test_file)}, "Created")
+        assert verified is True
+        assert "verified" in evidence.lower() or "created" in evidence.lower()
+
+        # Non-existent file
+        verified_missing, err_msg = loop.verify_action("file_write", {"path": str(tmp_path / "missing.txt")}, "Created")
+        assert verified_missing is False
+        assert "does not exist" in err_msg.lower() or "failed" in err_msg.lower()

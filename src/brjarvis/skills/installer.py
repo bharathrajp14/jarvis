@@ -9,7 +9,7 @@ Supports:
   - Skill management: install, list, remove, update
 
 Usage:
-    from skills.installer import install_skill_pack, list_installed, remove_skill
+    from brjarvis.skills.installer import install_skill_pack, list_installed, remove_skill
     
 CLI:
     python -m skills.installer install claude-skills

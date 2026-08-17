@@ -278,7 +278,7 @@ class ATSEngine:
         resume_tokens: Set[str],
         job_description: str,
     ) -> Tuple[float, List[str], List[str], float]:
-        from career.resume_engine.tailoring import ResumeTailoringEngine
+        from brjarvis.career.resume_engine.tailoring import ResumeTailoringEngine
         jd_tokens = ResumeTailoringEngine.extract_keywords(job_description)
 
         if not jd_tokens:

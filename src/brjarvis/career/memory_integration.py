@@ -16,8 +16,8 @@ def sync_profile_to_memory(profile: CareerProfile) -> None:
     Stores structured facts in L4 Persistent Memory and vectors in L3.
     """
     try:
-        from memory.unified_memory import UnifiedMemoryManager
-        from core.runtime import get_runtime
+        from brjarvis.memory.unified_memory import UnifiedMemoryManager
+        from brjarvis.core.runtime import get_runtime
 
         runtime = get_runtime()
         mem_mgr: Optional[UnifiedMemoryManager] = None
@@ -68,7 +68,7 @@ def sync_profile_to_memory(profile: CareerProfile) -> None:
 def sync_application_to_memory(app: ApplicationRecord) -> None:
     """Record verified application outcome in UnifiedMemory."""
     try:
-        from memory.unified_memory import UnifiedMemoryManager
+        from brjarvis.memory.unified_memory import UnifiedMemoryManager
         mem_mgr = UnifiedMemoryManager()
 
         status_val = app.application_status.value if hasattr(app.application_status, "value") else str(app.application_status)
@@ -88,7 +88,7 @@ def sync_career_memory(event_type: str, application: Optional[ApplicationRecord]
     Ingest discrete career milestone into UnifiedMemory L4 store.
     """
     try:
-        from memory.unified_memory import UnifiedMemoryManager
+        from brjarvis.memory.unified_memory import UnifiedMemoryManager
         mem_mgr = UnifiedMemoryManager()
 
         app_info = f" ({application.company} — {application.job_title})" if application else ""
@@ -110,7 +110,7 @@ def analyze_career_learning() -> Dict[str, Any]:
     Analyze historical application performance to infer evidence-backed career insights.
     Compares response and interview conversion rates across resume variants and job platforms.
     """
-    from career.crm.database import get_career_crm_db
+    from brjarvis.career.crm.database import get_career_crm_db
     db = get_career_crm_db()
     apps = db.list_applications(limit=1000)
 

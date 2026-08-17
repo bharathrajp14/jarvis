@@ -12,14 +12,14 @@ import email
 import os
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from tools.registry import register_tool
+from brjarvis.tools.registry import register_tool
 
 logger = logging.getLogger(__name__)
 
 
 def _sync_auth():
     try:
-        from actions.gmail_auth import get_gmail_auth_manager
+        from brjarvis.actions.gmail_auth import get_gmail_auth_manager
         get_gmail_auth_manager()
     except Exception as e:
         logger.debug('Suppressed exception: %s', e)

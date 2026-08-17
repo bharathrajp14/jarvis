@@ -209,7 +209,7 @@ class SubAgentManager:
         def _run():
             task.status = "running"
             try:
-                from memory.working import WorkingMemory
+                from brjarvis.memory.working import WorkingMemory
                 sub_memory = WorkingMemory()
 
                 base_system = orchestrator._build_system()
@@ -226,7 +226,7 @@ class SubAgentManager:
                 if profile not in orchestrator.router.backends:
                     profile = orchestrator.router.default
 
-                from tools.registry import parse_tool_call, execute_tool
+                from brjarvis.tools.registry import parse_tool_call, execute_tool
                 import re
 
                 final_response = ""
@@ -333,7 +333,7 @@ class SubAgentManager:
         try:
             from brjarvis.tools.registry import get_orchestrator_ref
         except ImportError:
-            from tools.registry import get_orchestrator_ref
+            from brjarvis.tools.registry import get_orchestrator_ref
         orch = get_orchestrator_ref()
 
         task = self.spawn(

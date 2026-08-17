@@ -203,10 +203,78 @@ class DeterministicIntentEngine:
         # `clean` is defined here so Pyright can resolve it in the block below.
         clean: str = text.lower().strip().rstrip(".!?")
 
+        # 000z. Match System Power Control (Shutdown / Power Off / Restart / Reboot / Lock / Sleep)
+        _poweroff_keys = (
+            "poweroff", "power off", "shutdown", "shut down", "turn off pc", "turn off the pc",
+            "turn off computer", "turn off the computer", "turn off system", "turn off the system",
+            "power down", "power down pc", "power down system"
+        )
+        if any(k in clean for k in _poweroff_keys) and not any(neg in clean for neg in ("don't", "dont", "cancel", "how", "why", "abort", "not")):
+            try:
+                import subprocess
+                import sys
+                if sys.platform == "win32":
+                    subprocess.Popen(["shutdown", "/s", "/f", "/t", "3"], shell=False)
+                elif sys.platform == "darwin":
+                    subprocess.Popen(["osascript", "-e", 'tell application "System Events" to shut down'], shell=False)
+                else:
+                    subprocess.Popen(["systemctl", "poweroff"], shell=False)
+                return {
+                    "executed": True,
+                    "intent": "system_power",
+                    "target": "shutdown",
+                    "result": "⚡ Powering down system in 3 seconds... Goodbye, Sir!",
+                    "tokens_saved": 2500,
+                }
+            except Exception as e:
+                logger.warning("Poweroff execution error: %s", e)
+
+        _restart_keys = (
+            "restart pc", "restart the pc", "restart computer", "restart the computer",
+            "restart system", "restart the system", "reboot pc", "reboot the pc",
+            "reboot computer", "reboot the computer", "reboot system", "reboot the system"
+        )
+        if any(k in clean for k in _restart_keys) and not any(neg in clean for neg in ("don't", "dont", "cancel", "how", "why")):
+            try:
+                import subprocess
+                import sys
+                if sys.platform == "win32":
+                    subprocess.Popen(["shutdown", "/r", "/f", "/t", "3"], shell=False)
+                elif sys.platform == "darwin":
+                    subprocess.Popen(["osascript", "-e", 'tell application "System Events" to restart'], shell=False)
+                else:
+                    subprocess.Popen(["systemctl", "reboot"], shell=False)
+                return {
+                    "executed": True,
+                    "intent": "system_power",
+                    "target": "restart",
+                    "result": "🔄 Restarting system in 3 seconds...",
+                    "tokens_saved": 2500,
+                }
+            except Exception as e:
+                logger.warning("Restart execution error: %s", e)
+
+        _lock_keys = ("lock pc", "lock the pc", "lock computer", "lock screen", "lock the screen", "lock workstation")
+        if any(k in clean for k in _lock_keys):
+            try:
+                import ctypes
+                import sys
+                if sys.platform == "win32":
+                    ctypes.windll.user32.LockWorkStation()
+                return {
+                    "executed": True,
+                    "intent": "system_power",
+                    "target": "lock",
+                    "result": "🔒 Workstation locked.",
+                    "tokens_saved": 1500,
+                }
+            except Exception as e:
+                logger.warning("Lock execution error: %s", e)
+
         # 000a. Match System Hardware / Performance Diagnostics (e.g. "show cpu", "cpu usage", "ram usage", "system status", "system health")
         if clean.startswith(("show cpu", "cpu usage", "cpu status", "show ram", "ram usage", "show memory", "memory usage", "memory status", "system status", "system health", "check system health")):
             try:
-                from tools.system_health import system_health_action
+                from brjarvis.tools.system_health import system_health_action
                 metrics = system_health_action({})
                 return {
                     "executed": True,
@@ -271,23 +339,6 @@ class DeterministicIntentEngine:
             except Exception as e:
                 pass
 
-        # 000d. Match Lock Screen (e.g. "lock screen", "lock pc", "lock workstation")
-        if clean in ("lock screen", "lock pc", "lock workstation", "lock computer"):
-            try:
-                import sys
-                import os
-                if sys.platform == "win32" and not os.environ.get("PYTEST_CURRENT_TEST"):
-                    import ctypes
-                    ctypes.windll.user32.LockWorkStation()
-                return {
-                    "executed": True,
-                    "intent": "lock_screen",
-                    "target": "workstation",
-                    "result": "Workstation locked successfully (0-Token Instant Execution).",
-                    "tokens_saved": 1500,
-                }
-            except Exception as e:
-                pass
 
         # 00a. Match Online Productivity Suite Intent (e.g. "open excel sheets in online", "excel online", "word online", "google sheets")
         clean_no_punct = clean.replace(".", " ").replace(",", " ")
@@ -437,7 +488,7 @@ class DeterministicIntentEngine:
             return None
 
         # Guard: Defer multi-word commands (longer than 10 words) unless starting with specific execution verbs
-        if len(text.split()) > 10 and not any(clean.startswith(prefix) for prefix in ["/run", "open ", "launch ", "remember ", "recall "]):
+        if len(clean.split()) > 10 and not any(clean.startswith(prefix) for prefix in ["/run", "open ", "launch ", "remember ", "recall "]):
             return None
 
         # Guard: Defer location or timezone-specific time/date queries to the LLM clock tool
@@ -448,7 +499,7 @@ class DeterministicIntentEngine:
         # 0. Match Weather Intent (e.g., "what is the weather today", "weather in London", "temperature today")
         if any(w in clean for w in ["weather", "temperature"]):
             try:
-                from actions.weather_report import weather_action
+                from brjarvis.actions.weather_report import weather_action
                 city_match = re.search(r"weather\s+(?:in|for|at)\s+([a-z\s]+)", clean)
                 city = ""
                 if city_match:
@@ -484,7 +535,7 @@ class DeterministicIntentEngine:
         # 0c. Match System Cleanup Intent
         if any(phrase in clean for phrase in ["clear system cache", "clean temporary files", "clean temp files", "free disk space", "clear cache"]):
             try:
-                from actions.system_cleanup import execute_system_cleanup
+                from brjarvis.actions.system_cleanup import execute_system_cleanup
                 clean_msg = execute_system_cleanup(clean_temp=True, clean_pycache=True)
                 return {
                     "executed": True,
@@ -498,7 +549,7 @@ class DeterministicIntentEngine:
         # 0d. Match Process Memory Optimizer Intent
         if any(phrase in clean for phrase in ["find memory hogs", "top memory processes", "high memory processes", "process optimization", "memory hog"]):
             try:
-                from actions.process_optimizer import run_process_optimization
+                from brjarvis.actions.process_optimizer import run_process_optimization
                 opt_msg = run_process_optimization(threshold_mb=400.0)
                 return {
                     "executed": True,
@@ -512,7 +563,7 @@ class DeterministicIntentEngine:
         # 0e. Match Persistent Memory Save & Recall Intent
         if clean.startswith("remember ") or "remember that " in clean:
             try:
-                from memory.persistent_store import save_memory, MemoryEntry
+                from brjarvis.memory.persistent_store import save_memory, MemoryEntry
                 fact = re.sub(r"^(?:remember that|remember)\s+", "", clean, flags=re.IGNORECASE).strip()
                 if fact:
                     slug = re.sub(r"[^\w]+", "_", fact[:30]).strip("_")
@@ -529,7 +580,7 @@ class DeterministicIntentEngine:
                 logger.debug('Suppressed exception: %s', e)
         if any(clean.startswith(prefix) or prefix in clean for prefix in ["recall ", "search memory for ", "what do you remember"]):
             try:
-                from memory.memory_context import find_relevant_memories
+                from brjarvis.memory.memory_context import find_relevant_memories
                 query = re.sub(r"^(?:recall|search memory for|what do you remember about|what do you remember)\s*", "", clean, flags=re.IGNORECASE).strip()
                 if query:
                     mems = find_relevant_memories(query)
@@ -603,7 +654,7 @@ class DeterministicIntentEngine:
         # 0h. Match Session History Intent
         if any(phrase in clean for phrase in ["summarize session history", "get session history", "recent session history", "session history"]):
             try:
-                from history.session_store import SessionStore
+                from brjarvis.history.session_store import SessionStore
                 ss = SessionStore()
                 history = ss.recent(n=5)
                 res_str = "\n".join([f"• Session {h.get('id', '')[:8]}: {h.get('turn_count', 0)} turns ({h.get('mode', 'general')} mode)" for h in history]) if history else "No previous sessions recorded."
@@ -634,7 +685,7 @@ class DeterministicIntentEngine:
         # 0j. Match Codebase Excel Analysis Export Intent
         if any(w in clean for w in ["excel", "sheet", "xlsx", "spreadsheet"]) and any(w in clean for w in ["analysis", "analisis", "audit", "export", "project", "codebase"]):
             try:
-                from tools.excel_tools import analyze_project_to_excel
+                from brjarvis.tools.excel_tools import analyze_project_to_excel
                 excel_res = analyze_project_to_excel({})
                 return {
                     "executed": True,
@@ -644,7 +695,6 @@ class DeterministicIntentEngine:
                     "tokens_saved": 2500,
                 }
             except Exception as e:
-                pass
                 pass
 
         if any(phrase in clean for phrase in ["mute audio", "unmute audio", "mute volume", "unmute volume", "mute", "unmute"]):
@@ -726,7 +776,7 @@ class DeterministicIntentEngine:
             try:
                 import gc
                 gc.collect()
-                from actions.process_optimizer import run_process_optimization
+                from brjarvis.actions.process_optimizer import run_process_optimization
                 opt_msg = run_process_optimization(threshold_mb=200.0)
                 return {
                     "executed": True,
@@ -812,7 +862,7 @@ class DeterministicIntentEngine:
         # 0q. Match Memory Store Summary Intent
         if any(phrase in clean for phrase in ["memory store summary", "persistent memory count", "memory index count", "memory count"]):
             try:
-                from memory.memory_context import scan_all_memories
+                from brjarvis.memory.memory_context import scan_all_memories
                 headers = scan_all_memories()
                 scopes = set(h.scope for h in headers)
                 return {
@@ -846,8 +896,8 @@ class DeterministicIntentEngine:
         # 0s. Match Workspace Git Status Intent
         if any(phrase in clean for phrase in ["check git status", "git status", "repository status", "git info"]):
             try:
-                out = subprocess.check_output(["git", "status", "-s"], text=True, timeout=3.0).strip()
-                branch = subprocess.check_output(["git", "branch", "--show-current"], text=True, timeout=2.0).strip()
+                out = subprocess.check_output(["git", "status", "-s"], text=True, encoding="utf-8", errors="replace", timeout=3.0).strip()
+                branch = subprocess.check_output(["git", "branch", "--show-current"], text=True, encoding="utf-8", errors="replace", timeout=2.0).strip()
                 status_msg = f"🌿 Git Repository Status (Branch: '{branch}'):\n" + (out if out else "• Working tree clean (No uncommitted changes).")
                 return {
                     "executed": True,
@@ -874,7 +924,7 @@ class DeterministicIntentEngine:
         # 0v. Match Recent Git Commit History Intent
         if any(phrase in clean for phrase in ["recent commits", "git log", "commit history", "recent git commits"]):
             try:
-                out = subprocess.check_output(["git", "log", "-n", "5", "--oneline"], text=True, timeout=3.0).strip()
+                out = subprocess.check_output(["git", "log", "-n", "5", "--oneline"], text=True, encoding="utf-8", errors="replace", timeout=3.0).strip()
                 res_lines = [f"• {line}" for line in out.splitlines()] if out else ["No commit history found."]
                 return {
                     "executed": True,
@@ -1004,7 +1054,7 @@ class DeterministicIntentEngine:
         # 0ad. Match Active Git Branch Intent
         if any(phrase in clean for phrase in ["current git branch", "what is the git branch", "git branch", "active branch", "current branch", "check branch", "check current branch"]):
             try:
-                branch = subprocess.check_output(["git", "branch", "--show-current"], text=True, timeout=2.0).strip()
+                branch = subprocess.check_output(["git", "branch", "--show-current"], text=True, encoding="utf-8", errors="replace", timeout=2.0).strip()
                 return {
                     "executed": True,
                     "intent": "git_branch",
@@ -1034,7 +1084,7 @@ class DeterministicIntentEngine:
         # 0af. Match System Clipboard Inspection Intent
         if any(phrase in clean for phrase in ["read clipboard", "check clipboard", "clipboard content", "what is on clipboard"]):
             try:
-                from actions.clipboard_utils import get_clipboard_text
+                from brjarvis.actions.clipboard_utils import get_clipboard_text
                 clip_text = get_clipboard_text()
                 if not clip_text:
                     return {
@@ -1346,7 +1396,7 @@ class DeterministicIntentEngine:
         # Do NOT intercept complex prompts containing pipelines, custom filenames, or multi-step requests
         if any(marker in clean for marker in ["|", "named ", "content:", "then ", "create a pdf", "create a word", "save to"]):
             return None
-        if len(text.split()) > 10 and not clean.startswith(("/run", "open ", "launch ")):
+        if len(clean.split()) > 10 and not clean.startswith(("/run", "open ", "launch ")):
             return None
 
         # 1. Match App Launch Intent (e.g., "open excel", "launch chrome", "start notepad")
@@ -1440,7 +1490,7 @@ class DeterministicIntentEngine:
         ])
         if has_excel and has_codebase_intent and not has_data_request:
             try:
-                from tools.excel_tools import analyze_project_to_excel
+                from brjarvis.tools.excel_tools import analyze_project_to_excel
                 res_msg = analyze_project_to_excel({})
                 return {
                     "executed": True,
@@ -1462,7 +1512,7 @@ class DeterministicIntentEngine:
         exact_commands = ("create pdf open it", "open pdf", "product analysis", "create pdf", "create product analysis report", "generate product analysis", "product report")
         if (has_jarvis_product and not has_data_request) or clean in exact_commands:
             try:
-                from tools.doc_tools import generate_project_product_analysis
+                from brjarvis.tools.doc_tools import generate_project_product_analysis
                 res_msg = generate_project_product_analysis({})
                 return {
                     "executed": True,
@@ -1476,7 +1526,7 @@ class DeterministicIntentEngine:
         # 5. Match System Diagnostics Intent
         if any(phrase in clean for phrase in ["system diagnostics", "system status", "check system", "computer status", "top processes", "cpu usage", "ram usage"]):
             try:
-                from tools.process_tools import get_system_diagnostics
+                from brjarvis.tools.process_tools import get_system_diagnostics
                 diag_msg = get_system_diagnostics({})
                 return {
                     "executed": True,
@@ -1490,7 +1540,7 @@ class DeterministicIntentEngine:
         # 6. Match Workspace Timeline Intent
         if any(phrase in clean for phrase in ["workspace timeline", "get timeline", "activity timeline", "recent workspace events"]):
             try:
-                from tools.workspace_tools import get_workspace_timeline
+                from brjarvis.tools.workspace_tools import get_workspace_timeline
                 tline_msg = get_workspace_timeline({})
                 return {
                     "executed": True,
@@ -1504,7 +1554,7 @@ class DeterministicIntentEngine:
         # 7. Match Codebase Security Audit Intent
         if any(phrase in clean for phrase in ["audit codebase", "codebase analysis", "full codebase analysis", "codebase audit", "code security audit", "security audit"]):
             try:
-                from tools.audit_tools import audit_codebase
+                from brjarvis.tools.audit_tools import audit_codebase
                 audit_msg = audit_codebase({})
                 return {
                     "executed": True,
@@ -1663,7 +1713,7 @@ class DeterministicIntentEngine:
             recipient = dual_say_match.group(2).strip()
             results = []
             try:
-                from actions.whatsapp_automation import get_whatsapp_automation
+                from brjarvis.actions.whatsapp_automation import get_whatsapp_automation
                 wa = get_whatsapp_automation()
                 wa_res = wa.send_message(recipient=recipient, message_text=msg_text)
                 results.append(f"WhatsApp: {wa_res}")
@@ -1671,7 +1721,7 @@ class DeterministicIntentEngine:
                 results.append(f"WhatsApp error: {e}")
 
             try:
-                from actions.smart_email_sender import SmartEmailSender
+                from brjarvis.actions.smart_email_sender import SmartEmailSender
                 es = SmartEmailSender()
                 subj = msg_text.title() if len(msg_text) < 30 else "Message from JARVIS"
                 em_res = es.send_email(recipient=recipient, subject=subj, body=msg_text)
@@ -1693,7 +1743,7 @@ class DeterministicIntentEngine:
             msg_text = email_prefix_match.group(1).strip()
             recipient = email_prefix_match.group(2).strip()
             try:
-                from actions.smart_email_sender import SmartEmailSender
+                from brjarvis.actions.smart_email_sender import SmartEmailSender
                 es = SmartEmailSender()
                 subj = msg_text.title() if len(msg_text) < 30 else "Leave Letter / Communication"
                 em_res = es.send_email(recipient=recipient, subject=subj, body=msg_text)
@@ -1711,7 +1761,7 @@ class DeterministicIntentEngine:
             msg_text = email_say_match.group(1).strip()
             recipient = email_say_match.group(2).strip()
             try:
-                from actions.smart_email_sender import SmartEmailSender
+                from brjarvis.actions.smart_email_sender import SmartEmailSender
                 es = SmartEmailSender()
                 subj = msg_text.title() if len(msg_text) < 30 else "Message from JARVIS"
                 em_res = es.send_email(recipient=recipient, subject=subj, body=msg_text)
@@ -1729,7 +1779,7 @@ class DeterministicIntentEngine:
             recipient = email_send_match.group(1).strip()
             msg_text = email_send_match.group(2).strip()
             try:
-                from actions.smart_email_sender import SmartEmailSender
+                from brjarvis.actions.smart_email_sender import SmartEmailSender
                 es = SmartEmailSender()
                 subj = msg_text.title() if len(msg_text) < 30 else "Message from JARVIS"
                 em_res = es.send_email(recipient=recipient, subject=subj, body=msg_text)
@@ -1748,7 +1798,7 @@ class DeterministicIntentEngine:
             msg_text = wa_say_match.group(1).strip()
             recipient = wa_say_match.group(2).strip()
             try:
-                from actions.whatsapp_automation import get_whatsapp_automation
+                from brjarvis.actions.whatsapp_automation import get_whatsapp_automation
                 wa = get_whatsapp_automation()
                 res = wa.send_message(recipient=recipient, message_text=msg_text)
                 return {
@@ -1765,7 +1815,7 @@ class DeterministicIntentEngine:
             recipient = wa_send_match.group(1).strip()
             msg_text = wa_send_match.group(2).strip()
             try:
-                from actions.whatsapp_automation import get_whatsapp_automation
+                from brjarvis.actions.whatsapp_automation import get_whatsapp_automation
                 wa = get_whatsapp_automation()
                 res = wa.send_message(recipient=recipient, message_text=msg_text)
                 return {
@@ -1782,7 +1832,7 @@ class DeterministicIntentEngine:
             recipient = wa_colon_match.group(1).strip()
             msg_text = wa_colon_match.group(2).strip()
             try:
-                from actions.whatsapp_automation import get_whatsapp_automation
+                from brjarvis.actions.whatsapp_automation import get_whatsapp_automation
                 wa = get_whatsapp_automation()
                 res = wa.send_message(recipient=recipient, message_text=msg_text)
                 return {

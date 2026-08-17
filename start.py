@@ -24,7 +24,9 @@ import sys
 import argparse
 from pathlib import Path
 
-# Ensure UTF-8 output encoding on Windows consoles
+# Ensure UTF-8 output encoding on Windows consoles and subprocesses
+os.environ["PYTHONUTF8"] = "1"
+os.environ["PYTHONIOENCODING"] = "utf-8"
 if hasattr(sys.stdout, "reconfigure"):
     try:
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")

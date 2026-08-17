@@ -106,7 +106,7 @@ class BRVoiceAssistant:
         with cls._barge_vad_lock:
             if cls._barge_vad is None:
                 try:
-                    from voice.silero_vad import SileroVAD
+                    from brjarvis.voice.silero_vad import SileroVAD
                     cls._barge_vad = SileroVAD()
                     logger.info("[BargeIn] SileroVAD singleton loaded")
                 except Exception as e:
@@ -151,7 +151,7 @@ class BRVoiceAssistant:
 
         # Initialize 500ms rolling audio pre-roll ring buffer
         try:
-            from voice.ring_buffer import AudioRingBuffer
+            from brjarvis.voice.ring_buffer import AudioRingBuffer
             self.ring_buffer = AudioRingBuffer(buffer_duration_ms=500)
         except Exception:
             self.ring_buffer = None
@@ -161,7 +161,7 @@ class BRVoiceAssistant:
 
         # Initialize Gemini Live Voice Loop
         try:
-            from voice.gemini_live import GeminiLiveVoiceLoop
+            from brjarvis.voice.gemini_live import GeminiLiveVoiceLoop
             self.gemini_live = GeminiLiveVoiceLoop(assistant_ref=self, ui_ref=self.ui)
         except Exception as e:
             logger.warning("Gemini Live loop init warning: %s", e)
@@ -187,7 +187,7 @@ class BRVoiceAssistant:
 
         # Start Global Hotkeys System
         try:
-            from actions.hotkeys import HotkeyManager
+            from brjarvis.actions.hotkeys import HotkeyManager
             self.hotkey_manager = HotkeyManager(self)
             self.hotkey_manager.start()
         except Exception as e:
@@ -260,7 +260,7 @@ class BRVoiceAssistant:
 
     def speak(self, text: str):
         """Speak text using NeuralTTS with state machine & barge-in support."""
-        from voice.tts import clean_for_speech
+        from brjarvis.voice.tts import clean_for_speech
         log_text = clean_for_speech(text)
         if log_text:
             logger.info(f"[JARVIS] 🗣 Speak: {log_text[:200]}")
@@ -293,7 +293,7 @@ class BRVoiceAssistant:
     def _play_listening_chime(self):
         """Play ascending dual-tone acoustic activation chime when wake word is recognized."""
         try:
-            from voice.sound_effects import play_activation_beep
+            from brjarvis.voice.sound_effects import play_activation_beep
             play_activation_beep()
         except Exception:
             pass
@@ -417,7 +417,7 @@ class BRVoiceAssistant:
 
         # 1. Try dedicated Gemini Listening API key
         try:
-            from voice.gemini_stt import transcribe_audio_online
+            from brjarvis.voice.gemini_stt import transcribe_audio_online
             text = await loop.run_in_executor(
                 None, lambda: transcribe_audio_online(audio.get_wav_data(), timeout_seconds=4.5)
             )
@@ -427,8 +427,8 @@ class BRVoiceAssistant:
         # 2. Try local Whisper
         if not text:
             try:
-                from voice.whisper_local import transcribe as whisper_transcribe, is_available as whisper_available
-                from voice.multilingual import get_whisper_code
+                from brjarvis.voice.whisper_local import transcribe as whisper_transcribe, is_available as whisper_available
+                from brjarvis.voice.multilingual import get_whisper_code
                 if whisper_available():
                     lang_code = get_whisper_code() or "en"
                     prompt = "This is a clear spoken voice command for JARVIS AI assistant to control applications, open web pages, send messages, and execute tasks."
@@ -468,7 +468,7 @@ class BRVoiceAssistant:
 
         # 2. Noise Calibrator
         try:
-            from voice.noise_calibrator import get_calibrator
+            from brjarvis.voice.noise_calibrator import get_calibrator
             nc = get_calibrator()
             results.append(f"Noise Calibrator:      READY (Baseline: {nc.baseline_rms:.4f}, Env: {nc.environment_label})")
         except Exception as e:
@@ -483,8 +483,8 @@ class BRVoiceAssistant:
             results.append(f"Voice Activity VAD:    OFFLINE ({e})")
 
         # 4. STT Engines
-        from voice.whisper_local import is_available as whisper_avail
-        from voice.gemini_stt import get_listen_api_key
+        from brjarvis.voice.whisper_local import is_available as whisper_avail
+        from brjarvis.voice.gemini_stt import get_listen_api_key
         w_status = "READY (Local CTranslate2)" if whisper_avail() else "NOT_INSTALLED"
         g_status = "CONFIGURED (Gemini Flash)" if get_listen_api_key() else "NOT_CONFIGURED"
         results.append(f"Primary Local STT:     {w_status}")
@@ -551,9 +551,9 @@ class BRVoiceAssistant:
 
         # Career OS Voice Shortcuts
         if any(kw in low for kw in ("ats score", "check my ats", "resume score")):
-            from career.profile_manager import get_profile_manager
-            from career.resume_engine.renderer import ResumeRenderer
-            from career.ats_engine.scorer import ATSEngine
+            from brjarvis.career.profile_manager import get_profile_manager
+            from brjarvis.career.resume_engine.renderer import ResumeRenderer
+            from brjarvis.career.ats_engine.scorer import ATSEngine
             p = get_profile_manager().get_profile()
             schema = ResumeRenderer.schema_from_profile(p)
             rep = ATSEngine.evaluate_resume(schema)
@@ -562,15 +562,15 @@ class BRVoiceAssistant:
             return
 
         if any(kw in low for kw in ("career status", "career summary", "application funnel", "career overview")):
-            from career.analytics import CareerAnalyticsEngine
+            from brjarvis.career.analytics import CareerAnalyticsEngine
             a = CareerAnalyticsEngine.compute_analytics()
             self.speak(f"You have {a.total_jobs_discovered} jobs discovered, {a.total_applications_submitted} applications submitted, and {a.total_interviews} active interviews.")
             self.state_machine.transition_to(VoiceState.IDLE)
             return
 
         if any(kw in low for kw in ("check my career emails", "check career emails", "career emails", "recruiter emails")):
-            from career.email_intelligence.service import get_email_career_intelligence
-            from career.crm.database import get_career_crm_db
+            from brjarvis.career.email_intelligence.service import get_email_career_intelligence
+            from brjarvis.career.crm.database import get_career_crm_db
             db = get_career_crm_db()
             events = db.list_email_records(limit=5)
             if not events:
@@ -583,7 +583,7 @@ class BRVoiceAssistant:
             return
 
         if any(kw in low for kw in ("interview requests", "did i receive any interview", "show my interviews", "interviews this week")):
-            from career.crm.database import get_career_crm_db
+            from brjarvis.career.crm.database import get_career_crm_db
             db = get_career_crm_db()
             interviews = db.list_interviews(limit=5)
             if not interviews:
@@ -595,7 +595,7 @@ class BRVoiceAssistant:
             return
 
         if any(kw in low for kw in ("any offers", "did i receive any offers", "check my offers", "job offers")):
-            from career.crm.database import get_career_crm_db
+            from brjarvis.career.crm.database import get_career_crm_db
             db = get_career_crm_db()
             offers = db.list_offers(limit=5)
             if not offers:
@@ -608,7 +608,7 @@ class BRVoiceAssistant:
             return
 
         if any(kw in low for kw in ("update my application tracker", "update tracker", "sync career tracker", "sync excel")):
-            from career.spreadsheet.projection import get_spreadsheet_projection
+            from brjarvis.career.spreadsheet.projection import get_spreadsheet_projection
             proj = get_spreadsheet_projection()
             res = proj.project_database_to_excel()
             if res.get("status") == "SUCCESS_VERIFIED":
@@ -621,7 +621,7 @@ class BRVoiceAssistant:
             return
 
         if any(kw in low for kw in ("need follow-up", "need follow up", "what applications need follow", "pending follow")):
-            from career.crm.followup_engine import get_followup_engine
+            from brjarvis.career.crm.followup_engine import get_followup_engine
             fol_engine = get_followup_engine()
             pending = fol_engine.get_pending_followups()
             if not pending:
@@ -632,7 +632,7 @@ class BRVoiceAssistant:
             return
 
         if any(kw in low for kw in ("find jobs for me", "search jobs for me", "find new jobs", "search for jobs")):
-            from career.job_engine.finder import JobFinder
+            from brjarvis.career.job_engine.finder import JobFinder
             finder = JobFinder.get_instance()
             results = finder.search_and_match(limit=3)
             if not results:
@@ -645,7 +645,7 @@ class BRVoiceAssistant:
             return
 
         if any(kw in low for kw in ("show my pending applications", "show my applications", "pending applications", "my applications")):
-            from career.crm.database import get_career_crm_db
+            from brjarvis.career.crm.database import get_career_crm_db
             db = get_career_crm_db()
             apps = db.list_applications(limit=10)
             if not apps:
@@ -770,7 +770,7 @@ class BRVoiceAssistant:
                 self._pending_clarification = {"goal": text_clean, "question": response}
                 self.state_machine.transition_to(VoiceState.WAITING_APPROVAL)
 
-            from voice.tts import clean_for_speech, summarize_for_speech
+            from brjarvis.voice.tts import clean_for_speech, summarize_for_speech
             clean_log = clean_for_speech(response)
             self.ui.write_log(f"JARVIS: {clean_log[:500] if clean_log else response[:500]}")
             spoken_summary = summarize_for_speech(response, max_chars=600)
@@ -829,7 +829,7 @@ class BRVoiceAssistant:
 
         # Execute custom startup commands
         try:
-            from actions.custom_commands import custom_command_engine
+            from brjarvis.actions.custom_commands import custom_command_engine
             if custom_command_engine.startup_commands:
                 self.ui.write_log("SYS: Executing startup commands...")
                 for startup_cmd in custom_command_engine.startup_commands:
@@ -945,7 +945,7 @@ class BRVoiceAssistant:
                                 pass
 
                             try:
-                                from voice.noise_calibrator import get_calibrator
+                                from brjarvis.voice.noise_calibrator import get_calibrator
                                 _env = get_calibrator().environment_label
                                 _pause = {"QUIET": 0.55, "MODERATE": 0.70, "NOISY": 0.90}.get(_env, 0.70)
                             except Exception:
@@ -963,7 +963,7 @@ class BRVoiceAssistant:
                                     )
                                 )
                                 try:
-                                    from voice.sound_effects import play_processing_bass_chime
+                                    from brjarvis.voice.sound_effects import play_processing_bass_chime
                                     play_processing_bass_chime()
                                 except Exception:
                                     pass

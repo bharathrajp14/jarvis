@@ -272,7 +272,7 @@ def _start_voice_worker(ui: JarvisUI | HeadlessJarvisUI) -> threading.Thread:
 
     def _worker() -> None:
         try:
-            from voice.assistant import BRVoiceAssistant
+            from brjarvis.voice.assistant import BRVoiceAssistant
             assistant = BRVoiceAssistant(ui)
             ui.on_interrupt = assistant.stop_speech
             asyncio.run(assistant.run())

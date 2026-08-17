@@ -7,7 +7,7 @@ import logging
 import time
 from typing import Any, Dict, List, Optional, Tuple
 
-from actions.calendar_engine import get_calendar_engine
+from brjarvis.actions.calendar_engine import get_calendar_engine
 from ..crm.database import get_career_crm_db
 from ..interview_prep import InterviewPrepGenerator
 from ..models import Application, InterviewSchedule, JobPosting

@@ -13,25 +13,34 @@ from __future__ import annotations
 
 # ── Re-export core orchestration symbols ──────────────────────────────────
 try:
-    from orchestrator import JarvisOrchestrator
+    from brjarvis.orchestrator.core import JarvisOrchestrator
 except ImportError:
-    JarvisOrchestrator = None  # type: ignore[assignment,misc]
+    try:
+        from orchestrator import JarvisOrchestrator
+    except ImportError:
+        JarvisOrchestrator = None  # type: ignore[assignment,misc]
 
 try:
-    from router import AgentRouter, AgentProfile, ROUTING_RULES
+    from brjarvis.router.core import AgentRouter, AgentProfile, ROUTING_RULES
 except ImportError:
-    AgentRouter = None  # type: ignore[assignment,misc]
-    AgentProfile = None  # type: ignore[assignment,misc]
-    ROUTING_RULES = {}
+    try:
+        from router import AgentRouter, AgentProfile, ROUTING_RULES
+    except ImportError:
+        AgentRouter = None  # type: ignore[assignment,misc]
+        AgentProfile = None  # type: ignore[assignment,misc]
+        ROUTING_RULES = {}
 
 # ── Re-export memory symbols ─────────────────────────────────────────────
 try:
-    from memory.working import WorkingMemory
+    from brjarvis.memory.working import WorkingMemory
 except ImportError:
-    WorkingMemory = None  # type: ignore[assignment,misc]
+    try:
+        from memory.working import WorkingMemory
+    except ImportError:
+        WorkingMemory = None  # type: ignore[assignment,misc]
 
 try:
-    from memory.persistent_store import (
+    from brjarvis.memory.persistent_store import (
         MemoryEntry,
         save_memory,
         delete_memory,
@@ -40,70 +49,109 @@ try:
         search_memory,
     )
 except ImportError:
-    MemoryEntry = None  # type: ignore[assignment,misc]
-    save_memory = None  # type: ignore[assignment]
-    delete_memory = None  # type: ignore[assignment]
-    load_entries = None  # type: ignore[assignment]
-    load_index = None  # type: ignore[assignment]
-    search_memory = None  # type: ignore[assignment]
+    try:
+        from memory.persistent_store import (
+            MemoryEntry,
+            save_memory,
+            delete_memory,
+            load_entries,
+            load_index,
+            search_memory,
+        )
+    except ImportError:
+        MemoryEntry = None  # type: ignore[assignment,misc]
+        save_memory = None  # type: ignore[assignment]
+        delete_memory = None  # type: ignore[assignment]
+        load_entries = None  # type: ignore[assignment]
+        load_index = None  # type: ignore[assignment]
+        search_memory = None  # type: ignore[assignment]
 
 try:
-    from memory.vector_store import VectorMemory
+    from brjarvis.memory.vector_store import VectorMemory
 except ImportError:
-    VectorMemory = None  # type: ignore[assignment,misc]
+    try:
+        from memory.vector_store import VectorMemory
+    except ImportError:
+        VectorMemory = None  # type: ignore[assignment,misc]
 
 try:
-    from memory.consolidator import consolidate_session
+    from brjarvis.memory.consolidator import consolidate_session
 except ImportError:
-    consolidate_session = None  # type: ignore[assignment]
+    try:
+        from memory.consolidator import consolidate_session
+    except ImportError:
+        consolidate_session = None  # type: ignore[assignment]
 
 try:
-    from memory.memory_context import get_memory_context, find_relevant_memories
+    from brjarvis.memory.memory_context import get_memory_context, find_relevant_memories
 except ImportError:
-    get_memory_context = None  # type: ignore[assignment]
-    find_relevant_memories = None  # type: ignore[assignment]
+    try:
+        from memory.memory_context import get_memory_context, find_relevant_memories
+    except ImportError:
+        get_memory_context = None  # type: ignore[assignment]
+        find_relevant_memories = None  # type: ignore[assignment]
 
 # ── Re-export tool symbols ───────────────────────────────────────────────
 try:
-    from tools.registry import (
+    from brjarvis.tools.registry import (
         TOOL_SCHEMAS,
         get_tool_prompt_block,
         parse_tool_call,
         execute_tool,
     )
 except ImportError:
-    TOOL_SCHEMAS = []
-    get_tool_prompt_block = None  # type: ignore[assignment]
-    parse_tool_call = None  # type: ignore[assignment]
-    execute_tool = None  # type: ignore[assignment]
+    try:
+        from tools.registry import (
+            TOOL_SCHEMAS,
+            get_tool_prompt_block,
+            parse_tool_call,
+            execute_tool,
+        )
+    except ImportError:
+        TOOL_SCHEMAS = []
+        get_tool_prompt_block = None  # type: ignore[assignment]
+        parse_tool_call = None  # type: ignore[assignment]
+        execute_tool = None  # type: ignore[assignment]
 
 try:
-    from tools.sandbox import CodeSandbox
+    from brjarvis.tools.sandbox import CodeSandbox
 except ImportError:
-    CodeSandbox = None  # type: ignore[assignment,misc]
+    try:
+        from tools.sandbox import CodeSandbox
+    except ImportError:
+        CodeSandbox = None  # type: ignore[assignment,misc]
 
 try:
-    from tools.files import FileManager
+    from brjarvis.tools.files import FileManager
 except ImportError:
-    FileManager = None  # type: ignore[assignment,misc]
+    try:
+        from tools.files import FileManager
+    except ImportError:
+        FileManager = None  # type: ignore[assignment,misc]
 
 # ── Re-export skills symbols ─────────────────────────────────────────────
 try:
-    from skills.loader import SkillDef, load_skills, find_skill, substitute_arguments
+    from brjarvis.skills.loader import SkillDef, load_skills, find_skill, substitute_arguments
 except ImportError:
-    SkillDef = None  # type: ignore[assignment,misc]
-    load_skills = None  # type: ignore[assignment]
-    find_skill = None  # type: ignore[assignment]
-    substitute_arguments = None  # type: ignore[assignment]
+    try:
+        from skills.loader import SkillDef, load_skills, find_skill, substitute_arguments
+    except ImportError:
+        SkillDef = None  # type: ignore[assignment,misc]
+        load_skills = None  # type: ignore[assignment]
+        find_skill = None  # type: ignore[assignment]
+        substitute_arguments = None  # type: ignore[assignment]
 
 try:
-    from skills.executor import execute_skill
+    from brjarvis.skills.executor import execute_skill
 except ImportError:
-    execute_skill = None  # type: ignore[assignment]
+    try:
+        from skills.executor import execute_skill
+    except ImportError:
+        execute_skill = None  # type: ignore[assignment]
 
 # ── Re-export multi-agent symbols ────────────────────────────────────────
 try:
-    from multi_agent.subagent import (
+    from brjarvis.multi_agent.subagent import (
         AgentDefinition,
         SubAgentTask,
         SubAgentManager,
@@ -111,68 +159,89 @@ try:
         get_agent_definition,
     )
 except ImportError:
-    AgentDefinition = None  # type: ignore[assignment,misc]
-    SubAgentTask = None  # type: ignore[assignment,misc]
-    SubAgentManager = None  # type: ignore[assignment,misc]
-    load_agent_definitions = None  # type: ignore[assignment]
-    get_agent_definition = None  # type: ignore[assignment]
+    try:
+        from multi_agent.subagent import (
+            AgentDefinition,
+            SubAgentTask,
+            SubAgentManager,
+            load_agent_definitions,
+            get_agent_definition,
+        )
+    except ImportError:
+        AgentDefinition = None  # type: ignore[assignment,misc]
+        SubAgentTask = None  # type: ignore[assignment,misc]
+        SubAgentManager = None  # type: ignore[assignment,misc]
+        load_agent_definitions = None  # type: ignore[assignment]
+        get_agent_definition = None  # type: ignore[assignment]
 
 # ── Re-export permissions ────────────────────────────────────────────────
 try:
-    from permissions import PERMISSIONS, PermissionPolicy, PermissionMode
+    from brjarvis.security.permissions import PERMISSIONS, PermissionPolicy, PermissionMode
 except ImportError:
-    PERMISSIONS = None  # type: ignore[assignment]
-    PermissionPolicy = None  # type: ignore[assignment,misc]
-    PermissionMode = None  # type: ignore[assignment,misc]
+    try:
+        from permissions import PERMISSIONS, PermissionPolicy, PermissionMode
+    except ImportError:
+        PERMISSIONS = None  # type: ignore[assignment]
+        PermissionPolicy = None  # type: ignore[assignment,misc]
+        PermissionMode = None  # type: ignore[assignment,misc]
 
-# ── Re-export history (new in MK37.1) ────────────────────────────────────
+# ── Re-export history ────────────────────────────────────────────────────
 try:
-    from history.session_store import SessionStore
+    from brjarvis.history.session_store import SessionStore
 except ImportError:
-    SessionStore = None  # type: ignore[assignment,misc]
+    try:
+        from history.session_store import SessionStore
+    except ImportError:
+        SessionStore = None  # type: ignore[assignment,misc]
 
 try:
-    from history.audit_writer import write_audit
+    from brjarvis.history.audit_writer import write_audit
 except ImportError:
-    write_audit = None  # type: ignore[assignment]
+    try:
+        from history.audit_writer import write_audit
+    except ImportError:
+        write_audit = None  # type: ignore[assignment]
 
 # ── Re-export backends ───────────────────────────────────────────────────
 try:
-    from backends.gemini import GeminiBackend
-except ImportError:
+    from brjarvis.integrations.backends.gemini import GeminiBackend
+except Exception:
     GeminiBackend = None  # type: ignore[assignment,misc]
 
 try:
-    from backends.anthropic import ClaudeBackend
-except ImportError:
+    from brjarvis.integrations.backends.anthropic import ClaudeBackend
+except Exception:
     ClaudeBackend = None  # type: ignore[assignment,misc]
 
 try:
-    from backends.openai_compat import OpenAIBackend
-except ImportError:
+    from brjarvis.integrations.backends.openai_compat import OpenAIBackend
+except Exception:
     OpenAIBackend = None  # type: ignore[assignment,misc]
 
 try:
-    from backends.ollama import OllamaBackend
-except ImportError:
+    from brjarvis.integrations.backends.ollama import OllamaBackend
+except Exception:
     OllamaBackend = None  # type: ignore[assignment,misc]
 
 try:
-    from backends.nvidia import NvidiaBackend
-except ImportError:
+    from brjarvis.integrations.backends.nvidia import NvidiaBackend
+except Exception:
     NvidiaBackend = None  # type: ignore[assignment,misc]
 
 try:
-    from backends.mistral import MistralBackend
-except ImportError:
+    from brjarvis.integrations.backends.mistral import MistralBackend
+except Exception:
     MistralBackend = None  # type: ignore[assignment,misc]
 
 # ── Re-export config ─────────────────────────────────────────────────────
 try:
-    from config.models import get_model, get_model_config
+    from brjarvis.config.models import get_model, get_model_config
 except ImportError:
-    get_model = None  # type: ignore[assignment]
-    get_model_config = None  # type: ignore[assignment]
+    try:
+        from config.models import get_model, get_model_config
+    except ImportError:
+        get_model = None  # type: ignore[assignment]
+        get_model_config = None  # type: ignore[assignment]
 
 
 __all__ = [

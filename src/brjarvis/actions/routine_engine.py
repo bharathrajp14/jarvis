@@ -243,13 +243,13 @@ class RoutineEngine:
 
         try:
             if routine.skill_name:
-                from skills.skill_engine import get_skill_engine
+                from brjarvis.skills.skill_engine import get_skill_engine
                 engine = get_skill_engine()
                 res = engine.execute_skill(routine.skill_name, event_payload or {})
                 status = "completed" if res.get("success") else "failed"
                 output = json.dumps(res)
             elif routine.goal:
-                from agent.executor import AgentExecutor
+                from brjarvis.agent.executor import AgentExecutor
                 executor = AgentExecutor()
                 output = executor.execute(routine.goal)
                 status = "completed"

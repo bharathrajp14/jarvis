@@ -125,7 +125,7 @@ class GeminiLiveVoiceLoop:
                         # Transcribe speech
                         text = ""
                         try:
-                            from voice.multilingual import get_google_stt_code
+                            from brjarvis.voice.multilingual import get_google_stt_code
                             stt_lang = get_google_stt_code()
                             text = self.recognizer.recognize_google(audio, language=stt_lang)
                         except (sr.UnknownValueError, sr.RequestError):
@@ -169,7 +169,7 @@ class GeminiLiveVoiceLoop:
 
     def _speak_conversational(self, response_text: str):
         """Speak response using fast sentence-level TTS."""
-        from voice.tts import clean_for_speech, split_sentences
+        from brjarvis.voice.tts import clean_for_speech, split_sentences
         clean = clean_for_speech(response_text)
 
         if not clean:

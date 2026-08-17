@@ -51,8 +51,9 @@ def get_gemini_key() -> str | None:
     return load_api_keys().get("gemini_api_key")
 
 def is_configured() -> bool:
-    key = get_gemini_key()
-    return bool(key and len(key) > 15)
+    cfg = load_api_keys()
+    key = cfg.get("gemini_api_key") or cfg.get("openai_api_key") or os.environ.get("GEMINI_API_KEY") or os.environ.get("OPENAI_API_KEY")
+    return bool(key and len(str(key).strip()) > 5)
 
 
 def get_assistant_name() -> str:

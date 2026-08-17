@@ -68,3 +68,75 @@ class VisionEvent(BaseEvent):
     active_window: Optional[str] = None
     nodes_count: int = 0
     verification_success: Optional[bool] = None
+
+
+class AgentLifecycleEvent(BaseEvent):
+    """Agent thinking and loop lifecycle event."""
+    session_id: str = ""
+    task_id: str = ""
+    phase: str = "thinking"  # started, thinking, context_started, context_completed, plan_created, plan_updated, interrupted, cancelled, completed
+    message: str = ""
+    details: Dict[str, Any] = Field(default_factory=dict)
+
+
+class PermissionEvent(BaseEvent):
+    """Permission request and resolution lifecycle event."""
+    request_id: str = ""
+    session_id: str = ""
+    task_id: str = ""
+    tool_name: str = ""
+    action: str = ""
+    target: str = ""
+    risk_level: str = "low"
+    decision: str = "pending"  # requested, granted, denied, cancelled
+    reason: str = ""
+
+
+class ToolLifecycleEvent(BaseEvent):
+    """Detailed tool execution lifecycle event."""
+    tool_name: str
+    session_id: str = ""
+    task_id: str = ""
+    step_id: str = ""
+    status: str = "requested"  # requested, started, progress, completed, failed
+    args: Dict[str, Any] = Field(default_factory=dict)
+    result: Optional[Any] = None
+    error: Optional[str] = None
+    duration_ms: Optional[float] = None
+    verified: bool = False
+    verification_notes: str = ""
+
+
+class VerificationEvent(BaseEvent):
+    """Physical state verification lifecycle event."""
+    session_id: str = ""
+    task_id: str = ""
+    tool_name: str = ""
+    target: str = ""
+    verified: bool = False
+    status: str = "started"  # started, completed, failed
+    evidence: str = ""
+    error: Optional[str] = None
+
+
+class ArtifactLifecycleEvent(BaseEvent):
+    """User-facing artifact lifecycle event."""
+    artifact_id: str
+    session_id: str = ""
+    task_id: str = ""
+    path: str = ""
+    filename: str = ""
+    mime_type: str = "text/plain"
+    status: str = "created"  # created, validating, ready, opening, verified, failed
+    verified: bool = False
+    error: Optional[str] = None
+
+
+class SessionLifecycleEvent(BaseEvent):
+    """Agent session lifecycle event."""
+    session_id: str
+    action: str = "started"  # started, resumed, updated, closed
+    mode: str = "general"
+    active_model: str = "gemini"
+    turns_count: int = 0
+

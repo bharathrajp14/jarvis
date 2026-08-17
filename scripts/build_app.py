@@ -13,6 +13,7 @@ import platform
 import subprocess
 from pathlib import Path
 
+logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger(__name__)
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
@@ -28,19 +29,29 @@ def build_app():
     
     DIST_DIR.mkdir(parents=True, exist_ok=True)
     
-    # 1. Copy web frontend assets (HTML, CSS, JS, Manifest, SW)
+    # 1. Copy web frontend assets
+    web_src = ROOT_DIR / "apps" / "web"
+    if not web_src.exists():
+        web_src = ROOT_DIR / "src" / "brjarvis" / "web"
     web_dest = DIST_DIR / "web"
     if web_dest.exists():
         shutil.rmtree(web_dest)
-    shutil.copytree(ROOT_DIR / "web", web_dest)
-    logger.info(f"[OK] Packaged Web/PWA distribution assets -> {web_dest}")
+    if web_src.exists():
+        shutil.copytree(web_src, web_dest, ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+        logger.info(f"[OK] Packaged Web distribution assets -> {web_dest}")
+    else:
+        logger.warning("[WARN] Web source directory not found, skipping web asset bundling.")
 
-    # 2. Copy core architecture configuration & knowledge base
-    arch_dest = DIST_DIR / "br_architecture"
-    if arch_dest.exists():
-        shutil.rmtree(arch_dest)
-    shutil.copytree(ROOT_DIR / "br_architecture", arch_dest)
-    logger.info(f"[OK] Packaged Architecture Knowledge Base -> {arch_dest}")
+    # 2. Copy core architecture configuration & knowledge base if present
+    arch_src = ROOT_DIR / "docs" / "architecture"
+    if not arch_src.exists():
+        arch_src = ROOT_DIR / "docs"
+    if arch_src.exists():
+        arch_dest = DIST_DIR / "docs"
+        if arch_dest.exists():
+            shutil.rmtree(arch_dest)
+        shutil.copytree(arch_src, arch_dest, ignore=shutil.ignore_patterns("__pycache__", "*.pyc"))
+        logger.info(f"[OK] Packaged Architecture Knowledge Base -> {arch_dest}")
 
     # 3. Generate Platform Launchers
     os_name = platform.system().lower()
@@ -49,7 +60,7 @@ def build_app():
         launcher_file.write_text(
             "@echo off\n"
             "echo Starting BR JARVIS Multi-Platform AI Operating System...\n"
-            "python start.py --web --port 8000\n"
+            "python start.py web --port 8000\n"
             "pause\n",
             encoding="utf-8"
         )

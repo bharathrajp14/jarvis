@@ -43,9 +43,9 @@ def export_chat(
 
     # Fetch conversation history
     try:
-        from memory.persistent_store import load_index
+        from brjarvis.memory.persistent_store import load_index
         # Get history from working memory
-        from core.bootstrap import build_assistant_runtime
+        from brjarvis.core.bootstrap import build_assistant_runtime
         runtime = build_assistant_runtime()
         history = runtime.orchestrator.working_memory.get()
     except Exception:

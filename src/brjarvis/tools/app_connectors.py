@@ -10,7 +10,7 @@ import logging
 from typing import Any, Dict, List, Optional
 
 from .registry import register_tool
-from connectors.hub import get_hub
+from brjarvis.connectors.hub import get_hub
 
 logger = logging.getLogger("JARVIS.AppConnectors")
 

@@ -122,7 +122,7 @@ async def web_search(query: str, max_results: int = 8) -> list[dict]:
 
     # 3. Tertiary: Gemini Grounded Search Fallback if zero results
         try:
-            from gateway.model_gateway import get_model_gateway
+            from brjarvis.gateway.model_gateway import get_model_gateway
             gw = get_model_gateway()
             resp = gw.complete(
                 messages=[{"role": "user", "content": f"Search and summarize: {clean_query}"}],

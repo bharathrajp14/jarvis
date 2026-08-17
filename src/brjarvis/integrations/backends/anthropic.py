@@ -21,7 +21,7 @@ class ClaudeBackend(BaseBackend):
     def __init__(self, model: str = None, api_key: str = None):
 
         try:
-            from config.models import get_model
+            from brjarvis.config.models import get_model
             default_model = get_model("claude") or "claude-sonnet-4-20250514"
         except Exception:
             default_model = "claude-sonnet-4-20250514"
@@ -30,6 +30,26 @@ class ClaudeBackend(BaseBackend):
         self.client = None
 
         _api_key = api_key or os.environ.get("ANTHROPIC_API_KEY", "").strip()
+        if not _api_key:
+            try:
+                from brjarvis.core.config import get_config
+                _api_key = (get_config().secrets.anthropic_api_key or "").strip()
+            except Exception:
+                pass
+        if not _api_key:
+            try:
+                from brjarvis.core.paths import paths
+                import json
+                cfg_file = paths.CONFIG_ROOT / "api_keys.json"
+                if cfg_file.exists():
+                    data = json.loads(cfg_file.read_text(encoding="utf-8"))
+                    for k, v in data.items():
+                        if str(k).lower().strip() in ("anthropic_api_key", "claude_api_key") and str(v).strip():
+                            _api_key = str(v).strip()
+                            break
+            except Exception:
+                pass
+
         if _api_key:
             try:
                 import anthropic

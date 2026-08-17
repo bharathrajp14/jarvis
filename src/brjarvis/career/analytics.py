@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional
 
 from .application_engine.tracker import ApplicationTracker
 from .models import ApplicationRecord, ApplicationStatus
-from memory.canonical_db import get_canonical_db
+from brjarvis.memory.canonical_db import get_canonical_db
 
 logger = logging.getLogger("JARVIS.CareerAnalytics")
 

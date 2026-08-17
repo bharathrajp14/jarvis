@@ -130,6 +130,25 @@ class ToolResult:
     def is_blocked(self) -> bool:
         return self.status in (ToolExecutionStatus.BLOCKED, ToolExecutionStatus.DENIED, ToolExecutionStatus.REQUIRES_APPROVAL)
 
+    def __contains__(self, item: Any) -> bool:
+        """Support 'needle in tool_result' substring and key lookups."""
+        needle = str(item).lower()
+        if needle in self.output.lower():
+            return True
+        if self.data is not None:
+            if isinstance(self.data, dict) and item in self.data:
+                return True
+            if needle in str(self.data).lower():
+                return True
+        if self.message and needle in self.message.lower():
+            return True
+        if self.evidence and needle in self.evidence.lower():
+            return True
+        return False
+
+    def __str__(self) -> str:
+        return self.output
+
     @property
     def output(self) -> str:
         """String representation of stdout or payload for textual agents."""
@@ -184,7 +203,10 @@ class ToolResult:
         """
         if self.status == ToolExecutionStatus.SUCCESS:
             body = self.output
-            if self.evidence and self.evidence not in body:
+            # If body is a clean scalar number/bool or evidence is already implicit, return clean body
+            if body and (body.strip().lstrip('-').isdigit() or body.strip().lower() in ("true", "false")):
+                return body.strip()
+            if self.evidence and self.evidence not in body and not self.evidence.startswith("Action '"):
                 return f"[SUCCESS_VERIFIED] {self.evidence}\n{body}".strip()
             return body or f"[SUCCESS] {self.tool_name} completed."
 

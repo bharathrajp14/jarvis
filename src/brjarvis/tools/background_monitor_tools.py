@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from .registry import register_tool
-from actions.background_monitor import add_monitor, remove_monitor, list_monitors, check_all
+from brjarvis.actions.background_monitor import add_monitor, remove_monitor, list_monitors, check_all
 
 
 @register_tool(

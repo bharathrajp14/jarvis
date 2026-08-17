@@ -11,9 +11,13 @@ import re
 import yaml
 from pathlib import Path
 
+logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger(__name__)
 
-LIBRARY_DIR = Path(__file__).resolve().parent.parent / "skills" / "library"
+ROOT_DIR = Path(__file__).resolve().parent.parent
+LIBRARY_DIR = ROOT_DIR / "src" / "brjarvis" / "skills" / "library"
+if not LIBRARY_DIR.exists():
+    LIBRARY_DIR = ROOT_DIR / "skills" / "library"
 
 # Native BR JARVIS Tool Mapping by Category / Domain
 DEFAULT_TOOLS_BY_CAT = {

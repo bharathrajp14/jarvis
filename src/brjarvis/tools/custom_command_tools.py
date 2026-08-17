@@ -37,7 +37,7 @@ from .registry import register_tool
     }
 )
 def tool_custom_command_add(args: dict) -> str:
-    from actions.custom_commands import custom_command_engine
+    from brjarvis.actions.custom_commands import custom_command_engine
     # Normalize actions text keys
     actions = []
     for act in args["actions"]:
@@ -60,7 +60,7 @@ def tool_custom_command_add(args: dict) -> str:
     parameters={}
 )
 def tool_custom_command_list(args: dict) -> str:
-    from actions.custom_commands import custom_command_engine
+    from brjarvis.actions.custom_commands import custom_command_engine
     return json.dumps(custom_command_engine.commands, indent=2)
 
 
@@ -76,5 +76,5 @@ def tool_custom_command_list(args: dict) -> str:
     }
 )
 def tool_custom_command_delete(args: dict) -> str:
-    from actions.custom_commands import custom_command_engine
+    from brjarvis.actions.custom_commands import custom_command_engine
     return custom_command_engine.delete_command(args["trigger"])

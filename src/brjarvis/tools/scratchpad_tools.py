@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import json
 from .registry import register_tool
-from agent.scratchpad import get_scratchpad
+from brjarvis.agent.scratchpad import get_scratchpad
 
 
 @register_tool(

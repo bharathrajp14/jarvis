@@ -13,7 +13,7 @@ import tempfile
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-from brjarvis.core.paths import paths
+from brjarvis.core.paths import paths, PathContainmentError
 
 
 class FileManager:
@@ -25,7 +25,7 @@ class FileManager:
         self.trash_dir = self.workspace / ".trash"
 
     def _safe(self, path: str | Path) -> Path:
-        """Resolve path ensuring confinement to workspace or temporary root."""
+        """Resolve path ensuring confinement to workspace, temporary root, or project root."""
         p_str = str(path).replace("\\", "/").strip()
         if p_str.startswith("/tmp") or p_str.startswith("tmp/"):
             p_rel = p_str.lstrip("/").replace("tmp/", "", 1).lstrip("/")
@@ -45,14 +45,27 @@ class FileManager:
         # Workspace containment guard
         try:
             resolved.relative_to(self.workspace)
+            return resolved
         except ValueError:
-            # If path is inside project root, allow it; otherwise confine under workspace
-            try:
-                resolved.relative_to(paths.PROJECT_ROOT)
-            except ValueError:
-                resolved = (self.workspace / resolved.name).resolve()
+            pass
 
-        return resolved
+        # Allow project root access (e.g. source reading/writing)
+        try:
+            resolved.relative_to(paths.PROJECT_ROOT)
+            return resolved
+        except ValueError:
+            pass
+
+        # Allow temporary root
+        try:
+            resolved.relative_to(paths.TEMP_ROOT)
+            return resolved
+        except ValueError:
+            pass
+
+        raise PathContainmentError(
+            f"Path '{resolved}' is outside allowed workspace boundaries ('{self.workspace}' or '{paths.PROJECT_ROOT}')."
+        )
 
     def write_atomic(self, path: str | Path, content: Union[str, bytes], encoding: str = "utf-8") -> Dict[str, Any]:
         """

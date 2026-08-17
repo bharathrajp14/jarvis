@@ -388,7 +388,7 @@ def _open_native(url: str, browser_name: Optional[str]) -> str:
     # Sandbox / Host Artifact Interception Gateway
     if url:
         try:
-            from agent.artifacts import get_artifact_manager
+            from brjarvis.agent.artifacts import get_artifact_manager
             mgr = get_artifact_manager()
             success, resolved_url, rec = mgr.ensure_host_artifact(url)
             if not success and ("jarvis_sandbox_jails" in url.lower() or "jail_" in url.lower()):

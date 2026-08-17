@@ -26,6 +26,14 @@ from .registry import register_tool
 
 logger = logging.getLogger("JARVIS.PDFTools")
 
+try:
+    import pymupdf as fitz  # type: ignore[import-not-found]
+except ImportError:
+    try:
+        import fitz  # type: ignore[import-not-found]
+    except ImportError:
+        fitz = None
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers
@@ -959,7 +967,7 @@ def _summarize(args: dict) -> str:
 
     text_chunk = full_text[:8000]
     try:
-        from backends.gemini import GeminiBackend
+        from brjarvis.integrations.backends.gemini import GeminiBackend
         gemini = GeminiBackend()
         prompt = f"Please provide a concise, structured summary of the following PDF document content:\n\n{text_chunk}"
         return gemini.quick(prompt)
@@ -986,7 +994,7 @@ def _translate(args: dict) -> str:
 
     text_chunk = full_text[:6000]
     try:
-        from backends.gemini import GeminiBackend
+        from brjarvis.integrations.backends.gemini import GeminiBackend
         gemini = GeminiBackend()
         prompt = f"Translate the following text to {target_lang}. Output only the translated text:\n\n{text_chunk}"
         translation = gemini.quick(prompt)
@@ -1130,12 +1138,16 @@ _ACTION_MAP = {
     "redact": _redact,
     "crop": _crop,
     "pdf_forms": _pdf_forms,
-    "forms": _pdf_forms,
     "summarize": _summarize,
     "summary": _summarize,
     "translate": _translate,
     "pdf_to_markdown": _pdf_to_markdown,
     "pdf_to_md": _pdf_to_markdown,
+    "extract_text": _pdf_to_markdown,
+    "extract": _pdf_to_markdown,
+    "read": _pdf_to_markdown,
+    "read_pdf": _pdf_to_markdown,
+    "get_text": _pdf_to_markdown,
     "sign": _sign,
     "signature": _sign,
 }
@@ -1148,9 +1160,10 @@ _ACTION_MAP = {
 @register_tool(
     name="pdf_tool",
     description=(
-        "Comprehensive PDF operations tool - merge, split, compress, convert (PDF<->Word/Excel/PPTX/JPG/HTML/Markdown), "
+        "Comprehensive PDF operations tool - read, extract_text, merge, split, compress, convert (PDF<->Word/Excel/PPTX/JPG/HTML/Markdown), "
         "watermark, rotate, protect, unlock, OCR, redact, crop, compare, repair, page numbers, forms, summarize, translate, sign. "
-        "Use 'action' to specify the operation. Always provide 'input_path' (or 'input_paths' for merge/jpg_to_pdf)."
+        "Use 'action' to specify the operation (e.g. 'extract_text', 'read', 'merge', 'split', 'pdf_to_word', 'html_to_pdf'). "
+        "Always provide 'input_path' (or 'input_paths' for merge/jpg_to_pdf)."
     ),
     parameters={
         "type": "object",

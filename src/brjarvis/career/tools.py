@@ -23,7 +23,7 @@ from .resume_engine.renderer import ResumeRenderer
 from .resume_engine.tailoring import ResumeTailoringEngine
 from .resume_engine.templates import list_templates
 from .resume_engine.version_manager import ResumeVersionManager
-from tools.registry import register_tool
+from brjarvis.tools.registry import register_tool
 
 logger = logging.getLogger("JARVIS.CareerTools")
 
@@ -251,7 +251,7 @@ def cover_letter_generate_tool(args: Dict[str, Any]) -> str:
     mgr = get_profile_manager()
     profile = mgr.get_profile()
 
-    from career.models import JobPosting
+    from brjarvis.career.models import JobPosting
     job = JobPosting(
         job_id=f"job_{co.lower()}",
         source="user_request",
@@ -540,7 +540,7 @@ def canva_resume_create_tool(args: Dict[str, Any]) -> str:
     },
 )
 def career_email_process_tool(args: Dict[str, Any]) -> str:
-    from career.email_intelligence.service import get_email_career_intelligence
+    from brjarvis.career.email_intelligence.service import get_email_career_intelligence
     service = get_email_career_intelligence()
     res = service.process_incoming_email(
         provider=args.get("provider", "gmail"),
@@ -565,10 +565,10 @@ def career_email_process_tool(args: Dict[str, Any]) -> str:
     },
 )
 def career_offer_confirm_tool(args: Dict[str, Any]) -> str:
-    from career.crm.database import get_career_crm_db
-    from career.models import OfferStatus
-    from career.crm.state_machine import ApplicationStateMachine
-    from career.spreadsheet.projection import get_spreadsheet_projection
+    from brjarvis.career.crm.database import get_career_crm_db
+    from brjarvis.career.models import OfferStatus
+    from brjarvis.career.crm.state_machine import ApplicationStateMachine
+    from brjarvis.career.spreadsheet.projection import get_spreadsheet_projection
 
     if not args.get("user_confirmed"):
         return json.dumps({"error": "Offer confirmation strictly requires user_confirmed=True."}, indent=2)
@@ -620,7 +620,7 @@ def career_offer_confirm_tool(args: Dict[str, Any]) -> str:
     },
 )
 def career_spreadsheet_sync_tool(args: Dict[str, Any]) -> str:
-    from career.spreadsheet.projection import get_spreadsheet_projection
+    from brjarvis.career.spreadsheet.projection import get_spreadsheet_projection
     proj = get_spreadsheet_projection()
     res = proj.project_database_to_excel(auto_open=args.get("auto_open", False))
     return json.dumps(res, indent=2)
@@ -639,7 +639,7 @@ def career_spreadsheet_sync_tool(args: Dict[str, Any]) -> str:
     },
 )
 def career_followup_generate_draft_tool(args: Dict[str, Any]) -> str:
-    from career.crm.followup_engine import get_followup_engine
+    from brjarvis.career.crm.followup_engine import get_followup_engine
     engine = get_followup_engine()
     fid = args.get("followup_id", "")
     name = args.get("candidate_name", "Bharath")
@@ -653,7 +653,7 @@ def career_followup_generate_draft_tool(args: Dict[str, Any]) -> str:
     parameters={"type": "object", "properties": {}},
 )
 def career_learning_insights_tool(args: Dict[str, Any]) -> str:
-    from career.memory_integration import analyze_career_learning
+    from brjarvis.career.memory_integration import analyze_career_learning
     insights = analyze_career_learning()
     return json.dumps(insights, indent=2)
 

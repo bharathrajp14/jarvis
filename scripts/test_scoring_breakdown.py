@@ -1,12 +1,22 @@
 
-import logging
-import sys
-import os
-import json
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from config.complexity_router import calculate_complexity_score
+# scripts/test_scoring_breakdown.py — Multi-Dimensional Complexity Scoring Report
+from __future__ import annotations
 
-logger = logging.getLogger(__name__)
+import json
+import logging
+import os
+import sys
+from pathlib import Path
+
+logging.basicConfig(level=logging.INFO, format="%(message)s")
+logger = logging.getLogger("JARVIS.ScoringBreakdown")
+
+root_dir = Path(__file__).resolve().parent.parent
+for p in [str(root_dir / "src"), str(root_dir)]:
+    if p not in sys.path:
+        sys.path.insert(0, p)
+
+from brjarvis.config.complexity_router import calculate_complexity_score
 
 prompts = [
     ("Greeting", [{"role": "user", "content": "hi"}]),

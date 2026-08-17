@@ -5,7 +5,7 @@ Provides prompt conditioning for JARVIS's classic, warm, highly intelligent AI A
 from __future__ import annotations
 
 from datetime import datetime
-from actions.galaxy import build_galaxy_graph
+from brjarvis.actions.galaxy import build_galaxy_graph
 
 CLASSIC_JARVIS_PROMPT_ADDITION = (
     "\n\n[PERSONALITY PRESET: CLASSIC AI ASSISTANT]\n"

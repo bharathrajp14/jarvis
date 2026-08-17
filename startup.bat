@@ -3,16 +3,22 @@ title BR JARVIS
 cd /d "%~dp0"
 set PYTHONIOENCODING=utf-8
 
-:: Activate virtual environment if it exists
-if exist "venv\Scripts\activate.bat" (
-    call "venv\Scripts\activate.bat"
-) else if exist ".venv\Scripts\activate.bat" (
+:: Activate virtual environment if it exists and use its python executable
+if exist ".venv\Scripts\python.exe" (
     call ".venv\Scripts\activate.bat"
-) else if exist "..\.venv\Scripts\activate.bat" (
+    set "PYEXE=.venv\Scripts\python.exe"
+    goto :launch
+) else if exist "venv\Scripts\python.exe" (
+    call "venv\Scripts\activate.bat"
+    set "PYEXE=venv\Scripts\python.exe"
+    goto :launch
+) else if exist "..\.venv\Scripts\python.exe" (
     call "..\.venv\Scripts\activate.bat"
+    set "PYEXE=..\.venv\Scripts\python.exe"
+    goto :launch
 )
 
-:: Select stable Python version (3.12 preferred — avoids Python 3.14 alpha crashes)
+:: Select stable Python version if no venv is present
 set PYEXE=python
 py -3.12 --version >nul 2>&1
 if "%ERRORLEVEL%"=="0" (
@@ -44,7 +50,7 @@ echo [BR] Using Python: %PYEXE%
 :: Silent mode (auto-startup) - launch voice assistant directly, no menu
 if "%~1"=="--silent" (
     echo [BR] Auto-startup - launching voice assistant...
-    %PYEXE% ui_mark.py
+    %PYEXE% start.py voice
     goto :end
 )
 
@@ -53,7 +59,7 @@ if "%~1"=="--voice-safe" (
     echo [BR] Running audio diagnostics...
     %PYEXE% start.py audio
     echo [BR] Launching voice assistant...
-    %PYEXE% ui_mark.py
+    %PYEXE% start.py voice
     goto :end
 )
 
@@ -75,7 +81,7 @@ if "%~1" NEQ "" (
 
 :: Default execution - Launch Cyberpunk HUD Voice Assistant directly
 echo [BR] Launching BR JARVIS Cyberpunk HUD...
-%PYEXE% ui_mark.py
+%PYEXE% start.py voice
 
 :end
 :: Keep window open if it crashes

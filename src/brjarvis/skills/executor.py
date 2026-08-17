@@ -49,7 +49,7 @@ def _execute_forked(
 ) -> str:
     """Run skill as an isolated sub-agent (separate conversation context) with fallback to inline."""
     try:
-        from multi_agent.subagent import SubAgentManager, AgentDefinition
+        from brjarvis.multi_agent.subagent import SubAgentManager, AgentDefinition
 
         mgr = getattr(orchestrator, '_subagent_mgr', None)
         if mgr is None:

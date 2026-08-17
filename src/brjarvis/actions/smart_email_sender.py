@@ -89,7 +89,7 @@ class SmartEmailSender:
 
         # 1. Primary UnifiedContactStore lookup (vCard contacts, relationship synonyms "Appa", "Amma", "Dad", "Mom")
         try:
-            from memory.contact_manager import get_contact_store
+            from brjarvis.memory.contact_manager import get_contact_store
             store = get_contact_store()
             match = store.resolve_name(rec_clean)
             if match and match.get("email"):
@@ -113,7 +113,7 @@ class SmartEmailSender:
 
     def _sync_auth(self):
         try:
-            from actions.gmail_auth import get_gmail_auth_manager
+            from brjarvis.actions.gmail_auth import get_gmail_auth_manager
             get_gmail_auth_manager()
         except Exception:
             pass

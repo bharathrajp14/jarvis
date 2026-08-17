@@ -30,6 +30,7 @@ PROTECTED_CORE_PATHS = [
     "security/capabilities.py",
     "security/policy_engine.py",
     "security/path_policy.py",
+    "permissions.py",
 ]
 
 
@@ -71,6 +72,7 @@ class GuardianCore:
     def _persist_hashes(self, hashes: Dict[str, str]) -> None:
         """Write hashes to persistent storage and release manifest."""
         try:
+            self._HASH_FILE.parent.mkdir(parents=True, exist_ok=True)
             self._HASH_FILE.write_text(json.dumps(hashes, indent=2), encoding="utf-8")
         except Exception as e:
             logger.error("Failed to write guardian hashes: %s", e)
@@ -90,6 +92,8 @@ class GuardianCore:
         hashes: Dict[str, str] = {}
         for path_str in PROTECTED_CORE_PATHS:
             p = BASE_DIR / path_str
+            if not p.exists():
+                p = paths.PROJECT_ROOT / path_str
             if p.exists():
                 try:
                     data = p.read_bytes()
@@ -122,10 +126,10 @@ class GuardianCore:
         """Verify core safety files have not been modified outside release process."""
         current_hashes = self._calculate_hashes()
         mismatches: List[str] = []
-        for path_str, original_hash in self._initial_hashes.items():
-            current_hash = current_hashes.get(path_str)
-            if current_hash != original_hash:
-                mismatches.append(path_str)
+        for path_str in PROTECTED_CORE_PATHS:
+            if path_str in self._initial_hashes and path_str in current_hashes:
+                if current_hashes[path_str] != self._initial_hashes[path_str]:
+                    mismatches.append(path_str)
 
         self._last_check = time.time()
 
@@ -140,7 +144,6 @@ class GuardianCore:
                 applied=False,
             )
             return {"valid": False, "mismatches": mismatches}
-
         return {"valid": True, "mismatches": []}
 
     def check_secrets_safety(self, text_content: str) -> tuple[bool, str]:

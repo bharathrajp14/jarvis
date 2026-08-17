@@ -151,7 +151,7 @@ class AgentExecutor:
                 return "Task cancelled, sir."
 
             if result["success"]:
-                from core.execution.completion_gate import get_task_completion_gate
+                from brjarvis.core.execution.completion_gate import get_task_completion_gate
                 gate = get_task_completion_gate().evaluate_task(
                     goal=goal,
                     steps=completed_steps,
@@ -214,7 +214,7 @@ class AgentExecutor:
         MK40.2: Before executing a step, checks the ExecutionLedger to see if
         it was already successfully completed (prevents step duplication on retry).
         """
-        from agent.execution_ledger import LedgerStatus
+        from brjarvis.agent.execution_ledger import LedgerStatus
 
         # Group steps by dependency level for parallel execution
         pending   = {s["step"]: s for s in steps}
@@ -331,7 +331,7 @@ class AgentExecutor:
         ledger: Any = None,
     ) -> StepResult:
         """Execute a single step with retry logic and ledger recording."""
-        from agent.execution_ledger import LedgerEntry, LedgerStatus
+        from brjarvis.agent.execution_ledger import LedgerEntry, LedgerStatus
         step_num = step.get("step", "?")
         tool     = step.get("tool", "web_search")
         desc     = step.get("description", "")
@@ -345,7 +345,7 @@ class AgentExecutor:
         t_start = time.time()
 
         # Prevent repetitive stuck loops
-        from agent.recovery_engine import get_recovery_engine
+        from brjarvis.agent.recovery_engine import get_recovery_engine
         recovery_eng = get_recovery_engine()
         if recovery_eng.check_loop_or_stuck(tool, json.dumps(params, sort_keys=True)):
             err = f"Aborted: Infinite loop detected with repeated tool '{tool}' calls."
@@ -374,7 +374,7 @@ class AgentExecutor:
                 verification_status = LedgerStatus.UNVERIFIED
                 evidence = ""
                 try:
-                    from agent.verifier import get_action_verifier
+                    from brjarvis.agent.verifier import get_action_verifier
                     verifier = get_action_verifier()
                     vres = verifier.verify_action(tool, params, result.output)
                     if not vres.verified:
@@ -389,7 +389,7 @@ class AgentExecutor:
                         evidence = vres.evidence or f"Tool '{tool}' verified without errors."
                     # Record to operational memory (non-blocking)
                     try:
-                        from memory.unified_memory import get_unified_memory
+                        from brjarvis.memory.unified_memory import get_unified_memory
                         get_unified_memory().record_operational_lesson(
                             tool_name=tool,
                             goal=goal,
@@ -494,7 +494,7 @@ class AgentExecutor:
                         ))
                     # Record failure to operational memory (non-blocking)
                     try:
-                        from memory.unified_memory import get_unified_memory
+                        from brjarvis.memory.unified_memory import get_unified_memory
                         get_unified_memory().record_operational_lesson(
                             tool_name=tool, goal=goal, success=False,
                             result_summary="", failure_reason=err[:200],

@@ -39,7 +39,7 @@ from .tool_result import ToolResult
 )
 def tool_memory_save(args: dict) -> ToolResult:
     """Save persistent memory entry with conflict detection and read-back verification."""
-    from memory.persistent_store import MemoryEntry, save_memory, check_conflict
+    from brjarvis.memory.persistent_store import MemoryEntry, save_memory, check_conflict
 
     name = str(args.get("name", "")).strip()
     mem_type = str(args.get("type", "semantic")).strip()
@@ -103,7 +103,7 @@ def tool_memory_save(args: dict) -> ToolResult:
 )
 def tool_memory_get(args: dict) -> ToolResult:
     """Retrieve specific memory entry."""
-    from memory.persistent_store import load_index
+    from brjarvis.memory.persistent_store import load_index
 
     name = str(args.get("name", "")).strip().lower()
     scope = str(args.get("scope", "all")).strip()
@@ -169,7 +169,7 @@ def tool_memory_get(args: dict) -> ToolResult:
 )
 def tool_memory_delete(args: dict) -> ToolResult:
     """Delete memory entry."""
-    from memory.persistent_store import delete_memory
+    from brjarvis.memory.persistent_store import delete_memory
 
     name = str(args.get("name", "")).strip()
     scope = str(args.get("scope", "user")).strip()
@@ -214,7 +214,7 @@ def tool_memory_delete(args: dict) -> ToolResult:
 )
 def tool_memory_search(args: dict) -> ToolResult:
     """Search persistent memory."""
-    from memory.unified_memory import get_unified_memory
+    from brjarvis.memory.unified_memory import get_unified_memory
 
     query = str(args.get("query", "")).strip()
     if not query:

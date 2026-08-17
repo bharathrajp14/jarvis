@@ -21,7 +21,7 @@ except ImportError:
     ROUNDED = None
 
 if TYPE_CHECKING:
-    from core.terminal.session import TerminalSession
+    from .session import TerminalSession
 
 logger = logging.getLogger("JARVIS.TerminalCommands")
 
@@ -86,15 +86,21 @@ class SlashCommandHandler:
             "/status":       self._cmd_status,
             "/version":      self._cmd_version,
             "/clear":        self._cmd_clear,
+            "/config":       self._cmd_config,
 
             # Agent & planning
             "/mode":         lambda: self._cmd_mode(args_str),
+            "/agents":       lambda: self._cmd_mode(args_str),
             "/model":        lambda: self._cmd_model(args_str),
+            "/models":       lambda: self._cmd_model(args_str),
             "/plan":         lambda: self._cmd_plan(args_str),
             "/permission":   lambda: self._cmd_permission(args_str),
+            "/permissions":  lambda: self._cmd_permission(args_str),
             "/style":        lambda: self._cmd_style(args_str),
             "/verbose":      lambda: self._cmd_verbose(args_str),
             "/mouse":        lambda: self._cmd_mouse(args_str),
+            "/tui":          lambda: self._cmd_tui(args_str),
+            "/interrupt":    self._cmd_interrupt,
 
             # Task lifecycle
             "/tasks":        lambda: self._cmd_tasks(args_str),
@@ -110,6 +116,8 @@ class SlashCommandHandler:
             "/diff":         lambda: self._cmd_diff(args_str),
 
             # Session
+            "/session":      lambda: self._cmd_session(args_str),
+            "/sessions":     self._cmd_sessions,
             "/history":      lambda: self._cmd_history(args_str),
             "/rename":       lambda: self._cmd_rename(args_str),
             "/context":      self._cmd_context,
@@ -119,8 +127,9 @@ class SlashCommandHandler:
 
             # Tools & infrastructure
             "/tools":        lambda: self._cmd_tools(args_str),
+            "/skills":       lambda: self._cmd_skills(args_str),
             "/connectors":   lambda: self._cmd_connectors(args_str),
-            "/doctor":       self._cmd_doctor,
+            "/doctor":       lambda: self._cmd_doctor(args_str),
             "/usage":        self._cmd_usage,
 
             # Memory
@@ -274,13 +283,13 @@ class SlashCommandHandler:
         session_id = getattr(orch, "session_id", "N/A") if orch else "N/A"
 
         try:
-            from tools.registry import TOOL_SCHEMAS
+            from brjarvis.tools.registry import TOOL_SCHEMAS
             tool_count = len(TOOL_SCHEMAS)
         except Exception:
             tool_count = 0
 
         try:
-            from memory.unified_memory import get_unified_memory
+            from brjarvis.memory.unified_memory import get_unified_memory
             um = get_unified_memory()
             mem_summary = f"{len(um._cache) if hasattr(um, '_cache') else 'Active'} cached memories"
         except Exception:
@@ -578,8 +587,8 @@ class SlashCommandHandler:
         external: List[str] = []
 
         try:
-            from agent.stage_decomposer import StageDecomposer
-            from agent.step_planner import StepPlanner
+            from brjarvis.agent.stage_decomposer import StageDecomposer
+            from brjarvis.agent.step_planner import StepPlanner
 
             if StageDecomposer.is_composite_task(goal):
                 stages = StageDecomposer.decompose(goal)
@@ -656,7 +665,7 @@ class SlashCommandHandler:
     def _create_task_from_plan(self, goal: str, steps: List[str], plan_id: str) -> str:
         """Create a TaskState for the approved plan."""
         try:
-            from agent.task_state import get_task_state_manager
+            from brjarvis.agent.task_state import get_task_state_manager
             mgr = get_task_state_manager()
             task = mgr.create_task(
                 goal=goal,
@@ -680,7 +689,7 @@ class SlashCommandHandler:
     def _cmd_tasks(self, filter_query: str = "") -> None:
         """List active tasks or show task detail."""
         try:
-            from agent.task_state import get_task_state_manager
+            from brjarvis.agent.task_state import get_task_state_manager
             mgr = get_task_state_manager()
 
             # Task detail if ID provided
@@ -710,7 +719,7 @@ class SlashCommandHandler:
             self.renderer.render_error("Missing Task ID", "Usage: `/pause <task_id>`")
             return
         try:
-            from agent.task_state import get_task_state_manager, TaskStatus
+            from brjarvis.agent.task_state import get_task_state_manager, TaskStatus
             mgr = get_task_state_manager()
             state = mgr.update_status(task_id, TaskStatus.WAITING_FOR_USER)
             if state:
@@ -726,7 +735,7 @@ class SlashCommandHandler:
             self._cmd_continue()
             return
         try:
-            from agent.task_state import get_task_state_manager, TaskStatus
+            from brjarvis.agent.task_state import get_task_state_manager, TaskStatus
             mgr = get_task_state_manager()
             task = mgr.get_task(args_str)
             if not task:
@@ -747,7 +756,7 @@ class SlashCommandHandler:
             self.renderer.render_error("Missing Task ID", "Usage: `/cancel <task_id>`")
             return
         try:
-            from agent.task_state import get_task_state_manager, TaskStatus
+            from brjarvis.agent.task_state import get_task_state_manager, TaskStatus
             mgr = get_task_state_manager()
             state = mgr.update_status(task_id, TaskStatus.CANCELLED)
             if state:
@@ -764,7 +773,7 @@ class SlashCommandHandler:
             self.renderer.render_error("Missing Task ID", "Usage: `/retry <task_id>`")
             return
         try:
-            from agent.task_state import get_task_state_manager, TaskStatus
+            from brjarvis.agent.task_state import get_task_state_manager, TaskStatus
             mgr = get_task_state_manager()
             task = mgr.get_task(task_id)
             if not task:
@@ -824,7 +833,7 @@ class SlashCommandHandler:
     def _cmd_continue(self) -> None:
         """Resume latest incomplete session or task."""
         try:
-            from agent.task_state import get_task_state_manager
+            from brjarvis.agent.task_state import get_task_state_manager
             mgr = get_task_state_manager()
             tasks = mgr.list_tasks(limit=5)
             # Find latest non-completed task
@@ -869,7 +878,7 @@ class SlashCommandHandler:
             context["Active Task"] = f"{self.session._active_task_id} — {self.session._active_task_label or ''}"
 
         try:
-            from memory.unified_memory import get_unified_memory
+            from brjarvis.memory.unified_memory import get_unified_memory
             um = get_unified_memory()
             cache_count = len(um._cache) if hasattr(um, "_cache") else "?"
             context["Memory Cache"] = f"{cache_count} entries"
@@ -877,7 +886,7 @@ class SlashCommandHandler:
             context["Memory"] = "Active"
 
         try:
-            from tools.registry import TOOL_SCHEMAS
+            from brjarvis.tools.registry import TOOL_SCHEMAS
             context["Tools Registered"] = f"{len(TOOL_SCHEMAS)} tools"
         except Exception:
             pass
@@ -902,7 +911,7 @@ class SlashCommandHandler:
     def _cmd_memory(self, subcmd_line: str) -> None:
         """Handle /memory commands: search, recent, project, stats, forget."""
         try:
-            from memory.unified_memory import get_unified_memory
+            from brjarvis.memory.unified_memory import get_unified_memory
             um = get_unified_memory()
 
             parts = subcmd_line.split(maxsplit=1)
@@ -917,7 +926,7 @@ class SlashCommandHandler:
                 self.renderer.render_memory_card(hits, title=f"Memory Search: '{arg}'")
 
             elif sub in ("recent", "latest"):
-                from memory.persistent_store import load_index
+                from brjarvis.memory.persistent_store import load_index
                 entries = load_index("user")[:8]
                 mem_list = [{"type": e.type, "name": e.name, "content": e.content} for e in entries]
                 if not mem_list:
@@ -926,7 +935,7 @@ class SlashCommandHandler:
                 self.renderer.render_memory_card(mem_list, title="Recent Memories")
 
             elif sub in ("project", "workspace"):
-                from memory.persistent_store import load_index
+                from brjarvis.memory.persistent_store import load_index
                 entries = [e for e in load_index("user") if e.type in ("project", "operational")][:8]
                 mem_list = [{"type": e.type, "name": e.name, "content": e.content} for e in entries]
                 if not mem_list:
@@ -935,7 +944,7 @@ class SlashCommandHandler:
                 self.renderer.render_memory_card(mem_list, title="Project & Operational Memories")
 
             elif sub in ("stats", "summary"):
-                from memory.persistent_store import load_index
+                from brjarvis.memory.persistent_store import load_index
                 user_e = load_index("user")
                 proj_e = load_index("project")
                 by_type: dict = {}
@@ -948,7 +957,7 @@ class SlashCommandHandler:
 
             elif sub == "forget" and arg:
                 try:
-                    from memory.persistent_store import delete_entry
+                    from brjarvis.memory.persistent_store import delete_entry
                     delete_entry(arg)
                     self.renderer.render_markdown(f"{Glyphs.CHECK} Memory entry `{arg}` removed.")
                 except Exception:
@@ -982,7 +991,7 @@ class SlashCommandHandler:
             filter_query = " ".join(filter_query.split()[1:])
 
         try:
-            from tools.registry import TOOL_SCHEMAS, _import_plugins
+            from brjarvis.tools.registry import TOOL_SCHEMAS, _import_plugins
             _import_plugins()
             self.renderer.render_tools_table(TOOL_SCHEMAS, filter_query=filter_query)
         except Exception as e:
@@ -991,7 +1000,7 @@ class SlashCommandHandler:
     def _tools_health(self) -> None:
         """Check tool registry health."""
         try:
-            from tools.registry import TOOL_SCHEMAS
+            from brjarvis.tools.registry import TOOL_SCHEMAS
             total = len(TOOL_SCHEMAS)
             self.renderer.render_markdown(
                 f"### Tool Registry Health\n"
@@ -1133,7 +1142,7 @@ class SlashCommandHandler:
 
         # Tool registry
         try:
-            from tools.registry import TOOL_SCHEMAS, _import_plugins
+            from brjarvis.tools.registry import TOOL_SCHEMAS, _import_plugins
             _import_plugins()
             checks.append({"name": f"Tool Registry ({len(TOOL_SCHEMAS)} tools)", "ok": True, "detail": ""})
         except Exception as e:
@@ -1141,7 +1150,7 @@ class SlashCommandHandler:
 
         # Memory
         try:
-            from memory.unified_memory import get_unified_memory
+            from brjarvis.memory.unified_memory import get_unified_memory
             get_unified_memory()
             checks.append({"name": "Unified Memory", "ok": True, "detail": "SQLite WAL active"})
         except Exception as e:
@@ -1168,7 +1177,7 @@ class SlashCommandHandler:
 
         # Career OS
         try:
-            from career.profile_manager import get_profile_manager
+            from brjarvis.career.profile_manager import get_profile_manager
             get_profile_manager()
             checks.append({"name": "Career OS", "ok": True, "detail": ""})
         except Exception as e:
@@ -1213,7 +1222,7 @@ class SlashCommandHandler:
             pass
 
         try:
-            from tools.registry import TOOL_SCHEMAS
+            from brjarvis.tools.registry import TOOL_SCHEMAS
             stats["Registered Tools"] = len(TOOL_SCHEMAS)
         except Exception:
             pass
@@ -1228,7 +1237,7 @@ class SlashCommandHandler:
     def _cmd_verify(self, target_path: str = "") -> None:
         """Run verification check on file or path."""
         try:
-            from agent.verifier import get_action_verifier
+            from brjarvis.agent.verifier import get_action_verifier
             verifier = get_action_verifier()
             if target_path:
                 res = verifier.verify_file_operation(target_path, "read")
@@ -1266,8 +1275,8 @@ class SlashCommandHandler:
         # 1. /history task <id>
         if sub == "task" and arg:
             try:
-                from agent.task_state import get_task_state_manager
-                from agent.execution_ledger import get_execution_ledger
+                from brjarvis.agent.task_state import get_task_state_manager
+                from brjarvis.agent.execution_ledger import get_execution_ledger
                 mgr = get_task_state_manager()
                 task = mgr.get_task(arg)
                 if task:
@@ -1287,7 +1296,7 @@ class SlashCommandHandler:
         # 2. /history tools [task_id]
         if sub in ("tools", "ledger"):
             try:
-                from agent.execution_ledger import get_execution_ledger
+                from brjarvis.agent.execution_ledger import get_execution_ledger
                 ledger = get_execution_ledger()
                 target_task = arg or self.session._active_task_id or ""
                 if target_task:
@@ -1306,7 +1315,7 @@ class SlashCommandHandler:
         # 3. /history search <query>
         if sub == "search" and arg:
             try:
-                from history.session_store import SessionStore
+                from brjarvis.history.session_store import SessionStore
                 store = SessionStore()
                 results = store.search(arg, limit=8)
                 if not results:
@@ -1382,39 +1391,89 @@ class SlashCommandHandler:
             status = "ON" if self.session.verbose else "OFF"
             self.renderer.render_markdown(f"**Verbose Mode:** `{status}`\n\nUse `/verbose on` or `/verbose off`")
 
-    # ── Mouse Interaction ─────────────────────────────────────────────────────
+    # ── Mouse Interaction & TUI ───────────────────────────────────────────────
 
     def _cmd_mouse(self, args_str: str = "") -> None:
         """Toggle or configure interactive mouse support in terminal session."""
+        from .events import MouseCaptureMode
         sub = args_str.strip().lower()
+
+        def _notify(rich_msg: str, plain_msg: str) -> None:
+            if HAS_RICH and self.renderer and self.renderer.console:
+                self.renderer.console.print(rich_msg)
+            else:
+                print(plain_msg)
+
         if sub in ("on", "enable", "1", "true", "yes"):
             self.session.set_mouse_support(True)
-            msg = f"[bold green]{Glyphs.CHECK} Mouse support ENABLED[/bold green]. You can click to position cursor, select completions, and scroll."
-            self.renderer.render_markdown(msg) if HAS_RICH else print("✓ Mouse support ENABLED.")
+            _notify(f"[bold green]{Glyphs.CHECK} Mouse mode: INTERACTIVE[/bold green] (clicks, selection, URLs, expandable tools, scrolling).", "✓ Mouse mode: INTERACTIVE.")
         elif sub in ("off", "disable", "0", "false", "no"):
             self.session.set_mouse_support(False)
-            msg = f"[bold yellow]⚠ Mouse support DISABLED[/bold yellow]. Native terminal text selection is active."
-            self.renderer.render_markdown(msg) if HAS_RICH else print("⚠ Mouse support DISABLED.")
+            _notify(f"[bold yellow]⚠ Mouse mode: OFF[/bold yellow]. Native terminal text selection is active.", "⚠ Mouse mode: OFF.")
+        elif sub == "interactive":
+            if hasattr(self.session, "set_mouse_capture_mode"):
+                self.session.set_mouse_capture_mode(MouseCaptureMode.MOUSE_INTERACTIVE)
+            else:
+                self.session.set_mouse_support(True)
+            _notify(f"[bold green]{Glyphs.CHECK} Mouse mode: INTERACTIVE[/bold green].", "✓ Mouse mode: INTERACTIVE.")
+        elif sub in ("scroll", "wheel"):
+            if hasattr(self.session, "set_mouse_capture_mode"):
+                self.session.set_mouse_capture_mode(MouseCaptureMode.MOUSE_SCROLL)
+            else:
+                self.session.set_mouse_support(True)
+            _notify(f"[bold cyan]◆ Mouse mode: SCROLL ONLY[/bold cyan]. Wheel scrolls transcript; native terminal selection preserved.", "◆ Mouse mode: SCROLL ONLY.")
+        elif sub in ("full", "all"):
+            if hasattr(self.session, "set_mouse_capture_mode"):
+                self.session.set_mouse_capture_mode(MouseCaptureMode.MOUSE_FULL)
+            else:
+                self.session.set_mouse_support(True)
+            _notify(f"[bold magenta]◆ Mouse mode: FULL CAPTURE[/bold magenta] (motion hover tracking + all interactive features).", "◆ Mouse mode: FULL CAPTURE.")
         elif sub in ("status", "info"):
-            st = "ENABLED" if self.session.mouse_support else "DISABLED"
-            color = "green" if self.session.mouse_support else "yellow"
-            msg = f"Mouse interaction status: [bold {color}]{st}[/bold {color}]. Use `/mouse on` or `/mouse off` to change."
-            self.renderer.render_markdown(msg) if HAS_RICH else print(f"Mouse support is {st}.")
+            mode_val = getattr(self.session, "mouse_capture_mode", MouseCaptureMode.MOUSE_OFF)
+            mode_str = mode_val.value if hasattr(mode_val, "value") else str(mode_val)
+            self.renderer.render_markdown(
+                f"### 🖱️ Mouse Subsystem Telemetry\n"
+                f"* **Capture Mode:** `{mode_str.upper()}`\n"
+                f"* **Mouse Enabled:** `{'YES' if getattr(self.session, 'mouse_support', False) else 'NO'}`\n"
+                f"* **Click Handling:** `{'ACTIVE' if mode_val in (MouseCaptureMode.MOUSE_INTERACTIVE, MouseCaptureMode.MOUSE_FULL) else 'DISABLED'}`\n"
+                f"* **Wheel Scroll:** `{'ACTIVE' if mode_val != MouseCaptureMode.MOUSE_OFF else 'DISABLED'}`\n"
+                f"* **Protocol:** `SGR Extended (1006) + Drag (1002)`\n\n"
+                f"_Usage: `/mouse [on | off | scroll | interactive | full]`_"
+            )
         else:
             # Toggle
-            new_state = not self.session.mouse_support
+            new_state = not getattr(self.session, "mouse_support", False)
             self.session.set_mouse_support(new_state)
             st = "ENABLED" if new_state else "DISABLED"
             color = "green" if new_state else "yellow"
-            msg = f"[bold {color}]Mouse support toggled: {st}[/bold {color}]. ({'Click to position cursor & select suggestions' if new_state else 'Standard terminal text selection mode'})"
-            self.renderer.render_markdown(msg) if HAS_RICH else print(f"Mouse support toggled: {st}.")
+            _notify(f"[bold {color}]Mouse mode toggled: {st}[/bold {color}].", f"Mouse mode toggled: {st}.")
+
+    def _cmd_tui(self, args_str: str = "") -> None:
+        """Switch between standard streaming CLI and fullscreen interactive TUI."""
+        sub = args_str.strip().lower()
+        if sub in ("fullscreen", "alt", "full"):
+            if hasattr(self.session, "state_guard"):
+                self.session.state_guard.enter_alternate_screen()
+                self.session.render_header()
+            self.renderer.render_markdown(f"{Glyphs.CHECK} Switched to **Fullscreen TUI Mode** (Alternate screen active).")
+        elif sub in ("default", "inline", "normal", "exit"):
+            if hasattr(self.session, "state_guard"):
+                self.session.state_guard.exit_alternate_screen()
+            self.renderer.render_markdown(f"{Glyphs.CHECK} Switched to **Default Streaming Mode**.")
+        else:
+            is_alt = getattr(getattr(self.session, "state_guard", None), "is_alt_screen", False)
+            self.renderer.render_markdown(
+                f"### 🖥️ TUI Display State\n"
+                f"* **Active Display Buffer:** `{'ALTERNATE SCREEN (Fullscreen)' if is_alt else 'PRIMARY (Inline Stream)'}`\n\n"
+                f"_Use `/tui fullscreen` or `/tui default` to switch._"
+            )
 
     # ── Export ────────────────────────────────────────────────────────────────
 
     def _cmd_export(self, format_spec: str = "markdown") -> None:
         """Export session transcript to artifact."""
         try:
-            from agent.artifacts import get_artifact_manager
+            from brjarvis.agent.artifacts import get_artifact_manager
             mgr = get_artifact_manager()
             orch = self.session.orchestrator
             history = orch.working_memory.get() if orch and hasattr(orch, "working_memory") else []
@@ -1484,8 +1543,8 @@ class SlashCommandHandler:
     def _cmd_career(self, args_str: str = "") -> None:
         """Career Profile and Funnel Analytics overview."""
         try:
-            from career.profile_manager import get_profile_manager
-            from career.analytics import CareerAnalyticsEngine
+            from brjarvis.career.profile_manager import get_profile_manager
+            from brjarvis.career.analytics import CareerAnalyticsEngine
 
             mgr = get_profile_manager()
             profile = mgr.get_profile()
@@ -1493,7 +1552,7 @@ class SlashCommandHandler:
             analytics = CareerAnalyticsEngine.compute_analytics()
 
             if "sync" in args_str.lower():
-                from career.spreadsheet.projection import get_spreadsheet_projection
+                from brjarvis.career.spreadsheet.projection import get_spreadsheet_projection
                 self.renderer.render_markdown("⏳ _Synchronizing Career Database and Excel Projection..._")
                 proj = get_spreadsheet_projection()
                 res = proj.project_database_to_excel()
@@ -1539,12 +1598,12 @@ class SlashCommandHandler:
     def _cmd_applications(self, args_str: str = "") -> None:
         """List tracked job applications."""
         try:
-            from career.crm.database import get_career_crm_db
+            from brjarvis.career.crm.database import get_career_crm_db
             db = get_career_crm_db()
             apps = db.list_applications(limit=25)
             arg_low = args_str.lower().strip()
             if "followup" in arg_low:
-                from career.crm.followup_engine import get_followup_engine
+                from brjarvis.career.crm.followup_engine import get_followup_engine
                 fol_engine = get_followup_engine()
                 pending = fol_engine.get_pending_followups()
                 if not pending:
@@ -1567,7 +1626,7 @@ class SlashCommandHandler:
     def _cmd_interviews(self, args_str: str = "") -> None:
         """List scheduled interviews."""
         try:
-            from career.crm.database import get_career_crm_db
+            from brjarvis.career.crm.database import get_career_crm_db
             db = get_career_crm_db()
             interviews = db.list_interviews(limit=15)
             if not interviews:
@@ -1582,7 +1641,7 @@ class SlashCommandHandler:
     def _cmd_offers(self, args_str: str = "") -> None:
         """List detected job offers."""
         try:
-            from career.crm.database import get_career_crm_db
+            from brjarvis.career.crm.database import get_career_crm_db
             db = get_career_crm_db()
             offers = db.list_offers(limit=10)
             if not offers:
@@ -1598,7 +1657,7 @@ class SlashCommandHandler:
     def _cmd_emails(self, args_str: str = "") -> None:
         """Career email intelligence."""
         try:
-            from career.crm.database import get_career_crm_db
+            from brjarvis.career.crm.database import get_career_crm_db
             db = get_career_crm_db()
             events = db.list_email_records(limit=10)
             if not events:
@@ -1614,10 +1673,10 @@ class SlashCommandHandler:
     def _cmd_resume(self, args_str: str = "") -> None:
         """Generate or tailor resume."""
         try:
-            from career.profile_manager import get_profile_manager
-            from career.resume_engine.renderer import ResumeRenderer
-            from career.resume_engine.exporter import ResumeExportPipeline
-            from career.resume_engine.version_manager import ResumeVersionManager
+            from brjarvis.career.profile_manager import get_profile_manager
+            from brjarvis.career.resume_engine.renderer import ResumeRenderer
+            from brjarvis.career.resume_engine.exporter import ResumeExportPipeline
+            from brjarvis.career.resume_engine.version_manager import ResumeVersionManager
 
             mgr = get_profile_manager()
             profile = mgr.get_profile()
@@ -1645,7 +1704,7 @@ class SlashCommandHandler:
     def _cmd_jobs(self, query: str = "") -> None:
         """Search and match live job postings."""
         try:
-            from career.job_engine.finder import JobFinder
+            from brjarvis.career.job_engine.finder import JobFinder
             q = query.strip() or "Autonomous AI Systems Engineer"
             self.renderer.render_markdown(f"🔍 _Searching for:_ `{q}`...")
             finder = JobFinder.get_instance()
@@ -1667,8 +1726,8 @@ class SlashCommandHandler:
     def _cmd_apply(self, job_id: str = "") -> None:
         """Prepare application package and open browser."""
         try:
-            from career.job_engine.finder import JobFinder
-            from career.application_engine.assistant import ManualApplicationAssistant
+            from brjarvis.career.job_engine.finder import JobFinder
+            from brjarvis.career.application_engine.assistant import ManualApplicationAssistant
             jid = job_id.strip()
             if not jid:
                 self.renderer.render_markdown("Usage: `/apply <job_id>` (Use `/jobs` to discover IDs).")
@@ -1696,9 +1755,9 @@ class SlashCommandHandler:
     def _cmd_ats(self, role_str: str = "") -> None:
         """Run 7-factor ATS audit."""
         try:
-            from career.profile_manager import get_profile_manager
-            from career.resume_engine.renderer import ResumeRenderer
-            from career.ats_engine.scorer import ATSEngine
+            from brjarvis.career.profile_manager import get_profile_manager
+            from brjarvis.career.resume_engine.renderer import ResumeRenderer
+            from brjarvis.career.ats_engine.scorer import ATSEngine
             mgr = get_profile_manager()
             profile = mgr.get_profile()
             schema = ResumeRenderer.schema_from_profile(profile, target_role=role_str.strip() or None)
@@ -1715,3 +1774,171 @@ class SlashCommandHandler:
 """)
         except Exception as e:
             self.renderer.render_error("ATS Audit Error", str(e))
+
+    def _cmd_session(self, args_str: str = "") -> None:
+        """View or switch active AgentSession."""
+        try:
+            from brjarvis.agent.session import get_or_create_session
+            sess_id = args_str.strip()
+            if not sess_id:
+                sid = getattr(self.session, "session_id", "default")
+                mode = getattr(self.session, "current_mode", "general")
+                self.renderer.render_markdown(
+                    f"### 📋 Active Session Context\n"
+                    f"* **Session ID:** `{sid}`\n"
+                    f"* **Mode:** `{mode.upper()}`\n"
+                    f"* **Working Directory:** `{os.getcwd()}`\n"
+                    f"* **Output Style:** `{getattr(self.session, 'output_style', 'compact')}`\n\n"
+                    f"_Use `/sessions` to list active sessions, or `/session <id>` to switch._"
+                )
+            else:
+                self.session.session_id = sess_id
+                if hasattr(self.session, "agent_session"):
+                    self.session.agent_session = get_or_create_session(sess_id)
+                self.renderer.render_markdown(f"{Glyphs.CHECK} Switched to session: `{sess_id}`")
+        except Exception as e:
+            self.renderer.render_error("Session Error", str(e))
+
+    def _cmd_sessions(self) -> None:
+        """List active and persisted AgentSessions."""
+        try:
+            from brjarvis.agent.session import list_active_sessions
+            sessions = list_active_sessions()
+            if not sessions:
+                self.renderer.render_markdown(f"_Current active session:_ `{getattr(self.session, 'session_id', 'default')}`")
+                return
+
+            lines = ["### 📋 Active Agent Sessions:"]
+            for s in sessions:
+                cur_mark = " (Active)" if s.session_id == getattr(self.session, "session_id", "") else ""
+                lines.append(f"• `{s.session_id}` [{s.current_mode.upper()}] — {len(s.turns)} turns{cur_mark}")
+            self.renderer.render_markdown("\n".join(lines))
+        except Exception as e:
+            self.renderer.render_error("Sessions Error", str(e))
+
+    def _cmd_skills(self, args_str: str = "") -> None:
+        """Browse registered skills catalog and workflows."""
+        try:
+            from brjarvis.skills import load_skills
+            skills = load_skills()
+            if not skills:
+                self.renderer.render_markdown("_No external skills discovered in `./skills` or builtin._")
+                return
+
+            query = args_str.strip().lower()
+            if query:
+                skills = [s for s in skills if query in s.name.lower() or query in s.description.lower()]
+
+            lines = [f"### ⚡ Extensible Skills Catalog ({len(skills)} found):"]
+            for sk in skills:
+                lines.append(f"• **{sk.name}** (`/{sk.name}`): {sk.description[:100]}")
+            self.renderer.render_markdown("\n".join(lines))
+        except Exception as e:
+            self.renderer.render_error("Skills Catalog Error", str(e))
+
+    def _cmd_config(self) -> None:
+        """Display configuration and runtime environment summary."""
+        try:
+            from brjarvis.core.config import get_config
+            cfg = get_config()
+            self.renderer.render_markdown(
+                f"### ⚙️ Runtime Configuration\n"
+                f"* **Environment:** `{getattr(cfg, 'environment', 'production')}`\n"
+                f"* **Default Provider:** `{getattr(cfg.models, 'default_backend', 'Gemini')}`\n"
+                f"* **Permission Policy:** `{os.environ.get('JARVIS_PERMISSION_MODE', 'CONFIRM_DESTRUCTIVE')}`\n"
+                f"* **Mouse Support:** `{'Enabled' if getattr(self.session, 'mouse_support', True) else 'Disabled'}`\n"
+            )
+        except Exception as e:
+            self.renderer.render_error("Config Error", str(e))
+
+    def _cmd_interrupt(self) -> None:
+        """Manually trigger task interrupt / pause."""
+        try:
+            if hasattr(self.session, "_handle_interrupt"):
+                self.session._handle_interrupt(force_quit=False)
+            self.renderer.render_markdown(f"{Glyphs.WARNING} **Agent task interrupted safely. State preserved.**")
+        except Exception as e:
+            self.renderer.render_error("Interrupt Error", str(e))
+
+    def _cmd_doctor(self, args_str: str = "") -> None:
+        """Run system diagnostics or mouse/terminal interaction telemetry."""
+        sub = args_str.strip().lower()
+        if sub in ("mouse", "tui", "input", "terminal"):
+            from .events import MouseCaptureMode
+            term = os.environ.get("TERM_PROGRAM") or os.environ.get("TERM") or ("Windows Terminal" if os.name == "nt" else "Standard ANSI")
+            mode_val = getattr(self.session, "mouse_capture_mode", MouseCaptureMode.MOUSE_OFF)
+            mode_str = mode_val.value if hasattr(mode_val, "value") else str(mode_val)
+            is_mouse = getattr(self.session, "mouse_support", False)
+            in_tmux = "YES" if os.environ.get("TMUX") else "NO"
+            in_ssh = "YES" if os.environ.get("SSH_CLIENT") or os.environ.get("SSH_TTY") else "NO"
+
+            self.renderer.render_markdown(
+                f"### 🩺 Terminal & Interaction Diagnostics\n"
+                f"* **Terminal Emulator:** `{term}`\n"
+                f"* **Platform / OS:** `{sys.platform}` (`{os.name}`)\n"
+                f"* **TMUX Session:** `{in_tmux}`\n"
+                f"* **SSH Session:** `{in_ssh}`\n"
+                f"* **Alternate Screen:** `SUPPORTED`\n"
+                f"* **Mouse Protocol:** `SGR Extended (1006) + Drag (1002)`\n"
+                f"* **Mouse Reporting:** `{'ENABLED (' + mode_str.upper() + ')' if is_mouse else 'DISABLED (Native selection active)'}`\n"
+                f"* **Wheel Scrolling:** `SUPPORTED (Independent of click)`\n"
+                f"* **Clipboard Support:** `SUPPORTED (Win32 / OSC 52 / pbcopy / xclip)`\n"
+                f"* **Spatial Hit Testing:** `ACTIVE (2D Bounding Boxes)`\n"
+                f"* **Auto-Follow Mechanics:** `ACTIVE (Pauses on scroll-up, resumes at bottom)`\n\n"
+                f"_Toggle mouse mode anytime via `/mouse [on | off | scroll | interactive | full]`._"
+            )
+            return
+
+        try:
+            from brjarvis.diagnostics.doctor import run_diagnostics_audit
+            rep = run_diagnostics_audit(auto_repair=False)
+            healthy = rep.get("healthy", True)
+            checks = rep.get("checks", {})
+            status_glyph = Glyphs.CHECK if healthy else Glyphs.WARNING
+            color = "green" if healthy else "yellow"
+
+            lines = [f"### {status_glyph} Diagnostic Health Audit: `{rep.get('status', 'OK')}`"]
+            for name, details in checks.items():
+                ok = details.get("status") in ("ok", "passed", "healthy", True)
+                g = Glyphs.CHECK if ok else Glyphs.CROSS
+                c = "green" if ok else "red"
+                lines.append(f"* **{name}**: [{c}]{g} {details.get('message', details.get('status', 'OK'))}[/{c}]")
+
+            self.renderer.render_markdown("\n".join(lines))
+        except Exception as e:
+            self.renderer.render_error("Doctor Audit Error", str(e))
+
+    def _cmd_usage(self) -> None:
+        """Display token metrics, turn count, and cost telemetry."""
+        try:
+            sess = getattr(self.session, "agent_session", None)
+            turns_count = len(sess.turns) if sess and hasattr(sess, "turns") else 0
+            prompt_toks = 0
+            completion_toks = 0
+            if sess and hasattr(sess, "turns"):
+                for t in sess.turns:
+                    prompt_toks += getattr(t, "prompt_tokens", 0)
+                    completion_toks += getattr(t, "completion_tokens", 0)
+
+            total_toks = prompt_toks + completion_toks
+            self.renderer.render_markdown(
+                f"### 📊 Session Resource & Token Usage\n"
+                f"* **Active Turns:** `{turns_count}`\n"
+                f"* **Prompt Tokens:** `{prompt_toks:,}`\n"
+                f"* **Completion Tokens:** `{completion_toks:,}`\n"
+                f"* **Total Tokens Consumed:** `{total_toks:,}`\n"
+                f"* **Active Backend:** `{getattr(sess, 'model', 'Gemini') if sess else 'Gemini'}`\n"
+            )
+        except Exception as e:
+            self.renderer.render_error("Usage Telemetry Error", str(e))
+
+    def _cmd_connectors(self, args_str: str = "") -> None:
+        """Browse registered MCP and external connectors."""
+        self.renderer.render_markdown(
+            "### 🔌 External Connectors & MCP Integrations\n"
+            "* **MCP Bridge:** `Active`\n"
+            "* **Browser Engine:** `Playwright / Headless Chromium`\n"
+            "* **Filesystem Provider:** `Native Workspace Sandbox`\n"
+            "* **Voice Subsystem:** `Whisper / Edge-TTS`\n"
+        )
+

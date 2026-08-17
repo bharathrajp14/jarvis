@@ -34,7 +34,7 @@ logger = logging.getLogger("JARVIS.ConnectorTools")
 def connector_status_action(args: Dict[str, Any]) -> str:
     """Display the Connector Hub status dashboard."""
     try:
-        from connectors.hub import get_hub
+        from brjarvis.connectors.hub import get_hub
         hub = get_hub()
         return hub.status_report()
     except Exception as e:
@@ -93,7 +93,7 @@ def connector_call_action(args: Dict[str, Any]) -> str:
             tool_args = {}
 
     try:
-        from connectors.hub import get_hub
+        from brjarvis.connectors.hub import get_hub
         hub = get_hub()
         return hub.call(connector_id, tool_name, tool_args)
     except Exception as e:
@@ -134,7 +134,7 @@ def connector_search_action(args: Dict[str, Any]) -> str:
     requested_sources = args.get("sources", [])
 
     try:
-        from connectors.hub import get_hub
+        from brjarvis.connectors.hub import get_hub
         hub = get_hub()
 
         # Determine which connectors to search
@@ -209,8 +209,8 @@ def connector_add_mcp_action(args: Dict[str, Any]) -> str:
         return "❌ Please provide the MCP server URL."
 
     try:
-        from connectors.hub import get_hub
-        from connectors.mcp_proxy import MCPServerProxy
+        from brjarvis.connectors.hub import get_hub
+        from brjarvis.connectors.mcp_proxy import MCPServerProxy
         hub = get_hub()
         mcp_connector = hub.get_connector("mcp_proxy")
         if mcp_connector:
@@ -243,7 +243,7 @@ def connector_list_tools_action(args: Dict[str, Any]) -> str:
         return "❌ Please provide a connector_id."
 
     try:
-        from connectors.hub import get_hub
+        from brjarvis.connectors.hub import get_hub
         hub = get_hub()
         connector = hub.get_connector(connector_id)
         if not connector:

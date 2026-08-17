@@ -3,8 +3,8 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 from .registry import register_tool
-from actions.reminder import reminder
-from actions.reminders import reminder_tool_action, get_reminder_manager
+from brjarvis.actions.reminder import reminder
+from brjarvis.actions.reminders import reminder_tool_action, get_reminder_manager
 
 
 @register_tool(

@@ -160,9 +160,9 @@ async def _close_browser():
 )
 def browser_open_url(args: dict) -> Any:
     """Open a URL or verified host artifact in the persistent browser and return canonical ToolResult."""
-    from agent.artifacts import get_artifact_manager
-    from tools.tool_result import ToolResult
-    from tools.domain import ToolErrorCode
+    from brjarvis.agent.artifacts import get_artifact_manager
+    from brjarvis.tools.tool_result import ToolResult
+    from brjarvis.tools.domain import ToolErrorCode
     mgr = get_artifact_manager()
 
     if isinstance(args, str):
@@ -254,8 +254,8 @@ def browser_open_url(args: dict) -> Any:
 )
 def browser_click(args: dict) -> Any:
     """Click an element on the current browser page."""
-    from tools.tool_result import ToolResult
-    from tools.domain import ToolErrorCode
+    from brjarvis.tools.tool_result import ToolResult
+    from brjarvis.tools.domain import ToolErrorCode
 
     if isinstance(args, str):
         target = args.strip()

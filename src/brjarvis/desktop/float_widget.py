@@ -42,7 +42,7 @@ if sys.platform == "win32":
         pass
 
 try:
-    from ui import setup_qt_paths
+    from brjarvis.ui import setup_qt_paths
     setup_qt_paths()
 except Exception:
     pass

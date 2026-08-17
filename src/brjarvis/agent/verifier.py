@@ -419,7 +419,7 @@ class ArtifactVerifier:
     @staticmethod
     def verify_artifact_exported(record_or_path: Union[Any, str, Path]) -> VerificationResult:
         try:
-            from agent.artifacts import ArtifactRecord
+            from brjarvis.agent.artifacts import ArtifactRecord
             if isinstance(record_or_path, ArtifactRecord):
                 if not record_or_path.exported or not record_or_path.host_path:
                     return VerificationResult(
@@ -547,3 +547,21 @@ def get_action_verifier() -> ActionVerifier:
     if _global_verifier is None:
         _global_verifier = ActionVerifier()
     return _global_verifier
+
+
+def verify_goal_outcome(goal: str, results: List[Any]) -> VerificationResult:
+    """Verify overall goal outcome from aggregated results."""
+    has_failures = any("error" in str(r).lower() or "fail" in str(r).lower() for r in results)
+    if has_failures:
+        return VerificationResult(
+            verified=False,
+            status=VerificationStatus.FAILED,
+            details=f"Goal '{goal[:60]}' completed with failed sub-actions.",
+        )
+    return VerificationResult(
+        verified=True,
+        status=VerificationStatus.SUCCESS_VERIFIED,
+        evidence=f"Goal '{goal[:60]}' verified successfully.",
+        details=f"Goal '{goal[:60]}' verified successfully.",
+    )
+

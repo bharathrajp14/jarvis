@@ -131,7 +131,7 @@ class ExecutionLedger:
     """
 
     def __init__(self, db_manager=None):
-        from memory.canonical_db import get_canonical_db
+        from brjarvis.memory.canonical_db import get_canonical_db
         self._db = db_manager or get_canonical_db()
         self._ensure_table()
 

@@ -11,6 +11,7 @@ from typing import Any, Dict, List, Optional
 
 from ..runtime import ApplicationRuntime, get_runtime
 from .commands import SlashCommandHandler, VALID_MODES
+from .components import HeaderComponent, PermissionPromptComponent
 from .renderer import TerminalRenderer
 from .theme import (
     COLOR_AMBER,
@@ -22,6 +23,12 @@ from .theme import (
     MODE_COLORS,
 )
 from ..version import BUILD, CODENAME, VERSION
+from brjarvis.agent.session import AgentSession, get_or_create_session
+from brjarvis.agent.agent_loop import AgentLoop
+from brjarvis.security.permission_request import PermissionDecision, PermissionRequest
+from .events import MouseCaptureMode
+from .guard import TerminalStateGuard
+from .interactive_tui import InteractiveTUIController
 
 # ── autocomplete / prompt engine ─────────────────────────────────────────────
 try:
@@ -104,9 +111,32 @@ class TerminalSession:
         self._active_task_label: Optional[str] = None
         self._prompt_state: str = PROMPT_NORMAL
 
-        # ── Mouse interaction support ─────────────────────────────────────
-        env_mouse = os.environ.get("JARVIS_MOUSE_SUPPORT", "1").strip().lower()
-        self.mouse_support: bool = env_mouse not in ("0", "false", "no", "off", "disable", "disabled")
+        # ── Terminal State Guard & Mouse Controller ───────────────────────
+        self.state_guard: TerminalStateGuard = TerminalStateGuard.get_instance()
+        self.state_guard.register_emergency_cleanup()
+
+        env_mouse = os.environ.get("JARVIS_MOUSE_SUPPORT", "0").strip().lower()
+        self.mouse_support: bool = env_mouse in ("1", "true", "yes", "on", "enable", "enabled")
+        self.mouse_capture_mode: MouseCaptureMode = (
+            MouseCaptureMode.MOUSE_INTERACTIVE if self.mouse_support else MouseCaptureMode.MOUSE_OFF
+        )
+        self.tui: InteractiveTUIController = InteractiveTUIController(
+            console=self.renderer.console,
+            mouse_mode=self.mouse_capture_mode,
+        )
+
+        # ── Canonical AgentSession & AgentLoop ───────────────────────────
+        self.agent_session: AgentSession = get_or_create_session(
+            session_id=self.session_id,
+            mode=self.current_mode,
+            model=(
+                getattr(self.runtime.config.models, "default_backend", "Gemini")
+                if self.runtime and hasattr(self.runtime, "config")
+                else "Gemini"
+            ),
+        )
+        self.agent_loop: AgentLoop = AgentLoop(session=self.agent_session)
+        self.agent_loop.permission_mgr.set_interactive_resolver(self.prompt_permission)
 
         # ── prompt_toolkit session (with history + autocomplete) ──────────
         self._pt_session: Any = None
@@ -116,17 +146,32 @@ class TerminalSession:
             except Exception as e:
                 logger.debug("prompt_toolkit session init failed: %s", e)
 
+        # Only activate mouse capture if explicitly requested
+        if self.mouse_support:
+            try:
+                self.state_guard.enable_mouse_capture(self.mouse_capture_mode)
+            except Exception as e:
+                logger.debug("Initial mouse capture setup note: %s", e)
+
         self._setup_event_listeners()
+
+    def set_mouse_capture_mode(self, mode: MouseCaptureMode) -> None:
+        """Set explicit mouse capture mode (off, scroll, interactive, full)."""
+        self.mouse_capture_mode = mode
+        self.mouse_support = (mode != MouseCaptureMode.MOUSE_OFF)
+        os.environ["JARVIS_MOUSE_SUPPORT"] = "1" if self.mouse_support else "0"
+        self.tui.mouse_mode = mode
+        self.state_guard.enable_mouse_capture(mode)
+        if HAS_PROMPT_TOOLKIT and self._pt_session is not None:
+            try:
+                self._pt_session.mouse_support = self.mouse_support
+            except Exception as e:
+                logger.debug("Could not update pt_session mouse_support: %s", e)
 
     def set_mouse_support(self, enabled: bool) -> None:
         """Dynamically enable or disable mouse support in the CLI terminal session."""
-        self.mouse_support = enabled
-        os.environ["JARVIS_MOUSE_SUPPORT"] = "1" if enabled else "0"
-        if HAS_PROMPT_TOOLKIT and self._pt_session is not None:
-            try:
-                self._pt_session.mouse_support = enabled
-            except Exception as e:
-                logger.debug("Could not update pt_session mouse_support: %s", e)
+        target_mode = MouseCaptureMode.MOUSE_INTERACTIVE if enabled else MouseCaptureMode.MOUSE_OFF
+        self.set_mouse_capture_mode(target_mode)
 
     # ── Event bus wiring ──────────────────────────────────────────────────────
 
@@ -170,7 +215,7 @@ class TerminalSession:
         try:
             tool_count = 0
             try:
-                from tools.registry import TOOL_SCHEMAS
+                from brjarvis.tools.registry import TOOL_SCHEMAS
                 tool_count = len(TOOL_SCHEMAS)
             except Exception:
                 pass
@@ -208,7 +253,8 @@ class TerminalSession:
             return "\nJARVIS needs input › "
 
         if self._prompt_state == PROMPT_TASK and self._active_task_label:
-            label = self._active_task_label[:24]
+            raw_label = self._active_task_label.strip()
+            label = (raw_label[:20] + "…") if len(raw_label) > 20 else raw_label
             if HAS_RICH:
                 return f"\n[bold #1de9b6]task:{label}[/] [bold {mode_color}]›[/] "
             return f"\ntask:{label} › "
@@ -232,7 +278,9 @@ class TerminalSession:
         if self._prompt_state == PROMPT_NEEDS_INPUT:
             return "JARVIS needs input › "
         if self._prompt_state == PROMPT_TASK and self._active_task_label:
-            return f"task:{self._active_task_label[:24]} › "
+            raw_label = self._active_task_label.strip()
+            label = (raw_label[:20] + "…") if len(raw_label) > 20 else raw_label
+            return f"task:{label} › "
         if mode == "GENERAL":
             return "you › "
         return f"you [{mode}] › "
@@ -256,8 +304,10 @@ class TerminalSession:
                     ("class:prompt.arrow", " › "),
                 ])
             if self._prompt_state == PROMPT_TASK and self._active_task_label:
+                raw_label = self._active_task_label.strip()
+                label = (raw_label[:20] + "…") if len(raw_label) > 20 else raw_label
                 return FormattedText([
-                    ("class:prompt.task", f"\ntask:{self._active_task_label[:24]}"),
+                    ("class:prompt.task", f"\ntask:{label}"),
                     ("class:prompt.arrow", " › "),
                 ])
             if mode == "GENERAL":
@@ -296,7 +346,13 @@ class TerminalSession:
             except Exception as task_err:
                 logger.debug("Task state preservation note on close: %s", task_err)
 
-        # 2. Consolidate learnings via orchestrator / runtime shutdown
+        # 2. Consolidate learnings via orchestrator / runtime shutdown and AgentSession
+        if hasattr(self, "agent_session") and self.agent_session:
+            try:
+                self.agent_session.close(consolidate=consolidate)
+            except Exception as s_err:
+                logger.debug("AgentSession close note: %s", s_err)
+
         if consolidate:
             try:
                 orch = self.orchestrator
@@ -315,12 +371,48 @@ class TerminalSession:
         else:
             print("\n⚡ BR JARVIS session closed. Learnings consolidated.")
 
+    def _handle_interrupt(self, force_quit: bool = False) -> Optional[str]:
+        """Handle interrupt signal (Esc or Ctrl+C) to cancel active tasks or reset prompt state."""
+        self._interrupt_count += 1
+        if self._interrupt_count >= 2 or force_quit:
+            if HAS_RICH and self.renderer and self.renderer.console:
+                self.renderer.console.print("\n[bold yellow]⚡ Session terminated by user.[/bold yellow]")
+            else:
+                print("\n⚡ Session terminated by user.")
+            self.close(consolidate=True)
+            return None
+
+        # Reset active prompt state and cancel any active background task
+        self._prompt_state = PROMPT_NORMAL
+        if self._active_task_id:
+            try:
+                from brjarvis.agent.task_state import get_task_state_manager, TaskStatus
+                mgr = get_task_state_manager()
+                mgr.update_status(self._active_task_id, TaskStatus.CANCELLED)
+                self._active_task_id = None
+                self._active_task_label = None
+            except Exception as e:
+                logger.debug("Task cancel on interrupt note: %s", e)
+
+        if HAS_RICH and self.renderer and self.renderer.console:
+            self.renderer.console.print("\n[dim yellow]⚡ Interrupted. (Press Esc or Ctrl+C again to exit)[/dim yellow]")
+        else:
+            print("\n⚡ Interrupted. (Press Esc or Ctrl+C again to exit)")
+        return ""
+
     # ── REPL loop ─────────────────────────────────────────────────────────────
 
     def run_repl(self) -> None:
         """Start the interactive REPL loop."""
         self._is_running = True
         self._interrupt_count = 0
+
+        # Ensure terminal mouse capture is armed
+        if self.mouse_support:
+            try:
+                self.state_guard.enable_mouse_capture(self.mouse_capture_mode)
+            except Exception as e:
+                logger.debug("REPL mouse capture arming note: %s", e)
 
         try:
             self.renderer.clear()
@@ -329,7 +421,16 @@ class TerminalSession:
         self.render_header()
 
         if self.auto_welcome:
-            self.renderer.render_welcome()
+            model_name = (
+                getattr(self.runtime.config.models, "default_backend", "Gemini")
+                if self.runtime and hasattr(self.runtime, "config")
+                else "Gemini"
+            )
+            self.renderer.render_welcome(
+                mode=self.current_mode,
+                working_dir=os.getcwd(),
+                model_name=model_name,
+            )
 
         exit_aliases = {"exit", "quit", "q", ":q", ":quit", ":exit", "bye", "goodbye"}
 
@@ -414,36 +515,73 @@ class TerminalSession:
             print("\nInterrupted. Press Ctrl+C again or Ctrl+D to quit.")
         return ""
 
+    # ── Interactive Permissions ───────────────────────────────────────────────
+
+    def prompt_permission(self, req: PermissionRequest) -> PermissionDecision:
+        """Render interactive permission prompt card and capture decision."""
+        PermissionPromptComponent.render(self.renderer.console, req)
+        try:
+            choice = input("Authorize action [y=allow once, a/s=allow all/session, d=deny, c=cancel] › ").strip().lower()
+            if choice in ("y", "yes", "allow", "1", "ok"):
+                return PermissionDecision.ALLOW_ONCE
+            elif choice in ("s", "session", "always", "allow_session", "a", "all", "allow_all"):
+                return PermissionDecision.ALLOW_SESSION
+            elif choice in ("t", "tool", "allow_tool"):
+                return PermissionDecision.ALLOW_TOOL
+            elif choice in ("c", "cancel"):
+                return PermissionDecision.CANCEL
+            else:
+                return PermissionDecision.DENY
+        except (KeyboardInterrupt, EOFError):
+            return PermissionDecision.CANCEL
+
     # ── Cognitive execution ───────────────────────────────────────────────────
 
     def execute_turn(self, user_input: str) -> None:
         """Execute a cognitive agent turn with live step visualization."""
-        if self.orchestrator is None:
-            self.renderer.render_error(
-                "Backend Unavailable",
-                "No AI backend is connected. Check your API keys in .env.",
-                ["Run /doctor to diagnose system health", "Add GEMINI_API_KEY or OPENAI_API_KEY to .env"],
-            )
-            return
-
         t_start = time.monotonic()
 
         try:
-            handler_func = getattr(self.orchestrator, "handle_query", self.orchestrator.chat)
-            # Live spinner during orchestrator call
+            router = getattr(self.orchestrator, "router", None) if self.orchestrator else None
+            # Live spinner during cognitive turn
             if HAS_RICH and self.renderer.console and getattr(sys.stdout, "isatty", lambda: False)():
                 spinner_label = self._get_spinner_label()
                 with self.renderer.console.status(
                     f"[bold {COLOR_CYAN}]{spinner_label}[/] [dim]({self.current_mode.upper()})[/dim]",
                     spinner="dots",
                 ):
-                    response = handler_func(user_input)
-                    if asyncio.iscoroutine(response):
-                        response = asyncio.run(response)
+                    if hasattr(self, "agent_loop") and self.agent_loop:
+                        response = self.agent_loop.run_turn(
+                            user_input,
+                            router=router,
+                            interactive_permission_cb=self.prompt_permission,
+                        )
+                    elif self.orchestrator is not None:
+                        handler_func = getattr(self.orchestrator, "handle_query", getattr(self.orchestrator, "chat", None))
+                        if callable(handler_func):
+                            response = handler_func(user_input)
+                        else:
+                            response = "Orchestrator chat handler is not available."
+                    else:
+                        response = "No active agent loop or orchestrator runtime available."
             else:
-                response = handler_func(user_input)
-                if asyncio.iscoroutine(response):
-                    response = asyncio.run(response)
+                if hasattr(self, "agent_loop") and self.agent_loop:
+                    response = self.agent_loop.run_turn(
+                        user_input,
+                        router=router,
+                        interactive_permission_cb=self.prompt_permission,
+                    )
+                elif self.orchestrator is not None:
+                    handler_func = getattr(self.orchestrator, "handle_query", getattr(self.orchestrator, "chat", None))
+                    if callable(handler_func):
+                        response = handler_func(user_input)
+                    else:
+                        response = "Orchestrator chat handler is not available."
+                else:
+                    response = "No active agent loop or orchestrator runtime available."
+
+            if asyncio.iscoroutine(response):
+                response = asyncio.run(response)
 
             elapsed_ms = (time.monotonic() - t_start) * 1000
             self._render_turn_output(user_input, response, elapsed_ms)
@@ -461,16 +599,19 @@ class TerminalSession:
             # Truncate traceback unless verbose
             if not self.verbose and len(err_msg) > 400:
                 err_msg = err_msg[:400] + "…"
-            self.renderer.render_error(
-                "Agent Execution Error",
-                err_msg,
-                [
-                    "Verify API keys in .env (GEMINI_API_KEY, OPENAI_API_KEY)",
-                    "Run /doctor to diagnose subsystem health",
-                    "Try /verbose on for full error details",
-                    "Try switching mode: /mode general",
-                ],
-            )
+            try:
+                self.renderer.render_error(
+                    "Agent Execution Error",
+                    err_msg,
+                    [
+                        "Verify API keys in .env (GEMINI_API_KEY, OPENAI_API_KEY)",
+                        "Run /doctor to diagnose subsystem health",
+                        "Try /verbose on for full error details",
+                        "Try switching mode: /mode general",
+                    ],
+                )
+            except Exception:
+                print(f"\n[Agent Execution Error] {err_msg}")
 
     def _get_spinner_label(self) -> str:
         """Context-aware spinner label."""
@@ -486,16 +627,21 @@ class TerminalSession:
 
     def _render_turn_output(self, user_input: str, response: Any, elapsed_ms: float) -> None:
         """Render agent response with mode-colored header and markdown."""
-        if HAS_RICH and self.renderer.console:
-            mode_color = MODE_COLORS.get(self.current_mode, "cyan")
-            self.renderer.console.print(
-                f"\n[{mode_color} bold]jarvis[/] [dim]({elapsed_ms:.0f}ms)[/]:"
-            )
-            resp_str = str(response) if not hasattr(response, "text") else response.text
-            self.renderer.render_markdown(resp_str)
-            self.renderer.console.print()
+        resp_str = str(response) if not hasattr(response, "text") else response.text
+        if not resp_str or not str(resp_str).strip():
+            resp_str = "No response generated."
+        if HAS_RICH and self.renderer and self.renderer.console:
+            try:
+                mode_color = MODE_COLORS.get(self.current_mode, "cyan")
+                self.renderer.console.print(
+                    f"\n[{mode_color} bold]jarvis[/] [dim]({elapsed_ms:.0f}ms)[/]:"
+                )
+                self.renderer.render_markdown(resp_str)
+                self.renderer.console.print()
+            except Exception:
+                print(f"\njarvis ({elapsed_ms:.0f}ms):\n{resp_str}\n")
         else:
-            print(f"\njarvis ({elapsed_ms:.0f}ms):\n{response}\n")
+            print(f"\njarvis ({elapsed_ms:.0f}ms):\n{resp_str}\n")
 
     # ── One-shot query ────────────────────────────────────────────────────────
 

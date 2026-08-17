@@ -21,7 +21,7 @@ from .registry import register_tool
     }
 )
 def start_multichannel_listener_action(args: Dict[str, Any]) -> str:
-    from actions.proactive_listener import get_proactive_listener
+    from brjarvis.actions.proactive_listener import get_proactive_listener
     listener = get_proactive_listener()
     interval = int(args.get("poll_interval") or 30)
     return listener.start(poll_interval=interval)
@@ -33,7 +33,7 @@ def start_multichannel_listener_action(args: Dict[str, Any]) -> str:
     parameters={"type": "object", "properties": {}, "required": []}
 )
 def stop_multichannel_listener_action(args: Dict[str, Any]) -> str:
-    from actions.proactive_listener import get_proactive_listener
+    from brjarvis.actions.proactive_listener import get_proactive_listener
     listener = get_proactive_listener()
     return listener.stop()
 
@@ -45,7 +45,7 @@ def stop_multichannel_listener_action(args: Dict[str, Any]) -> str:
 )
 def get_pending_channel_actions_action(args: Dict[str, Any]) -> str:
     import json
-    from actions.proactive_listener import get_proactive_listener
+    from brjarvis.actions.proactive_listener import get_proactive_listener
     listener = get_proactive_listener()
     return json.dumps({
         "status": listener.get_status(),
@@ -71,7 +71,7 @@ def get_pending_channel_actions_action(args: Dict[str, Any]) -> str:
 )
 def respond_channel_action_action(args: Dict[str, Any]) -> str:
     import json
-    from actions.channel_action_dispatcher import get_channel_action_dispatcher
+    from brjarvis.actions.channel_action_dispatcher import get_channel_action_dispatcher
     dispatcher = get_channel_action_dispatcher()
     
     item_id = str(args.get("item_id") or "").strip()

@@ -5,7 +5,7 @@ Re-exports from reasoning.speculative for seamless import compatibility.
 """
 from __future__ import annotations
 
-from reasoning.speculative import (
+from brjarvis.reasoning.speculative import (
     SpeculativeDraftStep,
     SpeculativeExecutionEngine,
     get_speculative_engine,

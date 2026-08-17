@@ -8,7 +8,7 @@ templates. They can be loaded from multiple sources:
   - OpenClaw / Claude / custom skill packs (via skills.installer)
 
 Usage:
-    from skills import load_skills, find_skill, execute_skill
+    from brjarvis.skills import load_skills, find_skill, execute_skill
 """
 
 from .loader import (  # noqa: F401

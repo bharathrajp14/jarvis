@@ -325,7 +325,7 @@ def transcribe_wake_fast(audio_bytes: Any, language: str = "en", initial_prompt:
         segments, _ = engine.transcribe(float_samples, **kwargs)
         parts = [seg.text.strip() for seg in segments]
         text = " ".join(parts).strip()
-        from voice.prompt_refiner import collapse_repetitions
+        from brjarvis.voice.prompt_refiner import collapse_repetitions
         return collapse_repetitions(text)
     except Exception as e:
         logger.warning(f"transcribe_wake_fast error: {e}")

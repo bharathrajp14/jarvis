@@ -22,7 +22,7 @@ from .registry import register_tool
     }
 )
 def tool_rag_ingest(args: dict) -> str:
-    from actions.rag_library import ingest_file
+    from brjarvis.actions.rag_library import ingest_file
     result = ingest_file(args["file_path"], args.get("doc_name"))
     return json.dumps(result, indent=2)
 
@@ -40,7 +40,7 @@ def tool_rag_ingest(args: dict) -> str:
     }
 )
 def tool_rag_ingest_webpage(args: dict) -> str:
-    from actions.rag_library import ingest_webpage
+    from brjarvis.actions.rag_library import ingest_webpage
     result = ingest_webpage(args["url"], args.get("doc_name"))
     return json.dumps(result, indent=2)
 
@@ -59,7 +59,7 @@ def tool_rag_ingest_webpage(args: dict) -> str:
     }
 )
 def tool_rag_query(args: dict) -> str:
-    from actions.rag_library import query
+    from brjarvis.actions.rag_library import query
     results = query(args["question"], args.get("top_k", 5), args.get("doc_filter"))
     if not results:
         return "No relevant documents found."
@@ -79,7 +79,7 @@ def tool_rag_query(args: dict) -> str:
     }
 )
 def tool_rag_chat(args: dict) -> str:
-    from actions.rag_library import rag_chat
+    from brjarvis.actions.rag_library import rag_chat
     return rag_chat(args["question"], doc_filter=args.get("doc_filter"))
 
 
@@ -89,7 +89,7 @@ def tool_rag_chat(args: dict) -> str:
     parameters={}
 )
 def tool_rag_list(args: dict) -> str:
-    from actions.rag_library import list_documents
+    from brjarvis.actions.rag_library import list_documents
     docs = list_documents()
     if not docs:
         return "No documents in the library. Use rag_ingest to add documents."
@@ -108,6 +108,6 @@ def tool_rag_list(args: dict) -> str:
     }
 )
 def tool_rag_delete(args: dict) -> str:
-    from actions.rag_library import delete_document
+    from brjarvis.actions.rag_library import delete_document
     result = delete_document(args["doc_name"])
     return json.dumps(result, indent=2)

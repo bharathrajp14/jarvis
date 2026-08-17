@@ -462,7 +462,7 @@ def rag_chat(question: str, top_k: int = 5, doc_filter: str = None) -> str:
 
     # Generate answer using the default backend
     try:
-        from core.bootstrap import build_assistant_runtime
+        from brjarvis.core.bootstrap import build_assistant_runtime
         runtime = build_assistant_runtime()
         router = runtime.router
 
@@ -641,7 +641,7 @@ def galaxy_chat(question: str, base_dir: str = ".") -> dict:
     )
 
     try:
-        from core.bootstrap import build_assistant_runtime
+        from brjarvis.core.bootstrap import build_assistant_runtime
         runtime = build_assistant_runtime()
         router = runtime.router
         messages = [{"role": "user", "content": f"Notes Context:\n{context}\n\nQuestion: {question}"}]

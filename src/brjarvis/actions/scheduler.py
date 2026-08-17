@@ -13,9 +13,9 @@ import re
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from memory.persistent_store import get_memory_dir
-from tools.registry import register_tool
-from agent.task_queue import get_queue, TaskPriority
+from brjarvis.memory.persistent_store import get_memory_dir
+from brjarvis.tools.registry import register_tool
+from brjarvis.agent.task_queue import get_queue, TaskPriority
 
 logger = logging.getLogger(__name__)
 

@@ -40,7 +40,7 @@ class ChannelActionDispatcher:
         """
         listener = self._listener
         if listener is None:
-            from actions.proactive_listener import get_proactive_listener
+            from brjarvis.actions.proactive_listener import get_proactive_listener
             listener = get_proactive_listener()
 
         # Find target pending item
@@ -82,7 +82,7 @@ class ChannelActionDispatcher:
 
         if channel == "EMAIL":
             try:
-                from actions.smart_email_sender import get_smart_email_sender
+                from brjarvis.actions.smart_email_sender import get_smart_email_sender
                 sender_engine = get_smart_email_sender()
                 res = sender_engine.send_email(to_address=sender, subject=f"Re: {item.get('subject', 'Message')}", body=reply_text)
                 return {"success": True, "action": "reply_email", "result": res}
@@ -92,7 +92,7 @@ class ChannelActionDispatcher:
 
         elif channel == "WHATSAPP":
             try:
-                from actions.whatsapp_automation import get_whatsapp_automation
+                from brjarvis.actions.whatsapp_automation import get_whatsapp_automation
                 wa = get_whatsapp_automation()
                 res = wa.send_message(recipient=sender, message=reply_text)
                 return {"success": True, "action": "reply_whatsapp", "result": res}
@@ -109,7 +109,7 @@ class ChannelActionDispatcher:
         time_str = (custom_details or {}).get("time") or entities.get("time") or "10:00 AM"
 
         try:
-            from actions.calendar_engine import get_calendar_engine
+            from brjarvis.actions.calendar_engine import get_calendar_engine
             cal = get_calendar_engine()
             res = cal.create_event(title=title, date_str=date_str, time_str=time_str)
             return {"success": True, "action": "add_to_calendar", "result": res}

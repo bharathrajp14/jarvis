@@ -88,7 +88,7 @@ class LessonStore:
                 conn.commit()
                 return cur.lastrowid or 0
 
-        from memory.sqlite_lock import run_sqlite_write
+        from brjarvis.memory.sqlite_lock import run_sqlite_write
         return run_sqlite_write(_do_write)
 
     def strengthen_lesson(self, lesson_id: int, factor: float = 1.25) -> bool:

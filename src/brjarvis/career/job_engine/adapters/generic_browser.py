@@ -41,7 +41,7 @@ class GenericBrowserAdapter(BasePlatformAdapter):
     def discover_jobs(self, filters: SearchFilters) -> List[JobPosting]:
         """Discovers jobs via permitted public career searches."""
         # Query search engine for permitted company career URLs
-        from connectors.web_search import search as ddg_search
+        from brjarvis.connectors.web_search import search as ddg_search
         query_role = filters.target_roles[0] if filters.target_roles else "AI Systems Engineer"
         query = f"site:careers.* OR site:jobs.* \"{query_role}\" {filters.location}"
 

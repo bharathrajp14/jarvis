@@ -1084,8 +1084,8 @@ def _build_executive_html(
 )
 def document_creator(args: dict) -> Any:
     """Universal Executive Document Engine."""
-    from tools.tool_result import ToolResult
-    from tools.domain import ToolErrorCode
+    from brjarvis.tools.tool_result import ToolResult
+    from brjarvis.tools.domain import ToolErrorCode
 
     title = str(args.get("title") or "Document").strip()
     subtitle = str(args.get("subtitle") or "").strip()
@@ -1124,14 +1124,14 @@ def document_creator(args: dict) -> Any:
         return ToolResult.failed("document_creator", ToolErrorCode.EXECUTION_EXCEPTION, f"Error building document ({fmt}): {e}")
 
     # Verify generated document
-    from agent.verifier import ActionVerifier
+    from brjarvis.agent.verifier import ActionVerifier
     v_res = ActionVerifier.verify_file_parsed(str(saved_path))
     if not v_res.verified:
         return ToolResult.failed("document_creator", ToolErrorCode.VERIFICATION_FAILED, f"Document created but verification failed: {v_res.details}")
 
     # Register in ArtifactManager
     try:
-        from agent.artifacts import get_artifact_manager
+        from brjarvis.agent.artifacts import get_artifact_manager
         mgr = get_artifact_manager()
         mgr.export_sandbox_artifact(saved_path, custom_filename=out_path.name)
     except Exception as art_err:

@@ -8,10 +8,40 @@ if __name__ in sys.modules:
     sys.modules.setdefault("core.terminal", sys.modules[__name__])
 
 from ..runtime import ApplicationRuntime
+from .actions import ActionRegistry, FocusManager, FocusState
 from .commands import SlashCommandHandler, VALID_MODES
+from .components import (
+    CollapsibleOutputComponent,
+    HeaderComponent,
+    PermissionPromptComponent,
+    PlanViewComponent,
+    StatusPanelComponent,
+    ToolCallComponent,
+)
+from .events import (
+    FocusEvent,
+    InputEvent,
+    KeyEvent,
+    MouseButton,
+    MouseCaptureMode,
+    MouseEvent,
+    MouseEventType,
+    ResizeEvent,
+    TerminalInputDecoder,
+)
+from .guard import TerminalStateGuard
+from .hit_test import HitTestManager, InteractiveRegion, RegionType
+from .interactive_tui import InteractiveTUIController
 from .renderer import TerminalRenderer
+from .selection import (
+    ClipboardProvider,
+    SelectionManager,
+    SelectionMode,
+    SelectionRange,
+)
 from .session import TerminalSession
 from .theme import Glyphs, MODE_COLORS, get_terminal_theme
+from .viewport import ScrollManager, ViewportRange
 
 
 def run_cli(
@@ -38,6 +68,34 @@ __all__ = [
     "TerminalSession",
     "TerminalRenderer",
     "SlashCommandHandler",
+    "TerminalStateGuard",
+    "InteractiveTUIController",
+    "HitTestManager",
+    "InteractiveRegion",
+    "RegionType",
+    "SelectionManager",
+    "SelectionRange",
+    "SelectionMode",
+    "ClipboardProvider",
+    "ScrollManager",
+    "ViewportRange",
+    "ActionRegistry",
+    "FocusManager",
+    "FocusState",
+    "InputEvent",
+    "KeyEvent",
+    "MouseEvent",
+    "MouseEventType",
+    "MouseButton",
+    "MouseCaptureMode",
+    "ResizeEvent",
+    "TerminalInputDecoder",
+    "HeaderComponent",
+    "ToolCallComponent",
+    "CollapsibleOutputComponent",
+    "PermissionPromptComponent",
+    "PlanViewComponent",
+    "StatusPanelComponent",
     "Glyphs",
     "MODE_COLORS",
     "VALID_MODES",

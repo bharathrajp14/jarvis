@@ -24,14 +24,14 @@ def load_session(session_id: str, store: Any = None) -> Any:
         A WorkingMemory instance with all turns replayed.
     """
     if store is None:
-        from history.session_store import SessionStore
+        from brjarvis.history.session_store import SessionStore
         store = SessionStore()
 
     session = store.get_session(session_id)
     if session is None:
         raise ValueError(f"Session '{session_id}' not found")
 
-    from memory.working import WorkingMemory
+    from brjarvis.memory.working import WorkingMemory
     wm = WorkingMemory()
 
     for turn in session.get("turns", []):
@@ -55,7 +55,7 @@ def load_session(session_id: str, store: Any = None) -> Any:
 def replay_as_context(session_id: str, store: Any = None) -> str:
     """Return a formatted string block of a session suitable for system prompt injection."""
     if store is None:
-        from history.session_store import SessionStore
+        from brjarvis.history.session_store import SessionStore
         store = SessionStore()
 
     session = store.get_session(session_id)
@@ -96,7 +96,7 @@ def replay_as_context(session_id: str, store: Any = None) -> str:
 def export_markdown(session_id: str, output_path: str | Path, store: Any = None) -> Path:
     """Export a session as a readable Markdown file with timestamps and collapsible tool calls."""
     if store is None:
-        from history.session_store import SessionStore
+        from brjarvis.history.session_store import SessionStore
         store = SessionStore()
 
     session = store.get_session(session_id)
@@ -189,7 +189,7 @@ def export_markdown(session_id: str, output_path: str | Path, store: Any = None)
 def export_html(session_id: str, output_path: str | Path, store: Any = None) -> Path:
     """Export a session as a self-contained HTML report with dark/light themes."""
     if store is None:
-        from history.session_store import SessionStore
+        from brjarvis.history.session_store import SessionStore
         store = SessionStore()
 
     session = store.get_session(session_id)

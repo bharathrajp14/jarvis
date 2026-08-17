@@ -75,8 +75,9 @@ def build_assistant_runtime(*, use_vector_memory: bool = True) -> AssistantRunti
             try:
                 orchestrator.shutdown()
             except Exception as e:
-                logger.exception('Boot critical exception encountered in core/bootstrap.py')
-                raise e
+                # BUG-8 FIX: logger.exception() would double-log the traceback and re-raise,
+                # swallowing the shutdown flow. Use warning here instead.
+                logger.warning("Orchestrator shutdown error: %s", e)
         core_runtime.lifecycle.add_shutdown_hook(_orchestrator_shutdown)
 
         # FIXED: Publish startup event AFTER all DI registrations are complete
@@ -166,8 +167,12 @@ class CoreBootstrapper:
                 cfg = json.loads(config_path.read_text(encoding="utf-8"))
                 if cfg.get("gemini_api_key"):
                     api_keys["Gemini"] = True
+                if cfg.get("openai_api_key"):
+                    api_keys["GPT"] = True
             except Exception:
                 pass
+        if os.environ.get("JARVIS_ROUTE_GEMINI_TO_GATEWAY", "true").lower() in ("1", "true", "yes", "on") and api_keys.get("GPT"):
+            api_keys["Gemini"] = True
         return {
             "initialized": cls._initialized,
             "platform": platform.system(),

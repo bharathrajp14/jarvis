@@ -168,7 +168,7 @@ def _backup_version(file_path: Path):
 
 def save_memory(entry: MemoryEntry, scope: str = "user") -> None:
     """Write/update a memory file, backup previous version, sync to SQLite/Vector, and rebuild index."""
-    from memory.memory_types import redact_secrets
+    from brjarvis.memory.memory_types import redact_secrets
     entry.content = redact_secrets(entry.content)
     entry.description = redact_secrets(entry.description)
 
@@ -217,10 +217,10 @@ def save_memory(entry: MemoryEntry, scope: str = "user") -> None:
             conn.close()
 
     try:
-        from memory.sqlite_lock import run_sqlite_write
+        from brjarvis.memory.sqlite_lock import run_sqlite_write
         run_sqlite_write(_do_sqlite_write)
         # Also sync to central canonical DB
-        from memory.canonical_db import get_canonical_db
+        from brjarvis.memory.canonical_db import get_canonical_db
         with get_canonical_db().get_connection() as cdb:
             cdb.execute(
                 """
@@ -256,10 +256,10 @@ def delete_memory(name: str, scope: str = "user") -> None:
             conn.close()
 
     try:
-        from memory.sqlite_lock import run_sqlite_write
+        from brjarvis.memory.sqlite_lock import run_sqlite_write
         run_sqlite_write(_do_sqlite_delete)
         # Also delete from central canonical DB
-        from memory.canonical_db import get_canonical_db
+        from brjarvis.memory.canonical_db import get_canonical_db
         with get_canonical_db().get_connection() as cdb:
             cdb.execute("DELETE FROM persistent_memories WHERE name = ?", (name,))
             cdb.commit()

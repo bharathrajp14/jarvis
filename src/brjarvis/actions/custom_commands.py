@@ -126,7 +126,7 @@ class CustomCommandEngine:
                     results.append(f"Opened URL: {content}")
 
                 elif action_type == "open_app":
-                    from actions.open_app import open_app
+                    from brjarvis.actions.open_app import open_app
                     open_app(parameters={"app_name": content})
                     results.append(f"Opened App: {content}")
 

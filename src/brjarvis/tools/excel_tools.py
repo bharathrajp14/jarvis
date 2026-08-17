@@ -139,13 +139,12 @@ def create_excel_sheet(args: dict) -> str:
     }
 )
 def analyze_project_to_excel(args: dict) -> str:
-    """Analyze the entire JARVIS codebase and export a multi-tab Excel workbook."""
     if not _OPENPYXL_AVAILABLE:
         return "Error: 'openpyxl' library is missing."
 
-    root_dir = Path(args.get("project_path") or _get_workspace_dir()).resolve()
+    root_dir = Path(args.get("project_path") or paths.PROJECT_ROOT).resolve()
     out_name = args.get("output_filename") or "JARVIS_Project_Full_Analysis.xlsx"
-    out_path = root_dir / out_name
+    out_path = paths.DOCUMENTS_DIR / out_name
 
     file_records = []
     total_loc = 0

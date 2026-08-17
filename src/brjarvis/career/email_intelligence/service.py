@@ -214,7 +214,7 @@ class EmailCareerIntelligence:
         results: List[Dict[str, Any]] = []
 
         try:
-            from connectors.gmail import GmailConnector
+            from brjarvis.connectors.gmail import GmailConnector
             gmail = GmailConnector()
             if gmail.is_configured:
                 # Read latest unread and recent emails

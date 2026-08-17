@@ -166,7 +166,7 @@ class JarvisOrchestrator:
 
     def __init__(self, router: AgentRouter | None = None, use_vector_memory: bool = True):
         if router is None:
-            from router import AgentRouter as _AR
+            from brjarvis.router import AgentRouter as _AR
             router = _AR()
         self.router = router
         self.working_memory = WorkingMemory(max_tokens=120_000)
@@ -180,9 +180,9 @@ class JarvisOrchestrator:
         self._session_id = ""
         self._history_linker = None
         try:
-            from history.session_store import SessionStore
-            from history.linker import HistoryLinker
-            from history.audit_writer import set_session_id
+            from brjarvis.history.session_store import SessionStore
+            from brjarvis.history.linker import HistoryLinker
+            from brjarvis.history.audit_writer import set_session_id
             self._session_store = SessionStore()
             self._history_linker = HistoryLinker()
             self._session_id = self._session_store.new_session(
@@ -195,7 +195,7 @@ class JarvisOrchestrator:
 
         # SQLite Conversation Store
         try:
-            from memory.conversation_store import ConversationStore
+            from brjarvis.memory.conversation_store import ConversationStore
             self.conversation_store = ConversationStore()
             if self._session_id:
                 self.conversation_store.start_session(
@@ -212,7 +212,7 @@ class JarvisOrchestrator:
         # Importing hub triggers auto-discovery of all connector plugins.
         # Done after DI registration so connectors can resolve runtime deps.
         try:
-            from connectors.hub import get_hub
+            from brjarvis.connectors.hub import get_hub
             hub = get_hub()
             hub.register_with_tool_registry()
             logger.info("[Orchestrator] Connector Hub booted: %d connectors", len(hub._connectors))
@@ -221,7 +221,7 @@ class JarvisOrchestrator:
 
         if use_vector_memory:
             try:
-                from memory.vector_store import VectorMemory
+                from brjarvis.memory.vector_store import VectorMemory
                 self.vector_memory = VectorMemory()
             except Exception as exc:
                 logger.warning(f"[Orchestrator] Vector memory unavailable: {exc}")
@@ -274,7 +274,7 @@ class JarvisOrchestrator:
     def _handle_memory_command(self, cmd: str) -> str:
         """Handle /memory subcommands: search, recent, project, stats."""
         try:
-            from memory.unified_memory import get_unified_memory
+            from brjarvis.memory.unified_memory import get_unified_memory
             um = get_unified_memory()
 
             parts = cmd.split(maxsplit=2)
@@ -295,7 +295,7 @@ class JarvisOrchestrator:
                 return "\n".join(lines)
 
             elif sub == "recent":
-                from memory.persistent_store import load_index
+                from brjarvis.memory.persistent_store import load_index
                 entries = load_index("user")[:5]
                 if not entries:
                     return "[Memory] No recent memories found."
@@ -305,7 +305,7 @@ class JarvisOrchestrator:
                 return "\n".join(lines)
 
             elif sub == "project":
-                from memory.persistent_store import load_index
+                from brjarvis.memory.persistent_store import load_index
                 entries = [e for e in load_index("user") if e.type in ("project", "operational")][:5]
                 if not entries:
                     return "[Memory] No project memories found."
@@ -315,7 +315,7 @@ class JarvisOrchestrator:
                 return "\n".join(lines)
 
             elif sub == "stats":
-                from memory.persistent_store import load_index
+                from brjarvis.memory.persistent_store import load_index
                 user_entries = load_index("user")
                 proj_entries = load_index("project")
                 by_type: dict = {}
@@ -328,7 +328,7 @@ class JarvisOrchestrator:
 
             else:
                 # Default: show memory summary
-                from memory.persistent_store import load_index
+                from brjarvis.memory.persistent_store import load_index
                 entries = load_index("user")[:3]
                 total = len(load_index("user")) + len(load_index("project"))
                 lines = [f"[Memory] {total} total memories. Recent:"]
@@ -343,7 +343,7 @@ class JarvisOrchestrator:
     def _handle_tasks_command(self) -> str:
         """Handle /tasks — list incomplete tasks from TaskState DB."""
         try:
-            from agent.task_state import TaskStateManager, TaskStatus
+            from brjarvis.agent.task_state import TaskStateManager, TaskStatus
             mgr = TaskStateManager()
             incomplete_statuses = [
                 TaskStatus.RUNNING, TaskStatus.PLANNING, TaskStatus.PAUSED,
@@ -419,7 +419,7 @@ class JarvisOrchestrator:
             parts.append(f"Mode: {mode_text}")
 
         try:
-            from tools.registry import get_pruned_tool_prompt_block
+            from brjarvis.tools.registry import get_pruned_tool_prompt_block
             if user_prompt:
                 parts.append(get_pruned_tool_prompt_block(user_prompt))
             else:
@@ -476,7 +476,7 @@ class JarvisOrchestrator:
         ))
 
         try:
-            from memory.unified_memory import get_unified_memory
+            from brjarvis.memory.unified_memory import get_unified_memory
             um = get_unified_memory()
 
             # 1. Always retrieve structured memories (preferences, project, semantic, operational)
@@ -508,7 +508,7 @@ class JarvisOrchestrator:
             # 3. Recent Artifacts Context (if asking about reports, docs, spreadsheets)
             if any(w in low for w in ("pdf", "docx", "excel", "report", "document", "artifact", "yesterday", "audit", "file")):
                 try:
-                    from agent.artifacts import get_artifact_manager
+                    from brjarvis.agent.artifacts import get_artifact_manager
                     mgr = get_artifact_manager()
                     recent_artifacts = mgr.list_artifacts(limit=3)
                     if recent_artifacts:
@@ -527,7 +527,7 @@ class JarvisOrchestrator:
         if len(response) < 20:
             return
         try:
-            from memory.memory_types import redact_secrets
+            from brjarvis.memory.memory_types import redact_secrets
             clean_input = redact_secrets(user_input)
             clean_response = redact_secrets(response[:500])
 
@@ -606,7 +606,7 @@ class JarvisOrchestrator:
             try:
                 from brjarvis.skills import find_skill, execute_skill, load_skills
             except ImportError:
-                from skills import find_skill, execute_skill, load_skills
+                from brjarvis.skills import find_skill, execute_skill, load_skills
             m = re.match(r"^/skill\s+(\S+)\s*(.*)", user_input.strip())
             if m:
                 name = m.group(1)
@@ -992,7 +992,7 @@ class JarvisOrchestrator:
 
         # ── Composite Stage Decomposition ─────────────────────────────────────
         try:
-            from agent.stage_decomposer import StageDecomposer, StageExecutionEngine
+            from brjarvis.agent.stage_decomposer import StageDecomposer, StageExecutionEngine
             if StageDecomposer.is_composite_task(user_input):
                 logger.info("[Orchestrator] Multi-step composite task detected. Decomposing into bounded stages...")
                 stages = StageDecomposer.decompose(user_input, parent_task_id=self._session_id)
@@ -1142,7 +1142,7 @@ class JarvisOrchestrator:
     def consolidate_on_exit(self) -> str:
         summary = ""
         try:
-            from memory.consolidator import consolidate_session
+            from brjarvis.memory.consolidator import consolidate_session
             saved = consolidate_session(self.working_memory.get(), router=self.router)
             if saved:
                 summary = f"Consolidated {len(saved)} memories: {', '.join(saved)}"

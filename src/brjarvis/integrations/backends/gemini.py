@@ -20,15 +20,24 @@ logger = logging.getLogger("JARVIS.GeminiBackend")
 
 
 def _load_api_key() -> str:
-    """Load Gemini API key from environment variable or config/api_keys.json."""
+    """Load Gemini API key from environment variable, config, or config/api_keys.json."""
     key = os.environ.get("GEMINI_API_KEY", "").strip() or os.environ.get("GOOGLE_API_KEY", "").strip()
     if key:
         return key
     try:
+        from brjarvis.core.config import get_config
+        cfg_key = get_config().secrets.gemini_api_key
+        if cfg_key and cfg_key.strip():
+            return cfg_key.strip()
+    except Exception:
+        pass
+    try:
         cfg_file = paths.CONFIG_ROOT / "api_keys.json"
         if cfg_file.exists():
             data = json.loads(cfg_file.read_text(encoding="utf-8"))
-            return data.get("GEMINI_API_KEY", "").strip() or data.get("GOOGLE_API_KEY", "").strip()
+            for k, v in data.items():
+                if str(k).lower().strip() in ("gemini_api_key", "google_api_key") and str(v).strip():
+                    return str(v).strip()
     except Exception:
         pass
     return ""
@@ -41,12 +50,12 @@ class GeminiBackend(BaseBackend):
     """
 
     FALLBACK_MODELS = [
+        "gemini-3.1-pro-high",
+        "gemini-3.7-flash-high",
         "gemini-3.6-flash-high",
-        "gemini-2.5-flash",
-        "gemini-3-flash",
-        "gemini-2.5-pro",
-        "gemini-2.0-flash",
-        "gemini-1.5-pro-latest",
+        "gemini-3.5-flash-high",
+        "gemini-3.6-flash-medium",
+        "gemini-3.1-flash-lite",
     ]
 
     def __init__(self, model: str = None, api_key: str = None):
@@ -54,27 +63,34 @@ class GeminiBackend(BaseBackend):
         self._client = None
         self._explicit_model = model
 
-        use_proxy = os.environ.get("JARVIS_ROUTE_GEMINI_TO_GATEWAY", "true").lower() == "true"
+        use_proxy = os.environ.get("JARVIS_ROUTE_GEMINI_TO_GATEWAY", "true").lower() in ("1", "true", "yes", "on")
         if use_proxy:
             try:
                 from openai import OpenAI  # type: ignore
-                base_url = os.environ.get("OPENAI_BASE_URL", "http://localhost:8045/v1")
-                api_key_val = os.environ.get("OPENAI_API_KEY", "").strip() or "none"
+                base_url = os.environ.get("BRJARVIS_PROXY_BASE_URL") or os.environ.get("OPENAI_BASE_URL", "http://localhost:8045/v1")
+                api_key_val = os.environ.get("BRJARVIS_PROXY_API_KEY") or os.environ.get("OPENAI_API_KEY", "sk-5ec70bf9fa324084b7a7326babf52c45").strip() or "sk-5ec70bf9fa324084b7a7326babf52c45"
                 self._client = OpenAI(base_url=base_url, api_key=api_key_val)
                 self._use_openai_client = True
                 self.model = model or self._pick_model()
-                logger.info(f"Routed via local proxy gateway: {base_url}")
+                logger.info(f"Routed via local proxy gateway: {base_url} (model: {self.model})")
                 return
             except Exception as e:
                 logger.warning(f"Failed to initialize local proxy client: {e}. Falling back to direct Google client.")
 
         # Standard direct Google fallback
         self.api_key = api_key or _load_api_key()
-
         self.model = model or self._pick_model()
-        from google import genai
-        self._client = genai.Client(api_key=self.api_key)
-        logger.info(f"[OK] Using model: {self.model}")
+        if self.api_key:
+            try:
+                from google import genai
+                self._client = genai.Client(api_key=self.api_key)
+                logger.info(f"[OK] Using model: {self.model}")
+            except Exception as ex:
+                logger.warning("Failed to initialize direct Google client: %s", ex)
+                self._client = None
+        else:
+            self._client = None
+            logger.info("No direct Gemini API key provided; relying on proxy/offline.")
 
 
     @property
@@ -92,7 +108,7 @@ class GeminiBackend(BaseBackend):
     def _pick_model(self) -> str:
         """Try to use the best available model."""
         try:
-            from config.models import get_model
+            from brjarvis.config.models import get_model
             cfg_model = get_model("gemini")
             if cfg_model and cfg_model != "gemini-3.5-flash":
                 return cfg_model
@@ -155,17 +171,20 @@ class GeminiBackend(BaseBackend):
                 )
                 return response.choices[0].message.content or ""
             except Exception as e:
-                logger.warning("Model %s failed: %s — trying fallbacks...", target_model, e)
-                for fallback_mod in self.FALLBACK_MODELS:
-                    try:
-                        resp = self._client.chat.completions.create(
-                            model=fallback_mod,
-                            messages=full_messages,
-                        )
-                        return resp.choices[0].message.content or ""
-                    except Exception:
-                        continue
-                logger.warning("All proxy models exhausted/failed. Falling back to direct Google client...")
+                err_str = str(e).lower()
+                is_conn_error = any(w in err_str for w in ("connect", "refused", "unreachable", "timed out", "timeout", "connection"))
+                if not is_conn_error:
+                    logger.warning("Model %s failed: %s — trying fallbacks...", target_model, e)
+                    for fallback_mod in self.FALLBACK_MODELS:
+                        try:
+                            resp = self._client.chat.completions.create(
+                                model=fallback_mod,
+                                messages=full_messages,
+                            )
+                            return resp.choices[0].message.content or ""
+                        except Exception:
+                            continue
+                logger.info("Proxy gateway unavailable (%s). Falling back to direct Google client...", e)
                 try:
                     direct_key = _load_api_key()
                     from google import genai
@@ -188,7 +207,7 @@ class GeminiBackend(BaseBackend):
                 except Exception as ex_direct:
                     logger.error("Gemini Direct Fallback Error: %s", ex_direct)
                     # Return error string gracefully instead of crashing ReAct loop
-                    return f"ERROR: Proxy gateway and direct Gemini fallback both unavailable ({e})"
+                    return f"ERROR: Proxy gateway ({e}) and direct Gemini fallback ({ex_direct}) both unavailable"
 
         # Direct Google client path
         contents = []
@@ -372,7 +391,7 @@ class GeminiBackend(BaseBackend):
 
         # 0. Prioritize 100% Offline Local Whisper (sub-30ms, no network 503 errors)
         try:
-            from voice.whisper_local import transcribe as whisper_transcribe, is_available
+            from brjarvis.voice.whisper_local import transcribe as whisper_transcribe, is_available
             if is_available():
                 res = whisper_transcribe(audio_bytes)
                 if res and res.strip():

@@ -28,7 +28,7 @@ def transcribe_file(
         dict with 'text', 'output_path', 'language', 'segments', 'error'.
     """
     try:
-        from voice.whisper_local import transcribe_file as whisper_transcribe
+        from brjarvis.voice.whisper_local import transcribe_file as whisper_transcribe
         return whisper_transcribe(file_path, language, output_format)
     except ImportError:
         return {"error": "Local Whisper is not installed. Install faster-whisper or openai-whisper."}

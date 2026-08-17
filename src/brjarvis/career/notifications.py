@@ -8,8 +8,8 @@ from dataclasses import asdict, dataclass, field
 from typing import Any, Dict, List, Optional
 
 from .models import PriorityLevel
-from events.bus import get_event_bus
-from events.types import BaseEvent
+from brjarvis.events.bus import get_event_bus
+from brjarvis.events.types import BaseEvent
 
 logger = logging.getLogger("JARVIS.CareerNotifications")
 

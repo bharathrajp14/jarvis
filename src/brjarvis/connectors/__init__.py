@@ -8,7 +8,7 @@ Provides free, plug-and-play connectors to popular services:
   OAuth2:     Gmail, Google Drive
 
 Usage:
-    from connectors import get_hub
+    from brjarvis.connectors import get_hub
     hub = get_hub()
     result = hub.call("wikipedia", "search", {"query": "quantum computing"})
 """

@@ -24,7 +24,7 @@ from .registry import register_tool
 )
 def tool_get_app_launch_history(args: dict) -> str:
     """Retrieve app launch history log."""
-    from actions.app_tracker import get_app_tracker  # lazy import
+    from brjarvis.actions.app_tracker import get_app_tracker  # lazy import
     limit = args.get("limit", 30)
     app_name = str(args.get("app_name", "")).strip()
 
@@ -54,7 +54,7 @@ def tool_get_app_launch_history(args: dict) -> str:
 )
 def tool_get_app_usage_statistics(args: dict) -> str:
     """Retrieve app usage statistics."""
-    from actions.app_tracker import get_app_tracker  # lazy import
+    from brjarvis.actions.app_tracker import get_app_tracker  # lazy import
     tracker = get_app_tracker()
     stats = tracker.get_statistics()
 

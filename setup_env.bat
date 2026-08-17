@@ -71,6 +71,10 @@ if !errorlevel! neq 0 (
 :: Install fpdf2 separately (sometimes conflicts)
 pip install fpdf2>=2.7.0 --quiet 2>nul
 
+:: Install BR JARVIS package in editable mode
+echo [INFO] Linking brjarvis package (pip install -e .)...
+python -m pip install -e . --no-deps --quiet
+
 set /p INSTALL_DEV="Do you want to install development/testing dependencies (requirements-dev.txt)? (y/n): "
 if /i "!INSTALL_DEV!"=="y" (
     echo [INFO] Installing requirements-dev.txt...

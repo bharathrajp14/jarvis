@@ -10,7 +10,7 @@ import time
 from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 
-from core.runtime import get_runtime
+from brjarvis.core.runtime import get_runtime
 
 logger = logging.getLogger("JARVIS.Speculative")
 

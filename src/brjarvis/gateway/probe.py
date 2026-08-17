@@ -24,8 +24,8 @@ if sys.stdout and hasattr(sys.stdout, "reconfigure"):
 from .client import get_proxy_brain_client
 from .discovery import get_discovery_service
 from .health import HealthState, get_health_service
-from router.smart_router import get_smart_router
-from router.task_profile import TaskComplexity, TaskProfile
+from brjarvis.router.smart_router import get_smart_router
+from brjarvis.router.task_profile import TaskComplexity, TaskProfile
 
 # Configure minimal console logging for clean probe output
 logging.basicConfig(level=logging.WARNING, format="%(message)s")

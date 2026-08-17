@@ -207,7 +207,7 @@ class ConnectorHub:
             Number of tools registered.
         """
         try:
-            from tools.registry import register_tool
+            from brjarvis.tools.registry import register_tool
         except ImportError:
             logger.warning("ConnectorHub: tool registry not available")
             return 0

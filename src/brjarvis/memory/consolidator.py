@@ -64,7 +64,7 @@ def consolidate_session(messages: list, router=None) -> list[str]:
         return []
 
     try:
-        from memory.persistent_store import MemoryEntry, save_memory, check_conflict
+        from brjarvis.memory.persistent_store import MemoryEntry, save_memory, check_conflict
 
         # Build condensed transcript from the last 40 messages
         recent = messages[-40:]

@@ -14,8 +14,8 @@ import time
 from typing import Any, Dict, List, Optional
 
 from .task_state import get_task_state_manager, TaskState, TaskStatus
-from events.bus import get_event_bus
-from events.types import TaskEvent
+from brjarvis.events.bus import get_event_bus
+from brjarvis.events.types import TaskEvent
 
 logger = logging.getLogger("JARVIS.RecoveryWatchdog")
 

@@ -35,7 +35,7 @@ try:
 except ImportError:
     _TRANSCRIPT_OK = False
 
-from config import get_os, is_windows, is_mac, is_linux
+from brjarvis.config import get_os, is_windows, is_mac, is_linux
 
 
 from brjarvis.core.paths import paths
@@ -60,8 +60,11 @@ _YT_VIDEO_FILTER = "EgIQAQ%3D%3D"
 
 
 def _get_api_key() -> str:
-    with open(API_CONFIG_PATH, "r", encoding="utf-8") as f:
-        return json.load(f)["gemini_api_key"]
+    try:
+        with open(API_CONFIG_PATH, "r", encoding="utf-8") as f:
+            return json.load(f).get("gemini_api_key", "")
+    except Exception:
+        return ""
 
 
 def _open_url(url: str) -> None:
@@ -168,26 +171,30 @@ def _get_transcript(video_id: str) -> str | None:
 
 
 def _summarize_with_gemini(transcript: str, video_url: str) -> str:
-    from google import genai as _genai
-    from google.genai import types
-
-    _client = _genai.Client(api_key=_get_api_key())
     max_chars = 80000
     truncated = transcript[:max_chars] + ("..." if len(transcript) > max_chars else "")
-    response  = _client.models.generate_content(
-        model="gemini-2.5-flash",
-        contents=f"Please summarize this YouTube video transcript:\n\n{truncated}",
-        config=types.GenerateContentConfig(
-            system_instruction=(
-                "You are JARVIS, an AI assistant. "
-                "Summarize YouTube video transcripts clearly and concisely. "
-                "Structure: 1-sentence overview, then 3-5 key points. "
-                "Be direct. Address the user as 'sir'. "
-                "Match the language of the transcript."
-            )
-        )
+    prompt = (
+        "You are JARVIS, an AI assistant. "
+        "Summarize YouTube video transcripts clearly and concisely. "
+        "Structure: 1-sentence overview, then 3-5 key points. "
+        "Be direct. Address the user as 'sir'. "
+        "Match the language of the transcript.\n\n"
+        f"Please summarize this YouTube video transcript:\n\n{truncated}"
     )
-    return response.text.strip()
+    try:
+        from ._gemini_client import gemini_generate
+        return gemini_generate(prompt, model="gemini-3.1-pro-high")
+    except Exception as e:
+        logger.warning("Proxy summarization failed (%s); trying direct Google API", e)
+        from google import genai as _genai
+        from google.genai import types
+
+        _client = _genai.Client(api_key=_get_api_key())
+        response = _client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt,
+        )
+        return response.text.strip()
 
 
 def _save_summary(content: str, video_url: str) -> str:

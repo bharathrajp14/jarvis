@@ -298,7 +298,7 @@ class StageDecomposer:
             from brjarvis.workflow.tool_orchestration import ToolPlan, ToolStep, ToolCategory
         except ImportError:
             try:
-                from workflow.tool_orchestration import ToolPlan, ToolStep, ToolCategory
+                from brjarvis.workflow.tool_orchestration import ToolPlan, ToolStep, ToolCategory
             except ImportError:
                 # Fallback: return a dict-based plan if workflow module unavailable
                 return {
@@ -410,7 +410,7 @@ class StageDecomposer:
             try:
                 # ── 1. System & Hardware Diagnostics ──────────────────────────
                 if stage.capability == StageCapability.SYSTEM_DIAGNOSTICS:
-                    from tools.system_diagnostic_tool import check_tool_health, system_diagnostic
+                    from brjarvis.tools.system_diagnostic_tool import check_tool_health, system_diagnostic
                     diag_raw = system_diagnostic({"aspect": "full_summary"})
                     tools_raw = check_tool_health()
                     stage.result = {"system": diag_raw, "tools": tools_raw}
@@ -439,7 +439,7 @@ class StageDecomposer:
 
                 # ── 3. Workspace Inspection ───────────────────────────────────
                 elif stage.capability == StageCapability.WORKSPACE_INSPECTION:
-                    from tools.file_tools import WORKSPACE_DIR
+                    from brjarvis.tools.file_tools import WORKSPACE_DIR
                     ws = Path(WORKSPACE_DIR)
                     files_found = []
                     if ws.exists():
@@ -456,7 +456,7 @@ class StageDecomposer:
 
                 # ── 4. External Web Research ──────────────────────────────────
                 elif stage.capability == StageCapability.WEB_RESEARCH:
-                    from connectors.web_search import search as ddg_search
+                    from brjarvis.connectors.web_search import search as ddg_search
                     query = stage.parameters.get("query", user_prompt)
                     search_res = ddg_search(query=query, max_results=4)
                     findings_raw = []
@@ -475,7 +475,7 @@ class StageDecomposer:
 
                 # ── 5. Local Repository Inspection ────────────────────────────
                 elif stage.capability == StageCapability.REPO_INSPECTION:
-                    from tools.registry import TOOL_REGISTRY, _import_plugins
+                    from brjarvis.tools.registry import TOOL_REGISTRY, _import_plugins
                     _import_plugins(full=True)
                     tool_count = len(TOOL_REGISTRY)
                     repo_summary = {
@@ -516,7 +516,7 @@ class StageDecomposer:
 
                 # ── 7. Document Generation ────────────────────────────────────
                 elif stage.capability == StageCapability.DOC_CODE_GENERATION:
-                    from tools.doc_tools import document_creator
+                    from brjarvis.tools.doc_tools import document_creator
                     title = stage.parameters.get("title", "Autonomous System Audit")
                     fmt = stage.parameters.get("format", "docx")
                     filename = stage.parameters.get("filename", f"workspace/Documents/Audit_Report.{fmt}")
@@ -544,7 +544,7 @@ class StageDecomposer:
 
                 # ── 8. Safe Host Artifact Export ──────────────────────────────
                 elif stage.capability == StageCapability.ARTIFACT_EXPORT:
-                    from agent.artifacts import get_artifact_manager
+                    from brjarvis.agent.artifacts import get_artifact_manager
                     mgr = get_artifact_manager()
                     art_path = collected_context["exported_artifacts"][-1] if collected_context["exported_artifacts"] else "workspace/Documents/Report.docx"
                     p = Path(art_path)
@@ -589,7 +589,7 @@ class StageDecomposer:
 
                 # ── 10. Application Launch ────────────────────────────────────
                 elif stage.capability in (StageCapability.BROWSER_INTERACTION, StageCapability.APPLICATION_LAUNCH):
-                    from actions.open_app import open_app
+                    from brjarvis.actions.open_app import open_app
                     art_path = collected_context["exported_artifacts"][-1] if collected_context["exported_artifacts"] else ""
                     if art_path:
                         full_path = str(Path(art_path).resolve())
@@ -620,7 +620,7 @@ class StageDecomposer:
                 # ── 11. Memory Update ─────────────────────────────────────────
                 elif stage.capability == StageCapability.MEMORY_UPDATE:
                     try:
-                        from memory.unified_memory import get_unified_memory
+                        from brjarvis.memory.unified_memory import get_unified_memory
                         um = get_unified_memory()
                         um.record_operational_lesson(
                             tool_name="multi_stage_pipeline",

@@ -56,18 +56,24 @@ SLASH_COMMANDS: List[dict] = [
     {"cmd": "/compact",     "desc": "Consolidate working memory into long-term store"},
     {"cmd": "/context",     "desc": "Show current task context, memory, model, services"},
     # Session
+    {"cmd": "/session",     "desc": "View active session context or switch: /session [id]"},
+    {"cmd": "/sessions",    "desc": "List all active and persisted agent sessions"},
     {"cmd": "/history",     "desc": "View session turns: /history [n] or /history task <id>"},
     {"cmd": "/rename",      "desc": "Name current session: /rename <name>"},
     {"cmd": "/export",      "desc": "Export session transcript: /export [markdown|json]"},
-    # Tools & connectors
+    # Tools, skills & infrastructure
     {"cmd": "/tools",       "desc": "Browse tools: /tools [search <q>] [health] [failed]"},
+    {"cmd": "/skills",      "desc": "Browse extensible skills and workflows: /skills [query]"},
     {"cmd": "/connectors",  "desc": "Connector status: /connectors or /connectors <name>"},
+    {"cmd": "/config",      "desc": "Show runtime environment & provider configuration"},
     {"cmd": "/doctor",      "desc": "Run interactive system diagnostics"},
     {"cmd": "/usage",       "desc": "Show token & request usage stats"},
+    {"cmd": "/interrupt",   "desc": "Safely interrupt and preserve active agent task"},
     # Output style & interactions
     {"cmd": "/style",       "desc": "Set output style: /style [compact|detailed|minimal|verbose]"},
     {"cmd": "/verbose",     "desc": "Toggle verbose debug output: /verbose [on|off]"},
-    {"cmd": "/mouse",       "desc": "Toggle or configure mouse support: /mouse [on|off|status]"},
+    {"cmd": "/mouse",       "desc": "Configure mouse modes: /mouse [on|off|scroll|interactive|full|status]"},
+    {"cmd": "/tui",         "desc": "Toggle fullscreen TUI mode: /tui [fullscreen|default]"},
     # Career OS
     {"cmd": "/career",      "desc": "Career profile & funnel analytics"},
     {"cmd": "/applications","desc": "List tracked job applications"},
@@ -128,8 +134,11 @@ class JarvisCompleter:
             if cmd_part == "/verbose":
                 return [{"text": o, "desc": ""} for o in ["on", "off"] if o.startswith(arg_part)]
             if cmd_part == "/mouse":
-                subs = ["on", "off", "toggle", "status"]
-                return [{"text": s, "desc": f"Set mouse interaction: {s}"} for s in subs if s.startswith(arg_part)]
+                subs = ["on", "off", "scroll", "interactive", "full", "status"]
+                return [{"text": s, "desc": f"Set mouse capture mode: {s}"} for s in subs if s.startswith(arg_part)]
+            if cmd_part == "/tui":
+                subs = ["fullscreen", "default"]
+                return [{"text": s, "desc": f"Switch TUI mode: {s}"} for s in subs if s.startswith(arg_part)]
             return []
 
         # Command-level completions
@@ -177,40 +186,63 @@ def get_prompt_toolkit_style() -> Any:
     if not HAS_PROMPT_TOOLKIT:
         return None
     return PTStyle.from_dict({
-        "prompt.you":      "#00e5ff bold",
-        "prompt.bracket":  "#6b7d96",
-        "prompt.mode":     "#ffab00 bold",
-        "prompt.arrow":    "#00e5ff bold",
-        "prompt.task":     "#1de9b6 bold",
-        "prompt.approval": "#ff6d00 bold",
-        "prompt.needs":    "#d500f9 bold",
-        # Completions
+        "prompt.you":                                 "#00e5ff bold",
+        "prompt.bracket":                             "#48586c",
+        "prompt.mode":                                "#1de9b6 bold",
+        "prompt.arrow":                               "#00e5ff bold",
+        "prompt.task":                                "#1de9b6 bold",
+        "prompt.approval":                            "#ffab00 bold",
+        "prompt.needs":                               "#d500f9 bold",
+        # Auto-completion menu
+        "completion-menu":                            "bg:#10141d #f0f6fc",
         "completion-menu.completion":                 "bg:#151b26 #00e5ff",
         "completion-menu.completion.current":         "bg:#253346 #ffffff bold",
         "completion-menu.meta.completion":            "bg:#151b26 #6b7d96",
-        "completion-menu.meta.completion.current":    "bg:#253346 #6b7d96",
-        "scrollbar.background":                       "bg:#253346",
+        "completion-menu.meta.completion.current":    "bg:#253346 #1de9b6",
+        "completion-menu.multi-column-meta":          "bg:#151b26 #6b7d96",
+        "scrollbar.background":                       "bg:#151b26",
         "scrollbar.button":                           "bg:#00e5ff",
+        # Auto-suggestions
+        "auto-suggest":                               "#48586c italic",
     })
 
 
 def build_prompt_session(
     history_path: Optional[Path] = None,
-    mouse_support: bool = True,
+    mouse_support: bool = False,
 ) -> Any:
     """Build and return a prompt_toolkit PromptSession (or None if unavailable)."""
     if not HAS_PROMPT_TOOLKIT:
         return None
 
     # Check env var override if not explicitly provided
-    env_mouse = os.environ.get("JARVIS_MOUSE_SUPPORT", "1").strip().lower()
-    effective_mouse = mouse_support and (env_mouse not in ("0", "false", "no", "off", "disable", "disabled"))
+    env_mouse = os.environ.get("JARVIS_MOUSE_SUPPORT", "0").strip().lower()
+    effective_mouse = mouse_support or (env_mouse in ("1", "true", "yes", "on", "enable", "enabled"))
 
     hist_path = history_path or get_history_path()
     try:
         history = FileHistory(str(hist_path))
     except Exception:
         history = InMemoryHistory()  # type: ignore
+
+    # Keyboard bindings: Esc & Ctrl+C for interrupt and clearing
+    kb = KeyBindings()
+
+    @kb.add("escape")
+    def _on_escape(event: Any) -> None:
+        """Handle Esc key: dismiss completion menu, clear current buffer, or trigger interrupt."""
+        buf = event.current_buffer
+        if buf.complete_state:
+            buf.cancel_completion()
+        elif buf.text:
+            buf.reset()
+        else:
+            event.app.exit(exception=KeyboardInterrupt("Interrupted with Escape key"))
+
+    @kb.add("c-c")
+    def _on_ctrl_c(event: Any) -> None:
+        """Handle Ctrl+C: cancel input or interrupt."""
+        event.app.exit(exception=KeyboardInterrupt("Interrupted with Ctrl+C"))
 
     session = PromptSession(
         history=history,
@@ -220,6 +252,7 @@ def build_prompt_session(
         enable_system_prompt=False,
         mouse_support=effective_mouse,
         reserve_space_for_menu=4,
+        key_bindings=kb,
     )
     return session
 

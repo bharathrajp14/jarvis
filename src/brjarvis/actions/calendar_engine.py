@@ -180,7 +180,7 @@ class CalendarEngine:
             # Optional WhatsApp notification to attendees
             if notify_whatsapp and attendees_list:
                 try:
-                    from actions.whatsapp_automation import get_whatsapp_automation
+                    from brjarvis.actions.whatsapp_automation import get_whatsapp_automation
                     wa = get_whatsapp_automation()
                     msg = f"📅 Calendar Event Invite: '{title}' on {formatted_start}. Location: {location or 'N/A'}"
                     for att in attendees_list:

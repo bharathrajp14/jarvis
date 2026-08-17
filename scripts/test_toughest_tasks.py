@@ -12,18 +12,27 @@ import requests
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+logging.basicConfig(level=logging.INFO, format="%(message)s")
+logger = logging.getLogger(__name__)
+
 BASE_DIR = Path(__file__).resolve().parent.parent
-if str(BASE_DIR) not in sys.path:
-    sys.path.insert(0, str(BASE_DIR))
+for p in [str(BASE_DIR / "src"), str(BASE_DIR)]:
+    if p not in sys.path:
+        sys.path.insert(0, p)
+
+def _check_module(module_name: str) -> bool:
+    """Check if a Python module is importable."""
+    try:
+        __import__(module_name)
+        return True
+    except ImportError:
+        return False
 
 # Import target components
-from core.native_bridge import audio_energy, is_native_active
-from voice.tts import NeuralTTS
-from start import _check_module
-from actions.live_os_control import LiveOSController
-from core.bootstrap import build_assistant_runtime
-
-logger = logging.getLogger(__name__)
+from brjarvis.core.native_bridge import audio_energy, is_native_active
+from brjarvis.voice.tts import NeuralTTS
+from brjarvis.actions.live_os_control import LiveOSController
+from brjarvis.core.bootstrap import build_assistant_runtime
 
 RESULTS = []
 

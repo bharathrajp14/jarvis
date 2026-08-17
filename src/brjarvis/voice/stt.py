@@ -357,7 +357,7 @@ class SpeechToTextEngine:
     def transcribe(self, audio_path: str) -> str:
         """Transcribe audio file to text."""
         try:
-            from voice.whisper_local import transcribe_file
+            from brjarvis.voice.whisper_local import transcribe_file
             res = transcribe_file(audio_path)
             if res:
                 return res

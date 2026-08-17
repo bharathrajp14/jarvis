@@ -612,7 +612,7 @@ class TaskCheckpointer:
             try:
                 from brjarvis.memory.persistent_store import get_memory_dir
             except ImportError:
-                from memory.persistent_store import get_memory_dir
+                from brjarvis.memory.persistent_store import get_memory_dir
             db_dir = get_memory_dir("user")
             db_dir.mkdir(parents=True, exist_ok=True)
             self.db_path = db_dir / "tool_orchestration.db"
@@ -811,7 +811,7 @@ class ParallelToolExecutor:
         try:
             from brjarvis.tools.registry import execute_tool
         except ImportError:
-            from tools.registry import execute_tool
+            from brjarvis.tools.registry import execute_tool
         return execute_tool(tool_name, args)
 
     def execute_plan(
@@ -1002,7 +1002,7 @@ class ParallelToolExecutor:
 
     def _execute_single_step(self, step: ToolStep, plan: ToolPlan) -> Tuple[Any, StepExecutionStatus, str]:
         """Execute a single step with retries, fallback tool switching, and ActionVerifier verification."""
-        from agent.verifier import get_action_verifier, VerificationStatus
+        from brjarvis.agent.verifier import get_action_verifier, VerificationStatus
         verifier = get_action_verifier()
 
         active_tool = step.tool
@@ -1068,14 +1068,14 @@ class ParallelToolExecutor:
 
             # 1. Record in LessonStore
             try:
-                from memory.lessons import LessonStore
+                from brjarvis.memory.lessons import LessonStore
                 ls = LessonStore()
                 ls.record_workflow_lesson(workflow_name=plan.goal[:40], sequence_desc=seq_desc, success=True)
             except Exception as ls_err:
                 logger.debug("[ParallelToolExecutor] LessonStore note: %s", ls_err)
 
             # 2. Record in UnifiedMemory
-            from memory.unified_memory import get_unified_memory
+            from brjarvis.memory.unified_memory import get_unified_memory
             um = get_unified_memory()
             content = f"Workflow sequence for '{plan.goal}': {seq_desc}"
             um.save(category="operational", name=f"workflow_{plan.task_id[:8]}", content=content, importance=0.8)

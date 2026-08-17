@@ -78,14 +78,14 @@ def check_tool_health() -> Dict[str, Dict[str, Any]]:
 
     # 4. Memory & Verification Subsystem
     try:
-        from memory.unified_memory import get_unified_memory
+        from brjarvis.memory.unified_memory import get_unified_memory
         um = get_unified_memory()
         health["Hierarchical Memory (L0-L6)"] = {"status": "READY", "details": "7-tier memory subsystem active"}
     except Exception as e:
         health["Hierarchical Memory (L0-L6)"] = {"status": "DEGRADED", "details": f"Memory init warning: {e}"}
 
     try:
-        from agent.verifier import ActionVerifier
+        from brjarvis.agent.verifier import ActionVerifier
         health["Action Verifier Suite"] = {"status": "READY", "details": "File, Process, Window & Artifact verifiers active"}
     except Exception as e:
         health["Action Verifier Suite"] = {"status": "DISABLED", "details": str(e)}
@@ -123,7 +123,7 @@ def run_safe_self_test() -> Dict[str, Any]:
             test_content = f"JARVIS_SELF_TEST_TOKEN_{time.time()}"
             test_file.write_text(test_content, encoding="utf-8")
 
-            from agent.verifier import ActionVerifier
+            from brjarvis.agent.verifier import ActionVerifier
             res = ActionVerifier.verify_file_content(str(test_file), expected_substrings=[test_content])
             if res.verified:
                 test_results["passed"].append({"name": "File Write & Content Verification", "evidence": res.evidence})
@@ -136,7 +136,7 @@ def run_safe_self_test() -> Dict[str, Any]:
     try:
         with tempfile.TemporaryDirectory() as tmpdir:
             test_docx = Path(tmpdir) / "jarvis_selftest.docx"
-            from tools.doc_tools import document_creator
+            from brjarvis.tools.doc_tools import document_creator
             document_creator({
                 "title": "Self Test Diagnostic Document",
                 "content": "# Test Header\n\nThis is a non-destructive automated self-test.\n\n| Param | Value |\n| --- | --- |\n| Status | Verified |",
@@ -145,7 +145,7 @@ def run_safe_self_test() -> Dict[str, Any]:
                 "auto_open": False
             })
 
-            from agent.verifier import ActionVerifier
+            from brjarvis.agent.verifier import ActionVerifier
             doc_res = ActionVerifier.verify_file_parsed(str(test_docx))
             if doc_res.verified:
                 test_results["passed"].append({"name": "DOCX Generation & Parsing Verification", "evidence": doc_res.evidence})
@@ -156,7 +156,7 @@ def run_safe_self_test() -> Dict[str, Any]:
 
     # Test 3: Operational Memory Record
     try:
-        from memory.unified_memory import get_unified_memory
+        from brjarvis.memory.unified_memory import get_unified_memory
         um = get_unified_memory()
         um.record_operational_lesson(
             tool_name="self_test_diagnostic",

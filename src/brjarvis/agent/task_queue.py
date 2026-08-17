@@ -277,7 +277,7 @@ class TaskQueue:
     def _run_task(self, task: Task) -> None:
         logger.info("▶️ Running [%s]: %s", task.task_id, task.goal[:60])
         try:
-            from agent.executor import AgentExecutor
+            from brjarvis.agent.executor import AgentExecutor
             if not hasattr(_executor_thread_local, "executor"):
                 _executor_thread_local.executor = AgentExecutor()
             executor = _executor_thread_local.executor

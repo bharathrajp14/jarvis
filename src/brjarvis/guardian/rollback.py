@@ -19,6 +19,9 @@ class RollbackEngine:
     @classmethod
     def rollback_to_latest(cls) -> dict:
         """Roll back git state and databases to the most recent snapshot."""
+        from brjarvis.core.paths import paths
+        from .snapshot import SnapshotManager
+
         if not SNAPSHOT_DIR.exists():
             return {"success": False, "reason": "No snapshots directory found"}
 
@@ -41,27 +44,19 @@ class RollbackEngine:
                     ["git", "checkout", git_hash],
                     capture_output=True,
                     text=True, encoding="utf-8", errors="replace",
-                    cwd=".",
+                    cwd=str(paths.PROJECT_ROOT),
                 )
                 if res.returncode == 0:
                     git_restored = True
             except Exception as e:
-                logger.exception('Boot critical exception encountered in guardian/rollback.py')
-                raise e
-        # 2. Restore Database files
-        from brjarvis.core.paths import paths
-        restored_dbs = []
-        for db_name in ["workflows.db", "conversation_history.db"]:
-            snap_db = latest_snap / db_name
-            if snap_db.exists():
-                target_db = paths.MEMORY_ROOT / db_name
-                target_db.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(snap_db, target_db)
-                restored_dbs.append(db_name)
+                logger.warning("[Rollback] Git checkout to %s failed: %s", git_hash, e)
+
+        # 2. Restore Database files using SnapshotManager
+        db_restored = SnapshotManager.restore_snapshot(latest_snap.name)
 
         return {
             "success": True,
             "snapshot_id": latest_snap.name,
             "git_restored": git_restored,
-            "databases_restored": restored_dbs,
+            "databases_restored": db_restored,
         }

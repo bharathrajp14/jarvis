@@ -12,7 +12,7 @@ from __future__ import annotations
 import logging
 import platform
 
-from ui import _base_dir, setup_qt_paths
+from brjarvis.ui import _base_dir, setup_qt_paths
 
 # Ensure Qt plugin paths are set before importing Qt
 setup_qt_paths()

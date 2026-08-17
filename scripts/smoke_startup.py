@@ -39,7 +39,10 @@ def _check(name: str, fn):
 
 def main() -> int:
     root = _repo_root()
-    sys.path.insert(0, str(root))
+    src = root / "src"
+    for p in [str(src), str(root)]:
+        if p not in sys.path:
+            sys.path.insert(0, p)
 
     print("\n⚡ JARVIS MK40.2 Non-Destructive Startup Smoke Verification ⚡\n")
     results: list[bool] = []

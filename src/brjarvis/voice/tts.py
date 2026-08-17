@@ -393,7 +393,7 @@ class NeuralTTS:
 
         self._is_speaking = False
         try:
-            from voice.audio_bus import AudioBus
+            from brjarvis.voice.audio_bus import AudioBus
             AudioBus.get_instance().set_echo_gate(False)
         except Exception:
             pass
@@ -492,7 +492,7 @@ class NeuralTTS:
         """Parallel producer-consumer pipelined speech worker. Pre-fetches next sentences while current audio plays for ZERO gap after periods."""
         self._is_speaking = True
         try:
-            from voice.audio_bus import AudioBus
+            from brjarvis.voice.audio_bus import AudioBus
             AudioBus.get_instance().set_echo_gate(True)
         except Exception:
             pass
@@ -551,7 +551,7 @@ class NeuralTTS:
             self._is_speaking = False
             self._current_alias = None
             try:
-                from voice.audio_bus import AudioBus
+                from brjarvis.voice.audio_bus import AudioBus
                 AudioBus.get_instance().set_echo_gate(False)
             except Exception:
                 pass

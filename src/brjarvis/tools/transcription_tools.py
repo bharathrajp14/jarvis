@@ -22,7 +22,7 @@ from .registry import register_tool
     }
 )
 def tool_transcribe_file(args: dict) -> str:
-    from actions.transcriber import transcribe_file
+    from brjarvis.actions.transcriber import transcribe_file
     result = transcribe_file(
         args["file_path"],
         args.get("language", "auto"),
@@ -49,7 +49,7 @@ def tool_transcribe_file(args: dict) -> str:
     }
 )
 def tool_transcribe_batch(args: dict) -> str:
-    from actions.transcriber import transcribe_batch
+    from brjarvis.actions.transcriber import transcribe_batch
     results = transcribe_batch(
         args["file_paths"],
         args.get("language", "auto"),

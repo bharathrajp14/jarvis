@@ -20,6 +20,26 @@ class DeepSeekBackend(BaseBackend):
 
     def __init__(self, model: str = None, api_key: str = None):
         _api_key = api_key or os.environ.get("DEEPSEEK_API_KEY", "").strip() or os.environ.get("OPENROUTER_API_KEY", "").strip()
+        if not _api_key:
+            try:
+                from brjarvis.core.config import get_config
+                _api_key = (get_config().secrets.deepseek_api_key or "").strip()
+            except Exception:
+                pass
+        if not _api_key:
+            try:
+                from brjarvis.core.paths import paths
+                cfg_file = paths.CONFIG_ROOT / "api_keys.json"
+                if cfg_file.exists():
+                    import json
+                    data = json.loads(cfg_file.read_text(encoding="utf-8"))
+                    for k, v in data.items():
+                        if str(k).lower().strip() in ("deepseek_api_key", "openrouter_api_key") and str(v).strip():
+                            _api_key = str(v).strip()
+                            break
+            except Exception:
+                pass
+
         is_openrouter = not os.environ.get("DEEPSEEK_API_KEY") and bool(os.environ.get("OPENROUTER_API_KEY"))
         self.base_url = "https://openrouter.ai/api/v1" if is_openrouter else "https://api.deepseek.com/v1"
         
@@ -47,8 +67,7 @@ class DeepSeekBackend(BaseBackend):
     def available(self) -> bool:
         if os.environ.get("JARVIS_DISABLE_DEEPSEEK", "").strip().lower() in {"1", "true", "yes", "on"}:
             return False
-        has_key = bool(os.environ.get("DEEPSEEK_API_KEY", "").strip() or os.environ.get("OPENROUTER_API_KEY", "").strip())
-        return self.client is not None and has_key
+        return self.client is not None
 
     def _ensure_client(self):
         if not self.client:

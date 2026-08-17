@@ -32,6 +32,8 @@ COLOR_DIM = "#6b7d96"
 COLOR_WHITE = "#f0f6fc"
 COLOR_ORANGE = "#ff6d00"
 COLOR_TEAL = "#1de9b6"
+COLOR_PURPLE = "#7c4dff"
+COLOR_MUTED = "#48586c"
 
 # ── Mode Color Mapping ───────────────────────────────────────────────────────
 MODE_COLORS: Dict[str, str] = {
@@ -70,7 +72,20 @@ class Glyphs:
     ARROW_RIGHT = "→"
     DIAMOND = "◈"
     DOT = "●"
-    
+    PULSE = "◉"
+    GEAR = "⚙"
+    CORNER = "└─"
+    PIPE = "│"
+    CHEVRON = "›"
+    DOUBLE_CHEVRON = "»"
+    RETURN = "↵"
+    LINK = "🔗"
+    FILE = "📄"
+    INFO = "ℹ"
+    WARNING = "⚠"
+    DATABASE = "🗄️"
+    ROCKET = "🚀"
+
     @classmethod
     def get_prompt_symbol(cls, mode: str = "general") -> str:
         return f"{cls.LIGHTNING} JARVIS"
@@ -96,7 +111,8 @@ def get_terminal_theme() -> Theme | None:
         "jarvis.highlight": f"bold {COLOR_WHITE}",
         "jarvis.teal": f"bold {COLOR_TEAL}",
         "jarvis.orange": f"bold {COLOR_ORANGE}",
-        
+        "jarvis.muted": COLOR_MUTED,
+
         # Tool styles
         "tool.name": f"bold {COLOR_CYAN}",
         "tool.arg.key": f"{COLOR_TEAL}",
@@ -104,13 +120,21 @@ def get_terminal_theme() -> Theme | None:
         "tool.success": f"bold {COLOR_GREEN}",
         "tool.failed": f"bold {COLOR_RED}",
         "tool.latency": f"dim {COLOR_DIM}",
-        
+
         # Verification styles
         "verify.pass": f"bold {COLOR_GREEN}",
         "verify.fail": f"bold {COLOR_RED}",
         "verify.evidence": f"{COLOR_DIM}",
-        
+
         # Prompt styles
         "prompt.user": f"bold {COLOR_CYAN}",
         "prompt.mode": f"bold {COLOR_AMBER}",
+        "prompt.arrow": f"bold {COLOR_TEAL}",
+
+        # Markdown & Callout styles
+        "callout.note": f"bold {COLOR_CYAN}",
+        "callout.tip": f"bold {COLOR_GREEN}",
+        "callout.warning": f"bold {COLOR_AMBER}",
+        "callout.danger": f"bold {COLOR_RED}",
+        "callout.important": f"bold {COLOR_MAGENTA}",
     })

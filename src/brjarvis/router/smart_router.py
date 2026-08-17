@@ -21,11 +21,11 @@ import threading
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
-from gateway.capabilities import CapabilityState, ModelCapabilityRegistry, get_capability_registry
-from gateway.client import ModelResponse, ProxyBrainClient, get_proxy_brain_client
-from gateway.discovery import DiscoveredModel, ModelDiscoveryService, get_discovery_service
-from gateway.health import HealthState, ModelHealthService, get_health_service
-from gateway.benchmark import ModelBenchmarkService, get_benchmark_service
+from brjarvis.gateway.capabilities import CapabilityState, ModelCapabilityRegistry, get_capability_registry
+from brjarvis.gateway.client import ModelResponse, ProxyBrainClient, get_proxy_brain_client
+from brjarvis.gateway.discovery import DiscoveredModel, ModelDiscoveryService, get_discovery_service
+from brjarvis.gateway.health import HealthState, ModelHealthService, get_health_service
+from brjarvis.gateway.benchmark import ModelBenchmarkService, get_benchmark_service
 from .task_profile import TaskComplexity, TaskProfile, TaskProfileClassifier
 
 logger = logging.getLogger("JARVIS.SmartRouter")
@@ -74,7 +74,7 @@ class ModelRequest:
     response_format: Optional[dict[str, Any]] = None
 
     def to_task_profile(self) -> TaskProfile:
-        from router.task_profile import TaskComplexity, TaskProfile
+        from brjarvis.router.task_profile import TaskComplexity, TaskProfile
         comp_map = {
             "low": TaskComplexity.LOW,
             "medium": TaskComplexity.MEDIUM,
@@ -164,7 +164,7 @@ class SmartModelRouter:
 
     def complete(self, request: Any) -> ModelResponse:
         """Execute a completion request using ModelExecutionService."""
-        from gateway.execution import ModelExecutionService
+        from brjarvis.gateway.execution import ModelExecutionService
         exec_service = ModelExecutionService(
             router=self,
             client=self.client,

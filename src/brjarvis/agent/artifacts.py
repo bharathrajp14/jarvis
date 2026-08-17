@@ -419,6 +419,22 @@ class ArtifactManager:
             # Also map by host_path for fast lookup
             self._records[str(dest_canonical)] = rec
 
+        try:
+            from brjarvis.events.bus import get_event_bus
+            from brjarvis.events.types import ArtifactLifecycleEvent
+            bus = get_event_bus()
+            bus.publish(ArtifactLifecycleEvent(
+                topic="artifact.exported",
+                artifact_id=artifact_id,
+                task_id=task_id,
+                path=str(dest_canonical),
+                mime_type=rec.mime_type,
+                checksum=dest_hash,
+                verified=True,
+            ))
+        except Exception:
+            pass
+
         logger.info("⚡ Successfully exported artifact '%s' -> '%s' (SHA256: %s)", filename, dest_canonical, dest_hash[:12])
         return rec
 

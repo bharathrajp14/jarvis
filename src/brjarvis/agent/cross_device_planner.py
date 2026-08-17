@@ -215,10 +215,10 @@ class CrossDevicePlanner:
                 # Run simulated action safely
                 step_out = f"Mobile action '{s.action_name}' executed on Android device."
             elif s.device_target == DeviceTarget.BROWSER:
-                from tools.registry import execute_tool
+                from brjarvis.tools.registry import execute_tool
                 step_out = execute_tool(s.action_name, s.parameters)
             else:
-                from tools.registry import execute_tool
+                from brjarvis.tools.registry import execute_tool
                 step_out = execute_tool(s.action_name, s.parameters)
 
             act = TaskAction(

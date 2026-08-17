@@ -173,7 +173,7 @@ class PolicyEngine:
         """Set permission mode safely."""
         if isinstance(mode, str):
             val = mode.strip().lower()
-            if val in ("auto", "allow_all"):
+            if val in ("auto", "allow_all", "allow", "off", "none", "yolo", "allowall"):
                 self.mode = PermissionMode.ALLOW_ALL
             elif val in ("confirm_all", "all"):
                 self.mode = PermissionMode.CONFIRM_ALL

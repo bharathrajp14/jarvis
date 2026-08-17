@@ -42,12 +42,12 @@ def _title_hash(title: str) -> str:
 # ── Memory I/O ─────────────────────────────────────────────────────────────────
 
 def _load() -> dict:
-    from memory.memory_manager import load_memory
+    from brjarvis.memory.memory_manager import load_memory
     data = load_memory().get("monitors", {})
     return data if isinstance(data, dict) else {}
 
 def _save(monitors: dict) -> None:
-    from memory.memory_manager import load_memory, MEMORY_PATH, _lock
+    from brjarvis.memory.memory_manager import load_memory, MEMORY_PATH, _lock
     memory = load_memory()
     memory["monitors"] = monitors
     with _lock:
@@ -108,7 +108,7 @@ def check_all() -> list[str]:
     Run all pending topic checks (once per day per topic).
     Returns a list of [MONITOR_ALERT] strings — empty if nothing new.
     """
-    from actions.web_search import _ddg_news
+    from brjarvis.actions.web_search import _ddg_news
 
     monitors = _load()
     if not monitors:

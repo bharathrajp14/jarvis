@@ -12,7 +12,7 @@ import os
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from actions.calendar_engine import get_calendar_engine
+from brjarvis.actions.calendar_engine import get_calendar_engine
 from .base import BaseConnector, ConnectorTool
 
 logger = logging.getLogger("JARVIS.Connectors.Calendar")

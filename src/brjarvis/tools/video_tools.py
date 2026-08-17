@@ -26,7 +26,7 @@ from .registry import register_tool
     }
 )
 def tool_generate_video(args: dict) -> str:
-    from actions.video_generator import generate_video
+    from brjarvis.actions.video_generator import generate_video
     result = generate_video(
         prompt=args["prompt"],
         provider=args.get("provider", "auto"),
@@ -44,7 +44,7 @@ def tool_generate_video(args: dict) -> str:
     parameters={}
 )
 def tool_list_generated_videos(args: dict) -> str:
-    from actions.video_generator import list_generated_videos
+    from brjarvis.actions.video_generator import list_generated_videos
     videos = list_generated_videos()
     if not videos:
         return "No generated videos found."

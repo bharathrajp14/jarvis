@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from typing import Any, Dict
 from .registry import register_tool
-from actions.telegram_automation import get_telegram_automation
+from brjarvis.actions.telegram_automation import get_telegram_automation
 
 
 # ── Tool 1: Send Telegram Message ─────────────────────────────────────────────

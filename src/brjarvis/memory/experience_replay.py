@@ -104,7 +104,7 @@ class ExperienceReplayStore:
                     ),
                 )
 
-        from memory.sqlite_lock import run_sqlite_write
+        from brjarvis.memory.sqlite_lock import run_sqlite_write
         run_sqlite_write(_do_write)
         logger.debug(f"Recorded trajectory {trajectory.trajectory_id} (Success: {trajectory.success_status})")
 

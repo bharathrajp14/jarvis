@@ -14,7 +14,7 @@ from datetime import datetime
 
 logger = logging.getLogger("JARVIS.Actions.GameUpdater")
 
-from config import get_os, is_windows, is_mac, is_linux
+from brjarvis.config import get_os, is_windows, is_mac, is_linux
 
 _CNW: dict = (
     {"creationflags": subprocess.CREATE_NO_WINDOW}

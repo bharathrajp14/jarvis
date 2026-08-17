@@ -24,8 +24,11 @@ GEMINI_MODEL       = get_proxy_model("gemini-3.5-flash", "gemini-2.5-flash")
 
 
 def _get_api_key() -> str:
-    with open(API_CONFIG_PATH, "r", encoding="utf-8") as f:
-        return json.load(f)["gemini_api_key"]
+    try:
+        with open(API_CONFIG_PATH, "r", encoding="utf-8") as f:
+            return json.load(f).get("gemini_api_key", "")
+    except Exception:
+        return ""
 
 
 def _get_gemini(model: str = GEMINI_MODEL):
@@ -38,7 +41,9 @@ def _get_gemini(model: str = GEMINI_MODEL):
     return _W()
 
 
-def _clean_code(text: str) -> str:
+def _clean_code(text: str | None) -> str:
+    if not text:
+        return ""
     text = text.strip()
     text = re.sub(r"^```[a-zA-Z]*\n?", "", text)
     text = re.sub(r"\n?```$", "", text)
@@ -143,7 +148,9 @@ def _detect_intent(description: str, file_path: str, code: str) -> str:
                 "  optimize     = refactor / clean up / speed up existing code\n\n"
                 "Reply with ONLY the intent word, nothing else."
             )
-            ans = _get_gemini().generate_content(prompt).text.strip().lower()
+            raw_resp = _get_gemini().generate_content(prompt)
+            raw_text = raw_resp.text or ""
+            ans = raw_text.strip().lower()
             ans = ans.strip("`'\". \n")
             if ans in _VALID_INTENTS:
                 return ans
@@ -361,7 +368,7 @@ Explanation:"""
 
     try:
         response = model.generate_content(prompt)
-        return response.text.strip()
+        return response.text.strip() if response.text else ""
     except Exception as e:
         return f"Could not explain code: {e}"
 
@@ -433,7 +440,6 @@ Optimized code:"""
 
 
 def _screen_debug_action(description, file_path, player, speak=None) -> str:
-
     if player:
         player.write_log("[Code] Taking screenshot for analysis...")
 
@@ -442,25 +448,17 @@ def _screen_debug_action(description, file_path, player, speak=None) -> str:
     if not screenshot_path:
         return "Could not take screenshot, sir. Please make sure PyAutoGUI is installed."
 
-
-    file_content = ""
-    if file_path:
-        p = Path(file_path)
-        if p.exists():
-            try:
-                file_content = f"\nTarget file ({file_path}):\n```\n{p.read_text('utf-8', errors='ignore')[:1500]}\n```"
-            except Exception as err:
-                logger.warning("Could not read file: %s", err)
-
     try:
-        from google import genai
-        from google.genai import types
-
-        client = genai.Client(api_key=_get_api_key())
+        file_content = ""
+        if file_path:
+            p = Path(file_path)
+            if p.exists():
+                try:
+                    file_content = f"\nTarget file ({file_path}):\n```\n{p.read_text('utf-8', errors='ignore')[:1500]}\n```"
+                except Exception as err:
+                    logger.warning("Could not read file: %s", err)
 
         image_bytes  = screenshot_path.read_bytes()
-        image_base64 = _image_to_base64(screenshot_path)
-
         user_question = description or "What error or problem do you see on the screen? How can it be fixed?"
 
         context = ""
@@ -479,17 +477,23 @@ Please:
 
 Be specific and actionable. If you see an error message, quote it exactly."""
 
-        contents = [
-            types.Part.from_bytes(data=image_bytes, mime_type="image/png"),
-            analysis_prompt,
-        ]
-
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=contents,
-        )
-
-        analysis = response.text.strip()
+        try:
+            from brjarvis.integrations.backends.gemini import GeminiBackend
+            backend = GeminiBackend()
+            analysis = backend.complete_with_vision(image_bytes, "image/png", analysis_prompt).strip()
+        except Exception:
+            from google import genai
+            from google.genai import types
+            client = genai.Client(api_key=_get_api_key())
+            contents = [
+                types.Part.from_bytes(data=image_bytes, mime_type="image/png"),
+                analysis_prompt,
+            ]
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=contents,
+            )
+            analysis = response.text.strip() if response.text else ""
         logger.info("Screen analysis complete")
 
         try:
@@ -498,7 +502,6 @@ Be specific and actionable. If you see an error message, quote it exactly."""
             pass
 
         if file_path and file_content:
-
             code_match = re.search(r"```[a-zA-Z]*\n(.*?)```", analysis, re.DOTALL)
             if code_match:
                 fixed_code = code_match.group(1).strip()
@@ -510,7 +513,6 @@ Be specific and actionable. If you see an error message, quote it exactly."""
         return analysis
 
     except Exception as e:
-
         try:
             screenshot_path.unlink()
         except Exception:

@@ -36,7 +36,7 @@ def import_file_to_knowledge(file_path: str | Path) -> Dict[str, Any]:
     try:
         if ext == ".vcf" or (ext == ".csv" and any(k in p.name.lower() for k in ["contact", "people", "phone", "address", "vcard", "export"])):
             # Trigger contact store import
-            from memory.contact_manager import get_contact_store
+            from brjarvis.memory.contact_manager import get_contact_store
             store = get_contact_store()
             if ext == ".vcf":
                 res = store.import_vcf(p)
@@ -82,7 +82,7 @@ def import_file_to_knowledge(file_path: str | Path) -> Dict[str, Any]:
 
     # 1. Save to Persistent Memory
     try:
-        from memory.persistent_store import MemoryEntry, save_memory
+        from brjarvis.memory.persistent_store import MemoryEntry, save_memory
         entry = MemoryEntry(
             name=f"file_{p.stem}",
             description=f"Imported document: {file_name}",
@@ -96,7 +96,7 @@ def import_file_to_knowledge(file_path: str | Path) -> Dict[str, Any]:
 
     # 2. Save to Vector Store
     try:
-        from memory.vector_store import TextSimilarityMemory
+        from brjarvis.memory.vector_store import TextSimilarityMemory
         mem_db = get_base_dir() / "memory_db" / "tf_idf_memory.json"
         vector_mem = TextSimilarityMemory(mem_db)
         vector_mem.store(

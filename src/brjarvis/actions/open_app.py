@@ -292,7 +292,7 @@ def open_app(
     low = app_name.lower().replace("\\", "/")
     if "jarvis_sandbox_jails" in low or "/jail_" in low or "\\jail_" in app_name.lower():
         try:
-            from agent.artifacts import get_artifact_manager
+            from brjarvis.agent.artifacts import get_artifact_manager
             mgr = get_artifact_manager()
             parts = app_name.split(maxsplit=1)
             if len(parts) == 2 and any(b in parts[0].lower() for b in ("chrome", "msedge", "edge", "brave", "firefox", "start", "open")):
@@ -312,7 +312,7 @@ def open_app(
 
     # 1. Primary Strategy: Auto-Configuring ApplicationResolver Engine
     try:
-        from actions.app_resolver import get_app_resolver
+        from brjarvis.actions.app_resolver import get_app_resolver
         resolver = get_app_resolver()
         success, msg = resolver.launch(app_name, url=url)
         if success:
@@ -346,7 +346,7 @@ def open_app(
 
         # Verify process and window actually started
         try:
-            from core.execution.verifier import ApplicationVerifier
+            from brjarvis.core.execution.verifier import ApplicationVerifier
             proc_name = normalized.split()[0] if " " in normalized else normalized
             vres = ApplicationVerifier.verify_window_open(app_name=proc_name, window_title_keyword=app_name)
             if vres.verified:

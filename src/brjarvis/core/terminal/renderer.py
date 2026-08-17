@@ -66,82 +66,32 @@ class TerminalRenderer:
 
     def render_header(self, session_info: Optional[Dict[str, Any]] = None) -> None:
         """Render top status header with metadata pills."""
+        from .components import HeaderComponent
         info = session_info or {}
-        mode = info.get("mode", "general").lower()
-        mode_color = MODE_COLORS.get(mode, COLOR_CYAN)
+        mode = info.get("mode", "general")
         model = info.get("model", "Gemini 2.5 Flash")
-        session_id = info.get("session_id", "sess-default")[:8]
-        perm_mode = info.get("permission_mode", "FAIL-CLOSED")
-        mem_status = info.get("memory_status", "ACTIVE")
+        session_id = info.get("session_id", "sess-default")
+        perm_mode = info.get("permission_mode", "confirm_destructive")
+        working_dir = info.get("working_dir", os.getcwd())
 
-        if HAS_RICH and self.console:
-            grid = Table.grid(expand=True)
-            grid.add_column(justify="left", ratio=1)
-            grid.add_column(justify="right", ratio=1)
+        HeaderComponent.render(
+            console=self.console,
+            session_id=session_id,
+            mode=mode,
+            model=model,
+            permission_mode=perm_mode,
+            working_dir=working_dir,
+        )
 
-            left_text = Text()
-            left_text.append(f"{Glyphs.LIGHTNING} BR JARVIS ", style="bold cyan")
-            left_text.append(f"v{VERSION} ", style="bold white")
-            left_text.append(f"[{CODENAME}] ", style="dim")
-            left_text.append(f"│ Mode: ", style="dim")
-            left_text.append(f"[{mode.upper()}] ", style=f"bold {mode_color}")
-            left_text.append(f"│ Model: ", style="dim")
-            left_text.append(f"{model} ", style="cyan")
-
-            right_text = Text()
-            right_text.append(f"ID: ", style="dim")
-            right_text.append(f"{session_id} ", style="white")
-            right_text.append(f"│ Memory: ", style="dim")
-            right_text.append(f"🧠 {mem_status} ", style="green")
-            right_text.append(f"│ Security: ", style="dim")
-            right_text.append(f"{Glyphs.SHIELD} {perm_mode}", style="bold green")
-
-            grid.add_row(left_text, right_text)
-
-            panel = Panel(
-                grid,
-                border_style=COLOR_CYAN,
-                box=ROUNDED,
-                padding=(0, 1),
-            )
-            self.console.print(panel)
-        else:
-            print(f"[{Glyphs.LIGHTNING} BR JARVIS v{VERSION} | Mode: {mode.upper()} | Model: {model} | ID: {session_id} | Security: {perm_mode}]")
-
-    def render_welcome(self) -> None:
+    def render_welcome(self, mode: str = "general", working_dir: str = "", model_name: str = "Gemini") -> None:
         """Render welcoming agent dashboard with shortcuts."""
-        if HAS_RICH and self.console:
-            text = Text()
-            text.append("⚡ BR JARVIS MK40.2 Autonomous Cognitive Agent Terminal\n", style="bold cyan")
-            text.append("Connected to UnifiedMemory, Dynamic Tool Registry, and Sandbox ActionVerifier.\n\n", style="dim")
-            text.append("Quick Commands:\n", style="bold white")
-            text.append("  /help            ", style="bold cyan")
-            text.append("Show full command reference and keyboard shortcuts\n", style="dim")
-            text.append("  /mode <name>     ", style="bold cyan")
-            text.append("Switch persona: coder, analyst, recon, planner, exploit, general\n", style="dim")
-            text.append("  /tasks           ", style="bold cyan")
-            text.append("Inspect background and multi-stage task lifecycle records\n", style="dim")
-            text.append("  /memory <subcmd> ", style="bold cyan")
-            text.append("Query unified memory: search <q>, recent, project, stats\n", style="dim")
-            text.append("  /doctor          ", style="bold cyan")
-            text.append("Run self-healing diagnostics and verify system integrity\n", style="dim")
-            text.append("  /quit            ", style="bold cyan")
-            text.append("Consolidate session learnings and exit cleanly\n", style="dim")
-
-            panel = Panel(
-                text,
-                border_style=COLOR_BLUE,
-                box=ROUNDED,
-                padding=(0, 2),
-                title="[bold yellow]Agent REPL Initialized[/bold yellow]",
-            )
-            self.console.print(panel)
-            self.console.print()
-        else:
-            print("==================================================================")
-            print(f" BR JARVIS v{VERSION} Cognitive Agent Terminal")
-            print(" Commands: /help, /mode <name>, /tasks, /memory, /doctor, /quit")
-            print("==================================================================")
+        from .components import WelcomeCard
+        WelcomeCard.render(
+            console=self.console,
+            mode=mode,
+            working_dir=working_dir or os.getcwd(),
+            model_name=model_name,
+        )
 
     # ── Tool Execution Visual Card ────────────────────────────────────────────
 
@@ -449,44 +399,6 @@ class TerminalRenderer:
     # ══════════════════════════════════════════════════════════════════════════
     # MK41 NEW RENDERER PANELS
     # ══════════════════════════════════════════════════════════════════════════
-
-    # ── Enhanced Welcome ──────────────────────────────────────────────────────
-
-    def render_welcome(self) -> None:
-        """Render MK41 welcoming agent dashboard with shortcuts."""
-        if HAS_RICH and self.console:
-            text = Text()
-            text.append("⚡ BR JARVIS MK41 — Autonomous Cognitive Agent Terminal\n", style="bold cyan")
-            text.append("Connected to UnifiedMemory, Tool Registry, and Sandbox ActionVerifier.\n\n", style="dim")
-            text.append("Quick Reference:\n", style="bold white")
-            cmds = [
-                ("/plan <goal>",   "Decompose goal into plan → approve → execute"),
-                ("/mode <name>",   "Switch persona: coder, analyst, researcher, planner, automation"),
-                ("/tasks",         "Live task dashboard with step progress"),
-                ("/memory <sub>",  "search <q> | recent | project | stats | forget <id>"),
-                ("/doctor",        "Interactive system health check"),
-                ("/permission",    "View or set permission mode"),
-                ("/help",          "Full command reference"),
-                ("/quit",          "Consolidate learnings and exit"),
-            ]
-            for cmd, desc in cmds:
-                text.append(f"  {cmd:<22}", style="bold cyan")
-                text.append(f"{desc}\n", style="dim")
-            text.append("\nType a goal directly to begin, or use /plan for explicit approval mode.", style="dim italic")
-
-            panel = Panel(
-                text,
-                border_style=COLOR_BLUE,
-                box=ROUNDED,
-                padding=(0, 2),
-                title="[bold yellow]⚡ Agent REPL Initialized[/bold yellow]",
-            )
-            self.console.print(panel)
-            self.console.print()
-        else:
-            print("=" * 66)
-            print(f" ⚡ BR JARVIS MK41 | Commands: /plan /mode /tasks /memory /help /quit")
-            print("=" * 66)
 
     # ── Plan Panel (Phase 3) ──────────────────────────────────────────────────
 

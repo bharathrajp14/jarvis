@@ -11,8 +11,8 @@ import time
 import threading
 import pyperclip
 from pathlib import Path
-from memory.persistent_store import get_memory_dir
-from tools.registry import register_tool
+from brjarvis.memory.persistent_store import get_memory_dir
+from brjarvis.tools.registry import register_tool
 from .clipboard_utils import get_clipboard_text
 
 logger = logging.getLogger(__name__)

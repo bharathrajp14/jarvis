@@ -18,9 +18,9 @@ logger = logging.getLogger(__name__)
 class MistralBackend(BaseBackend):
     """Mistral AI backend via OpenAI-compatible SDK."""
 
-    def __init__(self, model: str = None, api_key: str = None):
+    def __init__(self, model: str | None = None, api_key: str | None = None):
         try:
-            from config.models import get_model
+            from brjarvis.config.models import get_model
             default_model = get_model("mistral") or "mistral-large-latest"
         except Exception:
             default_model = "mistral-large-latest"
@@ -53,9 +53,10 @@ class MistralBackend(BaseBackend):
                 "and the 'openai' pip package is installed."
             )
 
-    def complete(self, messages: list, system: str = "", tools: list = None) -> str:
+    def complete(self, messages: list[dict], system: str = "", tools: list | None = None) -> str:
         try:
             self._ensure_client()
+            assert self.client is not None
 
             full_messages = []
             if system:
@@ -70,14 +71,15 @@ class MistralBackend(BaseBackend):
                 kwargs["tools"] = tools
 
             response = self.client.chat.completions.create(**kwargs)
-            return response.choices[0].message.content
+            return response.choices[0].message.content or ""
         except Exception as e:
             logger.warning(f"[Mistral] Error: {e}")
             raise
 
-    def stream(self, messages: list, system: str = "") -> Generator[str, None, None]:
+    def stream(self, messages: list[dict], system: str = "") -> Generator[str, None, None]:
         try:
             self._ensure_client()
+            assert self.client is not None
 
             full_messages = []
             if system:
@@ -92,5 +94,7 @@ class MistralBackend(BaseBackend):
             for chunk in stream_res:
                 if chunk.choices and chunk.choices[0].delta.content:
                     yield chunk.choices[0].delta.content
+            return
         except Exception as e:
             yield f"\n[Mistral Stream Error: {e}]"
+

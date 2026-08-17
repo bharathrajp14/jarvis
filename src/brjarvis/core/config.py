@@ -37,18 +37,18 @@ class AssistantConfig(BaseModel):
 
 
 class ModelConfig(BaseModel):
-    default_backend: str = Field(default="gemini", description="Default primary LLM backend")
-    gemini: str = Field(default="gemini-2.5-flash", description="Gemini model ID")
-    gemini_code: str = Field(default="gemini-2.5-pro", description="Gemini Code model ID")
-    gemini_reasoning: str = Field(default="gemini-2.5-pro", description="Gemini Reasoning model ID")
-    claude: str = Field(default="gemini-2.5-pro", description="Claude model ID")
-    gpt: str = Field(default="gpt-4o-mini", description="GPT model ID")
+    default_backend: str = Field(default="gpt", description="Default primary LLM backend")
+    gemini: str = Field(default="gemini-3.1-pro-high", description="Gemini model ID")
+    gemini_code: str = Field(default="gemini-3.1-pro-high", description="Gemini Code model ID")
+    gemini_reasoning: str = Field(default="gemini-3.1-pro-high", description="Gemini Reasoning model ID")
+    claude: str = Field(default="gemini-3.1-pro-high", description="Claude model ID")
+    gpt: str = Field(default="gemini-3.1-pro-high", description="GPT model ID")
     ollama: str = Field(default="llama3.3", description="Ollama local model ID")
     nvidia: str = Field(default="meta/llama-3.1-70b-instruct", description="NVIDIA NIM model ID")
     mistral: str = Field(default="mistral-large-latest", description="Mistral model ID")
-    planner_model: str = Field(default="gemini-2.5-flash", description="Planning model ID")
-    fast_model: str = Field(default="gemini-2.0-flash", description="Fast inference model ID")
-    voice_live: str = Field(default="models/gemini-2.0-flash-live-001", description="Voice Live model ID")
+    planner_model: str = Field(default="gemini-3.1-pro-high", description="Planning model ID")
+    fast_model: str = Field(default="gemini-3.6-flash-medium", description="Fast inference model ID")
+    voice_live: str = Field(default="gemini-3.7-flash-tiered", description="Voice Live model ID")
 
 
 class SecurityConfig(BaseModel):
@@ -82,6 +82,10 @@ class SecretsConfig(BaseModel):
     mistral_api_key: Optional[str] = Field(default=None, description="Mistral API key")
     nvidia_api_key: Optional[str] = Field(default=None, description="NVIDIA API key")
     github_api_key: Optional[str] = Field(default=None, description="GitHub token")
+    tavily_api_key: Optional[str] = Field(default=None, description="Tavily Search API key")
+    notion_token: Optional[str] = Field(default=None, description="Notion integration token")
+    slack_bot_token: Optional[str] = Field(default=None, description="Slack Bot token")
+    telegram_bot_token: Optional[str] = Field(default=None, description="Telegram Bot token")
 
 
 class SystemConfig(BaseModel):
@@ -184,13 +188,34 @@ class JarvisConfig(BaseModel):
 
         if API_KEYS_JSON.exists():
             try:
-                data = json.loads(API_KEYS_JSON.read_text(encoding="utf-8"))
+                raw_data = json.loads(API_KEYS_JSON.read_text(encoding="utf-8"))
+                data = {str(k).lower().strip(): str(v).strip() for k, v in raw_data.items() if v}
                 if data.get("server_api_key"):
-                    cfg.security.server_api_key = str(data["server_api_key"]).strip()
-                if data.get("gemini_api_key"):
-                    cfg.secrets.gemini_api_key = str(data["gemini_api_key"]).strip()
-                if data.get("github developer_api_key"):
-                    cfg.secrets.github_api_key = str(data["github developer_api_key"]).strip()
+                    cfg.security.server_api_key = data["server_api_key"]
+                if data.get("gemini_api_key") or data.get("google_api_key"):
+                    cfg.secrets.gemini_api_key = data.get("gemini_api_key") or data.get("google_api_key")
+                if data.get("openai_api_key"):
+                    cfg.secrets.openai_api_key = data["openai_api_key"]
+                if data.get("anthropic_api_key") or data.get("claude_api_key"):
+                    cfg.secrets.anthropic_api_key = data.get("anthropic_api_key") or data.get("claude_api_key")
+                if data.get("deepseek_api_key") or data.get("openrouter_api_key"):
+                    cfg.secrets.deepseek_api_key = data.get("deepseek_api_key") or data.get("openrouter_api_key")
+                if data.get("mistral_api_key"):
+                    cfg.secrets.mistral_api_key = data["mistral_api_key"]
+                if data.get("nvidia_api_key"):
+                    cfg.secrets.nvidia_api_key = data["nvidia_api_key"]
+                if data.get("github_token") or data.get("github_api_key") or data.get("github developer_api_key"):
+                    cfg.secrets.github_api_key = (
+                        data.get("github_token") or data.get("github_api_key") or data.get("github developer_api_key")
+                    )
+                if data.get("tavily_api_key"):
+                    cfg.secrets.tavily_api_key = data["tavily_api_key"]
+                if data.get("notion_token"):
+                    cfg.secrets.notion_token = data["notion_token"]
+                if data.get("slack_bot_token"):
+                    cfg.secrets.slack_bot_token = data["slack_bot_token"]
+                if data.get("telegram_bot_token"):
+                    cfg.secrets.telegram_bot_token = data["telegram_bot_token"]
             except Exception as exc:
                 _logger.debug("Failed to read api_keys.json: %s", exc)
 
@@ -298,37 +323,38 @@ def get_credential_source() -> Dict[str, str]:
     """
     Determine which API credential is active and return source metadata.
 
-    MK40.2 §30: If both GOOGLE_API_KEY and GEMINI_API_KEY exist, GOOGLE_API_KEY
-    wins (deterministic precedence). A warning is emitted explaining the conflict.
+    BUG-2 FIX: JarvisConfig.load() picks GEMINI_API_KEY first (L256-262 of this file).
+    This function's reported precedence now matches that actual runtime behaviour.
     Never exposes the key value — only the variable name.
 
     Returns:
         {
-            "source": "GOOGLE_API_KEY" | "GEMINI_API_KEY" | "NOT_CONFIGURED",
+            "source": "GEMINI_API_KEY" | "GOOGLE_API_KEY" | "NOT_CONFIGURED",
             "conflict": True | False,
             "warning": "..." | None
         }
     """
-    google_key = bool(os.environ.get("GOOGLE_API_KEY", "").strip())
     gemini_key = bool(os.environ.get("GEMINI_API_KEY", "").strip())
+    google_key = bool(os.environ.get("GOOGLE_API_KEY", "").strip())
 
-    if google_key and gemini_key:
+    if gemini_key and google_key:
         _logger.warning(
-            "[Config] Both GOOGLE_API_KEY and GEMINI_API_KEY are set. "
-            "GOOGLE_API_KEY takes precedence per MK40.2 §30. Remove GEMINI_API_KEY to eliminate this conflict."
+            "[Config] Both GEMINI_API_KEY and GOOGLE_API_KEY are set. "
+            "GEMINI_API_KEY takes precedence (matches JarvisConfig.load() behaviour). "
+            "Remove GOOGLE_API_KEY to eliminate this conflict."
         )
         return {
-            "source": "GOOGLE_API_KEY",
+            "source": "GEMINI_API_KEY",
             "conflict": True,
             "warning": (
-                "Both GOOGLE_API_KEY and GEMINI_API_KEY are set. "
-                "GOOGLE_API_KEY is active. Remove GEMINI_API_KEY to resolve the conflict."
+                "Both GEMINI_API_KEY and GOOGLE_API_KEY are set. "
+                "GEMINI_API_KEY is active. Remove GOOGLE_API_KEY to resolve the conflict."
             ),
         }
-    elif google_key:
-        return {"source": "GOOGLE_API_KEY", "conflict": False, "warning": None}
     elif gemini_key:
         return {"source": "GEMINI_API_KEY", "conflict": False, "warning": None}
+    elif google_key:
+        return {"source": "GOOGLE_API_KEY", "conflict": False, "warning": None}
     else:
         return {"source": "NOT_CONFIGURED", "conflict": False, "warning": "No Google/Gemini API key found in environment."}
 
@@ -342,16 +368,17 @@ def get_model_display_info() -> Dict[str, str]:
     """
     cfg = get_config()
     cred = get_credential_source()
-    backend = cfg.model.default_backend.lower()
+    # BUG-1 FIX: JarvisConfig exposes `.models` (plural) — `.model` raised AttributeError.
+    backend = cfg.models.default_backend.lower()
 
     # Map backend to specific model ID and provider string
     backend_model_map: Dict[str, tuple[str, str]] = {
-        "gemini":   ("Google DeepMind", cfg.model.gemini),
-        "claude":   ("Anthropic",       cfg.model.claude),
-        "gpt":      ("OpenAI",          cfg.model.gpt),
-        "ollama":   ("Ollama (local)",  cfg.model.ollama),
-        "nvidia":   ("NVIDIA NIM",      cfg.model.nvidia),
-        "mistral":  ("Mistral AI",      cfg.model.mistral),
+        "gemini":   ("Google DeepMind", cfg.models.gemini),
+        "claude":   ("Anthropic",       cfg.models.claude),
+        "gpt":      ("OpenAI",          cfg.models.gpt),
+        "ollama":   ("Ollama (local)",  cfg.models.ollama),
+        "nvidia":   ("NVIDIA NIM",      cfg.models.nvidia),
+        "mistral":  ("Mistral AI",      cfg.models.mistral),
     }
 
     provider, model_id = backend_model_map.get(backend, ("Unknown Provider", backend))

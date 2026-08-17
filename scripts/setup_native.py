@@ -26,7 +26,9 @@ if sys.platform == "win32":
     except Exception as e:
         logger.debug('Suppressed exception: %s', e)
 BASE_DIR   = Path(__file__).resolve().parent.parent
-NATIVE_DIR = BASE_DIR / "native"
+NATIVE_DIR = BASE_DIR / "src" / "brjarvis" / "native"
+if not NATIVE_DIR.exists() or not (NATIVE_DIR / "jarvis_native.c").exists():
+    NATIVE_DIR = BASE_DIR / "native"
 C_SRC      = NATIVE_DIR / "jarvis_native.c"
 
 system = platform.system()

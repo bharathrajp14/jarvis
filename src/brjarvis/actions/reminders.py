@@ -86,7 +86,7 @@ class ReminderManager:
         logger.info(f"⏰ REMINDER: {text}")
 
         try:
-            from actions.reminder import reminder
+            from brjarvis.actions.reminder import reminder
             now = datetime.now() + timedelta(seconds=1)
             date_str = now.strftime("%Y-%m-%d")
             time_str = now.strftime("%H:%M")

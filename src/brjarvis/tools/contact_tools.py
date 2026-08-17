@@ -15,7 +15,7 @@ from typing import Any, Dict, List, Optional
 from .domain import RiskLevel, SideEffectLevel, ToolCategory, ToolErrorCode, VerificationStrategy
 from .registry import register_tool
 from .tool_result import ToolResult
-from memory.contact_manager import get_contact_store
+from brjarvis.memory.contact_manager import get_contact_store
 
 
 @register_tool(

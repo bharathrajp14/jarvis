@@ -25,9 +25,9 @@ class TaskComplexity(Enum):
 
 
 MODEL_TIER_MAP = {
-    TaskComplexity.FAST: "gemini-3.6-flash-low",
-    TaskComplexity.MEDIUM: "gemini-3.5-flash",
-    TaskComplexity.HIGH: "gemini-3.6-flash-high",
+    TaskComplexity.FAST: "gemini-3.6-flash-medium",
+    TaskComplexity.MEDIUM: "gemini-3.7-flash-high",
+    TaskComplexity.HIGH: "gemini-3.1-pro-high",
     TaskComplexity.VISION: "gemini-3.1-flash-image",
 }
 
@@ -393,17 +393,13 @@ def get_recommended_token_limit(
     score: float | None = None,
 ) -> int:
     """Returns AI-driven auto-flexible dynamic output token budget based on complexity tier and context."""
-    if isinstance(RECOMMENDED_TOKEN_LIMITS, DynamicTokenBudgetMap):
-        return RECOMMENDED_TOKEN_LIMITS.get_flexible_limit(
-            complexity,
-            user_max_tokens=user_max_tokens,
-            messages=messages,
-            system=system,
-            score=score,
-        )
-    if user_max_tokens and user_max_tokens > 0:
-        return user_max_tokens
-    return RECOMMENDED_TOKEN_LIMITS.get(complexity, 4096)
+    return RECOMMENDED_TOKEN_LIMITS.get_flexible_limit(
+        complexity,
+        user_max_tokens=user_max_tokens,
+        messages=messages,
+        system=system,
+        score=score,
+    )
 
 
 def estimate_tokens(text: str | Any) -> int:

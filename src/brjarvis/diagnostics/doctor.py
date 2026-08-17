@@ -143,15 +143,66 @@ def run_diagnostics_audit(auto_repair: bool = False) -> DoctorReport:
                 break
         sys_results[group] = found
 
-    # Keys & Backends
+    # Keys & Backends (inspect environment, config, and api_keys.json)
+    cfg_secrets = None
+    try:
+        from brjarvis.core.config import get_config
+        cfg_secrets = get_config().secrets
+    except Exception:
+        pass
+
+    raw_api_keys: Dict[str, str] = {}
+    try:
+        cfg_file = paths.CONFIG_ROOT / "api_keys.json"
+        if cfg_file.exists():
+            data = json.loads(cfg_file.read_text(encoding="utf-8"))
+            raw_api_keys = {str(k).lower().strip(): str(v).strip() for k, v in data.items() if v}
+    except Exception:
+        pass
+
     key_map = {
-        "Gemini": bool(os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")),
-        "Claude": bool(os.environ.get("ANTHROPIC_API_KEY")),
-        "GPT": bool(os.environ.get("OPENAI_API_KEY")),
-        "Mistral": bool(os.environ.get("MISTRAL_API_KEY")),
-        "NVIDIA": bool(os.environ.get("NVIDIA_API_KEY")),
+        "Gemini": bool(
+            os.environ.get("GEMINI_API_KEY")
+            or os.environ.get("GOOGLE_API_KEY")
+            or (cfg_secrets and cfg_secrets.gemini_api_key)
+            or raw_api_keys.get("gemini_api_key")
+            or raw_api_keys.get("google_api_key")
+        ),
+        "Claude": bool(
+            os.environ.get("ANTHROPIC_API_KEY")
+            or (cfg_secrets and cfg_secrets.anthropic_api_key)
+            or raw_api_keys.get("anthropic_api_key")
+            or raw_api_keys.get("claude_api_key")
+        ),
+        "GPT": bool(
+            os.environ.get("OPENAI_API_KEY")
+            or (cfg_secrets and cfg_secrets.openai_api_key)
+            or raw_api_keys.get("openai_api_key")
+        ),
+        "DeepSeek": bool(
+            os.environ.get("DEEPSEEK_API_KEY")
+            or os.environ.get("OPENROUTER_API_KEY")
+            or (cfg_secrets and cfg_secrets.deepseek_api_key)
+            or raw_api_keys.get("deepseek_api_key")
+            or raw_api_keys.get("openrouter_api_key")
+        ),
+        "Mistral": bool(
+            os.environ.get("MISTRAL_API_KEY")
+            or (cfg_secrets and cfg_secrets.mistral_api_key)
+            or raw_api_keys.get("mistral_api_key")
+        ),
+        "NVIDIA": bool(
+            os.environ.get("NVIDIA_API_KEY")
+            or (cfg_secrets and cfg_secrets.nvidia_api_key)
+            or raw_api_keys.get("nvidia_api_key")
+        ),
     }
-    has_any_backend = any(key_map.values()) or bool(os.environ.get("OPENAI_BASE_URL")) or bool(os.environ.get("OLLAMA_HOST"))
+    has_any_backend = (
+        any(key_map.values())
+        or bool(os.environ.get("OPENAI_BASE_URL"))
+        or bool(os.environ.get("OLLAMA_HOST"))
+        or bool(os.environ.get("BRJARVIS_PROXY_BASE_URL"))
+    )
 
     # Paths
     paths_status = {

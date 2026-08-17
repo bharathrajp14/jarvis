@@ -7,9 +7,9 @@ from typing import Callable, Optional
 
 from .semantic_operator import SemanticTarget, get_semantic_operator
 from .types import ActionResult
-from events.bus import get_event_bus
-from events.types import BaseEvent
-from vision.engine import get_vision_engine
+from brjarvis.events.bus import get_event_bus
+from brjarvis.events.types import BaseEvent
+from brjarvis.vision.engine import get_vision_engine
 
 logger = logging.getLogger("JARVIS.SelfHealingEngine")
 
@@ -89,16 +89,16 @@ class SelfHealingEngine:
             cancel_btn = graph.find_by_name("cancel") or graph.find_by_name("close") or graph.find_by_name("dismiss")
             if cancel_btn:
                 btn = cancel_btn[0]
-                from computer.operator import get_computer_operator
-                from computer.types import ActionType, ComputerAction
+                from brjarvis.computer.operator import get_computer_operator
+                from brjarvis.computer.types import ActionType, ComputerAction
                 get_computer_operator().execute_action(
                     ComputerAction(action_type=ActionType.MOUSE_CLICK, x=btn.bbox.center_x, y=btn.bbox.center_y)
                 )
                 return True
             else:
                 # Fallback: send Escape key press to dismiss modal dialog
-                from computer.operator import get_computer_operator
-                from computer.types import ActionType, ComputerAction
+                from brjarvis.computer.operator import get_computer_operator
+                from brjarvis.computer.types import ActionType, ComputerAction
                 get_computer_operator().execute_action(
                     ComputerAction(action_type=ActionType.KEYBOARD_PRESS, keys=["escape"])
                 )

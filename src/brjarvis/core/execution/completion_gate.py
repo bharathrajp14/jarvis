@@ -88,7 +88,7 @@ class TaskCompletionGate:
             # No operations specified — cannot do coverage check
             return True
 
-        from agent.execution_ledger import LedgerStatus
+        from brjarvis.agent.execution_ledger import LedgerStatus
 
         executed_tools = {
             e.tool_name

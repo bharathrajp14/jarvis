@@ -18,7 +18,7 @@ import psutil
 
 logger = logging.getLogger("JARVIS.UI.Widgets")
 
-from ui import _base_dir, _WIN_HIDE  # noqa: F401
+from brjarvis.ui import _base_dir, _WIN_HIDE  # noqa: F401
 from ._qt import *  # noqa: F401,F403
 
 BASE_DIR   = _base_dir()

@@ -34,7 +34,12 @@ class SnapshotManager:
         snap_path.mkdir(parents=True, exist_ok=True)
 
         # 1. Back up database files if present (canonical, memory, workflows)
+        canonical_dir = paths.PROJECT_ROOT / ".jarvis"
         db_files = [
+            canonical_dir / "jarvis_canonical.db",
+            canonical_dir / "jarvis_canonical.db-wal",
+            canonical_dir / "calendar.db",
+            canonical_dir / "app_tracker.db",
             paths.STATE_ROOT / "jarvis_canonical.db",
             paths.STATE_ROOT / "jarvis_canonical.db-wal",
             paths.MEMORY_ROOT / "lessons.db",
@@ -48,7 +53,8 @@ class SnapshotManager:
                 dest = snap_path / db_path.name
                 try:
                     shutil.copy2(db_path, dest)
-                    backed_up.append(db_path.name)
+                    if db_path.name not in backed_up:
+                        backed_up.append(db_path.name)
                 except Exception as e:
                     logger.warning("[Snapshot] Could not backup %s: %s", db_path.name, e)
 
@@ -59,7 +65,7 @@ class SnapshotManager:
                 ["git", "rev-parse", "HEAD"],
                 capture_output=True,
                 text=True, encoding="utf-8", errors="replace",
-                cwd=str(paths.WORKSPACE_ROOT),
+                cwd=str(paths.PROJECT_ROOT),
                 timeout=5.0,
             )
             if res.returncode == 0:
@@ -99,11 +105,16 @@ class SnapshotManager:
 
         try:
             info = json.loads(meta_file.read_text(encoding="utf-8"))
+            canonical_dir = paths.PROJECT_ROOT / ".jarvis"
             for db_name in info.get("databases", []):
                 src = snap_path / db_name
                 if src.exists():
-                    if "canonical" in db_name:
-                        target = paths.STATE_ROOT / db_name
+                    if "canonical" in db_name or db_name in ("calendar.db", "app_tracker.db"):
+                        target = canonical_dir / db_name
+                        # Also sync to STATE_ROOT for redundancy
+                        target2 = paths.STATE_ROOT / db_name
+                        target2.parent.mkdir(parents=True, exist_ok=True)
+                        shutil.copy2(src, target2)
                     else:
                         target = paths.MEMORY_ROOT / db_name
                     target.parent.mkdir(parents=True, exist_ok=True)

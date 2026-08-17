@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from .registry import register_tool
-from actions.file_importer import import_file_to_knowledge
+from brjarvis.actions.file_importer import import_file_to_knowledge
 
 
 @register_tool(

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from .registry import register_tool
-from actions.file_processor import file_processor, _detect_type
+from brjarvis.actions.file_processor import file_processor, _detect_type
 
 
 @register_tool(

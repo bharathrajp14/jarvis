@@ -8,7 +8,7 @@ from pathlib import Path
 
 logger = logging.getLogger("JARVIS.Actions.FlightFinder")
 
-from config import is_windows, is_mac, is_linux
+from brjarvis.config import is_windows, is_mac, is_linux
 
 from brjarvis.core.paths import paths
 
@@ -21,8 +21,11 @@ API_CONFIG_PATH = paths.CONFIG_ROOT / "api_keys.json"
 
 
 def _get_api_key() -> str:
-    with open(API_CONFIG_PATH, "r", encoding="utf-8") as f:
-        return json.load(f)["gemini_api_key"]
+    try:
+        with open(API_CONFIG_PATH, "r", encoding="utf-8") as f:
+            return json.load(f).get("gemini_api_key", "")
+    except Exception:
+        return ""
 
 _MONTH_MAP: dict[str, int] = {
 
@@ -64,21 +67,17 @@ def _parse_date(raw: str) -> str:
             return val.strftime("%Y-%m-%d")
 
     try:
-        from google import genai as _genai
-        _client  = _genai.Client(api_key=_get_api_key())
-        response = _client.models.generate_content(
-            model="gemini-2.5-flash-lite",
-            contents=(
-                f"Today is {today.strftime('%Y-%m-%d')}. "
-                f"Convert this date expression to YYYY-MM-DD: '{raw}'. "
-                f"Return ONLY the date string, nothing else."
-            )
-        )
-        result = response.text.strip()
+        from ._gemini_client import gemini_generate
+        result = gemini_generate(
+            f"Today is {today.strftime('%Y-%m-%d')}. "
+            f"Convert this date expression to YYYY-MM-DD: '{raw}'. "
+            f"Return ONLY the date string, nothing else.",
+            model="gemini-3.1-pro-high"
+        ).strip()
         if re.match(r"\d{4}-\d{2}-\d{2}", result):
             return result
     except Exception as e:
-        logger.warning("Gemini date parse failed: %s", e)
+        logger.warning("Date parse failed: %s", e)
 
     logger.warning("Could not parse date '%s' — using today.", raw)
     for month_name, month_num in _MONTH_MAP.items():
@@ -136,7 +135,7 @@ def _search_flights_browser(
     cabin:       str,
 ) -> tuple[str, str]:
     import time
-    from actions.browser_control import browser_control
+    from brjarvis.actions.browser_control import browser_control
 
     url = _build_google_flights_url(
         origin, destination, date, return_date, passengers, cabin
@@ -169,22 +168,16 @@ def _parse_flights_with_gemini(
     )
 
     try:
-        response = _client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                system_instruction=(
-                    "You are a flight data extraction expert. "
-                    "Extract flight information from raw webpage text. "
-                    "Return ONLY valid JSON — no markdown, no explanation."
-                )
-            ),
+        from ._gemini_client import gemini_generate
+        response_text = gemini_generate(
+            prompt,
+            model="gemini-3.1-pro-high"
         )
-        text     = re.sub(r"```(?:json)?", "", response.text).strip().rstrip("`").strip()
-        flights  = json.loads(text)
+        text = re.sub(r"```(?:json)?", "", response_text).strip().rstrip("`").strip()
+        flights = json.loads(text)
         return flights if isinstance(flights, list) else []
     except Exception as e:
-        logger.warning("Gemini parse failed: %s", e)
+        logger.warning("Flight extraction failed: %s", e)
         return []
 
 def _format_spoken(

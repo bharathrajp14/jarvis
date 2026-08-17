@@ -20,7 +20,7 @@ from brjarvis.core.version import CODENAME, VERSION
 
 logger = logging.getLogger("JARVIS.UI.MainWindow")
 
-from ui import _base_dir, _WIN_HIDE  # noqa: F401
+from brjarvis.ui import _base_dir, _WIN_HIDE  # noqa: F401
 from ._qt import *  # noqa: F401,F403
 
 BASE_DIR   = _base_dir()
@@ -179,7 +179,7 @@ class MainWindow(QMainWindow):
         # Quick-access drawer (floating overlay, built after central widget layout is done)
         self._quick_drawer = self._build_quick_drawer()
         self._update_autostart_btn(self._check_autostart())
-        from memory.config_manager import get_brief_enabled as _gbe
+        from brjarvis.memory.config_manager import get_brief_enabled as _gbe
         self._update_brief_btn(_gbe())
 
         self._clock_tmr = QTimer(self)
@@ -1026,7 +1026,7 @@ class MainWindow(QMainWindow):
         def _ingest_worker():
             try:
                 self._state_sig.emit("THINKING")
-                from actions.file_importer import import_file_to_knowledge
+                from brjarvis.actions.file_importer import import_file_to_knowledge
                 res = import_file_to_knowledge(path)
                 msg = res.get("message", f"Imported '{p.name}' successfully.")
                 self._log_sig.emit(f"SYS: {msg}")
@@ -1439,7 +1439,7 @@ class MainWindow(QMainWindow):
             """)
 
     def _toggle_brief(self):
-        from memory.config_manager import get_brief_enabled, save_brief_enabled
+        from brjarvis.memory.config_manager import get_brief_enabled, save_brief_enabled
         new_val = not get_brief_enabled()
         save_brief_enabled(new_val)
         self._update_brief_btn(new_val)
@@ -1626,7 +1626,8 @@ class MainWindow(QMainWindow):
         if not API_FILE.exists(): return False
         try:
             d = json.loads(API_FILE.read_text(encoding="utf-8"))
-            return bool(d.get("gemini_api_key")) and bool(d.get("os_system"))
+            has_llm = bool(d.get("gemini_api_key")) or bool(d.get("openai_api_key")) or bool(os.environ.get("OPENAI_API_KEY"))
+            return has_llm and bool(d.get("os_system"))
         except Exception:
             return False
 

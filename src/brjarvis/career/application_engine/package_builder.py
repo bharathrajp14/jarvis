@@ -9,7 +9,7 @@ import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from agent.artifacts import get_artifact_manager
+from brjarvis.agent.artifacts import get_artifact_manager
 from ..cover_letter.generator import CoverLetterGenerator
 from ..models import ApplicationPackage, CareerProfile, JobPosting
 from ..resume_engine.exporter import ResumeExportPipeline

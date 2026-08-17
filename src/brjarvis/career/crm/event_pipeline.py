@@ -20,8 +20,8 @@ from ..models import (
 )
 from ..notifications import get_career_notification_engine
 from ..spreadsheet.projection import get_spreadsheet_projection
-from events.bus import get_event_bus
-from events.types import BaseEvent
+from brjarvis.events.bus import get_event_bus
+from brjarvis.events.types import BaseEvent
 
 logger = logging.getLogger("JARVIS.CareerCRM.EventPipeline")
 
@@ -138,7 +138,7 @@ class CareerEventPipeline:
 
         # 7. MEMORY INTEGRATION
         try:
-            from career.memory_integration import sync_career_memory
+            from brjarvis.career.memory_integration import sync_career_memory
             sync_career_memory(event_type=event_type_enum.value, application=target_app, payload=payload)
         except Exception as exc:
             logger.debug("Career memory sync notice: %s", exc)

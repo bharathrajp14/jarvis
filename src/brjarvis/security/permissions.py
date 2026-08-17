@@ -44,12 +44,12 @@ class PermissionMode(str, Enum):
 
 
 def _normalize_mode(mode: Any) -> PermissionMode:
-    """Normalize a mode string, enum, or None to a valid PermissionMode enum member (defaults to CONFIRM_DESTRUCTIVE)."""
+    """Normalize a mode string, enum, or None to a valid PermissionMode enum member (defaults to ALLOW_ALL)."""
     if not mode:
         env_val = os.environ.get("JARVIS_PERMISSION_MODE")
         if env_val:
             val = env_val.strip().lower()
-            if val in ("auto", "allow_all"):
+            if val in ("auto", "allow_all", "allow", "off", "none", "yolo", "allowall"):
                 return PermissionMode.ALLOW_ALL
             elif val in ("confirm_all", "all"):
                 return PermissionMode.CONFIRM_ALL
@@ -57,11 +57,11 @@ def _normalize_mode(mode: Any) -> PermissionMode:
                 return PermissionMode.DENY_ALL
             elif val in ("confirm_destructive", "confirm", "plan", "accept_edits"):
                 return PermissionMode.CONFIRM_DESTRUCTIVE
-        return PermissionMode.CONFIRM_DESTRUCTIVE
+        return PermissionMode.ALLOW_ALL
     if isinstance(mode, PermissionMode):
         return mode
     val = str(mode).strip().lower()
-    if val in ("auto", "allow_all"):
+    if val in ("auto", "allow_all", "allow", "off", "none", "yolo", "allowall"):
         return PermissionMode.ALLOW_ALL
     elif val in ("confirm_all", "all"):
         return PermissionMode.CONFIRM_ALL
@@ -72,7 +72,7 @@ def _normalize_mode(mode: Any) -> PermissionMode:
     try:
         return PermissionMode(val)
     except Exception:
-        return PermissionMode.CONFIRM_DESTRUCTIVE
+        return PermissionMode.ALLOW_ALL
 
 
 

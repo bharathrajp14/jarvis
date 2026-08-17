@@ -524,7 +524,7 @@ def toggle_wifi():
 
 def restart_computer():
     if _OS == "Windows":
-        subprocess.run(["shutdown", "/r", "/t", "10"], capture_output=True, **_WIN_HIDE)
+        subprocess.run(["shutdown", "/r", "/f", "/t", "3"], capture_output=True, **_WIN_HIDE)
     elif _OS == "Darwin":
         subprocess.run(["osascript", "-e",
             'tell application "System Events" to restart'],
@@ -534,7 +534,7 @@ def restart_computer():
 
 def shutdown_computer():
     if _OS == "Windows":
-        subprocess.run(["shutdown", "/s", "/t", "10"], capture_output=True)
+        subprocess.run(["shutdown", "/s", "/f", "/t", "3"], capture_output=True, **_WIN_HIDE)
     elif _OS == "Darwin":
         subprocess.run(["osascript", "-e",
             'tell application "System Events" to shut down'],
@@ -610,7 +610,7 @@ _DANGEROUS_ACTIONS = {"restart", "shutdown"}
 
 def _detect_action(description: str) -> dict:
 
-    from actions._gemini_client import get_gemini_client as _get_gc, get_proxy_model as _gpm
+    from brjarvis.actions._gemini_client import get_gemini_client as _get_gc, get_proxy_model as _gpm
     _client = _get_gc()
     _cs_model = _gpm("gemini-3.1-flash-lite", "gemini-2.0-flash")
 

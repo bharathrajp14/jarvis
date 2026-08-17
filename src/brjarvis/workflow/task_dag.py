@@ -149,7 +149,7 @@ class PersistentTaskDAG:
 
     def __init__(self, db_path: Optional[Path] = None):
         import sqlite3
-        from memory.persistent_store import get_memory_dir
+        from brjarvis.memory.persistent_store import get_memory_dir
         if db_path:
             self.db_path = Path(db_path)
         else:

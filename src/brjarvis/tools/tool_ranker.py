@@ -187,7 +187,7 @@ def get_tool_ranker() -> ToolRanker:
     if _global_tool_ranker is None:
         _global_tool_ranker = ToolRanker()
         try:
-            from tools.registry import TOOL_SCHEMAS
+            from brjarvis.tools.registry import TOOL_SCHEMAS
             for s in TOOL_SCHEMAS:
                 _global_tool_ranker.register_metadata(ToolMetadata(
                     name=s.get("name", ""),

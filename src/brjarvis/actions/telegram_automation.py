@@ -211,7 +211,7 @@ class TelegramAutomation:
 
         # 4. UnifiedContactStore (JARVIS shared contact store)
         try:
-            from memory.contact_manager import get_contact_store
+            from brjarvis.memory.contact_manager import get_contact_store
             store = get_contact_store()
             match = store.resolve_name(rec)
             if match:
@@ -314,7 +314,7 @@ class TelegramAutomation:
     def _send_via_desktop_gui(self, receiver: str, message_text: str) -> str:
         """Fallback: send via Telegram desktop app using pyautogui."""
         try:
-            from actions.send_message import send_message as gui_send
+            from brjarvis.actions.send_message import send_message as gui_send
             result = gui_send({
                 "platform": "telegram",
                 "receiver": receiver,

@@ -9,7 +9,7 @@ from .registry import register_tool
 
 
 def _get_computer_control():
-    from actions.computer_control import computer_control
+    from brjarvis.actions.computer_control import computer_control
     return computer_control
 
 

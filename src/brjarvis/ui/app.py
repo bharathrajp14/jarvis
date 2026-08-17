@@ -65,7 +65,7 @@ def is_gui_available() -> bool:
     import os
     import sys
     import subprocess
-    from ui._qt import _HAS_QT, _USE_PYSIDE6
+    from brjarvis.ui._qt import _HAS_QT, _USE_PYSIDE6
     if not _HAS_QT:
         return False
     if os.environ.get("JARVIS_HEADLESS", "").lower() in ("true", "1"):

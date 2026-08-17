@@ -16,7 +16,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional
 
-from memory.canonical_db import get_canonical_db
+from brjarvis.memory.canonical_db import get_canonical_db
 
 logger = logging.getLogger("JARVIS.TaskState")
 class TaskStatus(str, Enum):
@@ -200,7 +200,7 @@ class TaskStateManager:
 
     def __init__(self, db_manager=None, db_path: Optional[Path | str] = None):
         if db_path is not None:
-            from memory.canonical_db import CanonicalDatabaseManager
+            from brjarvis.memory.canonical_db import CanonicalDatabaseManager
             self.db_manager = CanonicalDatabaseManager(db_path=Path(db_path))
         else:
             self.db_manager = db_manager or get_canonical_db()

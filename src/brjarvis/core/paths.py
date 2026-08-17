@@ -83,6 +83,8 @@ def ensure_canonical_python() -> None:
         if os.environ.get("_BR_JARVIS_REEXEC") != "1":
             env = os.environ.copy()
             env["_BR_JARVIS_REEXEC"] = "1"
+            env["PYTHONUTF8"] = "1"
+            env["PYTHONIOENCODING"] = "utf-8"
             cmd = [str(target)] + sys.argv
             try:
                 res = subprocess.run(cmd, env=env)

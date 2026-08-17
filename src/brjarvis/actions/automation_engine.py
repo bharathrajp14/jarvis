@@ -26,17 +26,17 @@ class UniversalAutomationEngine:
 
     def launch_app(self, app_name: str, url: str = "") -> str:
         """Launch an application or web URL."""
-        from actions.open_app import open_app
+        from brjarvis.actions.open_app import open_app
         return open_app(parameters={"app_name": app_name, "url": url})
 
     def close_app(self, identifier: str) -> str:
         """Terminate or close an application by name or PID."""
-        from tools.process_tools import kill_process
+        from brjarvis.tools.process_tools import kill_process
         return kill_process({"identifier": identifier})
 
     def focus_app(self, title: str) -> str:
         """Focus/bring application window to front by title."""
-        from tools.window_manager import window_manager_action
+        from brjarvis.tools.window_manager import window_manager_action
         return window_manager_action({"action": "focus", "title": title})
 
     def execute_shell(self, command: str, timeout: int = 30) -> Dict[str, Any]:
@@ -85,7 +85,7 @@ class UniversalAutomationEngine:
         """
         Execute mouse/keyboard UI automation macro step.
         """
-        from actions.computer_control import computer_control
+        from brjarvis.actions.computer_control import computer_control
 
         act_map = {
             "click": "click",
@@ -156,13 +156,13 @@ class UniversalAutomationEngine:
                     results.append({step_desc: ui_res})
 
                 elif act in ("whatsapp", "send_whatsapp"):
-                    from actions.whatsapp_automation import get_whatsapp_automation
+                    from brjarvis.actions.whatsapp_automation import get_whatsapp_automation
                     wa = get_whatsapp_automation()
                     wa_res = wa.send_message(step.get("recipient", ""), step.get("message", step.get("text", "")))
                     results.append({step_desc: wa_res})
 
                 elif act in ("calendar", "create_calendar_event", "calendar_event"):
-                    from actions.calendar_engine import get_calendar_engine
+                    from brjarvis.actions.calendar_engine import get_calendar_engine
                     cal = get_calendar_engine()
                     cal_res = cal.create_event(
                         title=step.get("title", ""),
@@ -175,7 +175,7 @@ class UniversalAutomationEngine:
                     results.append({step_desc: str(cal_res)})
 
                 elif act in ("email", "send_email"):
-                    from actions.smart_email_sender import get_smart_email_sender
+                    from brjarvis.actions.smart_email_sender import get_smart_email_sender
                     sender = get_smart_email_sender()
                     email_res = sender.send_email(
                         recipient=step.get("recipient", step.get("to", "")),

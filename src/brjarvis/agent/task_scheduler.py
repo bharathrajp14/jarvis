@@ -9,7 +9,7 @@ import asyncio
 import logging
 import time
 from typing import Any, Callable, Dict, List, Optional
-from workflow.task_dag import DAGNode, DAGNodeState, PersistentTaskDAG
+from brjarvis.workflow.task_dag import DAGNode, DAGNodeState, PersistentTaskDAG
 
 logger = logging.getLogger("JARVIS.TaskScheduler")
 

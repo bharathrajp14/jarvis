@@ -25,8 +25,11 @@ MODEL_PLANNER    = get_proxy_model("gemini-3.6-flash-high", "gemini-2.5-flash")
 MODEL_WRITER     = get_proxy_model("gemini-3.5-flash", "gemini-2.5-flash")
 
 def _get_api_key() -> str:
-    with open(API_CONFIG_PATH, "r", encoding="utf-8") as f:
-        return json.load(f)["gemini_api_key"]
+    try:
+        with open(API_CONFIG_PATH, "r", encoding="utf-8") as f:
+            return json.load(f).get("gemini_api_key", "")
+    except Exception:
+        return ""
 
 
 def _get_model(model_name: str):

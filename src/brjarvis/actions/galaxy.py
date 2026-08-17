@@ -38,8 +38,17 @@ def build_galaxy_graph() -> dict[str, Any]:
     title_to_id: dict[str, int] = {}
 
     files: list[Path] = []
-    for d in [NOTES_DIR, CAPTURES_DIR]:
-        files.extend(list(d.glob("**/*.md")))
+    scan_dirs = [
+        paths.PROJECT_ROOT / "notes",
+        paths.WORKSPACE_ROOT / "notes",
+        CAPTURES_DIR,
+    ]
+    for d in scan_dirs:
+        if d.exists():
+            files.extend(list(d.glob("**/*.md")))
+
+    # Deduplicate file paths
+    files = list(dict.fromkeys(files))
 
     if not files:
         # Create a sample welcome note if empty
@@ -84,7 +93,14 @@ def build_galaxy_graph() -> dict[str, Any]:
 
     # Save to web/graph-data.js for 3D viewer
     js_content = f"window.GRAPH = {json.dumps(graph_data, indent=2, ensure_ascii=False)};"
-    DATA_JS_PATH.write_text(js_content, encoding="utf-8")
+    try:
+        DATA_JS_PATH.parent.mkdir(parents=True, exist_ok=True)
+        DATA_JS_PATH.write_text(js_content, encoding="utf-8")
+        src_web_js = paths.SOURCE_ROOT / "web" / "graph-data.js"
+        if src_web_js.parent.exists():
+            src_web_js.write_text(js_content, encoding="utf-8")
+    except Exception as e:
+        pass
 
     return graph_data
 

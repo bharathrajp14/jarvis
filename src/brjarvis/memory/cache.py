@@ -5,7 +5,7 @@ import json
 import logging
 import time
 from typing import Any, Dict, Optional
-from core.native_bridge import fast_hash
+from brjarvis.core.native_bridge import fast_hash
 
 logger = logging.getLogger("JARVIS.Cache")
 

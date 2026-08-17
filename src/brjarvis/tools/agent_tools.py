@@ -9,7 +9,7 @@ from .registry import register_tool, get_orchestrator_ref
 
 
 def _get_subagent_manager():
-    from multi_agent.subagent import SubAgentManager
+    from brjarvis.multi_agent.subagent import SubAgentManager
     # Safe singleton access
     import tools.registry
     mgr = getattr(tools.registry, "_subagent_mgr", None)
@@ -53,7 +53,7 @@ def tool_spawn_agent(args: dict) -> str:
 
     agent_def = None
     if agent_type:
-        from multi_agent.subagent import get_agent_definition
+        from brjarvis.multi_agent.subagent import get_agent_definition
         agent_def = get_agent_definition(agent_type)
         if agent_def is None:
             return f"Error: unknown agent_type '{agent_type}'. Use list_agent_types."
@@ -160,7 +160,7 @@ def tool_list_agents(args: dict) -> str:
     parameters={}
 )
 def tool_list_agent_types(args: dict) -> str:
-    from multi_agent.subagent import load_agent_definitions
+    from brjarvis.multi_agent.subagent import load_agent_definitions
     defs = load_agent_definitions()
     
     if not defs:

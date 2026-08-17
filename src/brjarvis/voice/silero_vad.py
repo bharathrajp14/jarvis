@@ -74,7 +74,7 @@ class SileroVAD:
         # Noise calibrator integration
         self._calibrator = None
         try:
-            from voice.noise_calibrator import get_calibrator
+            from brjarvis.voice.noise_calibrator import get_calibrator
             self._calibrator = get_calibrator()
         except Exception:
             pass

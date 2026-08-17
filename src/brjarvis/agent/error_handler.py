@@ -82,7 +82,7 @@ def analyze_error(
     """
     # Auto-log failure lesson to LessonStore
     try:
-        from memory.lessons import LessonStore
+        from brjarvis.memory.lessons import LessonStore
         ls = LessonStore()
         ls.add_lesson(
             topic=f"Failed tool: {step.get('tool', 'unknown')}",
@@ -102,36 +102,12 @@ def analyze_error(
             "user_message":  "Trying a different approach, sir."
         }
 
-    api_key = _get_api_key()
-    if not api_key:
-        return {
-            "decision":      ErrorDecision.REPLAN,
-            "reason":        error[:100],
-            "fix_suggestion": "Retry using fallback search or alternative tool",
-            "max_retries":   1,
-            "user_message":  "Encountered an issue, adjusting approach, sir."
-        }
-
-    prompt = f"""Failed step:
-Tool: {step.get('tool')}
-Description: {step.get('description')}
-Parameters: {json.dumps(step.get('parameters', {}), indent=2)}
-Critical: {step.get('critical', False)}
-
-Error:
-{error[:500]}
-
-Attempt number: {attempt}"""
-
     try:
-        from google import genai as _genai
-        client = _genai.Client(api_key=api_key)
-        response = client.models.generate_content(
-            model="gemini-2.0-flash",
-            contents=prompt,
-            config={"system_instruction": ERROR_ANALYST_PROMPT},
-        )
-        text = response.text.strip()
+        from brjarvis.actions._gemini_client import gemini_generate
+        text = gemini_generate(
+            f"{ERROR_ANALYST_PROMPT}\n\n{prompt}",
+            model="gemini-3.1-pro-high"
+        ).strip()
         text = re.sub(r"```(?:json)?", "", text).strip().rstrip("`").strip()
 
         result = json.loads(text)
@@ -167,17 +143,6 @@ def generate_fix(step: dict, error: str, fix_suggestion: str) -> dict:
     When decision is REPLAN and a fix suggestion exists,
     generates a replacement step using code execution.
     """
-    api_key = _get_api_key()
-    if not api_key:
-        return {
-            "step":        step.get("step"),
-            "tool":        "web_search",
-            "description": f"Fallback search for: {step.get('description')}",
-            "parameters":  {"query": step.get("description", "")[:200]},
-            "depends_on":  step.get("depends_on", []),
-            "critical":    step.get("critical", False)
-        }
-
     prompt = f"""A task step failed. Generate a replacement step.
 
 Original step:
@@ -192,13 +157,8 @@ Write a Python script that accomplishes the same goal differently.
 Return ONLY the Python code, no explanation."""
 
     try:
-        from google import genai as _genai
-        client = _genai.Client(api_key=api_key)
-        response = client.models.generate_content(
-            model="gemini-2.0-flash",
-            contents=prompt,
-        )
-        code = response.text.strip()
+        from brjarvis.actions._gemini_client import gemini_generate
+        code = gemini_generate(prompt, model="gemini-3.1-pro-high").strip()
         code = re.sub(r"```(?:python)?", "", code).strip().rstrip("`").strip()
 
         return {

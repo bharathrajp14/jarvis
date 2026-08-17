@@ -397,7 +397,7 @@ class EnvironmentResolver:
         py_launcher = shutil.which("py")
         if py_launcher:
             try:
-                res = subprocess.run([py_launcher, "-3.12", "-c", "import sys; print(sys.executable)"], capture_output=True, text=True, timeout=3)
+                res = subprocess.run([py_launcher, "-3.12", "-c", "import sys; print(sys.executable)"], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=3)
                 if res.returncode == 0 and res.stdout.strip():
                     candidates.append(res.stdout.strip())
             except Exception:
@@ -428,7 +428,7 @@ class EnvironmentResolver:
 
     def _inspect_python_version(self, exec_path: str) -> str:
         try:
-            res = subprocess.run([exec_path, "--version"], capture_output=True, text=True, timeout=3)
+            res = subprocess.run([exec_path, "--version"], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=3)
             if res.returncode == 0:
                 out = (res.stdout or res.stderr).strip()
                 return out.replace("Python ", "")
@@ -438,7 +438,7 @@ class EnvironmentResolver:
 
     def _run_version_command(self, cmd: List[str]) -> str:
         try:
-            res = subprocess.run(cmd, capture_output=True, text=True, timeout=3)
+            res = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=3)
             if res.returncode == 0:
                 return (res.stdout or res.stderr).strip().splitlines()[0]
         except Exception:

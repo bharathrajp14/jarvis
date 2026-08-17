@@ -26,9 +26,14 @@ def _get_base_dir() -> Path:
     return paths.PROJECT_ROOT
 
 def _get_api_key() -> str:
-    path = _get_base_dir() / "config" / "api_keys.json"
-    with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)["gemini_api_key"]
+    try:
+        path = _get_base_dir() / "config" / "api_keys.json"
+        if path.exists():
+            with open(path, "r", encoding="utf-8") as f:
+                return json.load(f).get("gemini_api_key", "")
+    except Exception:
+        pass
+    return ""
     
 def _get_desktop() -> Path:
     if _OS == "Linux":
@@ -297,7 +302,7 @@ def _execute_generated_code(code: str, player=None) -> str:
 
 def _ask_gemini_for_desktop_action(task: str) -> str:
 
-    from actions._gemini_client import get_gemini_client as _get_gc, get_proxy_model as _gpm
+    from brjarvis.actions._gemini_client import get_gemini_client as _get_gc, get_proxy_model as _gpm
     _client = _get_gc()
     _desktop_model = _gpm("gemini-3.5-flash", "gemini-2.5-flash")
 

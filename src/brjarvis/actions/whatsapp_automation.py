@@ -87,7 +87,7 @@ class WhatsAppAutomation:
 
         # 1. Primary UnifiedContactStore lookup (vCard contacts, relationship synonyms "Appa", "Amma", "Dad", "Mom")
         try:
-            from memory.contact_manager import get_contact_store
+            from brjarvis.memory.contact_manager import get_contact_store
             store = get_contact_store()
             match = store.resolve_name(rec_clean)
             if match and match.get("phone_number"):
@@ -157,7 +157,7 @@ class WhatsAppAutomation:
 
         # 2. Desktop GUI Fallback to search contact name in WhatsApp app
         try:
-            from actions.send_message import send_message as gui_send_message
+            from brjarvis.actions.send_message import send_message as gui_send_message
             res = gui_send_message({
                 "platform": "whatsapp",
                 "receiver": display_name,

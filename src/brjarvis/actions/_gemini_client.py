@@ -5,7 +5,7 @@ Routes through the local OpenAI-compatible proxy when JARVIS_ROUTE_GEMINI_TO_GAT
 (the default for this project), or falls back to direct Google Gemini API.
 
 Usage in any action file:
-    from actions._gemini_client import get_gemini_client, gemini_generate
+    from brjarvis.actions._gemini_client import get_gemini_client, gemini_generate
 
     # Option A: Get client object (google.genai-style wrapper)
     client = get_gemini_client()
@@ -180,10 +180,11 @@ def gemini_generate(
         config:     Optional generation config dict (temperature, max_output_tokens, etc.)
         max_tokens: Shortcut for config["max_output_tokens"].
     """
-    if max_tokens and config is None:
-        config = {"max_output_tokens": max_tokens}
-    elif max_tokens and config is not None:
-        config = {**config, "max_output_tokens": max_tokens}
+    if max_tokens:
+        if config is None:
+            config = {"max_output_tokens": max_tokens}
+        else:
+            config = {**config, "max_output_tokens": config.get("max_output_tokens", max_tokens)}
 
     client = get_gemini_client()
     response = client.models.generate_content(model=model, contents=prompt, config=config)

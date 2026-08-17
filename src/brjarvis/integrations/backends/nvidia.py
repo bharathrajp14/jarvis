@@ -20,7 +20,7 @@ class NvidiaBackend(BaseBackend):
 
     def __init__(self, model: str = None, api_key: str = None):
         try:
-            from config.models import get_model
+            from brjarvis.config.models import get_model
             default_model = get_model("nvidia") or "meta/llama3-70b-instruct"
         except Exception:
             default_model = "meta/llama3-70b-instruct"

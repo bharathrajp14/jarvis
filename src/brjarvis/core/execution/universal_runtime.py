@@ -178,7 +178,7 @@ class UniversalExecutionRuntime:
         # 6. Export artifacts generated in jail before cleanup
         if export_artifacts and jail_dir.exists():
             try:
-                from agent.artifacts import get_artifact_manager
+                from brjarvis.agent.artifacts import get_artifact_manager
                 mgr = get_artifact_manager()
                 for p in jail_dir.rglob("*"):
                     if p.is_file() and p.name not in ("main.py", "main.js", "main.ps1", "main.sh"):

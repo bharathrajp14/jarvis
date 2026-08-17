@@ -39,7 +39,7 @@ class ReasoningEngine:
         graph = PlanGraph(goal=goal, parallelizable=True)
 
         try:
-            from agent.planner import create_plan
+            from brjarvis.agent.planner import create_plan
             plan_dict = create_plan(goal, context=context or "")
             graph.parallelizable = plan_dict.get("can_parallelize", False)
 
@@ -139,7 +139,7 @@ class ReasoningEngine:
 
         # Query LessonStore for past corrections on this tool
         try:
-            from memory.lessons import LessonStore
+            from brjarvis.memory.lessons import LessonStore
             ls = LessonStore()
             past_lessons = ls.get_relevant_lessons(query=tool_name, limit=2)
             if past_lessons:

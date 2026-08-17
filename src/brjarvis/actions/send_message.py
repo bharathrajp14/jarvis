@@ -157,7 +157,7 @@ def _send_whatsapp(receiver: str, message: str) -> str:
 def _send_telegram(receiver: str, message: str) -> str:
     # Prefer the Telegram Bot API engine when a bot token is configured
     try:
-        from actions.telegram_automation import get_telegram_automation
+        from brjarvis.actions.telegram_automation import get_telegram_automation
         tg = get_telegram_automation()
         if tg._token:
             return tg.send_message(recipient=receiver, message_text=message)

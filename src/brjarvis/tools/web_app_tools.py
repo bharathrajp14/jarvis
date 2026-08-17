@@ -5,7 +5,7 @@ Registered tool wrappers for Gmail and Microsoft 365 / Office Online interaction
 from __future__ import annotations
 
 from .registry import register_tool, _run_async
-from actions.web_app_controller import (
+from brjarvis.actions.web_app_controller import (
     gmail_compose_and_send_async,
     gmail_search_and_reply_async,
     ms365_open_app_async,

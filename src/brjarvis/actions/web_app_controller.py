@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import asyncio
 from typing import Any
-from tools.browser_automation import _get_or_create_page, _run_async
+from brjarvis.tools.browser_automation import _get_or_create_page, _run_async
 
 
 async def gmail_compose_and_send_async(to: str, subject: str, body: str) -> str:

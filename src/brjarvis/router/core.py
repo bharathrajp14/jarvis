@@ -52,10 +52,29 @@ _BACKENDS_CACHE: dict[AgentProfile, Any] | None = None
 _BACKENDS_CACHE_TS = 0.0
 _BACKENDS_CACHE_LOCK = threading.Lock()
 
+try:
+    from brjarvis.config.models import get_model_config
+except Exception:
+    def get_model_config() -> dict:  # type: ignore[misc]
+        return {}
+
+try:
+    from brjarvis.integrations.backends import (
+        GeminiBackend, OpenAIBackend, ClaudeBackend, DeepSeekBackend,
+        OllamaBackend, NvidiaBackend, MistralBackend
+    )
+except Exception:
+    GeminiBackend = None  # type: ignore[assignment, misc]
+    OpenAIBackend = None  # type: ignore[assignment, misc]
+    ClaudeBackend = None  # type: ignore[assignment, misc]
+    DeepSeekBackend = None  # type: ignore[assignment, misc]
+    OllamaBackend = None  # type: ignore[assignment, misc]
+    NvidiaBackend = None  # type: ignore[assignment, misc]
+    MistralBackend = None  # type: ignore[assignment, misc]
+
 
 def _get_configured_default() -> AgentProfile:
     try:
-        from config.models import get_model_config
         cfg = get_model_config()
         default_str = cfg.get("default_backend", "gemini").lower()
         return _PROFILE_MAP.get(default_str, AgentProfile.GEMINI)
@@ -72,7 +91,7 @@ def _get_configured_privacy_mode() -> PrivacyMode:
 
 
 def _truthy_env(name: str) -> bool:
-    return os.environ.get(name, "").strip().lower() in {"1", "true", "yes", "on"}
+    return os.environ.get(name, "").strip().lower() in ("1", "true", "yes", "on")
 
 
 def load_available_backends(*, force_refresh: bool = False) -> dict:
@@ -90,18 +109,7 @@ def load_available_backends(*, force_refresh: bool = False) -> dict:
         backends: dict[AgentProfile, Any] = {}
 
         try:
-            from brjarvis.integrations.backends import (
-                GeminiBackend, OpenAIBackend, ClaudeBackend, DeepSeekBackend,
-                OllamaBackend, NvidiaBackend, MistralBackend
-            )
-        except ImportError:
-            from backends import (
-                GeminiBackend, OpenAIBackend, ClaudeBackend, DeepSeekBackend,
-                OllamaBackend, NvidiaBackend, MistralBackend
-            )
-
-        try:
-            if GeminiBackend:
+            if GeminiBackend is not None:
                 g = GeminiBackend()
                 if g.available:
                     backends[AgentProfile.GEMINI] = g
@@ -109,7 +117,7 @@ def load_available_backends(*, force_refresh: bool = False) -> dict:
             logger.debug("[Router] Gemini init notice: %s", exc)
 
         try:
-            if ClaudeBackend and os.environ.get("ANTHROPIC_API_KEY", "").strip():
+            if ClaudeBackend is not None and os.environ.get("ANTHROPIC_API_KEY", "").strip():
                 c = ClaudeBackend()
                 if c.available:
                     backends[AgentProfile.CLAUDE] = c
@@ -117,7 +125,7 @@ def load_available_backends(*, force_refresh: bool = False) -> dict:
             pass
 
         try:
-            if OpenAIBackend and os.environ.get("OPENAI_API_KEY", "").strip():
+            if OpenAIBackend is not None and os.environ.get("OPENAI_API_KEY", "").strip():
                 o = OpenAIBackend()
                 if o.available:
                     backends[AgentProfile.GPT] = o
@@ -129,7 +137,7 @@ def load_available_backends(*, force_refresh: bool = False) -> dict:
                 os.environ.get("DEEPSEEK_API_KEY", "").strip()
                 or os.environ.get("OPENROUTER_API_KEY", "").strip()
             )
-            if DeepSeekBackend and has_deepseek and not _truthy_env("JARVIS_DISABLE_DEEPSEEK"):
+            if DeepSeekBackend is not None and has_deepseek and not _truthy_env("JARVIS_DISABLE_DEEPSEEK"):
                 d = DeepSeekBackend()
                 if d.available:
                     backends[AgentProfile.DEEPSEEK] = d
@@ -137,7 +145,7 @@ def load_available_backends(*, force_refresh: bool = False) -> dict:
             pass
 
         try:
-            if OllamaBackend and not _truthy_env("JARVIS_DISABLE_OLLAMA"):
+            if OllamaBackend is not None and not _truthy_env("JARVIS_DISABLE_OLLAMA"):
                 ol = OllamaBackend()
                 if ol.available:
                     backends[AgentProfile.OLLAMA] = ol
@@ -145,7 +153,7 @@ def load_available_backends(*, force_refresh: bool = False) -> dict:
             pass
 
         try:
-            if NvidiaBackend and os.environ.get("NVIDIA_API_KEY", "").strip():
+            if NvidiaBackend is not None and os.environ.get("NVIDIA_API_KEY", "").strip():
                 nv = NvidiaBackend()
                 if nv.available:
                     backends[AgentProfile.NVIDIA] = nv
@@ -153,7 +161,7 @@ def load_available_backends(*, force_refresh: bool = False) -> dict:
             pass
 
         try:
-            if MistralBackend and os.environ.get("MISTRAL_API_KEY", "").strip():
+            if MistralBackend is not None and os.environ.get("MISTRAL_API_KEY", "").strip():
                 m = MistralBackend()
                 if m.available:
                     backends[AgentProfile.MISTRAL] = m
@@ -210,14 +218,14 @@ class AgentRouter:
 
     def run(
         self,
-        profile: AgentProfile,
+        profile: AgentProfile | str,
         messages: list[dict],
         system: str,
         task_id: str = "",
         goal: str = "",
     ) -> str:
         """Run completion through selected profile with privacy-aware fallback and structured diagnostics."""
-        from router.diagnostics import (
+        from brjarvis.router.diagnostics import (
             BackendAttempt,
             FailureType,
             TaskExecutionDiagnostic,
@@ -226,6 +234,12 @@ class AgentRouter:
             sanitize_diagnostic_text,
         )
         import uuid
+
+        # Normalize profile if passed as a string
+        if isinstance(profile, str):
+            profile = _PROFILE_MAP.get(profile.lower(), AgentProfile.GEMINI)
+
+        profile_val = profile.value if hasattr(profile, "value") else str(profile)
 
         trace_id = str(uuid.uuid4())[:8]
         effective_task_id = task_id or f"task_{trace_id}"
@@ -258,8 +272,8 @@ class AgentRouter:
                     err_msg = res if res else "Empty response returned"
                     fail_type, clean_err = classify_exception(Exception(err_msg))
                     diagnostic.add_attempt(BackendAttempt(
-                        provider=getattr(backend, "name", profile.value),
-                        model=getattr(backend, "model_name", profile.value),
+                        provider=getattr(backend, "name", profile_val),
+                        model=getattr(backend, "model_name", profile_val),
                         status="FAILED",
                         stage="provider_request",
                         error_type=fail_type,
@@ -275,27 +289,27 @@ class AgentRouter:
                     latency = int((time.monotonic() - t_start) * 1000)
                     fail_type, clean_err = classify_exception(exc)
                     diagnostic.add_attempt(BackendAttempt(
-                        provider=getattr(backend, "name", profile.value),
-                        model=getattr(backend, "model_name", profile.value),
+                        provider=getattr(backend, "name", profile_val),
+                        model=getattr(backend, "model_name", profile_val),
                         status="FAILED",
                         stage="provider_request",
                         error_type=fail_type,
                         error=clean_err,
                         latency_ms=latency,
                     ))
-                    logger.warning("[Router] Primary backend '%s' attempt %d failed: %s", profile.value, attempt_idx + 1, clean_err)
+                    logger.warning("[Router] Primary backend '%s' attempt %d failed: %s", profile_val, attempt_idx + 1, clean_err)
 
                     if fail_type not in TRANSIENT_FAILURE_TYPES or attempt_idx >= max_retries - 1:
                         break
                     time.sleep(1.0 * (2 ** attempt_idx))
         else:
             diagnostic.add_attempt(BackendAttempt(
-                provider=profile.value,
-                model=getattr(backend, "model_name", profile.value) if backend else "unconfigured",
+                provider=profile_val,
+                model=getattr(backend, "model_name", profile_val) if backend else "unconfigured",
                 status="FAILED",
                 stage="model_routing",
                 error_type=FailureType.MODEL_UNAVAILABLE,
-                error=f"Backend profile '{profile.value}' is not configured or unavailable in active router.",
+                error=f"Backend profile '{profile_val}' is not configured or unavailable in active router.",
                 latency_ms=0,
             ))
 
@@ -312,14 +326,19 @@ class AgentRouter:
 
         # Build deduplicated fallback chain
         raw_chain = [self.default, AgentProfile.GEMINI, AgentProfile.GPT] + list(self.backends.keys())
-        fallback_chain = list(dict.fromkeys(raw_chain))
+        fallback_chain = []
+        for p in raw_chain:
+            norm_p = _PROFILE_MAP.get(p.lower(), p) if isinstance(p, str) else p
+            if norm_p not in fallback_chain:
+                fallback_chain.append(norm_p)
 
         tried_profiles = {a.provider.lower() for a in diagnostic.attempts}
 
         for f_profile in fallback_chain:
             if f_profile == profile:
                 continue
-            if f_profile.value.lower() in tried_profiles:
+            f_profile_val = f_profile.value if hasattr(f_profile, "value") else str(f_profile)
+            if f_profile_val.lower() in tried_profiles:
                 continue
 
             f_backend = self.backends.get(f_profile)
@@ -333,18 +352,18 @@ class AgentRouter:
                     latency = int((time.monotonic() - t_start) * 1000)
                     if res and not res.startswith("ERROR:"):
                         self.fallback_history.append({
-                            "requested": profile.value,
-                            "used": f_profile.value,
+                            "requested": profile_val,
+                            "used": f_profile_val,
                             "time": time.time(),
                         })
-                        logger.info("[Router] Fell back from '%s' to '%s' (Latency: %dms)", profile.value, f_profile.value, latency)
+                        logger.info("[Router] Fell back from '%s' to '%s' (Latency: %dms)", profile_val, f_profile_val, latency)
                         return res
 
                     err_msg = res if res else "Empty response returned"
                     fail_type, clean_err = classify_exception(Exception(err_msg))
                     diagnostic.add_attempt(BackendAttempt(
-                        provider=getattr(f_backend, "name", f_profile.value),
-                        model=getattr(f_backend, "model_name", f_profile.value),
+                        provider=getattr(f_backend, "name", f_profile_val),
+                        model=getattr(f_backend, "model_name", f_profile_val),
                         status="FAILED",
                         stage="provider_request",
                         error_type=fail_type,
@@ -355,8 +374,8 @@ class AgentRouter:
                     latency = int((time.monotonic() - t_start) * 1000)
                     fail_type, clean_err = classify_exception(exc)
                     diagnostic.add_attempt(BackendAttempt(
-                        provider=getattr(f_backend, "name", f_profile.value),
-                        model=getattr(f_backend, "model_name", f_profile.value),
+                        provider=getattr(f_backend, "name", f_profile_val),
+                        model=getattr(f_backend, "model_name", f_profile_val),
                         status="FAILED",
                         stage="provider_request",
                         error_type=fail_type,

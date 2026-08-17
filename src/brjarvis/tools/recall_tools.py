@@ -5,7 +5,7 @@ import re
 from datetime import datetime
 from pathlib import Path
 from .registry import register_tool
-from actions.galaxy import build_galaxy_graph, CAPTURES_DIR
+from brjarvis.actions.galaxy import build_galaxy_graph, CAPTURES_DIR
 
 
 @register_tool(

@@ -24,10 +24,10 @@ from .client import (
     sanitize_error_msg,
 )
 from .health import ModelHealthService, get_health_service
-from router.task_profile import TaskProfile, TaskProfileClassifier
+from brjarvis.router.task_profile import TaskProfile, TaskProfileClassifier
 
 if TYPE_CHECKING:
-    from router.smart_router import ModelSelection, SmartModelRouter
+    from brjarvis.router.smart_router import ModelSelection, SmartModelRouter
 
 logger = logging.getLogger("JARVIS.ModelExecution")
 
@@ -45,7 +45,7 @@ class ModelExecutionService:
         max_attempts: int = 3
     ):
         if router is None:
-            from router.smart_router import get_smart_router
+            from brjarvis.router.smart_router import get_smart_router
             self.router = get_smart_router()
         else:
             self.router = router

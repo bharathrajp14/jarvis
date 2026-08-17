@@ -25,7 +25,7 @@ from .registry import register_tool
     }
 )
 def tool_generate_image(args: dict) -> str:
-    from actions.image_generator import generate_image
+    from brjarvis.actions.image_generator import generate_image
     result = generate_image(
         prompt=args["prompt"],
         provider=args.get("provider", "auto"),
@@ -52,7 +52,7 @@ def tool_generate_image(args: dict) -> str:
     }
 )
 def tool_edit_image(args: dict) -> str:
-    from actions.image_generator import edit_image
+    from brjarvis.actions.image_generator import edit_image
     result = edit_image(
         image_path=args["image_path"],
         prompt=args["prompt"],

@@ -10,7 +10,7 @@ import os
 from typing import Generator
 
 from .base import BaseBackend
-from gateway.model_gateway import ModelGateway, get_model_gateway
+from brjarvis.gateway.model_gateway import ModelGateway, get_model_gateway
 
 logger = logging.getLogger("JARVIS.OpenAI")
 
@@ -20,7 +20,13 @@ class OpenAIBackend(BaseBackend):
 
     def __init__(self, model: str = None, api_key: str = None, base_url: str = None):
         self._explicit_model = model or os.environ.get("OPENAI_MODEL", "").strip() or None
-        self.model = self._explicit_model or "gemini-3.6-flash-high"
+        default_model = "gpt-4o-mini"
+        try:
+            from brjarvis.core.config import get_config
+            default_model = get_config().models.gpt or default_model
+        except Exception:
+            pass
+        self.model = self._explicit_model or default_model
         self._gateway = ModelGateway(base_url=base_url, api_key=api_key)
 
     @property
@@ -37,9 +43,15 @@ class OpenAIBackend(BaseBackend):
 
     @property
     def available(self) -> bool:
-        return True
+        has_key = bool(self._gateway.api_key and self._gateway.api_key not in ("none", "local-proxy-brain"))
+        has_proxy = bool(os.environ.get("OPENAI_BASE_URL") or os.environ.get("BRJARVIS_PROXY_BASE_URL"))
+        return has_key or has_proxy or bool(os.environ.get("OPENAI_API_KEY"))
 
     def complete(self, messages: list, system: str = "", tools: list = None, max_tokens: int = None) -> str:
+        # Fast fail if pointing to localhost proxy that is not running
+        if ("localhost:8045" in self._gateway.base_url or "127.0.0.1:8045" in self._gateway.base_url) and not bool(os.environ.get("OPENAI_API_KEY", "").startswith("sk-proj-")):
+            if not self._gateway.ping(timeout=0.3):
+                return "ERROR: Local Proxy Brain (:8045) is offline. Bypassing proxy for cloud fallback."
         try:
             resp = self._gateway.complete(
                 messages=messages,

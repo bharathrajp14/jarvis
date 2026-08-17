@@ -7,8 +7,8 @@ from typing import Optional, Tuple
 
 from .operator import get_computer_operator
 from .types import ActionResult, ActionType, ComputerAction
-from vision.engine import get_vision_engine
-from vision.types import SemanticUIGraph, SemanticUINode, UIRole
+from brjarvis.vision.engine import get_vision_engine
+from brjarvis.vision.types import SemanticUIGraph, SemanticUINode, UIRole
 
 logger = logging.getLogger("JARVIS.SemanticComputerOperator")
 
