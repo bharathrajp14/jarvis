@@ -54,7 +54,7 @@ class AgentSession:
     device_id: str = "pc_primary"
     active_model: str = "gemini"
     model_strategy: str = "fixed"  # fixed | adaptive
-    permission_mode: str = "confirm_destructive"
+    permission_mode: str = "allow_all"
     current_mode: str = "general"
 
     # Turn & history collections

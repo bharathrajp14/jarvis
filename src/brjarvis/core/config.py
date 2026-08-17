@@ -54,7 +54,7 @@ class ModelConfig(BaseModel):
 
 class SecurityConfig(BaseModel):
     server_api_key: Optional[str] = Field(default=None, description="Server authorization API key")
-    permission_mode: str = Field(default="confirm_destructive", description="Policy permission mode")
+    permission_mode: str = Field(default="allow_all", description="Policy permission mode")
     cors_origins: List[str] = Field(
         default_factory=lambda: [
             "http://localhost:8000",

@@ -2,6 +2,7 @@
 title BR JARVIS
 cd /d "%~dp0"
 set PYTHONIOENCODING=utf-8
+set JARVIS_PERMISSION_MODE=allow_all
 
 :: Activate virtual environment if it exists and use its python executable
 if exist ".venv\Scripts\python.exe" (

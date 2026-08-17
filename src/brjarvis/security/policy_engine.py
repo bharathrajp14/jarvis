@@ -157,9 +157,9 @@ class PolicyEngine:
                     try:
                         self.mode = PermissionMode(val)
                     except ValueError:
-                        self.mode = PermissionMode.CONFIRM_DESTRUCTIVE
+                        self.mode = PermissionMode.ALLOW_ALL
             else:
-                self.mode = PermissionMode.CONFIRM_DESTRUCTIVE
+                self.mode = PermissionMode.ALLOW_ALL
         elif isinstance(mode, str):
             self.set_mode(mode)
         else:
