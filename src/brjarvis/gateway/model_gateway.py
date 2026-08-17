@@ -22,6 +22,17 @@ from .models_registry import ModelRegistry, TaskCapability, get_model_registry
 
 logger = logging.getLogger("JARVIS.ModelGateway")
 
+_DEFAULT_FALLBACK_CHAIN = [
+    "gemini-3.6-flash-high",
+    "claude-sonnet-4-6-thinking",
+    "gemini-3-flash-agent",
+    "gemini-3.6-flash-low",
+    "gemini-3.7-flash-high",
+    "gemini-3.5-flash-medium",
+]
+
+_MODEL_COOLDOWNS: dict[str, float] = {}
+
 
 # ── Response Schema & Exceptions ─────────────────────────────────────────────
 
@@ -90,16 +101,25 @@ def _sanitize_error_msg(msg: str) -> str:
 # ── Gateway Configuration Helper ─────────────────────────────────────────────
 
 def _load_gateway_config() -> dict[str, Any]:
-    base_url = os.environ.get("BRJARVIS_PROXY_BASE_URL", "").strip()
-    if not base_url:
-        base_url = os.environ.get("OPENAI_BASE_URL", "http://localhost:8045/v1").strip()
+    base_url = os.environ.get("BRJARVIS_PROXY_BASE_URL", "").strip() or os.environ.get("OPENAI_BASE_URL", "").strip()
+    api_key = os.environ.get("BRJARVIS_PROXY_API_KEY", "").strip() or os.environ.get("OPENAI_API_KEY", "").strip()
 
-    # Priority for API key: BRJARVIS_PROXY_API_KEY > OPENAI_API_KEY
-    api_key = os.environ.get("BRJARVIS_PROXY_API_KEY", "").strip()
-    if not api_key:
-        api_key = os.environ.get("OPENAI_API_KEY", "local-proxy-brain").strip()
+    # Load from api_keys.json if not present in env
+    if not api_key or not base_url:
+        try:
+            from brjarvis.core.paths import paths
+            key_file = paths.CONFIG_ROOT / "api_keys.json"
+            if key_file.exists():
+                data = json.loads(key_file.read_text(encoding="utf-8"))
+                base_url = base_url or data.get("proxy_base_url") or data.get("openai_base_url")
+                api_key = api_key or data.get("proxy_api_key") or data.get("openai_api_key")
+        except Exception:
+            pass
 
-    timeout_s = float(os.environ.get("BRJARVIS_REQUEST_TIMEOUT", "120.0"))
+    base_url = (base_url or "http://localhost:8045/v1").strip()
+    api_key = (api_key or "sk-5ec70bf9fa324084b7a7326babf52c45").strip()
+
+    timeout_s = float(os.environ.get("BRJARVIS_REQUEST_TIMEOUT", "60.0"))
     connect_timeout_s = float(os.environ.get("BRJARVIS_CONNECT_TIMEOUT", "10.0"))
     privacy_mode = os.environ.get("BRJARVIS_PRIVACY_MODE", "proxy_only").strip().lower()
     allow_cloud = os.environ.get("BRJARVIS_ALLOW_CLOUD_FALLBACK", "false").strip().lower() in ("true", "1", "yes")
@@ -203,10 +223,28 @@ class ModelGateway:
         except Exception:
             return False
 
+    def _get_candidate_models(self, primary_model: str) -> list[str]:
+        """Return prioritized list of healthy candidate models with fallback hierarchy."""
+        now = time.time()
+        # Clean expired cooldowns
+        expired = [m for m, exp in _MODEL_COOLDOWNS.items() if exp <= now]
+        for m in expired:
+            _MODEL_COOLDOWNS.pop(m, None)
+
+        ordered = [primary_model]
+        for m in _DEFAULT_FALLBACK_CHAIN:
+            if m not in ordered:
+                ordered.append(m)
+
+        # Prioritize non-cooling-down models
+        healthy = [m for m in ordered if _MODEL_COOLDOWNS.get(m, 0) <= now]
+        cooling = [m for m in ordered if _MODEL_COOLDOWNS.get(m, 0) > now]
+        return healthy + cooling
+
     def complete(
         self,
         messages: list[dict],
-        model: str = "gemini-3-flash-agent",
+        model: str = "gemini-3.6-flash-high",
         system: str = "",
         tools: Optional[list[dict]] = None,
         max_tokens: Optional[int] = None,
@@ -214,7 +252,7 @@ class ModelGateway:
         response_format: Optional[dict] = None,
         request_id: Optional[str] = None
     ) -> ModelResponse:
-        """Synchronous chat completion through the Proxy Brain gateway."""
+        """Synchronous chat completion with silent automatic failover across verified models."""
         start_time = time.monotonic()
         req_id = request_id or str(uuid.uuid4())
 
@@ -223,68 +261,90 @@ class ModelGateway:
             full_messages.append({"role": "system", "content": system})
         full_messages.extend(messages)
 
-        # 1. Try via OpenAI SDK if available
+        candidate_models = self._get_candidate_models(model)
+        last_exception: Optional[Exception] = None
+
+        # 1. Try candidates via OpenAI SDK with silent failover
         if self._openai_client is not None:
-            try:
-                kwargs: dict[str, Any] = {
-                    "model": model,
-                    "messages": full_messages,
-                    "temperature": temperature,
-                }
-                if max_tokens:
-                    kwargs["max_tokens"] = max_tokens
-                if tools:
-                    kwargs["tools"] = tools
-                if response_format:
-                    kwargs["response_format"] = response_format
-
-                resp = self._openai_client.chat.completions.create(**kwargs)
-                elapsed_ms = (time.monotonic() - start_time) * 1000.0
-
-                choice = resp.choices[0]
-                text = choice.message.content or ""
-                tool_calls = []
-                if getattr(choice.message, "tool_calls", None):
-                    for tc in choice.message.tool_calls:
-                        tool_calls.append({
-                            "id": getattr(tc, "id", str(uuid.uuid4())),
-                            "name": tc.function.name,
-                            "arguments": json.loads(tc.function.arguments) if isinstance(tc.function.arguments, str) else tc.function.arguments
-                        })
-
-                usage_dict = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
-                if getattr(resp, "usage", None):
-                    usage_dict = {
-                        "prompt_tokens": getattr(resp.usage, "prompt_tokens", 0) or 0,
-                        "completion_tokens": getattr(resp.usage, "completion_tokens", 0) or 0,
-                        "total_tokens": getattr(resp.usage, "total_tokens", 0) or 0,
+            for cand_model in candidate_models[:4]:
+                try:
+                    kwargs: dict[str, Any] = {
+                        "model": cand_model,
+                        "messages": full_messages,
+                        "temperature": temperature,
                     }
+                    if max_tokens:
+                        kwargs["max_tokens"] = max_tokens
+                    if tools:
+                        kwargs["tools"] = tools
+                    if response_format:
+                        kwargs["response_format"] = response_format
 
-                return ModelResponse(
-                    text=text,
-                    tool_calls=tool_calls,
-                    finish_reason=choice.finish_reason or "stop",
-                    model=model,
-                    usage=usage_dict,
-                    latency_ms=round(elapsed_ms, 2),
-                    provider="proxy_brain",
-                    request_id=req_id,
-                    raw=resp
-                )
-            except Exception as exc:
-                self._handle_client_exception(exc, model)
+                    resp = self._openai_client.chat.completions.create(timeout=10.0, **kwargs)
+                    elapsed_ms = (time.monotonic() - start_time) * 1000.0
 
-        # 2. Resilient Direct HTTP Fallback
-        return self._complete_http(
-            full_messages=full_messages,
-            model=model,
-            tools=tools,
-            max_tokens=max_tokens,
-            temperature=temperature,
-            response_format=response_format,
-            req_id=req_id,
-            start_time=start_time
-        )
+                    choice = resp.choices[0] if resp.choices else None
+                    text = (choice.message.content or "") if choice and getattr(choice, "message", None) else ""
+                    tool_calls = []
+                    if choice and getattr(choice.message, "tool_calls", None):
+                        for tc in choice.message.tool_calls:
+                            tool_calls.append({
+                                "id": getattr(tc, "id", str(uuid.uuid4())),
+                                "name": tc.function.name,
+                                "arguments": json.loads(tc.function.arguments) if isinstance(tc.function.arguments, str) else tc.function.arguments
+                            })
+
+                    # If response is non-empty or has tool calls, succeed immediately
+                    if text.strip() or tool_calls:
+                        if cand_model != model:
+                            logger.info("[ModelGateway] Silently auto-switched model from '%s' to '%s'", model, cand_model)
+
+                        usage_dict = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+                        if getattr(resp, "usage", None):
+                            usage_dict = {
+                                "prompt_tokens": getattr(resp.usage, "prompt_tokens", 0) or 0,
+                                "completion_tokens": getattr(resp.usage, "completion_tokens", 0) or 0,
+                                "total_tokens": getattr(resp.usage, "total_tokens", 0) or 0,
+                            }
+
+                        return ModelResponse(
+                            text=text,
+                            tool_calls=tool_calls,
+                            finish_reason=(choice.finish_reason if choice else "stop") or "stop",
+                            model=cand_model,
+                            usage=usage_dict,
+                            latency_ms=round(elapsed_ms, 2),
+                            provider="proxy_brain",
+                            request_id=req_id,
+                            raw=resp
+                        )
+
+                    # Empty text returned: mark cooldown and try next model
+                    _MODEL_COOLDOWNS[cand_model] = time.time() + 60.0
+                    logger.debug("[ModelGateway] Model '%s' returned empty response; auto-switching", cand_model)
+
+                except Exception as exc:
+                    _MODEL_COOLDOWNS[cand_model] = time.time() + 60.0
+                    logger.debug("[ModelGateway] Model '%s' notice: %s; auto-switching", cand_model, exc)
+                    last_exception = exc
+
+        # 2. Resilient Direct HTTP Fallback on best candidate
+        target_model = candidate_models[0] if candidate_models else model
+        try:
+            return self._complete_http(
+                full_messages=full_messages,
+                model=target_model,
+                tools=tools,
+                max_tokens=max_tokens,
+                temperature=temperature,
+                response_format=response_format,
+                req_id=req_id,
+                start_time=start_time
+            )
+        except Exception as exc:
+            if last_exception is not None:
+                self._handle_client_exception(last_exception, model)
+            self._handle_client_exception(exc, target_model)
 
     def _complete_http(
         self,
@@ -380,41 +440,48 @@ class ModelGateway:
     def stream(
         self,
         messages: list[dict],
-        model: str = "gemini-3-flash-agent",
+        model: str = "gemini-3.6-flash-high",
         system: str = "",
         tools: Optional[list[dict]] = None,
         max_tokens: Optional[int] = None,
         temperature: float = 0.7
     ) -> Generator[str, None, None]:
-        """Streaming chat completion yielding text chunks as they arrive."""
+        """Streaming chat completion with silent automatic failover across verified models."""
         full_messages = []
         if system:
             full_messages.append({"role": "system", "content": system})
         full_messages.extend(messages)
 
-        # 1. Try OpenAI SDK streaming
-        if self._openai_client is not None:
-            try:
-                kwargs: dict[str, Any] = {
-                    "model": model,
-                    "messages": full_messages,
-                    "temperature": temperature,
-                    "stream": True,
-                }
-                if max_tokens:
-                    kwargs["max_tokens"] = max_tokens
-                if tools:
-                    kwargs["tools"] = tools
+        candidate_models = self._get_candidate_models(model)
 
-                stream_resp = self._openai_client.chat.completions.create(**kwargs)
-                for chunk in stream_resp:
-                    if chunk.choices and chunk.choices[0].delta:
-                        content = chunk.choices[0].delta.content
-                        if content:
-                            yield content
-                return
-            except Exception as exc:
-                logger.debug("SDK stream error, falling back to HTTP stream: %s", exc)
+        # 1. Try OpenAI SDK streaming with candidate failover
+        if self._openai_client is not None:
+            for cand_model in candidate_models[:3]:
+                try:
+                    kwargs: dict[str, Any] = {
+                        "model": cand_model,
+                        "messages": full_messages,
+                        "temperature": temperature,
+                        "stream": True,
+                    }
+                    if max_tokens:
+                        kwargs["max_tokens"] = max_tokens
+                    if tools:
+                        kwargs["tools"] = tools
+
+                    stream_resp = self._openai_client.chat.completions.create(timeout=10.0, **kwargs)
+                    yielded_any = False
+                    for chunk in stream_resp:
+                        if chunk.choices and chunk.choices[0].delta:
+                            content = chunk.choices[0].delta.content
+                            if content:
+                                yielded_any = True
+                                yield content
+                    if yielded_any:
+                        return
+                except Exception as exc:
+                    _MODEL_COOLDOWNS[cand_model] = time.time() + 60.0
+                    logger.debug("[ModelGateway] SDK stream error for '%s': %s", cand_model, exc)
 
         # 2. HTTP Server-Sent Events Streaming
         url = f"{self.base_url}/chat/completions"

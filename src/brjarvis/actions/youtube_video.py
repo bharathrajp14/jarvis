@@ -183,7 +183,7 @@ def _summarize_with_gemini(transcript: str, video_url: str) -> str:
     )
     try:
         from ._gemini_client import gemini_generate
-        return gemini_generate(prompt, model="gemini-3.1-pro-high")
+        return gemini_generate(prompt, model="gemini-3.6-flash-high")
     except Exception as e:
         logger.warning("Proxy summarization failed (%s); trying direct Google API", e)
         from google import genai as _genai

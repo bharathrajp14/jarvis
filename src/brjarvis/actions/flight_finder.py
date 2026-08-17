@@ -72,7 +72,7 @@ def _parse_date(raw: str) -> str:
             f"Today is {today.strftime('%Y-%m-%d')}. "
             f"Convert this date expression to YYYY-MM-DD: '{raw}'. "
             f"Return ONLY the date string, nothing else.",
-            model="gemini-3.1-pro-high"
+            model="gemini-3.6-flash-high"
         ).strip()
         if re.match(r"\d{4}-\d{2}-\d{2}", result):
             return result
@@ -171,7 +171,7 @@ def _parse_flights_with_gemini(
         from ._gemini_client import gemini_generate
         response_text = gemini_generate(
             prompt,
-            model="gemini-3.1-pro-high"
+            model="gemini-3.6-flash-high"
         )
         text = re.sub(r"```(?:json)?", "", response_text).strip().rstrip("`").strip()
         flights = json.loads(text)

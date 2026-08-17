@@ -106,7 +106,7 @@ def analyze_error(
         from brjarvis.actions._gemini_client import gemini_generate
         text = gemini_generate(
             f"{ERROR_ANALYST_PROMPT}\n\n{prompt}",
-            model="gemini-3.1-pro-high"
+            model="gemini-3.6-flash-high"
         ).strip()
         text = re.sub(r"```(?:json)?", "", text).strip().rstrip("`").strip()
 
@@ -158,7 +158,7 @@ Return ONLY the Python code, no explanation."""
 
     try:
         from brjarvis.actions._gemini_client import gemini_generate
-        code = gemini_generate(prompt, model="gemini-3.1-pro-high").strip()
+        code = gemini_generate(prompt, model="gemini-3.6-flash-high").strip()
         code = re.sub(r"```(?:python)?", "", code).strip().rstrip("`").strip()
 
         return {

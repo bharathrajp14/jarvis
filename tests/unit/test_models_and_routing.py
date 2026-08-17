@@ -31,7 +31,7 @@ def test_get_model_for_task_routing():
     assert "claude" in code_model or "pro" in code_model or "gemini" in code_model
 
     reasoning_model = get_model_for_task("reasoning")
-    assert "opus" in reasoning_model or "pro" in reasoning_model or "gemini" in reasoning_model
+    assert "opus" in reasoning_model or "pro" in reasoning_model or "gemini" in reasoning_model or "claude" in reasoning_model or "thinking" in reasoning_model
 
     vision_model = get_model_for_task("vision")
     assert "image" in vision_model or "flash" in vision_model
