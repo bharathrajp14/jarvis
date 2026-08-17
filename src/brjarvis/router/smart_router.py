@@ -251,7 +251,7 @@ class SmartModelRouter:
                     provider="gemini",
                     score=50.0,
                     reason="Default emergency baseline (no gateway models discovered)",
-                    fallback_models=["gemini-3.7-flash-tiered", "gemini-3.1-flash-lite"]
+                    fallback_models=["gemini-3.6-flash-tiered", "gemini-3.6-flash-low"]
                 )
 
             # 3. Filter Candidates

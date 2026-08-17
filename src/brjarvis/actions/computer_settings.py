@@ -612,7 +612,7 @@ def _detect_action(description: str) -> dict:
 
     from brjarvis.actions._gemini_client import get_gemini_client as _get_gc, get_proxy_model as _gpm
     _client = _get_gc()
-    _cs_model = _gpm("gemini-3.1-flash-lite", "gemini-2.0-flash")
+    _cs_model = _gpm("gemini-3.6-flash-low", "gemini-2.0-flash")
 
     available = ", ".join(sorted(ACTION_MAP.keys())) + \
                 ", volume_set, type_text, press_key, reload_n"

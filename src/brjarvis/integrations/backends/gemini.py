@@ -50,12 +50,12 @@ class GeminiBackend(BaseBackend):
     """
 
     FALLBACK_MODELS = [
-        "gemini-3.1-pro-high",
-        "gemini-3.7-flash-high",
         "gemini-3.6-flash-high",
-        "gemini-3.5-flash-high",
+        "gemini-3-flash-agent",
+        "gemini-3.7-flash-high",
         "gemini-3.6-flash-medium",
-        "gemini-3.1-flash-lite",
+        "gemini-3.6-flash-low",
+        "gemini-3.5-flash-low",
     ]
 
     def __init__(self, model: str = None, api_key: str = None):

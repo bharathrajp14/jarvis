@@ -7,7 +7,17 @@ import requests
 
 def main():
     base_url = os.environ.get('BRJARVIS_PROXY_BASE_URL', os.environ.get('OPENAI_BASE_URL', 'http://localhost:8045/v1')).rstrip('/')
-    api_key = os.environ.get('BRJARVIS_PROXY_API_KEY', os.environ.get('OPENAI_API_KEY', 'local-proxy-key'))
+    api_key = os.environ.get('BRJARVIS_PROXY_API_KEY', os.environ.get('OPENAI_API_KEY', ''))
+    if not api_key:
+        try:
+            from pathlib import Path
+            cfg_file = Path(__file__).resolve().parent.parent / "config" / "api_keys.json"
+            if cfg_file.exists():
+                data = json.loads(cfg_file.read_text(encoding="utf-8"))
+                api_key = data.get("proxy_api_key") or data.get("openai_api_key") or "sk-5ec70bf9fa324084b7a7326babf52c45"
+        except Exception:
+            api_key = "sk-5ec70bf9fa324084b7a7326babf52c45"
+    api_key = api_key or "sk-5ec70bf9fa324084b7a7326babf52c45"
 
     print(f"Target Gateway: {base_url}", flush=True)
     print("-" * 80, flush=True)

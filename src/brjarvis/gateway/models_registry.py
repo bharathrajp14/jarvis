@@ -327,6 +327,22 @@ _CANONICAL_MODELS: list[ModelSpec] = [
         preferred_for=["deep_creative_writing", "philosophical_analysis", "critical_architecture_review"]
     ),
     ModelSpec(
+        id="claude-sonnet-4-6-thinking",
+        provider="anthropic",
+        family="claude",
+        capabilities=frozenset({
+            TaskCapability.CHAT, TaskCapability.REASONING, TaskCapability.DEEP_REASONING,
+            TaskCapability.CODE, TaskCapability.CODE_REVIEW, TaskCapability.PLANNING,
+            TaskCapability.TOOL_SELECTION
+        }),
+        tier=ModelTier.HIGH_REASONING,
+        speed="fast",
+        context_class="huge",
+        tool_use=True,
+        thinking=True,
+        preferred_for=["deep_coding", "system_architecture", "code_refactoring", "technical_analysis"]
+    ),
+    ModelSpec(
         id="claude-sonnet-4-6",
         provider="anthropic",
         family="claude",
