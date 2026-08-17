@@ -6,12 +6,14 @@ Combines DuckDuckGo, Wikipedia API, Gemini Search Grounding, and HTTP/Playwright
 from __future__ import annotations
 
 import logging
+import os
 import asyncio
 import json
 import re
 import urllib.parse
 import urllib.request
 from pathlib import Path
+from brjarvis.core.paths import paths
 
 import warnings
 warnings.filterwarnings("ignore", category=RuntimeWarning)
@@ -78,21 +80,67 @@ async def search_wikipedia(query: str, max_results: int = 3) -> list[dict]:
     return results
 
 
+def _load_tavily_key() -> str:
+    key = os.environ.get("TAVILY_API_KEY", "").strip()
+    if key:
+        return key
+    try:
+        data = json.loads((paths.CONFIG_ROOT / "api_keys.json").read_text(encoding="utf-8"))
+        return data.get("tavily_api_key", "").strip()
+    except Exception:
+        return ""
+
+
+async def search_tavily(query: str, max_results: int = 6) -> list[dict]:
+    """Perform high-speed web search via Tavily API."""
+    api_key = _load_tavily_key()
+    if not api_key:
+        return []
+    loop = asyncio.get_running_loop()
+
+    def _do_tavily():
+        try:
+            req = urllib.request.Request(
+                "https://api.tavily.com/search",
+                data=json.dumps({"api_key": api_key, "query": query, "max_results": max_results}).encode("utf-8"),
+                headers={"Content-Type": "application/json"}
+            )
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                out = []
+                for r in data.get("results", []):
+                    out.append({
+                        "source": "Tavily",
+                        "title": _clean_text(r.get("title", "")),
+                        "href": r.get("url", ""),
+                        "body": _clean_text(r.get("content", ""))
+                    })
+                return out
+        except Exception as e:
+            logger.debug("[WebSearch] Tavily notice: %s", e)
+            return []
+
+    return await loop.run_in_executor(None, _do_tavily)
+
+
 async def search_duckduckgo(query: str, max_results: int = 8) -> list[dict]:
-    """Perform search via DuckDuckGo."""
+    """Perform search via DuckDuckGo with strict 5-second timeout."""
     if not _DDG_AVAILABLE:
         return []
     loop = asyncio.get_running_loop()
 
     def _do_ddg():
         try:
-            with DDGS() as ddgs:
+            with DDGS(timeout=5) as ddgs:
                 return list(ddgs.text(query, max_results=max_results))
         except Exception as e:
-            logger.warning(f"[WebSearch] DDG error: {e}")
+            logger.debug("[WebSearch] DDG notice: %s", e)
             return []
 
-    results = await loop.run_in_executor(None, _do_ddg)
+    try:
+        results = await asyncio.wait_for(loop.run_in_executor(None, _do_ddg), timeout=6.0)
+    except Exception:
+        results = []
     for r in results:
         r["source"] = "DuckDuckGo"
         r["title"] = _clean_text(r.get("title", ""))
@@ -103,24 +151,29 @@ async def search_duckduckgo(query: str, max_results: int = 8) -> list[dict]:
 async def web_search(query: str, max_results: int = 8) -> list[dict]:
     """
     Multi-engine resilient web search.
-    Tries DuckDuckGo -> Wikipedia -> Gemini Grounding fallback chain.
+    Tries Tavily -> DuckDuckGo -> Wikipedia -> ModelGateway search synthesis.
     """
     clean_query = query.strip()
     if not clean_query:
         return [{"error": "Empty search query provided."}]
 
-    # 1. Primary: DuckDuckGo
-    results = await search_duckduckgo(clean_query, max_results=max_results)
+    # 1. Primary High-Speed Engine: Tavily Search (<1s)
+    results = await search_tavily(clean_query, max_results=max_results)
 
-    # 2. Secondary: Wikipedia fallback/supplement
+    # 2. Secondary Engine: DuckDuckGo Fallback
+    if not results:
+        results = await search_duckduckgo(clean_query, max_results=max_results)
+
+    # 3. Tertiary Engine: Wikipedia Fallback / Supplement
     if len(results) < 3:
         wiki_results = await search_wikipedia(clean_query, max_results=3)
         existing_urls = {r.get("href") for r in results}
         for wr in wiki_results:
-            if wr["href"] not in existing_urls:
+            if wr.get("href") not in existing_urls:
                 results.append(wr)
 
-    # 3. Tertiary: Gemini Grounded Search Fallback if zero results
+    # 4. Final Fallback: AI Synthesis via ModelGateway
+    if not results:
         try:
             from brjarvis.gateway.model_gateway import get_model_gateway
             gw = get_model_gateway()
@@ -138,7 +191,6 @@ async def web_search(query: str, max_results: int = 8) -> list[dict]:
         except Exception as e:
             logger.debug("[WebSearch] AI synthesis search notice: %s", e)
 
-            logger.debug('Suppressed exception: %s', e)
     if not results:
         return [{"error": f"No web search results found for: '{clean_query}'"}]
 

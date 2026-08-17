@@ -38,20 +38,61 @@ def _gemini_search(query: str) -> str:
     return text
 
 
+def _tavily_search(query: str, max_results: int = 6) -> list[dict]:
+    key = os.environ.get("TAVILY_API_KEY", "").strip()
+    if not key:
+        try:
+            data = json.loads((paths.CONFIG_ROOT / "api_keys.json").read_text(encoding="utf-8"))
+            key = data.get("tavily_api_key", "").strip()
+        except Exception:
+            key = ""
+    if not key:
+        return []
+    try:
+        import urllib.request
+        req = urllib.request.Request(
+            "https://api.tavily.com/search",
+            data=json.dumps({"api_key": key, "query": query, "max_results": max_results}).encode("utf-8"),
+            headers={"Content-Type": "application/json"}
+        )
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            out = []
+            for r in data.get("results", []):
+                out.append({
+                    "title":   r.get("title", ""),
+                    "snippet": r.get("content", ""),
+                    "url":     r.get("url", ""),
+                    "source":  "Tavily",
+                })
+            return out
+    except Exception as e:
+        logger.debug("[WebSearch] Tavily notice: %s", e)
+        return []
+
+
 def _ddg_search(query: str, max_results: int = 6) -> list[dict]:
+    # 1. High-speed primary: Tavily
+    tav_results = _tavily_search(query, max_results=max_results)
+    if tav_results:
+        return tav_results
+
     try:
         from ddgs import DDGS
     except ImportError:
         from duckduckgo_search import DDGS
 
     results = []
-    with DDGS() as ddgs:
-        for r in ddgs.text(query, max_results=max_results):
-            results.append({
-                "title":   r.get("title",  ""),
-                "snippet": r.get("body",   ""),
-                "url":     r.get("href",   ""),
-            })
+    try:
+        with DDGS(timeout=5) as ddgs:
+            for r in ddgs.text(query, max_results=max_results):
+                results.append({
+                    "title":   r.get("title",  ""),
+                    "snippet": r.get("body",   ""),
+                    "url":     r.get("href",   ""),
+                })
+    except Exception as e:
+        logger.debug("[WebSearch] DDG notice: %s", e)
     return results
 
 
