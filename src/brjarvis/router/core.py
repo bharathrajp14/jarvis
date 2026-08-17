@@ -33,18 +33,18 @@ class AgentProfile(Enum):
 
 
 ROUTING_RULES = {
-    "code":           [AgentProfile.GEMINI, AgentProfile.CLAUDE, AgentProfile.GPT, AgentProfile.DEEPSEEK, AgentProfile.OLLAMA],
-    "security":       [AgentProfile.GEMINI, AgentProfile.CLAUDE, AgentProfile.OLLAMA],
-    "creative":       [AgentProfile.CLAUDE, AgentProfile.GEMINI, AgentProfile.GPT],
-    "search":         [AgentProfile.GEMINI, AgentProfile.CLAUDE],
+    "code":           [AgentProfile.GPT, AgentProfile.CLAUDE, AgentProfile.DEEPSEEK, AgentProfile.OLLAMA],
+    "security":       [AgentProfile.GPT, AgentProfile.CLAUDE, AgentProfile.OLLAMA],
+    "creative":       [AgentProfile.GPT, AgentProfile.CLAUDE],
+    "search":         [AgentProfile.GPT, AgentProfile.CLAUDE],
     "local_private":  [AgentProfile.OLLAMA],
-    "long_context":   [AgentProfile.GEMINI, AgentProfile.CLAUDE],
-    "gpu_inference":  [AgentProfile.NVIDIA, AgentProfile.GEMINI],
-    "fast_inference": [AgentProfile.GEMINI, AgentProfile.MISTRAL, AgentProfile.OLLAMA],
-    "multilingual":   [AgentProfile.GEMINI, AgentProfile.MISTRAL],
-    "vision":         [AgentProfile.GEMINI, AgentProfile.CLAUDE],
-    "analysis":       [AgentProfile.GEMINI, AgentProfile.CLAUDE, AgentProfile.GPT],
-    "reasoning":      [AgentProfile.DEEPSEEK, AgentProfile.CLAUDE, AgentProfile.GEMINI],
+    "long_context":   [AgentProfile.GPT, AgentProfile.CLAUDE],
+    "gpu_inference":  [AgentProfile.NVIDIA, AgentProfile.GPT],
+    "fast_inference": [AgentProfile.GPT, AgentProfile.MISTRAL, AgentProfile.OLLAMA],
+    "multilingual":   [AgentProfile.GPT, AgentProfile.MISTRAL],
+    "vision":         [AgentProfile.GPT, AgentProfile.CLAUDE],
+    "analysis":       [AgentProfile.GPT, AgentProfile.CLAUDE],
+    "reasoning":      [AgentProfile.GPT, AgentProfile.DEEPSEEK, AgentProfile.CLAUDE],
 }
 
 _PROFILE_MAP = {p.value: p for p in AgentProfile}
@@ -76,10 +76,10 @@ except Exception:
 def _get_configured_default() -> AgentProfile:
     try:
         cfg = get_model_config()
-        default_str = cfg.get("default_backend", "gemini").lower()
-        return _PROFILE_MAP.get(default_str, AgentProfile.GEMINI)
+        default_str = cfg.get("default_backend", "gpt").lower()
+        return _PROFILE_MAP.get(default_str, AgentProfile.GPT)
     except Exception:
-        return AgentProfile.GEMINI
+        return AgentProfile.GPT
 
 
 def _get_configured_privacy_mode() -> PrivacyMode:
@@ -95,7 +95,7 @@ def _truthy_env(name: str) -> bool:
 
 
 def load_available_backends(*, force_refresh: bool = False) -> dict:
-    """Attempt to initialize all backends safely."""
+    """Attempt to initialize all backends safely with OpenAI as primary and Gemini disabled if configured."""
     global _BACKENDS_CACHE, _BACKENDS_CACHE_TS
     ttl_seconds = float(os.environ.get("JARVIS_BACKENDS_CACHE_TTL", "180"))
 
@@ -108,29 +108,30 @@ def load_available_backends(*, force_refresh: bool = False) -> dict:
 
         backends: dict[AgentProfile, Any] = {}
 
+        # 1. Primary Backend: OpenAI / OpenAI-Compatible Gateway
         try:
-            if GeminiBackend is not None:
-                g = GeminiBackend()
-                if g.available:
-                    backends[AgentProfile.GEMINI] = g
-        except Exception as exc:
-            logger.debug("[Router] Gemini init notice: %s", exc)
-
-        try:
-            if ClaudeBackend is not None and os.environ.get("ANTHROPIC_API_KEY", "").strip():
-                c = ClaudeBackend()
-                if c.available:
-                    backends[AgentProfile.CLAUDE] = c
-        except Exception:
-            pass
-
-        try:
-            if OpenAIBackend is not None and os.environ.get("OPENAI_API_KEY", "").strip():
+            if OpenAIBackend is not None:
                 o = OpenAIBackend()
                 if o.available:
                     backends[AgentProfile.GPT] = o
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("[Router] OpenAI init notice: %s", exc)
+
+        # 2. Gemini Backend: Disabled if JARVIS_DISABLE_GEMINI is true, default_backend is gpt, or disable_gemini flag is set
+        cfg = get_model_config()
+        gemini_disabled = (
+            _truthy_env("JARVIS_DISABLE_GEMINI")
+            or cfg.get("disable_gemini", False)
+            or not bool(os.environ.get("GEMINI_API_KEY", "").strip())
+        )
+        if not gemini_disabled:
+            try:
+                if GeminiBackend is not None:
+                    g = GeminiBackend()
+                    if g.available:
+                        backends[AgentProfile.GEMINI] = g
+            except Exception as exc:
+                logger.debug("[Router] Gemini init notice: %s", exc)
 
         try:
             has_deepseek = (
@@ -216,6 +217,14 @@ class AgentRouter:
 
         return self.default
 
+    def get_backend(self, profile: AgentProfile | str | None = None) -> Any:
+        """Return the active backend instance for a given profile or the default backend."""
+        if profile is None:
+            profile = self.default
+        if isinstance(profile, str):
+            profile = _PROFILE_MAP.get(profile.lower(), AgentProfile.GPT)
+        return self.backends.get(profile)
+
     def run(
         self,
         profile: AgentProfile | str,
@@ -237,7 +246,7 @@ class AgentRouter:
 
         # Normalize profile if passed as a string
         if isinstance(profile, str):
-            profile = _PROFILE_MAP.get(profile.lower(), AgentProfile.GEMINI)
+            profile = _PROFILE_MAP.get(profile.lower(), AgentProfile.GPT)
 
         profile_val = profile.value if hasattr(profile, "value") else str(profile)
 

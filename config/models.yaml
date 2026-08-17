@@ -1,5 +1,5 @@
 # config/models.yaml — BR JARVIS Central Model & Proxy Brain Configuration
-# Calibrated from Live Model Benchmark Probing (16/24 Online)
+# Calibrated from Live Model Benchmark Probing against http://localhost:8045/v1 (15/24 Verified Online)
 
 proxy:
   base_url: "http://localhost:8045/v1"
@@ -9,39 +9,43 @@ proxy:
 
 privacy:
   mode: "proxy_only"
-  allow_direct_cloud_fallback: true
+  allow_direct_cloud_fallback: false
 
 routing:
-  default_model: "gemini-3.1-pro-high"
+  default_backend: "gpt"
+  default_model: "claude-sonnet-4-6"
+  disable_gemini: true
   
-  # Capability-specific mappings based on live proxy model availability
+  # Capability-specific mappings based on verified live proxy model availability
   capabilities:
-    chat: "gemini-3.1-pro-high"
-    fast_chat: "gemini-3.6-flash-medium"
-    reasoning: "gemini-3.1-pro-high"
-    deep_reasoning: "gemini-3.1-pro-high"
-    planning: "gemini-3.1-pro-high"
-    agent: "gemini-3.7-flash-high"
-    pro_agent: "gemini-3.1-pro-high"
-    code: "gemini-3.1-pro-high"
-    code_review: "gemini-3.1-pro-high"
+    chat: "claude-sonnet-4-6"
+    fast_chat: "gemini-3.5-flash-low"
+    reasoning: "claude-opus-4-6-thinking"
+    deep_reasoning: "claude-opus-4-6-thinking"
+    planning: "claude-sonnet-4-6"
+    agent: "gemini-3-flash-agent"
+    pro_agent: "claude-sonnet-4-6"
+    code: "claude-sonnet-4-6"
+    code_review: "claude-sonnet-4-6"
     vision: "gemini-3.1-flash-image"
     image: "gemini-3.1-flash-image"
-    summarization: "gemini-3.1-pro-high"
-    classification: "gemini-3.6-flash-medium"
-    extraction: "gemini-3.6-flash-medium"
-    long_context: "gemini-3.1-pro-high"
-    low_latency: "gemini-3.6-flash-medium"
-    fallback: "gemini-3.1-pro-high"
-    gpt_compatible: "gemini-3.1-pro-high"
+    summarization: "gemini-3.6-flash-high"
+    classification: "gemini-3.5-flash-low"
+    extraction: "gemini-3.5-flash-low"
+    long_context: "claude-sonnet-4-6"
+    low_latency: "gemini-3.5-flash-low"
+    voice_live: "gemini-3.6-flash-tiered"
+    fallback: "gemini-3.6-flash-high"
+    gpt_compatible: "claude-sonnet-4-6"
 
   # Fallback sequence preference of verified online models
   fallback_hierarchy:
-    - "gemini-3.1-pro-high"
-    - "gemini-3.7-flash-high"
+    - "claude-sonnet-4-6"
     - "gemini-3.6-flash-high"
-    - "gemini-3.5-flash-high"
-    - "gemini-3.1-flash-lite"
+    - "gemini-3-flash-agent"
+    - "gemini-3.5-flash-low"
+    - "gemini-3.6-flash-medium"
+    - "claude-opus-4-6-thinking"
 
 complexity_thresholds:
   lite_max: 20

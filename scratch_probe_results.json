@@ -1,0 +1,122 @@
+{
+  "claude-opus-4-6-thinking": {
+    "status": "ONLINE",
+    "latency_ms": 18859,
+    "response": "OK I am Antigravity by Google."
+  },
+  "claude-sonnet-4-6": {
+    "status": "ONLINE",
+    "latency_ms": 5688,
+    "response": "OK \u2014 I am Antigravity by Google DeepMind."
+  },
+  "gemini-2.5-flash": {
+    "status": "OFFLINE",
+    "latency_ms": 29610,
+    "error": "Request timed out."
+  },
+  "gemini-2.5-flash-lite": {
+    "status": "OFFLINE",
+    "latency_ms": 31422,
+    "error": "Request timed out."
+  },
+  "gemini-2.5-flash-thinking": {
+    "status": "OFFLINE",
+    "latency_ms": 31614,
+    "error": "Request timed out."
+  },
+  "gemini-2.5-pro": {
+    "status": "OFFLINE",
+    "latency_ms": 31412,
+    "error": "Request timed out."
+  },
+  "gemini-3-flash": {
+    "status": "ONLINE",
+    "latency_ms": 6817,
+    "response": "OK, my name is Antigravity."
+  },
+  "gemini-3-flash-agent": {
+    "status": "ONLINE",
+    "latency_ms": 5624,
+    "response": "OK, my model is Antigravity."
+  },
+  "gemini-3.1-flash-image": {
+    "status": "ONLINE",
+    "latency_ms": 3854,
+    "response": "OK, Gemini-Advanced."
+  },
+  "gemini-3.1-flash-lite": {
+    "status": "OFFLINE",
+    "latency_ms": 29465,
+    "error": "Request timed out."
+  },
+  "gemini-3.1-pro-high": {
+    "status": "OFFLINE",
+    "latency_ms": 31383,
+    "error": "Request timed out."
+  },
+  "gemini-3.1-pro-low": {
+    "status": "OFFLINE",
+    "latency_ms": 31446,
+    "error": "Request timed out."
+  },
+  "gemini-3.5-flash-extra-low": {
+    "status": "ONLINE",
+    "latency_ms": 5736,
+    "response": "OK,"
+  },
+  "gemini-3.5-flash-low": {
+    "status": "ONLINE",
+    "latency_ms": 3687,
+    "response": "OK, my name is Antigravity."
+  },
+  "gemini-3.6-flash-high": {
+    "status": "ONLINE",
+    "latency_ms": 3041,
+    "response": "OK,"
+  },
+  "gemini-3.6-flash-low": {
+    "status": "ONLINE",
+    "latency_ms": 6393,
+    "response": "OK,"
+  },
+  "gemini-3.6-flash-medium": {
+    "status": "ONLINE",
+    "latency_ms": 7540,
+    "response": "OK,"
+  },
+  "gemini-3.6-flash-tiered": {
+    "status": "ONLINE",
+    "latency_ms": 5369,
+    "response": "OK"
+  },
+  "gemini-3.7-flash-high": {
+    "status": "OFFLINE",
+    "latency_ms": 29367,
+    "error": "Request timed out."
+  },
+  "gemini-3.7-flash-low": {
+    "status": "ONLINE",
+    "latency_ms": 20535,
+    "response": ""
+  },
+  "gemini-3.7-flash-medium": {
+    "status": "ONLINE",
+    "latency_ms": 8007,
+    "response": "OK"
+  },
+  "gemini-3.7-flash-tiered": {
+    "status": "ONLINE",
+    "latency_ms": 29242,
+    "response": "OK,"
+  },
+  "gemini-pro-agent": {
+    "status": "OFFLINE",
+    "latency_ms": 29570,
+    "error": "Request timed out."
+  },
+  "gpt-oss-120b-medium": {
+    "status": "ONLINE",
+    "latency_ms": 27153,
+    "response": "OK Antigravity coding assistant model"
+  }
+}

@@ -38,17 +38,18 @@ class AssistantConfig(BaseModel):
 
 class ModelConfig(BaseModel):
     default_backend: str = Field(default="gpt", description="Default primary LLM backend")
-    gemini: str = Field(default="gemini-3.1-pro-high", description="Gemini model ID")
-    gemini_code: str = Field(default="gemini-3.1-pro-high", description="Gemini Code model ID")
-    gemini_reasoning: str = Field(default="gemini-3.1-pro-high", description="Gemini Reasoning model ID")
-    claude: str = Field(default="gemini-3.1-pro-high", description="Claude model ID")
-    gpt: str = Field(default="gemini-3.1-pro-high", description="GPT model ID")
+    disable_gemini: bool = Field(default=True, description="Disable direct Gemini API")
+    gemini: str = Field(default="gemini-3.6-flash-high", description="Gemini model ID")
+    gemini_code: str = Field(default="claude-sonnet-4-6", description="Gemini Code model ID")
+    gemini_reasoning: str = Field(default="claude-opus-4-6-thinking", description="Gemini Reasoning model ID")
+    claude: str = Field(default="claude-sonnet-4-6", description="Claude model ID")
+    gpt: str = Field(default="claude-sonnet-4-6", description="GPT model ID")
     ollama: str = Field(default="llama3.3", description="Ollama local model ID")
     nvidia: str = Field(default="meta/llama-3.1-70b-instruct", description="NVIDIA NIM model ID")
     mistral: str = Field(default="mistral-large-latest", description="Mistral model ID")
-    planner_model: str = Field(default="gemini-3.1-pro-high", description="Planning model ID")
-    fast_model: str = Field(default="gemini-3.6-flash-medium", description="Fast inference model ID")
-    voice_live: str = Field(default="gemini-3.7-flash-tiered", description="Voice Live model ID")
+    planner_model: str = Field(default="claude-sonnet-4-6", description="Planning model ID")
+    fast_model: str = Field(default="gemini-3.5-flash-low", description="Fast inference model ID")
+    voice_live: str = Field(default="gemini-3.6-flash-tiered", description="Voice Live model ID")
 
 
 class SecurityConfig(BaseModel):
