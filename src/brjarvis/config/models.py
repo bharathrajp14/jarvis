@@ -149,18 +149,16 @@ def get_model_for_task(
     task = (task_type or "general").lower()
 
     if task in ("code", "coding", "architecture", "refactor", "debug"):
-        return cfg.get("gemini_code", "gemini-3.1-pro-high")
+        return cfg.get("gemini_code", "gemini-3-flash-agent")
     elif task in ("reasoning", "math", "logic", "audit", "security"):
-        return cfg.get("gemini_reasoning", "gemini-3.1-pro-high")
+        return cfg.get("gemini_reasoning", "gemini-3-flash-agent")
     elif task in ("agent", "planner", "workflow", "dag", "multi_step"):
-        return cfg.get("gemini_agent", "gemini-3.7-flash-high")
+        return cfg.get("gemini_agent", "gemini-3-flash-agent")
     elif task in ("vision", "ocr", "screen", "image", "ui_scan"):
-        # BUG-9 FIX: fallback was "gemini-3.1-flash-lite" (the lite model). Corrected to
-        # match _DEFAULTS["gemini_vision"] = "gemini-3.1-flash-image".
         return cfg.get("gemini_vision", "gemini-3.1-flash-image")
     elif task in ("fast", "status", "quick", "summary", "log"):
-        return cfg.get("gemini_fast", "gemini-3.6-flash-medium")
+        return cfg.get("gemini_fast", "gemini-3.5-flash-low")
     elif task in ("lite", "autocomplete", "prefix", "token"):
-        return cfg.get("gemini_lite", "gemini-3.1-flash-lite")
+        return cfg.get("gemini_lite", "gemini-3.5-flash-extra-low")
     else:
-        return cfg.get("gemini_general", "gemini-3.1-pro-high")
+        return cfg.get("gemini_general", "gemini-3-flash-agent")

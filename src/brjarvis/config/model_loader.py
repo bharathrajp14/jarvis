@@ -15,22 +15,23 @@ _CONFIG_DIR = paths.CONFIG_ROOT
 _MODELS_FILE = _CONFIG_DIR / "models.json"
 
 DEFAULTS = {
-    "voice_live": "gemini-3.7-flash-tiered",
+    "voice_live": "gemini-3.6-flash-tiered",
     "voice_name": "Charon",
-    "claude": "gemini-3.1-pro-high",
-    "gpt": "gemini-3.1-pro-high",
-    "gemini": "gemini-3.1-pro-high",
-    "gemini_code": "gemini-3.1-pro-high",
-    "gemini_reasoning": "gemini-3.1-pro-high",
-    "gemini_general": "gemini-3.1-pro-high",
-    "gemini_agent": "gemini-3.7-flash-high",
-    "gemini_pro_agent": "gemini-pro-agent",
-    "gemini_fast": "gemini-3.6-flash-medium",
+    "claude": "gemini-3-flash-agent",
+    "gpt": "gemini-3-flash-agent",
+    "gemini": "gemini-3-flash-agent",
+    "gemini_code": "gemini-3-flash-agent",
+    "gemini_reasoning": "gemini-3-flash-agent",
+    "gemini_general": "gemini-3-flash-agent",
+    "gemini_agent": "gemini-3-flash-agent",
+    "gemini_pro_agent": "gemini-3-flash-agent",
+    "gemini_fast": "gemini-3.5-flash-low",
     "gemini_vision": "gemini-3.1-flash-image",
-    "gemini_lite": "gemini-3.1-flash-lite",
+    "gemini_lite": "gemini-3.5-flash-extra-low",
     "ollama": "llama3.3",
     "nvidia": "meta/llama-3.1-70b-instruct",
     "default_backend": "gpt",
+    "disable_gemini": True,
 }
 
 

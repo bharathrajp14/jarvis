@@ -25,9 +25,9 @@ class TaskComplexity(Enum):
 
 
 MODEL_TIER_MAP = {
-    TaskComplexity.FAST: "gemini-3.6-flash-medium",
-    TaskComplexity.MEDIUM: "gemini-3.7-flash-high",
-    TaskComplexity.HIGH: "gemini-3.1-pro-high",
+    TaskComplexity.FAST: "gemini-3.5-flash-low",
+    TaskComplexity.MEDIUM: "gemini-3-flash",
+    TaskComplexity.HIGH: "gemini-3-flash-agent",
     TaskComplexity.VISION: "gemini-3.1-flash-image",
 }
 
