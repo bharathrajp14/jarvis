@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import logging
-import traceback
 from typing import Any, Callable, Optional
 
 logger = logging.getLogger("JARVIS.ErrorMiddleware")
@@ -25,12 +24,13 @@ class ErrorMiddleware:
         # Log lesson to LessonStore
         try:
             from brjarvis.memory.lessons import LessonStore
+
             ls = LessonStore()
             ls.add_lesson(
                 topic=f"System Error: {exc_type.__name__}",
                 correction=f"Exception in [{context}]: {str(exc)[:100]}",
                 source="error_middleware",
-                weight=1.5
+                weight=1.5,
             )
         except Exception:
             pass

@@ -11,6 +11,7 @@ Empty working memory (`working_memory_tokens == 0`) represents a cold start (new
 It does NOT mean persistent memory is unneeded. The router properly queries persistent memory
 to recover durable user preferences and project state on cold start.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -20,7 +21,6 @@ import time
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
-from .domain import MemoryType
 from .retrieval import HybridRetrievalEngine, get_retrieval_engine
 
 logger = logging.getLogger("JARVIS.TaskMemoryRouter")
@@ -28,9 +28,10 @@ logger = logging.getLogger("JARVIS.TaskMemoryRouter")
 
 class MemoryMode(Enum):
     """Describes how much memory context to inject for the current task."""
-    FRESH = "fresh"                # Clean task start (no prior conversation history)
-    LOAD_RELEVANT = "relevant"    # Inject semantically/lexically matched persistent memory slices
-    LOAD_FULL = "full"            # Full working memory conversation history injected
+
+    FRESH = "fresh"  # Clean task start (no prior conversation history)
+    LOAD_RELEVANT = "relevant"  # Inject semantically/lexically matched persistent memory slices
+    LOAD_FULL = "full"  # Full working memory conversation history injected
 
 
 _CONTINUATION_PATTERNS = re.compile(
@@ -133,16 +134,18 @@ class TaskMemoryRouter:
         try:
             ranked = self.retrieval_engine.search(query=task, project_id=project_id, limit=limit)
             for r in ranked:
-                slices.append({
-                    "source": "canonical_memory",
-                    "memory_id": r.memory.memory_id,
-                    "name": r.memory.entity or r.memory.attribute or "Memory",
-                    "content": r.memory.content,
-                    "confidence": r.confidence,
-                    "reliability": r.reliability,
-                    "memory_type": r.memory.memory_type.value,
-                    "selection_reason": r.selection_reason,
-                })
+                slices.append(
+                    {
+                        "source": "canonical_memory",
+                        "memory_id": r.memory.memory_id,
+                        "name": r.memory.entity or r.memory.attribute or "Memory",
+                        "content": r.memory.content,
+                        "confidence": r.confidence,
+                        "reliability": r.reliability,
+                        "memory_type": r.memory.memory_type.value,
+                        "selection_reason": r.selection_reason,
+                    }
+                )
         except Exception as e:
             logger.warning("get_relevant_slices failed: %s", e)
 

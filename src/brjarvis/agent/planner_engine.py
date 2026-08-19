@@ -3,19 +3,35 @@ from __future__ import annotations
 
 import logging
 from typing import Any, Dict, List, Optional
-from .types import GoalGraph, RiskLevel, StepStatus, TaskStepNode
+
 from brjarvis.context.engine import get_context_engine
 from brjarvis.core.runtime import get_runtime
 from brjarvis.events.bus import get_event_bus
 from brjarvis.events.types import TaskEvent
 
+from .types import GoalGraph, RiskLevel, StepStatus, TaskStepNode
+
 logger = logging.getLogger("JARVIS.PlannerEngine")
 
 # Keywords that trigger elevated risk and require human approval
 DESTRUCTIVE_KEYWORDS = {
-    "delete", "remove", "format", "push", "deploy", "drop", "purge",
-    "purchase", "buy", "pay", "shutdown", "reboot", "uninstall", "kill",
-    "wipe", "destroy", "format_disk"
+    "delete",
+    "remove",
+    "format",
+    "push",
+    "deploy",
+    "drop",
+    "purge",
+    "purchase",
+    "buy",
+    "pay",
+    "shutdown",
+    "reboot",
+    "uninstall",
+    "kill",
+    "wipe",
+    "destroy",
+    "format_disk",
 }
 
 
@@ -116,13 +132,15 @@ class PlannerEngine:
         )
 
         # Emit Event
-        self.event_bus.publish(TaskEvent(
-            topic="task.plan.created",
-            task_id=graph.goal_id,
-            goal=goal,
-            status="planned",
-            payload={"steps_count": len(steps), "requires_approval": has_approval_required}
-        ))
+        self.event_bus.publish(
+            TaskEvent(
+                topic="task.plan.created",
+                task_id=graph.goal_id,
+                goal=goal,
+                status="planned",
+                payload={"steps_count": len(steps), "requires_approval": has_approval_required},
+            )
+        )
 
         return graph
 
@@ -135,25 +153,29 @@ class PlannerEngine:
             if s.step_id < failed_step_id:
                 new_steps.append(s)
             elif s.step_id == failed_step_id:
-                recovery_step = s.model_copy(update={
-                    "description": f"Fallback recovery: {s.description}",
-                    "status": StepStatus.PENDING,
-                    "error": None,
-                    "parameters": {**s.parameters, "_retry_fallback": True}
-                })
+                recovery_step = s.model_copy(
+                    update={
+                        "description": f"Fallback recovery: {s.description}",
+                        "status": StepStatus.PENDING,
+                        "error": None,
+                        "parameters": {**s.parameters, "_retry_fallback": True},
+                    }
+                )
                 new_steps.append(recovery_step)
             else:
                 new_steps.append(s.model_copy(update={"status": StepStatus.PENDING}))
 
         replanned_graph = graph.model_copy(update={"steps": new_steps})
 
-        self.event_bus.publish(TaskEvent(
-            topic="task.plan.replanned",
-            task_id=graph.goal_id,
-            goal=graph.goal,
-            status="replanned",
-            payload={"failed_step_id": failed_step_id, "error": error}
-        ))
+        self.event_bus.publish(
+            TaskEvent(
+                topic="task.plan.replanned",
+                task_id=graph.goal_id,
+                goal=graph.goal,
+                status="replanned",
+                payload={"failed_step_id": failed_step_id, "error": error},
+            )
+        )
 
         return replanned_graph
 

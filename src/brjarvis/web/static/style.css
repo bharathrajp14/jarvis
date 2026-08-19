@@ -1786,3 +1786,216 @@ html, body {
     width: 100%;
 }
 
+
+
+/* ── BRJARVIS PLATFORM FOUNDATION ──────────────────────────────────────── */
+:root {
+    --surface-canvas: var(--bg-primary);
+    --surface-panel: var(--bg-panel);
+    --surface-elevated: var(--bg-card-hover);
+    --surface-inverse: #f8fafc;
+    --text-primary-semantic: var(--text-primary);
+    --text-secondary-semantic: var(--text-secondary);
+    --text-muted-semantic: var(--text-muted);
+    --action-primary: var(--accent-cyan);
+    --action-secondary: var(--accent-blue);
+    --action-focus: #8be9fd;
+    --status-info: var(--accent-blue);
+    --status-success: var(--accent-green);
+    --status-warning: var(--accent-amber);
+    --status-error: var(--accent-pink);
+    --border-subtle: rgba(148, 163, 184, 0.16);
+    --border-default: var(--border-glass);
+    --border-strong: var(--border-active);
+    --motion-fast: 120ms;
+    --motion-normal: 180ms;
+    --motion-slow: 260ms;
+}
+
+.platform-ready :where(button, a, input, textarea, select):focus-visible {
+    outline: 2px solid var(--action-focus);
+    outline-offset: 2px;
+}
+
+.platform-connection-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-width: 108px;
+    padding: 5px 8px;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    background: rgba(8, 14, 26, 0.72);
+    color: var(--text-secondary-semantic);
+    font-family: var(--font-code);
+    font-size: 0.62rem;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+}
+
+.platform-connection-status[data-status="success"] { border-color: rgba(0, 223, 162, 0.34); color: var(--status-success); }
+.platform-connection-status[data-status="warning"] { border-color: rgba(255, 183, 3, 0.38); color: var(--status-warning); }
+.platform-connection-status[data-status="error"] { border-color: rgba(243, 18, 96, 0.38); color: var(--status-error); }
+
+.platform-status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--text-muted-semantic);
+    flex: 0 0 auto;
+}
+.platform-status-dot[data-status="success"] { background: var(--status-success); }
+.platform-status-dot[data-status="warning"] { background: var(--status-warning); }
+.platform-status-dot[data-status="error"] { background: var(--status-error); }
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        scroll-behavior: auto !important;
+        transition-duration: 0.001ms !important;
+    }
+}
+
+@media (max-width: 1180px) {
+    .platform-connection-status { min-width: 0; }
+    .platform-connection-status .platform-status-label { display: none; }
+}
+
+
+/* ── ASSISTANT TASK PROJECTION ──────────────────────────────────────────── */
+.platform-task-projection {
+    margin: 0 0 14px;
+    padding: 14px;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    background: linear-gradient(145deg, rgba(12, 20, 36, 0.96), rgba(8, 14, 26, 0.82));
+}
+
+.platform-task-header,
+.platform-task-meta,
+.platform-task-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.platform-eyebrow {
+    color: var(--text-muted-semantic);
+    font-family: var(--font-code);
+    font-size: 0.58rem;
+    letter-spacing: 0.12em;
+}
+
+.platform-task-header h3 {
+    margin-top: 3px;
+    color: var(--text-primary-semantic);
+    font-size: 0.92rem;
+    font-weight: 600;
+}
+
+.platform-task-status {
+    padding: 4px 7px;
+    border: 1px solid var(--border-subtle);
+    border-radius: 999px;
+    color: var(--text-secondary-semantic);
+    font-family: var(--font-code);
+    font-size: 0.58rem;
+    white-space: nowrap;
+}
+.platform-task-status[data-status="running"],
+.platform-task-status[data-status="planning"] { border-color: rgba(0, 242, 254, 0.38); color: var(--action-primary); }
+.platform-task-status[data-status="waiting"] { border-color: rgba(255, 183, 3, 0.42); color: var(--status-warning); }
+.platform-task-status[data-status="completed"] { border-color: rgba(0, 223, 162, 0.42); color: var(--status-success); }
+.platform-task-status[data-status="failed"],
+.platform-task-status[data-status="disconnected"] { border-color: rgba(243, 18, 96, 0.42); color: var(--status-error); }
+
+.platform-task-goal {
+    margin: 12px 0;
+    color: var(--text-secondary-semantic);
+    font-size: 0.78rem;
+    line-height: 1.45;
+}
+
+.platform-progress-track {
+    width: 100%;
+    height: 5px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: rgba(148, 163, 184, 0.16);
+}
+.platform-progress-value {
+    display: block;
+    width: 0;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--action-primary);
+    transition: width var(--motion-normal) ease;
+}
+
+.platform-task-meta {
+    margin-top: 8px;
+    color: var(--text-muted-semantic);
+    font-family: var(--font-code);
+    font-size: 0.58rem;
+}
+.platform-progress-label { color: var(--text-secondary-semantic); }
+
+.platform-task-steps {
+    display: grid;
+    gap: 5px;
+    margin-top: 12px;
+}
+.platform-step-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-secondary-semantic);
+    font-size: 0.72rem;
+}
+.platform-step-indicator {
+    display: inline-grid;
+    width: 16px;
+    height: 16px;
+    place-items: center;
+    border: 1px solid var(--border-subtle);
+    border-radius: 50%;
+    color: var(--text-muted-semantic);
+    font-family: var(--font-code);
+    font-size: 0.62rem;
+}
+.platform-step-indicator[data-status="completed"] { border-color: rgba(0, 223, 162, 0.42); color: var(--status-success); }
+.platform-step-indicator[data-status="failed"] { border-color: rgba(243, 18, 96, 0.42); color: var(--status-error); }
+.platform-step-indicator[data-status="running"],
+.platform-step-indicator[data-status="in_progress"] { border-color: rgba(0, 242, 254, 0.42); color: var(--action-primary); }
+
+.platform-task-actions { justify-content: flex-end; margin-top: 12px; }
+.platform-task-cancel[disabled] { cursor: not-allowed; opacity: 0.55; }
+
+@media (max-width: 720px) {
+    .platform-task-header { align-items: flex-start; flex-direction: column; }
+    .platform-task-status { align-self: flex-start; }
+}
+
+
+/* ── CANONICAL COMMAND PALETTE ──────────────────────────────────────────── */
+.platform-command-result {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 3px 12px;
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text-primary-semantic);
+    text-align: left;
+    cursor: pointer;
+}
+.platform-command-result:hover,
+.platform-command-result:focus-visible { border-color: var(--border-strong); background: rgba(0, 242, 254, 0.07); }
+.platform-command-result:disabled { cursor: not-allowed; opacity: 0.48; }
+.platform-command-title { font-size: 0.78rem; font-weight: 600; }
+.platform-command-description { color: var(--text-secondary-semantic); font-size: 0.68rem; }
+.platform-command-meta { grid-column: 2; grid-row: 1 / span 2; align-self: center; color: var(--text-muted-semantic); font-family: var(--font-code); font-size: 0.58rem; }

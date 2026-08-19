@@ -2,9 +2,11 @@
 """
 Provides prompt conditioning for JARVIS's classic, warm, highly intelligent AI Assistant persona.
 """
+
 from __future__ import annotations
 
 from datetime import datetime
+
 from brjarvis.actions.galaxy import build_galaxy_graph
 
 CLASSIC_JARVIS_PROMPT_ADDITION = (

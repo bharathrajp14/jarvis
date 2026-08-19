@@ -4,6 +4,7 @@ Single authoritative source of version and build metadata for BR JARVIS.
 All CLI banners, Web UI indicators, API responses, health endpoints, package metadata,
 and runtime logs must source version information exclusively from here.
 """
+
 from __future__ import annotations
 
 from typing import Any, Dict

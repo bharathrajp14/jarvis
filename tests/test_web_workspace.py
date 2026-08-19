@@ -1,13 +1,9 @@
 # tests/test_web_workspace.py — Comprehensive Unit & Integration Tests for BR JARVIS MK40.2 / MK41 Workspace
-import json
-import os
-import tempfile
 import pytest
-from pathlib import Path
 from fastapi.testclient import TestClient
 
 from brjarvis.memory.canonical_db import CanonicalDatabaseManager
-from brjarvis.memory.workspace_store import WorkspaceStore, get_workspace_store
+from brjarvis.memory.workspace_store import WorkspaceStore
 from brjarvis.web.api.server import create_app
 from brjarvis.web.api.state import SERVER_API_KEY
 
@@ -186,10 +182,13 @@ def test_api_conversations_endpoints(client):
     assert any(c["conversation_id"] == conv_id for c in convs)
 
     # 3. Add message
-    res = client.post(f"/api/conversations/{conv_id}/messages", json={
-        "role": "user",
-        "content": "Verify all route mounts",
-    })
+    res = client.post(
+        f"/api/conversations/{conv_id}/messages",
+        json={
+            "role": "user",
+            "content": "Verify all route mounts",
+        },
+    )
     assert res.status_code == 200
 
     # 4. Get conversation details
@@ -232,4 +231,32 @@ def test_api_skills_endpoint(client):
     assert "skills" in data
     assert len(data["skills"]) >= 1
     names = [s["name"] for s in data["skills"]]
-    assert any("browser" in n.lower() or "python" in n.lower() or "search" in n.lower() or len(names) > 0 for n in names)
+    assert any(
+        "browser" in n.lower() or "python" in n.lower() or "search" in n.lower() or len(names) > 0 for n in names
+    )
+
+
+
+def test_desktop_workspace_handoff_redeems_to_browser_session(client):
+    if not SERVER_API_KEY:
+        pytest.skip("Server API key is not configured in this environment")
+
+    from urllib.parse import parse_qs, urlparse
+
+    created = client.post("/api/auth/desktop-handoff", json={"redirect": "/web/"})
+    assert created.status_code == 200
+    handoff_url = created.json()["url"]
+    query = parse_qs(urlparse(handoff_url).query)
+    handoff = query["handoff"][0]
+    assert SERVER_API_KEY not in handoff_url
+
+    redeemed = client.post("/api/auth/desktop-handoff/redeem", json={"handoff": handoff})
+    assert redeemed.status_code == 200
+    assert redeemed.json()["success"] is True
+
+    status = client.get("/api/auth/status")
+    assert status.status_code == 200
+    assert status.json()["authenticated"] is True
+
+    reused = client.post("/api/auth/desktop-handoff/redeem", json={"handoff": handoff})
+    assert reused.status_code == 401

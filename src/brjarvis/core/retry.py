@@ -8,6 +8,7 @@ Usage:
     async def call_api():
         ...
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -61,9 +62,7 @@ def retry(
                     except catchable as exc:
                         last_exc = exc
                         if attempt >= max_attempts:
-                            logger.error(
-                                f"[Retry] {func.__name__} failed after {max_attempts} attempts: {exc}"
-                            )
+                            logger.error(f"[Retry] {func.__name__} failed after {max_attempts} attempts: {exc}")
                             raise
                         delay = _compute_delay(attempt)
                         logger.warning(
@@ -90,9 +89,7 @@ def retry(
                     except catchable as exc:
                         last_exc = exc
                         if attempt >= max_attempts:
-                            logger.error(
-                                f"[Retry] {func.__name__} failed after {max_attempts} attempts: {exc}"
-                            )
+                            logger.error(f"[Retry] {func.__name__} failed after {max_attempts} attempts: {exc}")
                             raise
                         delay = _compute_delay(attempt)
                         logger.warning(

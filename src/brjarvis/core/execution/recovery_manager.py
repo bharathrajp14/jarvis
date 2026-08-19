@@ -4,18 +4,16 @@ from __future__ import annotations
 import logging
 import time
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Optional
 
 from .dependency_resolver import get_dependency_resolver
 from .environment_resolver import get_environment_resolver
 from .process_runner import get_process_runner
 from .types import (
-    EnvironmentProfile,
     ExecutionResult,
     ExecutionStatus,
     RepairAction,
     RepairPolicy,
-    RuntimeType,
 )
 
 logger = logging.getLogger("JARVIS.RecoveryManager")
@@ -57,7 +55,7 @@ class RecoveryManager:
             return None
 
         stderr = result.stderr or result.error or ""
-        
+
         # 1. Missing Python Module (ModuleNotFoundError / ImportError)
         match_mod = re.search(r"No module named ['\"]([a-zA-Z0-9_\.]+)['\"]", stderr)
         if not match_mod:
@@ -69,7 +67,7 @@ class RecoveryManager:
             mod_name = match_mod.group(1).split(".")[0]
             pkg_name = self.dep_resolver.map_module_to_package(mod_name)
             target_env = result.runtime or self.env_resolver.resolve_python()
-            
+
             cmd = [target_env.executable, "-m", "pip", "install", pkg_name]
             return RepairAction(
                 action_type="install_package",
@@ -80,7 +78,11 @@ class RecoveryManager:
             )
 
         # 2. Missing Playwright Chromium binary
-        if "playwright" in stderr.lower() and ("executable doesn't exist" in stderr.lower() or "browser not found" in stderr.lower() or "chromium" in stderr.lower()):
+        if "playwright" in stderr.lower() and (
+            "executable doesn't exist" in stderr.lower()
+            or "browser not found" in stderr.lower()
+            or "chromium" in stderr.lower()
+        ):
             target_env = result.runtime or self.env_resolver.resolve_python()
             cmd = [target_env.executable, "-m", "playwright", "install", "chromium"]
             return RepairAction(
@@ -117,7 +119,7 @@ class RecoveryManager:
             if repair_action.action_type in ("install_package", "install_browser"):
                 if not repair_action.command:
                     return False
-                
+
                 res = self.process_runner.run(
                     command=repair_action.command,
                     env_profile=repair_action.target_environment,
@@ -128,7 +130,9 @@ class RecoveryManager:
 
                 if res.return_code == 0:
                     repair_action.success = True
-                    logger.info(f"✅ Auto-repair succeeded ({repair_action.duration_ms:.1f}ms): {repair_action.description}")
+                    logger.info(
+                        f"✅ Auto-repair succeeded ({repair_action.duration_ms:.1f}ms): {repair_action.description}"
+                    )
                     return True
                 else:
                     repair_action.success = False

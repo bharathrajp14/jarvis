@@ -8,6 +8,7 @@ Captures structured decision receipts containing:
 - Verification Plan and Actual Outcome
 Provides programmatic consistency validation before executing meaningful actions.
 """
+
 from __future__ import annotations
 
 import json
@@ -25,6 +26,7 @@ logger = logging.getLogger("JARVIS.DecisionEngine")
 @dataclass
 class Decision:
     """A first-class machine-readable decision record."""
+
     decision_id: str = field(default_factory=lambda: f"dec_{uuid.uuid4().hex[:10]}")
     task_id: str = ""
     question: str = ""
@@ -34,13 +36,13 @@ class Decision:
     rejected_options: List[str] = field(default_factory=list)
     evidence: str = ""
     constraints: List[str] = field(default_factory=list)
-    risk_level: str = "low"            # "low" | "medium" | "high" | "critical"
-    confidence: float = 1.0            # 0.0 to 1.0
+    risk_level: str = "low"  # "low" | "medium" | "high" | "critical"
+    confidence: float = 1.0  # 0.0 to 1.0
     expected_outcome: str = ""
     verification_plan: str = ""
     reversible: bool = True
     approval_required: bool = False
-    status: str = "ACTIVE"             # "ACTIVE" | "SUPERSEDED" | "INVALIDATED"
+    status: str = "ACTIVE"  # "ACTIVE" | "SUPERSEDED" | "INVALIDATED"
     actual_outcome: Optional[str] = None
     created_at: float = field(default_factory=time.time)
     updated_at: float = field(default_factory=time.time)
@@ -121,18 +123,33 @@ class DecisionEngine:
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
-                    dec.decision_id, dec.task_id, dec.question, dec.goal,
-                    json.dumps(dec.options), dec.selected_option,
-                    json.dumps(dec.rejected_options), dec.evidence,
-                    json.dumps(dec.constraints), dec.risk_level, dec.confidence,
-                    dec.expected_outcome, dec.verification_plan, 1 if dec.reversible else 0,
-                    1 if dec.approval_required else 0, dec.status, dec.actual_outcome,
-                    json.dumps(dec.to_receipt()), dec.created_at, dec.updated_at,
+                    dec.decision_id,
+                    dec.task_id,
+                    dec.question,
+                    dec.goal,
+                    json.dumps(dec.options),
+                    dec.selected_option,
+                    json.dumps(dec.rejected_options),
+                    dec.evidence,
+                    json.dumps(dec.constraints),
+                    dec.risk_level,
+                    dec.confidence,
+                    dec.expected_outcome,
+                    dec.verification_plan,
+                    1 if dec.reversible else 0,
+                    1 if dec.approval_required else 0,
+                    dec.status,
+                    dec.actual_outcome,
+                    json.dumps(dec.to_receipt()),
+                    dec.created_at,
+                    dec.updated_at,
                 ),
             )
             conn.commit()
 
-        logger.info(f"⚖️ Decision recorded: [{dec.decision_id}] {dec.question} -> {dec.selected_option} (Risk: {dec.risk_level})")
+        logger.info(
+            f"⚖️ Decision recorded: [{dec.decision_id}] {dec.question} -> {dec.selected_option} (Risk: {dec.risk_level})"
+        )
         return dec
 
     def get_decision(self, decision_id: str) -> Optional[Decision]:
@@ -169,9 +186,7 @@ class DecisionEngine:
                     (task_id,),
                 )
             else:
-                cursor.execute(
-                    "SELECT * FROM decisions WHERE status = 'ACTIVE' ORDER BY created_at DESC LIMIT 20"
-                )
+                cursor.execute("SELECT * FROM decisions WHERE status = 'ACTIVE' ORDER BY created_at DESC LIMIT 20")
             rows = cursor.fetchall()
 
         act_lower = action_description.lower()
@@ -180,7 +195,10 @@ class DecisionEngine:
             # Check if action attempts a previously rejected option
             for rej in dec.rejected_options:
                 if rej.lower() in act_lower and len(rej.strip()) > 3:
-                    return False, f"Action conflicts with Decision {dec.decision_id}: '{rej}' was explicitly rejected ({dec.evidence})."
+                    return (
+                        False,
+                        f"Action conflicts with Decision {dec.decision_id}: '{rej}' was explicitly rejected ({dec.evidence}).",
+                    )
 
         return True, None
 

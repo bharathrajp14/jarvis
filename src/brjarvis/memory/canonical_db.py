@@ -11,18 +11,17 @@ Authoritative Single Source of Truth for:
 - contacts & devices & routines
 - workspace projects, conversations, messages, artifacts
 """
+
 from __future__ import annotations
 
 import json
 import logging
-import os
-import shutil
 import sqlite3
 import threading
 import time
 import uuid
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 from brjarvis.core.paths import paths
 
@@ -102,13 +101,19 @@ class CanonicalDatabaseManager:
                     except Exception as _col_err:
                         logger.debug("retention_class migration notice: %s", _col_err)
 
-                conn.execute("CREATE INDEX IF NOT EXISTS idx_cm_user_proj_scope ON canonical_memories(user_id, project_id, scope);")
-                conn.execute("CREATE INDEX IF NOT EXISTS idx_cm_status_effective ON canonical_memories(status, effective_from, effective_until);")
+                conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_cm_user_proj_scope ON canonical_memories(user_id, project_id, scope);"
+                )
+                conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_cm_status_effective ON canonical_memories(status, effective_from, effective_until);"
+                )
                 conn.execute("CREATE INDEX IF NOT EXISTS idx_cm_type ON canonical_memories(memory_type);")
                 conn.execute("CREATE INDEX IF NOT EXISTS idx_cm_entity_attr ON canonical_memories(entity, attribute);")
                 conn.execute("CREATE INDEX IF NOT EXISTS idx_cm_conflict ON canonical_memories(conflict_group_id);")
                 conn.execute("CREATE INDEX IF NOT EXISTS idx_cm_hash ON canonical_memories(content_hash);")
-                conn.execute("CREATE INDEX IF NOT EXISTS idx_cm_retention ON canonical_memories(retention_class, effective_until);")
+                conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_cm_retention ON canonical_memories(retention_class, effective_until);"
+                )
 
                 # 2. Legacy Persistent Memories Compatibility Table
                 conn.execute("""
@@ -226,7 +231,9 @@ class CanonicalDatabaseManager:
                         timestamp REAL NOT NULL
                     )
                 """)
-                conn.execute("CREATE INDEX IF NOT EXISTS idx_ledger_task_step ON execution_ledger_entries(task_id, step_id);")
+                conn.execute(
+                    "CREATE INDEX IF NOT EXISTS idx_ledger_task_step ON execution_ledger_entries(task_id, step_id);"
+                )
                 conn.execute("CREATE INDEX IF NOT EXISTS idx_ledger_tool ON execution_ledger_entries(tool_name);")
 
                 # 7. Learned Lessons & Experience Trajectories
@@ -648,9 +655,21 @@ class CanonicalDatabaseManager:
                         updated_at = excluded.updated_at
                     """,
                     (
-                        session_id, user_id, agent_id, device_id, project_id, workspace_id,
-                        active_task_id, str(current_state), active_model, permission_mode,
-                        current_mode, event_sequence, data_json, created_at, updated_at,
+                        session_id,
+                        user_id,
+                        agent_id,
+                        device_id,
+                        project_id,
+                        workspace_id,
+                        active_task_id,
+                        str(current_state),
+                        active_model,
+                        permission_mode,
+                        current_mode,
+                        event_sequence,
+                        data_json,
+                        created_at,
+                        updated_at,
                     ),
                 )
                 conn.commit()
@@ -733,15 +752,17 @@ class CanonicalDatabaseManager:
             for row in cursor.fetchall():
                 try:
                     snapshot = json.loads(row["snapshot_json"])
-                    results.append({
-                        "checkpoint_id": row["checkpoint_id"],
-                        "session_id": session_id,
-                        "state": row["state"],
-                        "turn_index": row["turn_index"],
-                        "active_task_id": row["active_task_id"],
-                        "snapshot_data": snapshot,
-                        "created_at": row["created_at"],
-                    })
+                    results.append(
+                        {
+                            "checkpoint_id": row["checkpoint_id"],
+                            "session_id": session_id,
+                            "state": row["state"],
+                            "turn_index": row["turn_index"],
+                            "active_task_id": row["active_task_id"],
+                            "snapshot_data": snapshot,
+                            "created_at": row["created_at"],
+                        }
+                    )
                 except Exception:
                     pass
             return results

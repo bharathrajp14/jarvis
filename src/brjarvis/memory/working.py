@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import threading
-from typing import Literal
 
 _VALID_ROLES = {"user", "assistant", "system"}
 
@@ -61,7 +60,7 @@ class WorkingMemory:
             max_chars = int(self.max_tokens * 4)
             old_len = len(self.history[0]["content"])
             self.history[0]["content"] = self.history[0]["content"][:max_chars]
-            self._char_count -= (old_len - max_chars)
+            self._char_count -= old_len - max_chars
 
     def trim(self, max_turns: int = 10) -> None:
         """Trim working memory to max_turns while pinning the first (root goal) turn."""

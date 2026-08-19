@@ -4,11 +4,12 @@ Abstract base class that ALL AI backends must implement.
 Provides a consistent interface for completion, streaming, health checks,
 and network privacy classification.
 """
+
 from __future__ import annotations
 
 import time
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Generator, Optional
+from typing import Generator
 
 
 class BaseBackend(ABC):
@@ -73,10 +74,7 @@ class BaseBackend(ABC):
         """
         try:
             start = time.monotonic()
-            result = self.complete(
-                [{"role": "user", "content": "ping"}],
-                system="Reply with exactly: pong"
-            )
+            result = self.complete([{"role": "user", "content": "ping"}], system="Reply with exactly: pong")
             elapsed = time.monotonic() - start
             is_err = "error" in result.lower() or "failed" in result.lower()
             return bool(result) and not is_err and elapsed < timeout

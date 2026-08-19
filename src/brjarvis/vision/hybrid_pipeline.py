@@ -2,13 +2,13 @@
 from __future__ import annotations
 
 import logging
-from typing import List, Optional, Tuple
+from typing import Optional
 
 from .accessibility import get_accessibility_bridge
 from .dom_bridge import get_cdp_bridge
 from .ocr_engine import OCREngine
 from .screen_analyst import ScreenAnalyst
-from .types import ScreenBoundingBox, SemanticUIGraph, SemanticUINode, UIRole
+from .types import SemanticUIGraph, SemanticUINode, UIRole
 
 logger = logging.getLogger("JARVIS.HybridVisionPipeline")
 
@@ -25,9 +25,7 @@ class HybridVisionPipeline:
         self.analyst = ScreenAnalyst()
         self.ocr = OCREngine()
 
-    def process_screen(
-        self, raw_bytes: bytes, width: int, height: int, frame_hash: int
-    ) -> SemanticUIGraph:
+    def process_screen(self, raw_bytes: bytes, width: int, height: int, frame_hash: int) -> SemanticUIGraph:
         """Construct a unified SemanticUIGraph from the fastest available vision sources."""
         # 1. Tier 1: Accessibility APIs (instant native control tree)
         graph = self.accessibility.capture_ui_graph()

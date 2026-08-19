@@ -4,7 +4,8 @@ from __future__ import annotations
 import enum
 import time
 import uuid
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
+
 from pydantic import BaseModel, Field
 
 
@@ -72,6 +73,7 @@ class DetectedUIElement(BaseModel):
 
 class SemanticUINode(BaseModel):
     """Semantic UI Node representing a component in the Semantic UI Graph."""
+
     node_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     role: UIRole = UIRole.UNKNOWN
     name: str = ""
@@ -89,6 +91,7 @@ class SemanticUINode(BaseModel):
 
 class SemanticUIGraph(BaseModel):
     """Semantic UI Graph representing full hierarchical UI layout."""
+
     timestamp: float = Field(default_factory=time.time)
     root_id: Optional[str] = None
     nodes: Dict[str, SemanticUINode] = Field(default_factory=dict)
@@ -107,7 +110,9 @@ class SemanticUIGraph(BaseModel):
     def find_by_name(self, name: str) -> List[SemanticUINode]:
         """Search nodes matching name substring (case-insensitive)."""
         name_low = name.lower()
-        return [n for n in self.nodes.values() if name_low in n.name.lower() or (n.value and name_low in n.value.lower())]
+        return [
+            n for n in self.nodes.values() if name_low in n.name.lower() or (n.value and name_low in n.value.lower())
+        ]
 
     def find_by_role(self, role: UIRole) -> List[SemanticUINode]:
         """Find nodes matching specified UIRole."""

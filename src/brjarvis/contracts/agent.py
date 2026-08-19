@@ -3,6 +3,7 @@
 Canonical Agent contracts for BR JARVIS operating runtime.
 Defines AgentRole, AgentRequest, AgentResponse, and AgentDefinition.
 """
+
 from __future__ import annotations
 
 import time
@@ -15,6 +16,7 @@ from pydantic import BaseModel, Field
 
 class AgentRole(str, Enum):
     """Canonical Agent Roles in BR JARVIS."""
+
     GENERAL = "general"
     CODING = "coding"
     RESEARCH = "research"
@@ -27,6 +29,7 @@ class AgentRole(str, Enum):
 
 class AgentRequest(BaseModel):
     """Canonical incoming request to an agent."""
+
     request_id: str = Field(default_factory=lambda: f"req-{uuid.uuid4().hex[:10]}")
     session_id: str = Field(default="default_session")
     user_id: str = Field(default="default_user")
@@ -46,6 +49,7 @@ class AgentRequest(BaseModel):
 
 class AgentResponse(BaseModel):
     """Canonical output from an agent execution turn."""
+
     response_id: str = Field(default_factory=lambda: f"resp-{uuid.uuid4().hex[:10]}")
     request_id: str = Field(...)
     session_id: str = Field(...)
@@ -58,7 +62,9 @@ class AgentResponse(BaseModel):
     effect_receipts: List[Dict[str, Any]] = Field(default_factory=list)
     handoff: Optional[Dict[str, Any]] = None
     artifacts: List[Dict[str, Any]] = Field(default_factory=list)
-    usage: Dict[str, int] = Field(default_factory=lambda: {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0})
+    usage: Dict[str, int] = Field(
+        default_factory=lambda: {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+    )
     latency_ms: float = Field(default=0.0)
     metadata: Dict[str, Any] = Field(default_factory=dict)
     created_at: float = Field(default_factory=time.time)
@@ -66,6 +72,7 @@ class AgentResponse(BaseModel):
 
 class AgentDefinition(BaseModel):
     """Specification and capability boundaries of an Agent Role."""
+
     agent_id: str
     role: AgentRole
     name: str

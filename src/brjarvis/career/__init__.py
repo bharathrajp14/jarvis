@@ -3,51 +3,52 @@ from __future__ import annotations
 
 import sys
 
+# Ensure dynamic tools are registered upon module load
+from . import tools  # noqa: F401
+from .analytics import CareerAnalyticsEngine
+from .api_routes import router as career_api_router
+from .application_engine import (
+    ApplicationPackageBuilder,
+    ApplicationTracker,
+    DuplicateApplicationGuard,
+    ManualApplicationAssistant,
+    PlatformPolicyEngine,
+)
+from .ats_engine import ATSEngine, ATSScoreReport
+from .canva import CanvaAdapter, CanvaCapabilityProbe
+from .cover_letter import CoverLetterGenerator
+from .interview_prep import InterviewPrepGenerator
+from .job_engine import JobFinder, JobMatcher, JobRanker, SearchFilters
 from .models import (
+    ApplicationPackage,
+    ApplicationRecord,
+    ApplicationStatus,
     CareerProfile,
     EducationEntry,
     ExperienceEntry,
-    ProjectEntry,
-    SkillCategory,
-    WorkPreferences,
-    SalaryPreferences,
     JobPosting,
     MatchBreakdown,
-    ApplicationStatus,
     PlatformPolicy,
-    ApplicationPackage,
-    ApplicationRecord,
+    ProjectEntry,
+    SalaryPreferences,
+    SkillCategory,
+    WorkPreferences,
 )
 from .profile_manager import CareerProfileManager, get_profile_manager
 from .resume_engine import (
-    ResumeSchema,
-    ResumeRenderer,
-    ResumeTailoringEngine,
     ResumeExportPipeline,
+    ResumeRenderer,
+    ResumeSchema,
+    ResumeTailoringEngine,
     ResumeVersionManager,
     TemplateType,
     list_templates,
 )
-from .ats_engine import ATSEngine, ATSScoreReport
-from .cover_letter import CoverLetterGenerator
-from .job_engine import JobFinder, JobMatcher, JobRanker, SearchFilters
-from .application_engine import (
-    ApplicationTracker,
-    ManualApplicationAssistant,
-    ApplicationPackageBuilder,
-    PlatformPolicyEngine,
-    DuplicateApplicationGuard,
-)
-from .analytics import CareerAnalyticsEngine
-from .interview_prep import InterviewPrepGenerator
-from .canva import CanvaAdapter, CanvaCapabilityProbe
-from .api_routes import router as career_api_router
 
-# Ensure dynamic tools are registered upon module load
-from . import tools  # noqa: F401
 # Mark career tools as loaded in registry guard so it won't double-import
 try:
     from brjarvis.tools.registry import _loaded_plugins
+
     _loaded_plugins.add("career.tools")
     _loaded_plugins.add("brjarvis.career.tools")
 except Exception:

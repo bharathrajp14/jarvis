@@ -2,8 +2,7 @@
 from __future__ import annotations
 
 import logging
-import re
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Set
 
 from ..models import CareerProfile, JobPosting, MatchBreakdown
 from ..resume_engine.tailoring import ResumeTailoringEngine
@@ -48,7 +47,11 @@ class JobMatcher:
                     if rt.title() not in missing_skills and rt.title() not in matched_skills and len(rt) > 3:
                         missing_skills.append(rt.title())
 
-        skills_score = min(100.0, (len(matched_skills) / max(1, len(matched_skills) + len(missing_skills))) * 120.0) if (matched_skills or missing_skills) else 85.0
+        skills_score = (
+            min(100.0, (len(matched_skills) / max(1, len(matched_skills) + len(missing_skills))) * 120.0)
+            if (matched_skills or missing_skills)
+            else 85.0
+        )
 
         # 2. Experience & Seniority Fit (20% Weight)
         exp_score = 90.0
@@ -64,7 +67,14 @@ class JobMatcher:
         # 3. Education Fit (10% Weight)
         edu_score = 90.0
         if profile.education:
-            edu_score = 100.0 if any("bachelor" in e.degree.lower() or "master" in e.degree.lower() or "b.e." in e.degree.lower() for e in profile.education) else 85.0
+            edu_score = (
+                100.0
+                if any(
+                    "bachelor" in e.degree.lower() or "master" in e.degree.lower() or "b.e." in e.degree.lower()
+                    for e in profile.education
+                )
+                else 85.0
+            )
 
         # 4. Location & Remote Policy Fit (15% Weight)
         loc_score = 80.0
@@ -100,12 +110,12 @@ class JobMatcher:
 
         # Weighted Overall Score
         overall = (
-            (skills_score * 0.30) +
-            (exp_score * 0.20) +
-            (edu_score * 0.10) +
-            (loc_score * 0.15) +
-            (role_score * 0.15) +
-            (comp_score * 0.10)
+            (skills_score * 0.30)
+            + (exp_score * 0.20)
+            + (edu_score * 0.10)
+            + (loc_score * 0.15)
+            + (role_score * 0.15)
+            + (comp_score * 0.10)
         )
         overall = round(max(0.0, min(100.0, overall)), 1)
 

@@ -3,14 +3,14 @@
 Canonical unified ToolResult contract for BR JARVIS MK40.2 / MK41.
 Every tool execution produces a structured ToolResult. Never guess success — always observe and verify.
 """
+
 from __future__ import annotations
 
 import json
 import re
 import time
 import uuid
-from dataclasses import asdict, dataclass, field
-from enum import Enum
+from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Union
 
 from .domain import Observation, ToolErrorCode, ToolExecutionStatus
@@ -63,6 +63,7 @@ _REQUIRES_USER_RE = re.compile("|".join(_REQUIRES_USER_PATTERNS), re.IGNORECASE)
 
 class _HybridSuccessAccessor:
     """Hybrid descriptor allowing ToolResult.success(...) classmethod and res.success bool property."""
+
     def __init__(self, func: Callable):
         self.func = func
 
@@ -77,6 +78,7 @@ class _HybridSuccessAccessor:
 
 class _HybridFailedAccessor:
     """Hybrid descriptor allowing ToolResult.failed(...) classmethod and res.failed bool property."""
+
     def __init__(self, func: Callable):
         self.func = func
 
@@ -95,26 +97,27 @@ class ToolResult:
     Canonical unified result contract returned by all tool invocations.
     Carries structured payload, verifiable evidence, timing, observation, and factual status.
     """
-    tool_name:           str
-    status:              ToolExecutionStatus = ToolExecutionStatus.SUCCESS
-    task_id:             str = ""
-    step_id:             str = ""
-    invocation_id:       str = field(default_factory=lambda: uuid.uuid4().hex[:10])
-    data:                Any = None                          # Structured return payload
-    evidence:            str = ""                            # Physical proof string
-    verified:            bool = False                        # True if physically verified
-    error_code:          Optional[Union[str, ToolErrorCode]] = None
-    message:             str = ""                            # Human-readable summary
-    stdout:              str = ""
-    stderr:              str = ""
-    return_code:         int = 0
-    execution_ms:        float = 0.0
-    observation:         Optional[Observation] = None
-    artifacts:           List[Dict[str, Any]] = field(default_factory=list)
-    warnings:            List[str] = field(default_factory=list)
-    side_effects:        List[str] = field(default_factory=list)
-    metadata:            Dict[str, Any] = field(default_factory=dict)
-    timestamp:           float = field(default_factory=time.time)
+
+    tool_name: str
+    status: ToolExecutionStatus = ToolExecutionStatus.SUCCESS
+    task_id: str = ""
+    step_id: str = ""
+    invocation_id: str = field(default_factory=lambda: uuid.uuid4().hex[:10])
+    data: Any = None  # Structured return payload
+    evidence: str = ""  # Physical proof string
+    verified: bool = False  # True if physically verified
+    error_code: Optional[Union[str, ToolErrorCode]] = None
+    message: str = ""  # Human-readable summary
+    stdout: str = ""
+    stderr: str = ""
+    return_code: int = 0
+    execution_ms: float = 0.0
+    observation: Optional[Observation] = None
+    artifacts: List[Dict[str, Any]] = field(default_factory=list)
+    warnings: List[str] = field(default_factory=list)
+    side_effects: List[str] = field(default_factory=list)
+    metadata: Dict[str, Any] = field(default_factory=dict)
+    timestamp: float = field(default_factory=time.time)
 
     # ── Backward Compatibility Properties ──────────────────────────────────────
 
@@ -128,7 +131,11 @@ class ToolResult:
 
     @property
     def is_blocked(self) -> bool:
-        return self.status in (ToolExecutionStatus.BLOCKED, ToolExecutionStatus.DENIED, ToolExecutionStatus.REQUIRES_APPROVAL)
+        return self.status in (
+            ToolExecutionStatus.BLOCKED,
+            ToolExecutionStatus.DENIED,
+            ToolExecutionStatus.REQUIRES_APPROVAL,
+        )
 
     def __contains__(self, item: Any) -> bool:
         """Support 'needle in tool_result' substring and key lookups."""
@@ -204,7 +211,7 @@ class ToolResult:
         if self.status == ToolExecutionStatus.SUCCESS:
             body = self.output
             # If body is a clean scalar number/bool or evidence is already implicit, return clean body
-            if body and (body.strip().lstrip('-').isdigit() or body.strip().lower() in ("true", "false")):
+            if body and (body.strip().lstrip("-").isdigit() or body.strip().lower() in ("true", "false")):
                 return body.strip()
             if self.evidence and self.evidence not in body and not self.evidence.startswith("Action '"):
                 return f"[SUCCESS_VERIFIED] {self.evidence}\n{body}".strip()
@@ -279,7 +286,9 @@ class ToolResult:
         metadata: Optional[Dict[str, Any]] = None,
     ) -> "ToolResult":
         """Factory for verified successful executions."""
-        out_str = output or (json.dumps(data, indent=2, default=str) if isinstance(data, (dict, list)) else str(data or ""))
+        out_str = output or (
+            json.dumps(data, indent=2, default=str) if isinstance(data, (dict, list)) else str(data or "")
+        )
         return cls(
             tool_name=tool_name,
             status=ToolExecutionStatus.SUCCESS,

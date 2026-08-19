@@ -1,7 +1,9 @@
 """Unit tests for Crash Recovery Watchdog."""
+
 from __future__ import annotations
 
 import pytest
+
 from brjarvis.agent.recovery_watchdog import TaskRecoveryWatchdog
 from brjarvis.agent.task_state import TaskStateManager, TaskStatus
 

@@ -100,6 +100,7 @@ def calculate_emv(risks):
         risk["score"] = score
     return total_emv
 
+
 def risk_adjusted_budget(base_budget, portfolio_risk_score, risk_tolerance_factor):
     risk_premium = portfolio_risk_score * risk_tolerance_factor
     return base_budget * (1 + risk_premium)
@@ -185,12 +186,12 @@ def three_point_estimate(optimistic, most_likely, pessimistic):
 ```python
 import math
 
+
 def portfolio_risk(individual_risks, correlations):
     # individual_risks: list of risk EMV values
     # correlations: list of (i, j, corr_coefficient) tuples
     sum_sq = sum(r**2 for r in individual_risks)
-    sum_corr = sum(2 * c * individual_risks[i] * individual_risks[j]
-                   for i, j, c in correlations)
+    sum_corr = sum(2 * c * individual_risks[i] * individual_risks[j] for i, j, c in correlations)
     return math.sqrt(sum_sq + sum_corr)
 ```
 

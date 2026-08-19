@@ -3,15 +3,17 @@
 Email utility assistant for JARVIS MK37.
 Supports sending (SMTP), checking (IMAP), and summarizing emails.
 """
+
 from __future__ import annotations
 
-import logging
-import smtplib
-import imaplib
 import email
+import imaplib
+import logging
 import os
-from email.mime.text import MIMEText
+import smtplib
 from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+
 from brjarvis.tools.registry import register_tool
 
 logger = logging.getLogger(__name__)
@@ -20,9 +22,12 @@ logger = logging.getLogger(__name__)
 def _sync_auth():
     try:
         from brjarvis.actions.gmail_auth import get_gmail_auth_manager
+
         get_gmail_auth_manager()
     except Exception as e:
-        logger.debug('Suppressed exception: %s', e)
+        logger.debug("Suppressed exception: %s", e)
+
+
 def _send_email(to_email: str, subject: str, body: str) -> str:
     _sync_auth()
     smtp_server = os.environ.get("SMTP_SERVER", "smtp.gmail.com")
@@ -32,8 +37,7 @@ def _send_email(to_email: str, subject: str, body: str) -> str:
 
     if not smtp_user or not smtp_password:
         return (
-            "[Offline Mode] SMTP credentials not set. "
-            f"Drafted Email:\nTo: {to_email}\nSubject: {subject}\nBody: {body}"
+            f"[Offline Mode] SMTP credentials not set. Drafted Email:\nTo: {to_email}\nSubject: {subject}\nBody: {body}"
         )
 
     try:
@@ -75,7 +79,7 @@ def _fetch_emails(limit: int = 5) -> str:
 
         status, data = mail.search(None, "ALL")
         mail_ids = data[0].split()
-        
+
         if not mail_ids:
             return "No emails found in inbox."
 
@@ -89,7 +93,7 @@ def _fetch_emails(limit: int = 5) -> str:
                     subject = msg["subject"]
                     sender = msg["from"]
                     lines.append(f"  ● From: {sender}\n    Subject: {subject}")
-                    
+
         mail.logout()
         return "\n".join(lines)
     except Exception as e:
@@ -109,7 +113,7 @@ def _fetch_emails(limit: int = 5) -> str:
             "limit": {"type": "integer", "description": "Max emails to check (default 5)"},
         },
         "required": ["action"],
-    }
+    },
 )
 def tool_email_assistant(args: dict) -> str:
     action = args.get("action", "check").lower()

@@ -2,6 +2,57 @@
 
 All notable BR-JARVIS changes are documented here.
 
+## [41.0.3-doctor-and-requirements] - 2026-08-19
+
+### Diagnostics and dependency safety
+
+- Added vault-safe provider credential diagnostics that report only configured status and non-secret source labels; raw API keys are never included in Doctor reports.
+- Added core-versus-optional dependency summaries, Python runtime metadata, and repair-attempt tracking to the typed Doctor report.
+- Improved module version detection through installed distribution metadata and corrected the DuckDuckGo dependency/import mapping to `ddgs`.
+- Added `python-multipart` to the runtime requirements and expanded system capability checks to distinguish executable tools from Python-module fallbacks.
+- Updated the overall health message to identify missing core Python dependencies without masking optional capability gaps.
+
+### Packaging and verification
+
+- Added bounded major-version constraints to the authoritative runtime dependencies in `pyproject.toml` and bumped package metadata to **41.0.3**.
+- Updated Doctor contract coverage for the new report fields and health status.
+- Verification: **309 passed, 1 skipped, and 2 benchmark tests deselected**; `pip check` and correctness-focused Ruff checks pass; the wheel builds successfully with no isolation.
+
+## [41.0.1-reliability-and-boundary-upgrade] - 2026-08-19
+
+### Security and runtime correctness
+
+- Contained artifact download and preview paths to approved runtime/workspace roots and stopped returning absolute host or sandbox paths in artifact metadata.
+- Removed browser-visible session bearer tokens from the login JSON response while preserving HttpOnly cookie authentication.
+- Routed Gemini, OpenAI, and Tavily credential lookup through the OS-backed credential vault; legacy configuration metadata no longer returns raw provider secrets.
+- Enforced configured timeouts for synchronous tool handlers and repaired the sandbox code-preparation path without introducing an unisolated fallback.
+- Repaired undefined-name failures across web search, memory, Career OS, agent recovery, executor, system tools, and UI paths.
+- Fixed duplicate `/resume` terminal command registration so task resume and Career resume generation remain distinct.
+
+### Maintainability and compatibility
+
+- Applied deterministic Ruff safe fixes and formatting across the maintained source and test tree.
+- Made stage-decomposer generated-file links compatible with Python 3.11.
+- Forwarded explicit `start.py web --host/--port` values to the canonical web launcher.
+- Added regression coverage for artifact containment, session privacy, sandbox execution, synchronous timeouts, legacy credential behavior, type-hint evaluation, and search fallback behavior.
+
+### Verification
+
+- Full maintained result: **305 passed, 1 skipped, and 2 benchmark tests deselected**.
+- Whole-tree compilation and correctness-focused Ruff checks pass.
+- Broad Ruff debt reduced by safe fixes and formatting; residual findings are primarily import-star typing, import placement, unused variables/imports, and ambiguous names.
+- Package-wide Pyright remains a follow-up modernization effort with 558 errors and 31 warnings.
+
+## [41.0.2-scoped-launcher-actions-tools-memory] - 2026-08-19
+
+### Scoped follow-up
+
+- Added a shared actions credential adapter and removed remaining direct Gemini-key reads from action configuration JSON.
+- Closed the `/tmp/../` temporary-root bypass in `FileManager` and replaced private `tempfile._time` usage with the public time API.
+- Added strict-mode persistence errors for vector/SQLite memory synchronization while preserving backward-compatible non-strict saves.
+- Added regressions for temporary-root traversal, strict memory failures, secure action credentials, and launcher forwarding.
+- Scoped import smoke passed for 161 actions/tools/memory modules; the full maintained suite now reports 305 passed.
+
 ## [41.0.0-production-hardening] - 2026-08-19
 
 ### Security
@@ -43,7 +94,8 @@ All notable BR-JARVIS changes are documented here.
 
 ### Verification
 
-- Final regression result: **295 passed, 1 skipped, 2 benchmark tests deselected**.
+- Final regression result for the production-hardening baseline: **295 passed, 1 skipped, 2 benchmark tests deselected**.
+
 - Incremental Ruff gate passes.
 - Hardened Pyright scope reports zero errors.
 - Import Linter keeps the security/presentation boundary.

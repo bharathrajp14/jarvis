@@ -5,6 +5,7 @@ Requires a free Notion Integration Token:
   notion.so → Settings → Connections → Develop or manage integrations
   Takes 3 minutes. No billing required.
 """
+
 from __future__ import annotations
 
 import json
@@ -22,7 +23,6 @@ _VERSION = "2022-06-28"
 
 
 class NotionConnector(BaseConnector):
-
     def __init__(self):
         self._token = os.environ.get("NOTION_TOKEN", "").strip()
 

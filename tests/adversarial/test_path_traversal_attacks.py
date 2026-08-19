@@ -1,4 +1,5 @@
 """Adversarial Security Tests: Path Traversal & Sandbox Escape Attempts."""
+
 from __future__ import annotations
 
 import pytest
@@ -21,7 +22,7 @@ def test_path_traversal_relative_parent_escape():
         "..\\..\\..\\Windows\\win.ini",
         "workspace/..\\..\\secrets.json",
         ".env",
-        ".env.local"
+        ".env.local",
     ]
     for p in evil_paths:
         assert policy.is_safe_resource(p) is False or policy.get_tier(p) == PathTier.TIER_2_CRITICAL_SECRETS

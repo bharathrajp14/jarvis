@@ -4,6 +4,7 @@ Universal Model Context Protocol (MCP) proxy connector for BR JARVIS.
 Compatible with any MCP server (HTTP/SSE or stdio).
 Allows JARVIS to dynamically discover, bridge, and execute tools from external MCP servers.
 """
+
 from __future__ import annotations
 
 import json
@@ -12,7 +13,6 @@ import os
 import threading
 import urllib.parse
 import urllib.request
-from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from .base import BaseConnector, ConnectorTool
@@ -118,12 +118,15 @@ class MCPServerProxy:
                 continue
 
         try:
-            result = self._post("/", {
-                "jsonrpc": "2.0",
-                "id": 2,
-                "method": "tools/call",
-                "params": {"name": name, "arguments": args},
-            })
+            result = self._post(
+                "/",
+                {
+                    "jsonrpc": "2.0",
+                    "id": 2,
+                    "method": "tools/call",
+                    "params": {"name": name, "arguments": args},
+                },
+            )
             rpc_result = result.get("result", {})
             content = rpc_result.get("content", rpc_result)
             if isinstance(content, list):
@@ -197,10 +200,7 @@ class MCPProxyConnector(BaseConnector):
                     existing = json.loads(_CONFIG_PATH.read_text(encoding="utf-8"))
                 except Exception:
                     pass
-            existing["servers"] = [
-                {"name": s.name, "url": s.url, "api_key": s.api_key}
-                for s in self._servers.values()
-            ]
+            existing["servers"] = [{"name": s.name, "url": s.url, "api_key": s.api_key} for s in self._servers.values()]
             _CONFIG_PATH.write_text(json.dumps(existing, indent=4), encoding="utf-8")
         except Exception as e:
             logger.error("Failed to save mcp_servers.json: %s", e)
@@ -250,7 +250,10 @@ class MCPProxyConnector(BaseConnector):
                 parameters={
                     "type": "object",
                     "properties": {
-                        "url": {"type": "string", "description": "MCP server HTTP/SSE URL (e.g. http://localhost:3000)"},
+                        "url": {
+                            "type": "string",
+                            "description": "MCP server HTTP/SSE URL (e.g. http://localhost:3000)",
+                        },
                         "name": {"type": "string", "description": "Short identifier/name for this server"},
                         "api_key": {"type": "string", "description": "Optional Bearer auth token"},
                     },
@@ -276,7 +279,10 @@ class MCPProxyConnector(BaseConnector):
                     "properties": {
                         "tool_name": {"type": "string", "description": "Target tool name on the MCP server"},
                         "args": {"type": "object", "description": "JSON arguments for the tool call", "default": {}},
-                        "server_name": {"type": "string", "description": "Optional target server name if multiple exist"},
+                        "server_name": {
+                            "type": "string",
+                            "description": "Optional target server name if multiple exist",
+                        },
                     },
                     "required": ["tool_name"],
                 },
@@ -295,11 +301,15 @@ class MCPProxyConnector(BaseConnector):
                 for t in server_tools:
                     tname = t.get("name", "")
                     if tname:
-                        tools.append(ConnectorTool(
-                            name=f"{s_name}_{tname}",
-                            description=f"[{s_name}] {t.get('description', '')}",
-                            parameters=t.get("inputSchema") or t.get("parameters") or {"type": "object", "properties": {}},
-                        ))
+                        tools.append(
+                            ConnectorTool(
+                                name=f"{s_name}_{tname}",
+                                description=f"[{s_name}] {t.get('description', '')}",
+                                parameters=t.get("inputSchema")
+                                or t.get("parameters")
+                                or {"type": "object", "properties": {}},
+                            )
+                        )
             except Exception:
                 pass
 
@@ -330,7 +340,9 @@ class MCPProxyConnector(BaseConnector):
             self._save_servers_to_file()
             alive = proxy.ping()
             tools_cnt = len(proxy.list_tools()) if alive else 0
-            status_text = f"🟢 Connected ({tools_cnt} tools found)" if alive else "⚠️ Registered (server currently unreachable)"
+            status_text = (
+                f"🟢 Connected ({tools_cnt} tools found)" if alive else "⚠️ Registered (server currently unreachable)"
+            )
             return f"🔌 MCP Server '{proxy.name}' ({url}) registered: {status_text}."
 
         elif norm in ("remove_server", "remove", "delete", "disconnect"):
@@ -382,7 +394,7 @@ class MCPProxyConnector(BaseConnector):
         for s_name, server in self._servers.items():
             prefix = f"{s_name.lower()}_"
             if tool_name.lower().startswith(prefix):
-                real_name = tool_name[len(prefix):]
+                real_name = tool_name[len(prefix) :]
                 return server.call_tool(real_name, args)
 
         return f"Unknown tool '{tool_name}' for MCP proxy connector."

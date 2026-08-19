@@ -2,37 +2,35 @@
 from __future__ import annotations
 
 import logging
-import os
-import re
-import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Optional, Union
 
 from ..models import CareerProfile
 from .models import (
     ResumeSchema,
-    SectionConfig,
     TemplateType,
     ThemeConfig,
 )
-from .templates import TEMPLATES, get_template
+from .templates import get_template
 
 logger = logging.getLogger("JARVIS.ResumeRenderer")
 
 # Check DOCX & FPDF dependencies
 try:
     import docx
-    from docx.shared import Inches, Pt, RGBColor
-    from docx.enum.text import WD_ALIGN_PARAGRAPH
     from docx.enum.table import WD_TABLE_ALIGNMENT
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
     from docx.oxml import OxmlElement
     from docx.oxml.ns import qn
+    from docx.shared import Inches, Pt, RGBColor
+
     _DOCX_AVAILABLE = True
 except ImportError:
     _DOCX_AVAILABLE = False
 
 try:
     from fpdf import FPDF
+
     _FPDF_AVAILABLE = True
 except ImportError:
     _FPDF_AVAILABLE = False
@@ -76,7 +74,9 @@ class ResumeRenderer:
         if profile.contact.portfolio_url:
             links["Portfolio"] = profile.contact.portfolio_url
 
-        role = target_role or (profile.preferences.target_roles[0] if profile.preferences.target_roles else "Software Engineer")
+        role = target_role or (
+            profile.preferences.target_roles[0] if profile.preferences.target_roles else "Software Engineer"
+        )
 
         return ResumeSchema(
             title=f"{profile.contact.full_name} — {role}",
@@ -111,9 +111,9 @@ class ResumeRenderer:
         if resume.contact_email:
             links_parts.append(f'<a href="mailto:{resume.contact_email}">{resume.contact_email}</a>')
         if resume.contact_phone:
-            links_parts.append(f'<span>{resume.contact_phone}</span>')
+            links_parts.append(f"<span>{resume.contact_phone}</span>")
         if resume.location:
-            links_parts.append(f'<span>{resume.location}</span>')
+            links_parts.append(f"<span>{resume.location}</span>")
         for label, url in resume.links.items():
             clean_url = url.replace("https://", "").replace("http://", "")
             links_parts.append(f'<a href="{url}" target="_blank" rel="noopener">{label}: {clean_url}</a>')
@@ -167,8 +167,10 @@ class ResumeRenderer:
                     s_date = exp.get("start_date", "")
                     e_date = exp.get("end_date", "Present")
                     dates = f"{s_date} – {e_date}" if s_date else e_date
-                    bullets = "".join(f'<li>{r}</li>' for r in exp.get("responsibilities", []) + exp.get("achievements", []))
-                    
+                    bullets = "".join(
+                        f"<li>{r}</li>" for r in exp.get("responsibilities", []) + exp.get("achievements", [])
+                    )
+
                     tech_html = ""
                     if exp.get("technologies"):
                         tech_html = f'<div class="entry-technologies"><strong>Tech Stack:</strong> {", ".join(exp.get("technologies"))}</div>'
@@ -203,8 +205,12 @@ class ResumeRenderer:
                     role = p.get("role", "")
                     desc = p.get("description", "")
                     tech = ", ".join(p.get("technologies", []))
-                    bullets = "".join(f'<li>{h}</li>' for h in p.get("highlights", []))
-                    url_html = f'<a href="{p.get("url")}" target="_blank" class="proj-link">{p.get("url")}</a>' if p.get("url") else ""
+                    bullets = "".join(f"<li>{h}</li>" for h in p.get("highlights", []))
+                    url_html = (
+                        f'<a href="{p.get("url")}" target="_blank" class="proj-link">{p.get("url")}</a>'
+                        if p.get("url")
+                        else ""
+                    )
 
                     proj_entries.append(f"""
                         <div class="project-entry">
@@ -212,9 +218,9 @@ class ResumeRenderer:
                                 <span class="job-title">{name} {f"— <em>{role}</em>" if role else ""}</span>
                                 <span class="job-dates">{url_html}</span>
                             </div>
-                            {f'<p class="proj-desc">{desc}</p>' if desc else ''}
-                            {f'<ul class="bullet-list">{bullets}</ul>' if bullets else ''}
-                            {f'<div class="entry-technologies"><strong>Technologies:</strong> {tech}</div>' if tech else ''}
+                            {f'<p class="proj-desc">{desc}</p>' if desc else ""}
+                            {f'<ul class="bullet-list">{bullets}</ul>' if bullets else ""}
+                            {f'<div class="entry-technologies"><strong>Technologies:</strong> {tech}</div>' if tech else ""}
                         </div>
                     """)
                 if proj_entries:
@@ -234,7 +240,7 @@ class ResumeRenderer:
                     fld = edu.get("field_of_study", "")
                     full_deg = f"{deg} in {fld}" if fld else deg
                     dates = f"{edu.get('start_date', '')} – {edu.get('end_date', '')}"
-                    bullets = "".join(f'<li>{h}</li>' for h in edu.get("highlights", []))
+                    bullets = "".join(f"<li>{h}</li>" for h in edu.get("highlights", []))
 
                     edu_entries.append(f"""
                         <div class="edu-entry">
@@ -244,9 +250,9 @@ class ResumeRenderer:
                             </div>
                             <div class="job-sub">
                                 <span class="job-company">{inst}</span>
-                                <span class="job-location">{edu.get('location', '')}</span>
+                                <span class="job-location">{edu.get("location", "")}</span>
                             </div>
-                            {f'<ul class="bullet-list">{bullets}</ul>' if bullets else ''}
+                            {f'<ul class="bullet-list">{bullets}</ul>' if bullets else ""}
                         </div>
                     """)
                 if edu_entries:
@@ -264,7 +270,7 @@ class ResumeRenderer:
                     name = c.get("name", "")
                     issuer = c.get("issuer", "")
                     date = c.get("issue_date", "")
-                    cert_items.append(f'<li><strong>{name}</strong> — {issuer} {f"({date})" if date else ""}</li>')
+                    cert_items.append(f"<li><strong>{name}</strong> — {issuer} {f'({date})' if date else ''}</li>")
                 if cert_items:
                     sections_html.append(f"""
                         <div class="resume-section" id="section-certifications">
@@ -280,7 +286,7 @@ class ResumeRenderer:
                     title = a.get("title", "")
                     desc = a.get("description", "")
                     date = a.get("date", "")
-                    ach_items.append(f'<li><strong>{title}</strong>{f" ({date})" if date else ""}: {desc}</li>')
+                    ach_items.append(f"<li><strong>{title}</strong>{f' ({date})' if date else ''}: {desc}</li>")
                 if ach_items:
                     sections_html.append(f"""
                         <div class="resume-section" id="section-achievements">
@@ -390,7 +396,11 @@ class ResumeRenderer:
 
         # Header: Name
         name_p = doc.add_paragraph()
-        name_p.alignment = WD_ALIGN_PARAGRAPH.CENTER if resume.template_id in (TemplateType.EXECUTIVE, TemplateType.ATS_CLASSIC, TemplateType.FRESH_GRADUATE) else WD_ALIGN_PARAGRAPH.LEFT
+        name_p.alignment = (
+            WD_ALIGN_PARAGRAPH.CENTER
+            if resume.template_id in (TemplateType.EXECUTIVE, TemplateType.ATS_CLASSIC, TemplateType.FRESH_GRADUATE)
+            else WD_ALIGN_PARAGRAPH.LEFT
+        )
         name_run = name_p.add_run(resume.full_name)
         name_run.font.size = Pt(22)
         name_run.font.bold = True
@@ -411,7 +421,7 @@ class ResumeRenderer:
         contact_parts = [p for p in [resume.contact_email, resume.contact_phone, resume.location] if p]
         for lbl, url in resume.links.items():
             contact_parts.append(f"{lbl}: {url.replace('https://', '')}")
-        
+
         contact_p = doc.add_paragraph()
         contact_p.alignment = name_p.alignment
         contact_run = contact_p.add_run("  •  ".join(contact_parts))
@@ -462,7 +472,7 @@ class ResumeRenderer:
                     jp = doc.add_paragraph()
                     jp.paragraph_format.space_before = Pt(6)
                     jp.paragraph_format.space_after = Pt(1)
-                    
+
                     t_run = jp.add_run(exp.get("title", ""))
                     t_run.font.bold = True
                     t_run.font.size = Pt(10)
@@ -527,7 +537,9 @@ class ResumeRenderer:
 
                     inst_p = doc.add_paragraph()
                     inst_p.paragraph_format.space_after = Pt(2)
-                    inst_run = inst_p.add_run(f"{edu.get('institution', '')} ({edu.get('start_date', '')}–{edu.get('end_date', '')})")
+                    inst_run = inst_p.add_run(
+                        f"{edu.get('institution', '')} ({edu.get('start_date', '')}–{edu.get('end_date', '')})"
+                    )
                     inst_run.font.size = Pt(9)
                     inst_run.font.color.rgb = RGBColor(*m_rgb)
 
@@ -573,23 +585,39 @@ class ResumeRenderer:
         # Header: Name
         pdf.set_font("Helvetica", "B", 18)
         pdf.set_text_color(*p_rgb)
-        pdf.cell(0, 8, resume.full_name.encode('latin-1', 'replace').decode('latin-1'), align="C", new_x="LMARGIN", new_y="NEXT")
+        pdf.cell(
+            0,
+            8,
+            resume.full_name.encode("latin-1", "replace").decode("latin-1"),
+            align="C",
+            new_x="LMARGIN",
+            new_y="NEXT",
+        )
 
         # Target Role
         if resume.target_role:
             pdf.set_font("Helvetica", "B", 10)
             pdf.set_text_color(*a_rgb)
-            pdf.cell(0, 5, resume.target_role.upper().encode('latin-1', 'replace').decode('latin-1'), align="C", new_x="LMARGIN", new_y="NEXT")
+            pdf.cell(
+                0,
+                5,
+                resume.target_role.upper().encode("latin-1", "replace").decode("latin-1"),
+                align="C",
+                new_x="LMARGIN",
+                new_y="NEXT",
+            )
 
         # Contact Line
         contact_parts = [p for p in [resume.contact_email, resume.contact_phone, resume.location] if p]
         for lbl, url in resume.links.items():
             contact_parts.append(f"{lbl}: {url.replace('https://', '')}")
-        
+
         pdf.set_font("Helvetica", "", 8)
         pdf.set_text_color(*m_rgb)
         contact_text = "  |  ".join(contact_parts)
-        pdf.cell(0, 5, contact_text.encode('latin-1', 'replace').decode('latin-1'), align="C", new_x="LMARGIN", new_y="NEXT")
+        pdf.cell(
+            0, 5, contact_text.encode("latin-1", "replace").decode("latin-1"), align="C", new_x="LMARGIN", new_y="NEXT"
+        )
         pdf.ln(2)
 
         def add_pdf_section(title: str):
@@ -597,7 +625,7 @@ class ResumeRenderer:
             pdf.set_x(pdf.l_margin)
             pdf.set_font("Helvetica", "B", 10)
             pdf.set_text_color(*p_rgb)
-            pdf.cell(pdf.epw, 5, title.upper().encode('latin-1', 'replace').decode('latin-1'), align="L")
+            pdf.cell(pdf.epw, 5, title.upper().encode("latin-1", "replace").decode("latin-1"), align="L")
             pdf.ln(5)
             # Horizontal rule
             pdf.set_draw_color(*p_rgb)
@@ -616,7 +644,7 @@ class ResumeRenderer:
                 pdf.set_x(pdf.l_margin)
                 pdf.set_font("Helvetica", "", 8.5)
                 pdf.set_text_color(*t_rgb)
-                pdf.multi_cell(pdf.epw, 4.2, resume.summary.encode('latin-1', 'replace').decode('latin-1'))
+                pdf.multi_cell(pdf.epw, 4.2, resume.summary.encode("latin-1", "replace").decode("latin-1"))
                 pdf.ln(1)
 
             elif sec_id == "skills" and resume.skills:
@@ -628,7 +656,7 @@ class ResumeRenderer:
                         pdf.set_x(pdf.l_margin)
                         pdf.set_font("Helvetica", "B", 8.5)
                         pdf.set_text_color(*s_rgb)
-                        clean_line = f"{c_name}: {s_list}".encode('latin-1', 'replace').decode('latin-1')
+                        clean_line = f"{c_name}: {s_list}".encode("latin-1", "replace").decode("latin-1")
                         pdf.multi_cell(pdf.epw, 4.0, clean_line)
                 pdf.ln(1)
 
@@ -638,25 +666,30 @@ class ResumeRenderer:
                     title = exp.get("title", "")
                     co = exp.get("company", "")
                     dates = f"{exp.get('start_date', '')} – {exp.get('end_date', 'Present')}"
-                    
+
                     pdf.set_x(pdf.l_margin)
                     pdf.set_font("Helvetica", "B", 9)
                     pdf.set_text_color(*p_rgb)
-                    header_line = f"{title} | {dates}".encode('latin-1', 'replace').decode('latin-1')
+                    header_line = f"{title} | {dates}".encode("latin-1", "replace").decode("latin-1")
                     pdf.cell(pdf.epw, 4.5, header_line, align="L")
                     pdf.ln(4.5)
 
                     pdf.set_x(pdf.l_margin)
                     pdf.set_font("Helvetica", "B", 8.5)
                     pdf.set_text_color(*s_rgb)
-                    pdf.cell(pdf.epw, 4, f"{co} — {exp.get('location', '')}".encode('latin-1', 'replace').decode('latin-1'), align="L")
+                    pdf.cell(
+                        pdf.epw,
+                        4,
+                        f"{co} — {exp.get('location', '')}".encode("latin-1", "replace").decode("latin-1"),
+                        align="L",
+                    )
                     pdf.ln(4)
 
                     pdf.set_font("Helvetica", "", 8)
                     pdf.set_text_color(*t_rgb)
                     for b in exp.get("responsibilities", []) + exp.get("achievements", []):
                         pdf.set_x(pdf.l_margin)
-                        clean_b = f"  -  {b}".encode('latin-1', 'replace').decode('latin-1')
+                        clean_b = f"  -  {b}".encode("latin-1", "replace").decode("latin-1")
                         pdf.multi_cell(pdf.epw, 3.8, clean_b)
                     pdf.ln(1.5)
 
@@ -668,20 +701,22 @@ class ResumeRenderer:
                     pdf.set_text_color(*p_rgb)
                     role_str = f" ({p.get('role')})" if p.get("role") else ""
                     p_title = f"{p.get('name', '')}{role_str}"
-                    pdf.cell(pdf.epw, 4.5, p_title.encode('latin-1', 'replace').decode('latin-1'), align="L")
+                    pdf.cell(pdf.epw, 4.5, p_title.encode("latin-1", "replace").decode("latin-1"), align="L")
                     pdf.ln(4.5)
 
                     if p.get("description"):
                         pdf.set_x(pdf.l_margin)
                         pdf.set_font("Helvetica", "", 8)
                         pdf.set_text_color(*t_rgb)
-                        pdf.multi_cell(pdf.epw, 3.8, p.get("description", "").encode('latin-1', 'replace').decode('latin-1'))
+                        pdf.multi_cell(
+                            pdf.epw, 3.8, p.get("description", "").encode("latin-1", "replace").decode("latin-1")
+                        )
 
                     for h in p.get("highlights", []):
                         pdf.set_x(pdf.l_margin)
                         pdf.set_font("Helvetica", "", 8)
                         pdf.set_text_color(*t_rgb)
-                        clean_h = f"  -  {h}".encode('latin-1', 'replace').decode('latin-1')
+                        clean_h = f"  -  {h}".encode("latin-1", "replace").decode("latin-1")
                         pdf.multi_cell(pdf.epw, 3.8, clean_h)
                     pdf.ln(1)
 
@@ -690,20 +725,20 @@ class ResumeRenderer:
                 for edu in resume.education:
                     deg = f"{edu.get('degree', '')} in {edu.get('field_of_study', '')}"
                     dates = f"{edu.get('start_date', '')}–{edu.get('end_date', '')}"
-                    
+
                     pdf.set_x(pdf.l_margin)
                     pdf.set_font("Helvetica", "B", 8.5)
                     pdf.set_text_color(*p_rgb)
-                    pdf.cell(pdf.epw * 0.75, 4, deg.encode('latin-1', 'replace').decode('latin-1'))
+                    pdf.cell(pdf.epw * 0.75, 4, deg.encode("latin-1", "replace").decode("latin-1"))
                     pdf.set_font("Helvetica", "", 8)
                     pdf.set_text_color(*m_rgb)
-                    pdf.cell(pdf.epw * 0.25, 4, dates.encode('latin-1', 'replace').decode('latin-1'), align="R")
+                    pdf.cell(pdf.epw * 0.25, 4, dates.encode("latin-1", "replace").decode("latin-1"), align="R")
                     pdf.ln(4)
 
                     pdf.set_x(pdf.l_margin)
                     pdf.set_font("Helvetica", "", 8)
                     pdf.set_text_color(*s_rgb)
-                    pdf.cell(pdf.epw, 3.8, edu.get("institution", "").encode('latin-1', 'replace').decode('latin-1'))
+                    pdf.cell(pdf.epw, 3.8, edu.get("institution", "").encode("latin-1", "replace").decode("latin-1"))
                     pdf.ln(4)
 
             elif sec_id == "certifications" and resume.certifications:
@@ -713,7 +748,7 @@ class ResumeRenderer:
                 for c in resume.certifications:
                     pdf.set_x(pdf.l_margin)
                     line = f"  -  {c.get('name')} — {c.get('issuer', '')} ({c.get('issue_date', '')})"
-                    pdf.multi_cell(pdf.epw, 3.8, line.encode('latin-1', 'replace').decode('latin-1'))
+                    pdf.multi_cell(pdf.epw, 3.8, line.encode("latin-1", "replace").decode("latin-1"))
                 pdf.ln(1)
 
         pdf.output(str(out_file))

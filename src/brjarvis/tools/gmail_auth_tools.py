@@ -4,15 +4,14 @@ High-Fidelity Verified Gmail Authentication & Login Suite for BR JARVIS MK40.2 /
 Provides interactive login, App Password configuration, status inspection,
 and canonical ToolResult evidence contracts.
 """
+
 from __future__ import annotations
 
-import json
-from typing import Any, Dict, Optional
+from brjarvis.actions.gmail_auth import get_gmail_auth_manager
 
-from .domain import RiskLevel, SideEffectLevel, ToolCategory, ToolErrorCode, VerificationStrategy
+from .domain import ToolErrorCode
 from .registry import register_tool
 from .tool_result import ToolResult
-from brjarvis.actions.gmail_auth import get_gmail_auth_manager
 
 
 @register_tool(
@@ -27,7 +26,10 @@ from brjarvis.actions.gmail_auth import get_gmail_auth_manager
                 "description": "Login mode: 'browser' for inbox, 'compose' for compose window, 'credentials' for App Password",
             },
             "email": {"type": "string", "description": "Gmail address (required for credentials mode)"},
-            "app_password": {"type": "string", "description": "16-character Google App Password (required for credentials mode)"},
+            "app_password": {
+                "type": "string",
+                "description": "16-character Google App Password (required for credentials mode)",
+            },
         },
         "required": ["mode"],
     },

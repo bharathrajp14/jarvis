@@ -1,58 +1,57 @@
-import json
 import logging
 import os
 import re
-import sys
-import time
 import subprocess
-import shutil
-from pathlib import Path
+import sys
 from datetime import datetime
+from pathlib import Path
 from urllib.parse import quote_plus
 
 logger = logging.getLogger("JARVIS.Actions.YouTube")
 
 try:
     import pyautogui
+
     _PYAUTOGUI = True
 except ImportError:
     _PYAUTOGUI = False
 
 try:
     import numpy as np
+
     _NUMPY = True
 except ImportError:
     _NUMPY = False
 
 try:
     import requests
+
     _REQUESTS_OK = True
 except ImportError:
     _REQUESTS_OK = False
 
 try:
     from youtube_transcript_api import YouTubeTranscriptApi
+
     _TRANSCRIPT_OK = True
 except ImportError:
     _TRANSCRIPT_OK = False
 
-from brjarvis.config import get_os, is_windows, is_mac, is_linux
-
-
+from brjarvis.config import is_linux, is_mac, is_windows
 from brjarvis.core.paths import paths
+
+from ._credentials import get_gemini_key
+
 
 def _get_base_dir() -> Path:
     return paths.PROJECT_ROOT
 
 
-BASE_DIR        = _get_base_dir()
-API_CONFIG_PATH = paths.CONFIG_ROOT / "api_keys.json"
+BASE_DIR = _get_base_dir()
 
 HEADERS = {
     "User-Agent": (
-        "Mozilla/5.0 (X11; Linux x86_64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/124.0.0.0 Safari/537.36"
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
     ),
     "Accept-Language": "en-US,en;q=0.9",
 }
@@ -61,11 +60,7 @@ _YT_VIDEO_FILTER = "EgIQAQ%3D%3D"
 
 
 def _get_api_key() -> str:
-    try:
-        with open(API_CONFIG_PATH, "r", encoding="utf-8") as f:
-            return json.load(f).get("gemini_api_key", "")
-    except Exception:
-        return ""
+    return get_gemini_key()
 
 
 def _open_url(url: str) -> None:
@@ -79,19 +74,16 @@ def _open_url(url: str) -> None:
     except Exception as e:
         logger.warning(f"[YouTube] ⚠️ open_url failed: {e}")
 
+
 def _scrape_first_video_url(query: str) -> str | None:
 
     if not _REQUESTS_OK:
         return None
 
-    search_url = (
-        f"https://www.youtube.com/results"
-        f"?search_query={quote_plus(query)}"
-        f"&sp={_YT_VIDEO_FILTER}"
-    )
+    search_url = f"https://www.youtube.com/results?search_query={quote_plus(query)}&sp={_YT_VIDEO_FILTER}"
 
     try:
-        r    = requests.get(search_url, headers=HEADERS, timeout=10)
+        r = requests.get(search_url, headers=HEADERS, timeout=10)
         html = r.text
 
         video_ids = re.findall(r'"videoId":"([A-Za-z0-9_-]{11})"', html)
@@ -102,7 +94,7 @@ def _scrape_first_video_url(query: str) -> str | None:
                 continue
             seen.add(vid)
 
-            if f'/shorts/{vid}' in html:
+            if f"/shorts/{vid}" in html:
                 continue
             return f"https://www.youtube.com/watch?v={vid}"
 
@@ -110,10 +102,9 @@ def _scrape_first_video_url(query: str) -> str | None:
         logger.warning("scrape_first_video_url failed: %s", e)
     return None
 
+
 def _extract_video_id(url: str) -> str | None:
-    match = re.search(
-        r"(?:v=|\/v\/|youtu\.be\/|\/embed\/|\/shorts\/)([A-Za-z0-9_-]{11})", url
-    )
+    match = re.search(r"(?:v=|\/v\/|youtu\.be\/|\/embed\/|\/shorts\/)([A-Za-z0-9_-]{11})", url)
     return match.group(1) if match else None
 
 
@@ -143,7 +134,7 @@ def _get_transcript(video_id: str) -> str | None:
         return None
     try:
         transcript_list = YouTubeTranscriptApi.list_transcripts(video_id)
-        transcript      = None
+        transcript = None
 
         lang_priority = ["en", "tr", "de", "fr", "es", "it", "pt", "ru", "ja", "ko", "ar", "zh"]
 
@@ -184,11 +175,11 @@ def _summarize_with_gemini(transcript: str, video_url: str) -> str:
     )
     try:
         from ._gemini_client import gemini_generate
+
         return gemini_generate(prompt, model="gemini-3.6-flash-high")
     except Exception as e:
         logger.warning("Proxy summarization failed (%s); trying direct Google API", e)
         from google import genai as _genai
-        from google.genai import types
 
         _client = _genai.Client(api_key=_get_api_key())
         response = _client.models.generate_content(
@@ -199,9 +190,9 @@ def _summarize_with_gemini(transcript: str, video_url: str) -> str:
 
 
 def _save_summary(content: str, video_url: str) -> str:
-    ts       = datetime.now().strftime("%Y%m%d_%H%M%S")
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename = f"youtube_summary_{ts}.txt"
-    desktop  = Path.home() / "Desktop"
+    desktop = Path.home() / "Desktop"
     desktop.mkdir(parents=True, exist_ok=True)
     filepath = desktop / filename
 
@@ -232,16 +223,16 @@ def _scrape_video_info(video_id: str) -> dict:
         return {}
     url = f"https://www.youtube.com/watch?v={video_id}"
     try:
-        r    = requests.get(url, headers=HEADERS, timeout=12)
+        r = requests.get(url, headers=HEADERS, timeout=12)
         html = r.text
         info = {}
 
         for key, pattern in [
-            ("title",    r'"title":\{"runs":\[\{"text":"([^"]+)"'),
-            ("channel",  r'"ownerChannelName":"([^"]+)"'),
-            ("views",    r'"viewCount":"(\d+)"'),
+            ("title", r'"title":\{"runs":\[\{"text":"([^"]+)"'),
+            ("channel", r'"ownerChannelName":"([^"]+)"'),
+            ("views", r'"viewCount":"(\d+)"'),
             ("duration", r'"lengthSeconds":"(\d+)"'),
-            ("likes",    r'"label":"([0-9,]+ likes)"'),
+            ("likes", r'"label":"([0-9,]+ likes)"'),
         ]:
             match = re.search(pattern, html)
             if match:
@@ -265,10 +256,10 @@ def _scrape_trending(region: str = "TR", max_results: int = 8) -> list[dict]:
         return []
     url = f"https://www.youtube.com/feed/trending?gl={region.upper()}"
     try:
-        r    = requests.get(url, headers=HEADERS, timeout=12)
+        r = requests.get(url, headers=HEADERS, timeout=12)
         html = r.text
 
-        titles   = re.findall(r'"title":\{"runs":\[\{"text":"([^"]+)"\}\]', html)
+        titles = re.findall(r'"title":\{"runs":\[\{"text":"([^"]+)"\}\]', html)
         channels = re.findall(r'"ownerText":\{"runs":\[\{"text":"([^"]+)"', html)
 
         results, seen = [], set()
@@ -285,6 +276,7 @@ def _scrape_trending(region: str = "TR", max_results: int = 8) -> list[dict]:
     except Exception as e:
         logger.warning("Trending scrape failed: %s", e)
         return []
+
 
 def _handle_play(parameters: dict, player=None, speak=None) -> str:
     query = parameters.get("query", "").strip()
@@ -303,11 +295,7 @@ def _handle_play(parameters: dict, player=None, speak=None) -> str:
         return f"▶️ YouTube'da açılıyor: {video_url}"
 
     logger.warning("Scrape failed, opening filtered search page")
-    fallback_url = (
-        f"https://www.youtube.com/results"
-        f"?search_query={quote_plus(query)}"
-        f"&sp={_YT_VIDEO_FILTER}"
-    )
+    fallback_url = f"https://www.youtube.com/results?search_query={quote_plus(query)}&sp={_YT_VIDEO_FILTER}"
     _open_url(fallback_url)
     return f"Opened YouTube search for: {query} (manual selection required)"
 
@@ -316,9 +304,7 @@ def _handle_summarize(parameters: dict, player=None, speak=None) -> str:
     if not _TRANSCRIPT_OK:
         return "youtube-transcript-api is not installed. Run: pip install youtube-transcript-api"
 
-    url = (
-        str(parameters.get("url") or parameters.get("video_url") or parameters.get("link") or "").strip()
-    )
+    url = str(parameters.get("url") or parameters.get("video_url") or parameters.get("link") or "").strip()
     if not url:
         if os.environ.get("JARVIS_HEADLESS") == "true" or "pytest" in sys.modules:
             return "Please provide a valid YouTube URL in the action parameters, sir."
@@ -380,9 +366,7 @@ def _handle_get_info(parameters: dict, player=None, speak=None) -> str:
         return "Could not retrieve video information, sir."
 
     lines = [
-        f"{key.capitalize()}: {info[key]}"
-        for key in ("title", "channel", "views", "duration", "likes")
-        if key in info
+        f"{key.capitalize()}: {info[key]}" for key in ("title", "channel", "views", "duration", "likes") if key in info
     ]
     result = "\n".join(lines)
 
@@ -402,12 +386,12 @@ def _handle_trending(parameters: dict, player=None, speak=None) -> str:
     if not trending:
         return f"Could not fetch trending videos for region {region}, sir."
 
-    lines  = [f"Top trending videos in {region}:"]
+    lines = [f"Top trending videos in {region}:"]
     lines += [f"{v['rank']}. {v['title']} — {v['channel']}" for v in trending]
     result = "\n".join(lines)
 
     if speak:
-        top3   = trending[:3]
+        top3 = trending[:3]
         spoken = "Here are the top trending videos, sir. " + ". ".join(
             f"Number {v['rank']}: {v['title']} by {v['channel']}" for v in top3
         )
@@ -415,16 +399,17 @@ def _handle_trending(parameters: dict, player=None, speak=None) -> str:
 
     return result
 
+
 _ACTION_MAP = {
-    "play":      _handle_play,
+    "play": _handle_play,
     "summarize": _handle_summarize,
-    "get_info":  _handle_get_info,
-    "trending":  _handle_trending,
+    "get_info": _handle_get_info,
+    "trending": _handle_trending,
 }
 
 
 def youtube_video(
-    parameters:     dict,
+    parameters: dict,
     response=None,
     player=None,
     session_memory=None,
@@ -439,10 +424,7 @@ def youtube_video(
 
     handler = _ACTION_MAP.get(action)
     if handler is None:
-        return (
-            f"Unknown YouTube action: '{action}'. "
-            "Available: play, summarize, get_info, trending."
-        )
+        return f"Unknown YouTube action: '{action}'. Available: play, summarize, get_info, trending."
 
     try:
         return handler(params, player, speak) or "Done."

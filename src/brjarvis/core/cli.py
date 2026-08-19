@@ -2,21 +2,24 @@
 from __future__ import annotations
 
 import argparse
-import asyncio
 import logging
+import os
 import sys
-from typing import Any, Optional
+from typing import Optional
 
-from .runtime import ApplicationRuntime, get_runtime
+from .runtime import ApplicationRuntime
 from .terminal import (
-    TerminalSession,
-    TerminalRenderer,
-    SlashCommandHandler,
     VALID_MODES,
+    TerminalRenderer,
+    TerminalSession,
+)
+from .terminal import (
     run_cli as terminal_run_cli,
+)
+from .terminal import (
     run_query as terminal_run_query,
 )
-from .version import VERSION, CODENAME, BUILD
+from .version import CODENAME, VERSION
 
 logger = logging.getLogger("JARVIS.CLI")
 
@@ -63,7 +66,8 @@ def main(runtime: Optional[ApplicationRuntime] = None) -> int:
         help="Optional prompt or query to run in one-shot mode.",
     )
     parser.add_argument(
-        "-m", "--mode",
+        "-m",
+        "--mode",
         choices=VALID_MODES,
         default="general",
         help=f"Agent persona mode ({', '.join(VALID_MODES)}). Default: general.",
@@ -73,7 +77,8 @@ def main(runtime: Optional[ApplicationRuntime] = None) -> int:
         help="Specify active model backend profile (gemini, claude, gpt, mistral, ollama).",
     )
     parser.add_argument(
-        "-s", "--session",
+        "-s",
+        "--session",
         help="Session ID to create or resume.",
     )
     parser.add_argument(
@@ -87,7 +92,8 @@ def main(runtime: Optional[ApplicationRuntime] = None) -> int:
         help="Set terminal rendering style (compact, detailed, minimal, verbose). Default: compact.",
     )
     parser.add_argument(
-        "-v", "--verbose",
+        "-v",
+        "--verbose",
         action="store_true",
         help="Enable verbose debug output (tool arguments, timings, telemetry).",
     )
@@ -102,7 +108,8 @@ def main(runtime: Optional[ApplicationRuntime] = None) -> int:
         help="Run system doctor self-healing diagnostic checks.",
     )
     parser.add_argument(
-        "-p", "--plan",
+        "-p",
+        "--plan",
         metavar="GOAL",
         help="Decompose a goal into a step plan and prompt for approval before executing.",
     )
@@ -127,11 +134,13 @@ def main(runtime: Optional[ApplicationRuntime] = None) -> int:
         os.environ["JARVIS_PERMISSION_MODE"] = parsed.permission.upper()
         try:
             from brjarvis.security.permissions import PERMISSIONS
+
             PERMISSIONS.set_mode(parsed.permission)
         except Exception:
             pass
         try:
             from brjarvis.security.policy_engine import get_policy_engine
+
             get_policy_engine().set_mode(parsed.permission)
         except Exception:
             pass

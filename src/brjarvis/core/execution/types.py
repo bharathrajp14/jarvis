@@ -5,27 +5,27 @@ import time
 import uuid
 from dataclasses import asdict, dataclass, field
 from enum import Enum
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
 
 class ExecutionStatus(str, Enum):
     """Canonical lifecycle status for any execution unit in BR JARVIS."""
-    SUCCESS_VERIFIED       = "SUCCESS_VERIFIED"
-    SUCCESS_UNVERIFIED     = "SUCCESS_UNVERIFIED"
-    PARTIAL_SUCCESS        = "PARTIAL_SUCCESS"
-    FAILED                 = "FAILED"
-    MISSING_DEPENDENCY     = "MISSING_DEPENDENCY"
-    ENVIRONMENT_ERROR      = "ENVIRONMENT_ERROR"
-    CONFIGURATION_ERROR    = "CONFIGURATION_ERROR"
+
+    SUCCESS_VERIFIED = "SUCCESS_VERIFIED"
+    SUCCESS_UNVERIFIED = "SUCCESS_UNVERIFIED"
+    PARTIAL_SUCCESS = "PARTIAL_SUCCESS"
+    FAILED = "FAILED"
+    MISSING_DEPENDENCY = "MISSING_DEPENDENCY"
+    ENVIRONMENT_ERROR = "ENVIRONMENT_ERROR"
+    CONFIGURATION_ERROR = "CONFIGURATION_ERROR"
     AUTHENTICATION_REQUIRED = "AUTHENTICATION_REQUIRED"
-    PERMISSION_DENIED      = "PERMISSION_DENIED"
-    TIMEOUT                = "TIMEOUT"
-    CANCELLED              = "CANCELLED"
-    BLOCKED                = "BLOCKED"
-    RECOVERY_FAILED        = "RECOVERY_FAILED"
-    NOT_IMPLEMENTED        = "NOT_IMPLEMENTED"
-    VERIFICATION_FAILED    = "VERIFICATION_FAILED"
+    PERMISSION_DENIED = "PERMISSION_DENIED"
+    TIMEOUT = "TIMEOUT"
+    CANCELLED = "CANCELLED"
+    BLOCKED = "BLOCKED"
+    RECOVERY_FAILED = "RECOVERY_FAILED"
+    NOT_IMPLEMENTED = "NOT_IMPLEMENTED"
+    VERIFICATION_FAILED = "VERIFICATION_FAILED"
 
     @property
     def is_success(self) -> bool:
@@ -38,40 +38,44 @@ class ExecutionStatus(str, Enum):
 
 class ApplicationStatus(str, Enum):
     """Explicit multi-level lifecycle status for desktop applications and document viewers."""
+
     LAUNCH_NOT_ATTEMPTED = "LAUNCH_NOT_ATTEMPTED"
-    LAUNCH_REQUESTED     = "LAUNCH_REQUESTED"
-    PROCESS_STARTED      = "PROCESS_STARTED"
-    WINDOW_FOUND         = "WINDOW_FOUND"
-    APPLICATION_READY    = "APPLICATION_READY"
-    DOCUMENT_LOADED      = "DOCUMENT_LOADED"
-    OPEN_VERIFIED        = "OPEN_VERIFIED"
-    OPEN_FAILED          = "OPEN_FAILED"
+    LAUNCH_REQUESTED = "LAUNCH_REQUESTED"
+    PROCESS_STARTED = "PROCESS_STARTED"
+    WINDOW_FOUND = "WINDOW_FOUND"
+    APPLICATION_READY = "APPLICATION_READY"
+    DOCUMENT_LOADED = "DOCUMENT_LOADED"
+    OPEN_VERIFIED = "OPEN_VERIFIED"
+    OPEN_FAILED = "OPEN_FAILED"
 
 
 class RepairPolicy(str, Enum):
     """Governance policy for automated runtime repair."""
-    AUTO_REPAIR_SAFE   = "AUTO_REPAIR_SAFE"
-    ASK_BEFORE_REPAIR  = "ASK_BEFORE_REPAIR"
-    NO_AUTO_REPAIR     = "NO_AUTO_REPAIR"
+
+    AUTO_REPAIR_SAFE = "AUTO_REPAIR_SAFE"
+    ASK_BEFORE_REPAIR = "ASK_BEFORE_REPAIR"
+    NO_AUTO_REPAIR = "NO_AUTO_REPAIR"
 
 
 class RuntimeType(str, Enum):
     """Supported execution environments."""
-    PYTHON      = "python"
-    NODE        = "node"
-    POWERSHELL  = "powershell"
-    BASH        = "bash"
-    GIT         = "git"
-    BROWSER     = "browser"
-    SYSTEM_CLI  = "system_cli"
-    OLLAMA      = "ollama"
-    DOCKER      = "docker"
-    UNKNOWN     = "unknown"
+
+    PYTHON = "python"
+    NODE = "node"
+    POWERSHELL = "powershell"
+    BASH = "bash"
+    GIT = "git"
+    BROWSER = "browser"
+    SYSTEM_CLI = "system_cli"
+    OLLAMA = "ollama"
+    DOCKER = "docker"
+    UNKNOWN = "unknown"
 
 
 @dataclass
 class EnvironmentProfile:
     """Detailed profile of a resolved runtime environment."""
+
     runtime_type: RuntimeType = RuntimeType.PYTHON
     executable: str = ""
     version: str = ""
@@ -106,16 +110,17 @@ class EnvironmentProfile:
 @dataclass
 class DependencyDeclaration:
     """Machine-readable dependency contract for a tool or execution step."""
+
     runtime: RuntimeType = RuntimeType.PYTHON
     min_runtime_version: Optional[str] = None
-    packages: List[str] = field(default_factory=list)          # e.g. ["PyMuPDF", "python-docx"]
-    import_names: List[str] = field(default_factory=list)      # e.g. ["fitz", "docx"]
-    executables: List[str] = field(default_factory=list)       # e.g. ["git", "node", "pwsh"]
+    packages: List[str] = field(default_factory=list)  # e.g. ["PyMuPDF", "python-docx"]
+    import_names: List[str] = field(default_factory=list)  # e.g. ["fitz", "docx"]
+    executables: List[str] = field(default_factory=list)  # e.g. ["git", "node", "pwsh"]
     browser_binaries: List[str] = field(default_factory=list)  # e.g. ["chromium"]
-    files: List[str] = field(default_factory=list)             # e.g. ["config/template.docx"]
-    directories: List[str] = field(default_factory=list)       # e.g. ["workspace/Documents"]
-    services: List[str] = field(default_factory=list)          # e.g. ["ollama"]
-    credentials: List[str] = field(default_factory=list)       # e.g. ["GEMINI_API_KEY"]
+    files: List[str] = field(default_factory=list)  # e.g. ["config/template.docx"]
+    directories: List[str] = field(default_factory=list)  # e.g. ["workspace/Documents"]
+    services: List[str] = field(default_factory=list)  # e.g. ["ollama"]
+    credentials: List[str] = field(default_factory=list)  # e.g. ["GEMINI_API_KEY"]
     env_vars: List[str] = field(default_factory=list)
 
     def to_dict(self) -> Dict[str, Any]:
@@ -127,6 +132,7 @@ class DependencyDeclaration:
 @dataclass
 class VerificationOutcome:
     """Outcome of real-world physical side-effect verification."""
+
     verified: bool = False
     verifier_name: str = "GenericVerifier"
     status: ExecutionStatus = ExecutionStatus.FAILED
@@ -152,6 +158,7 @@ class VerificationOutcome:
 @dataclass
 class RepairAction:
     """Action description for auto-repairing runtime or dependency failures."""
+
     action_id: str = field(default_factory=lambda: str(uuid.uuid4())[:8])
     action_type: str = "install_package"  # install_package, install_browser, create_dir, etc.
     description: str = ""
@@ -173,6 +180,7 @@ class RepairAction:
 @dataclass
 class ExecutionResult:
     """Canonical universal result structure returned by all tool, code, and process executions."""
+
     execution_id: str = field(default_factory=lambda: str(uuid.uuid4())[:12])
     status: ExecutionStatus = ExecutionStatus.SUCCESS_VERIFIED
     tool_or_command: str = ""

@@ -4,10 +4,10 @@ Professional writing assistant and executive document generation skills for BR-J
 Covers: executive briefs, technical documentation, Word/PDF reports, essay drafting,
 email drafting, blog posts, translation, and proofreading.
 """
+
 from __future__ import annotations
 
 from .loader import SkillDef, register_builtin_skill
-
 
 _WRITE_PROMPT = """\
 You are an expert executive author and technical writer.
@@ -104,83 +104,95 @@ $ARGUMENTS
 
 
 def _register_writer_builtins() -> None:
-    register_builtin_skill(SkillDef(
-        name="write",
-        description="Author comprehensive articles, documentation, or publications",
-        triggers=["/write", "/author", "write article", "draft document"],
-        tools=["document_creator", "create_word_document", "create_pdf_document", "file_write"],
-        prompt=_WRITE_PROMPT,
-        file_path="builtin:write",
-        category="productivity",
-        domain="Content Authoring",
-        user_invocable=True,
-        source="builtin"
-    ))
+    register_builtin_skill(
+        SkillDef(
+            name="write",
+            description="Author comprehensive articles, documentation, or publications",
+            triggers=["/write", "/author", "write article", "draft document"],
+            tools=["document_creator", "create_word_document", "create_pdf_document", "file_write"],
+            prompt=_WRITE_PROMPT,
+            file_path="builtin:write",
+            category="productivity",
+            domain="Content Authoring",
+            user_invocable=True,
+            source="builtin",
+        )
+    )
 
-    register_builtin_skill(SkillDef(
-        name="executive_doc",
-        description="Generate publication-grade Word (.docx) or PDF executive report",
-        triggers=["/doc", "/word-doc", "/pdf-report", "create docx", "generate report document"],
-        tools=["document_creator", "create_word_document", "create_pdf_document", "open_app"],
-        prompt=_EXECUTIVE_DOC_PROMPT,
-        file_path="builtin:executive_doc",
-        category="productivity",
-        domain="Document Generation",
-        user_invocable=True,
-        source="builtin"
-    ))
+    register_builtin_skill(
+        SkillDef(
+            name="executive_doc",
+            description="Generate publication-grade Word (.docx) or PDF executive report",
+            triggers=["/doc", "/word-doc", "/pdf-report", "create docx", "generate report document"],
+            tools=["document_creator", "create_word_document", "create_pdf_document", "open_app"],
+            prompt=_EXECUTIVE_DOC_PROMPT,
+            file_path="builtin:executive_doc",
+            category="productivity",
+            domain="Document Generation",
+            user_invocable=True,
+            source="builtin",
+        )
+    )
 
-    register_builtin_skill(SkillDef(
-        name="email_draft",
-        description="Draft, polish, or send high-impact professional emails",
-        triggers=["/draft-email", "/send-email", "draft email", "compose email"],
-        tools=["send_email", "gmail_send", "schedule_email"],
-        prompt=_EMAIL_DRAFT_PROMPT,
-        file_path="builtin:email_draft",
-        category="productivity",
-        domain="Email Communication",
-        user_invocable=True,
-        source="builtin"
-    ))
+    register_builtin_skill(
+        SkillDef(
+            name="email_draft",
+            description="Draft, polish, or send high-impact professional emails",
+            triggers=["/draft-email", "/send-email", "draft email", "compose email"],
+            tools=["send_email", "gmail_send", "schedule_email"],
+            prompt=_EMAIL_DRAFT_PROMPT,
+            file_path="builtin:email_draft",
+            category="productivity",
+            domain="Email Communication",
+            user_invocable=True,
+            source="builtin",
+        )
+    )
 
-    register_builtin_skill(SkillDef(
-        name="blog_post",
-        description="Write SEO-optimized technical blog posts and tutorials",
-        triggers=["/blog", "/article", "write blog post"],
-        tools=["file_write", "document_creator"],
-        prompt=_BLOG_PROMPT,
-        file_path="builtin:blog_post",
-        category="marketing",
-        domain="Content Marketing",
-        user_invocable=True,
-        source="builtin"
-    ))
+    register_builtin_skill(
+        SkillDef(
+            name="blog_post",
+            description="Write SEO-optimized technical blog posts and tutorials",
+            triggers=["/blog", "/article", "write blog post"],
+            tools=["file_write", "document_creator"],
+            prompt=_BLOG_PROMPT,
+            file_path="builtin:blog_post",
+            category="marketing",
+            domain="Content Marketing",
+            user_invocable=True,
+            source="builtin",
+        )
+    )
 
-    register_builtin_skill(SkillDef(
-        name="translate",
-        description="Accurately translate technical and business documents across languages",
-        triggers=["/translate", "translate this"],
-        tools=["file_read", "file_write"],
-        prompt=_TRANSLATE_PROMPT,
-        file_path="builtin:translate",
-        category="general",
-        domain="Translation",
-        user_invocable=True,
-        source="builtin"
-    ))
+    register_builtin_skill(
+        SkillDef(
+            name="translate",
+            description="Accurately translate technical and business documents across languages",
+            triggers=["/translate", "translate this"],
+            tools=["file_read", "file_write"],
+            prompt=_TRANSLATE_PROMPT,
+            file_path="builtin:translate",
+            category="general",
+            domain="Translation",
+            user_invocable=True,
+            source="builtin",
+        )
+    )
 
-    register_builtin_skill(SkillDef(
-        name="summarize",
-        description="Produce executive summaries and action items from text or files",
-        triggers=["/summarize", "/tldr", "summarize this document", "executive summary"],
-        tools=["file_read", "file_list"],
-        prompt=_SUMMARIZE_PROMPT,
-        file_path="builtin:summarize",
-        category="productivity",
-        domain="Summarization",
-        user_invocable=True,
-        source="builtin"
-    ))
+    register_builtin_skill(
+        SkillDef(
+            name="summarize",
+            description="Produce executive summaries and action items from text or files",
+            triggers=["/summarize", "/tldr", "summarize this document", "executive summary"],
+            tools=["file_read", "file_list"],
+            prompt=_SUMMARIZE_PROMPT,
+            file_path="builtin:summarize",
+            category="productivity",
+            domain="Summarization",
+            user_invocable=True,
+            source="builtin",
+        )
+    )
 
 
 _register_writer_builtins()

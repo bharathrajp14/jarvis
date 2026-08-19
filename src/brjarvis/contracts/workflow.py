@@ -3,6 +3,7 @@
 Canonical Workflow contracts for BR JARVIS operating runtime.
 Defines WorkflowStatus, WorkflowCheckpoint, and WorkflowState.
 """
+
 from __future__ import annotations
 
 import time
@@ -15,6 +16,7 @@ from pydantic import BaseModel, Field
 
 class WorkflowStatus(str, Enum):
     """Canonical Workflow Execution Statuses."""
+
     PENDING = "PENDING"
     RUNNING = "RUNNING"
     WAITING_APPROVAL = "WAITING_APPROVAL"
@@ -27,6 +29,7 @@ class WorkflowStatus(str, Enum):
 
 class WorkflowCheckpoint(BaseModel):
     """Execution checkpoint representing a safe state boundary in a DAG/workflow."""
+
     checkpoint_id: str = Field(default_factory=lambda: f"wf-ckpt-{uuid.uuid4().hex[:8]}")
     workflow_id: str
     node_id: str
@@ -36,6 +39,7 @@ class WorkflowCheckpoint(BaseModel):
 
 class WorkflowState(BaseModel):
     """Durable state representation for long-running workflows."""
+
     workflow_id: str = Field(default_factory=lambda: f"wf-{uuid.uuid4().hex[:10]}")
     session_id: str = "default_session"
     task_id: Optional[str] = None

@@ -11,6 +11,7 @@ class PathContainmentError(ValueError):
     Raised when a resolved path falls outside the allowed workspace root,
     or when a path contains a duplicated root segment (the workspace/workspace/ bug).
     """
+
     pass
 
 
@@ -38,6 +39,7 @@ def find_python_executable(root: Optional[Path] = None) -> Path:
       4. sys.executable
     """
     import sys
+
     if os.environ.get("BR_JARVIS_PYTHON"):
         override = Path(os.environ["BR_JARVIS_PYTHON"]).resolve()
         if override.exists():
@@ -74,7 +76,11 @@ def ensure_canonical_python() -> None:
     import sys
 
     # Skip re-exec when running inside pytest or test runners
-    if "pytest" in sys.modules or os.environ.get("JARVIS_TEST_MODE") == "true" or any("pytest" in a.lower() for a in sys.argv):
+    if (
+        "pytest" in sys.modules
+        or os.environ.get("JARVIS_TEST_MODE") == "true"
+        or any("pytest" in a.lower() for a in sys.argv)
+    ):
         return
 
     target = find_python_executable()
@@ -93,8 +99,6 @@ def ensure_canonical_python() -> None:
                 sys.exit(0)
             except Exception as _e:
                 print(f"[Warning] Canonical python re-exec note: {_e}", file=sys.stderr)
-
-
 
 
 class PathManager:
@@ -181,6 +185,7 @@ paths = get_path_manager()
 
 # ── WorkspaceManager ─ canonical path resolver for all tools ───────────────
 
+
 class WorkspaceManager:
     """
     Single canonical source of truth for all workspace paths in BR JARVIS.
@@ -207,11 +212,11 @@ class WorkspaceManager:
 
     def __init__(self, pm: Optional[PathManager] = None):
         pm = pm or get_path_manager()
-        self.project_root   = pm.PROJECT_ROOT
+        self.project_root = pm.PROJECT_ROOT
         self.workspace_root = pm.WORKSPACE_ROOT
         self.documents_root = pm.DOCUMENTS_DIR
         self.artifacts_root = pm.ARTIFACT_ROOT
-        self.career_root    = pm.CAREER_DIR
+        self.career_root = pm.CAREER_DIR
         self.temporary_root = pm.TEMP_ROOT
 
     @classmethod

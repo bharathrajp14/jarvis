@@ -1,15 +1,13 @@
 # career/crm/event_pipeline.py — Unified Career Event Bus Pipeline & Ingestion Architecture
 from __future__ import annotations
 
-import hashlib
-import json
 import logging
 import time
 import uuid
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Optional
 
-from .database import get_career_crm_db
-from .state_machine import ApplicationStateMachine
+from brjarvis.events.bus import get_event_bus
+
 from ..email_intelligence.injection_guard import PromptInjectionGuard
 from ..models import (
     Application,
@@ -20,8 +18,8 @@ from ..models import (
 )
 from ..notifications import get_career_notification_engine
 from ..spreadsheet.projection import get_spreadsheet_projection
-from brjarvis.events.bus import get_event_bus
-from brjarvis.events.types import BaseEvent
+from .database import get_career_crm_db
+from .state_machine import ApplicationStateMachine
 
 logger = logging.getLogger("JARVIS.CareerCRM.EventPipeline")
 
@@ -139,6 +137,7 @@ class CareerEventPipeline:
         # 7. MEMORY INTEGRATION
         try:
             from brjarvis.career.memory_integration import sync_career_memory
+
             sync_career_memory(event_type=event_type_enum.value, application=target_app, payload=payload)
         except Exception as exc:
             logger.debug("Career memory sync notice: %s", exc)
@@ -158,8 +157,13 @@ class CareerEventPipeline:
             application_id=app_id_for_event,
         )
 
-        logger.info("⚡ Pipeline Cycle Complete: [%s] -> App: %s, Excel: %s, Priority: %s",
-                    event_type_enum.value, app_id_for_event, excel_status, priority.value)
+        logger.info(
+            "⚡ Pipeline Cycle Complete: [%s] -> App: %s, Excel: %s, Priority: %s",
+            event_type_enum.value,
+            app_id_for_event,
+            excel_status,
+            priority.value,
+        )
 
         return {
             "status": "SUCCESS_VERIFIED",

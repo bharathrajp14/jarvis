@@ -5,7 +5,7 @@ import enum
 import logging
 import time
 import uuid
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -13,18 +13,18 @@ logger = logging.getLogger("JARVIS.ContextTypes")
 
 
 class ContextScope(str, enum.Enum):
-    HARD_CONSTRAINT   = "HARD_CONSTRAINT"      # Guaranteed inclusion (e.g. security policies, user must-haves)
-    SAFETY_CONSTRAINT = "SAFETY_CONSTRAINT"    # Safety & path execution boundaries
-    SYSTEM_STATE      = "SYSTEM_STATE"
-    CONVERSATION      = "CONVERSATION"
-    ACTIVE_WINDOW     = "ACTIVE_WINDOW"
-    CLIPBOARD         = "CLIPBOARD"
-    LESSONS           = "LESSONS"
-    MEMORY            = "MEMORY"
-    PROJECT_FILES     = "PROJECT_FILES"
-    USER_PREFERENCES  = "USER_PREFERENCES"
-    DECISION          = "DECISION"
-    EXPERIENCE        = "EXPERIENCE"
+    HARD_CONSTRAINT = "HARD_CONSTRAINT"  # Guaranteed inclusion (e.g. security policies, user must-haves)
+    SAFETY_CONSTRAINT = "SAFETY_CONSTRAINT"  # Safety & path execution boundaries
+    SYSTEM_STATE = "SYSTEM_STATE"
+    CONVERSATION = "CONVERSATION"
+    ACTIVE_WINDOW = "ACTIVE_WINDOW"
+    CLIPBOARD = "CLIPBOARD"
+    LESSONS = "LESSONS"
+    MEMORY = "MEMORY"
+    PROJECT_FILES = "PROJECT_FILES"
+    USER_PREFERENCES = "USER_PREFERENCES"
+    DECISION = "DECISION"
+    EXPERIENCE = "EXPERIENCE"
 
 
 class ContextItem(BaseModel):
@@ -44,6 +44,7 @@ class ContextItem(BaseModel):
         if self.token_count <= 0 and self.content:
             try:
                 from brjarvis.context.token_counter import TokenCounter
+
                 self.token_count = TokenCounter.count(self.content)
             except Exception:
                 self.token_count = max(1, len(self.content) // 4)

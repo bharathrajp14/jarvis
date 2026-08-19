@@ -8,7 +8,6 @@ import sys
 import time
 from contextvars import ContextVar
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any, Dict
 
 from brjarvis.core.paths import paths
@@ -72,11 +71,11 @@ class ColoredConsoleFormatter(logging.Formatter):
     """Human-readable colorized console log formatter."""
 
     COLORS = {
-        "DEBUG":    "\033[36m",   # Cyan
-        "INFO":     "\033[32m",   # Green
-        "WARNING":  "\033[33m",   # Yellow
-        "ERROR":    "\033[31m",   # Red
-        "CRITICAL": "\033[41m",   # Red background
+        "DEBUG": "\033[36m",  # Cyan
+        "INFO": "\033[32m",  # Green
+        "WARNING": "\033[33m",  # Yellow
+        "ERROR": "\033[31m",  # Red
+        "CRITICAL": "\033[41m",  # Red background
     }
     RESET = "\033[0m"
 
@@ -146,13 +145,9 @@ class LogTimer:
     def __exit__(self, exc_type, exc_val, exc_tb):
         duration_ms = (time.perf_counter() - self.start_time) * 1000
         if exc_type:
-            self.logger.error(
-                f"❌ Failed: {self.operation_name} after {duration_ms:.2f}ms ({exc_val})"
-            )
+            self.logger.error(f"❌ Failed: {self.operation_name} after {duration_ms:.2f}ms ({exc_val})")
         else:
-            self.logger.info(
-                f"✓ Completed: {self.operation_name} in {duration_ms:.2f}ms"
-            )
+            self.logger.info(f"✓ Completed: {self.operation_name} in {duration_ms:.2f}ms")
 
 
 logger = setup_logger("JARVIS")

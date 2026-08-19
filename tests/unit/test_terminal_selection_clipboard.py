@@ -1,8 +1,8 @@
 # tests/unit/test_terminal_selection_clipboard.py — Unit Tests for Selection and Clipboard
 from __future__ import annotations
 
-import pytest
 from unittest.mock import patch
+
 from brjarvis.core.terminal.selection import (
     ClipboardProvider,
     SelectionManager,

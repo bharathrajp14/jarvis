@@ -2,11 +2,15 @@
 # Uses only passive, publicly available data sources
 from __future__ import annotations
 
-import subprocess, socket, httpx
+import socket
+import subprocess
 from typing import TYPE_CHECKING
+
+import httpx
 
 if TYPE_CHECKING:
     from redteam.scope import ScopeEnforcer
+
 
 class ReconEngine:
     def __init__(self, scope: "ScopeEnforcer"):
@@ -18,9 +22,9 @@ class ReconEngine:
 
     def whois(self, domain: str) -> str:
         self._check(domain)
-        result = subprocess.run(["whois", domain],
-                                capture_output=True, text=True,
-                                encoding="utf-8", errors="replace", timeout=10)
+        result = subprocess.run(
+            ["whois", domain], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=10
+        )
         self.scope.audit_log("whois", domain, "ok")
         return result.stdout
 
@@ -31,8 +35,11 @@ class ReconEngine:
             try:
                 result = subprocess.run(
                     ["nslookup", "-type=" + rtype, domain],
-                    capture_output=True, text=True,
-                    encoding="utf-8", errors="replace", timeout=5
+                    capture_output=True,
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
+                    timeout=5,
                 )
                 records[rtype] = result.stdout.strip().splitlines()
             except Exception as e:
@@ -60,10 +67,13 @@ class ReconEngine:
         self._check(url.split("/")[2] if "://" in url else url)
         r = httpx.get(url, follow_redirects=True, timeout=10)
         missing_security_headers = [
-            h for h in [
-                "Strict-Transport-Security", "X-Content-Type-Options",
-                "X-Frame-Options", "Content-Security-Policy",
-                "Referrer-Policy"
+            h
+            for h in [
+                "Strict-Transport-Security",
+                "X-Content-Type-Options",
+                "X-Frame-Options",
+                "Content-Security-Policy",
+                "Referrer-Policy",
             ]
             if h not in r.headers
         ]

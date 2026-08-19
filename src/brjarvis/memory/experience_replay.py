@@ -3,6 +3,7 @@
 Stores complete execution trajectories (successful vs failed steps) in SQLite WAL database
 for trajectory playback, similarity retrieval, and few-shot in-context learning.
 """
+
 from __future__ import annotations
 
 import json
@@ -12,6 +13,7 @@ import time
 import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+
 from pydantic import BaseModel, Field
 
 from .persistent_store import get_memory_dir
@@ -82,6 +84,7 @@ class ExperienceReplayStore:
 
     def record_trajectory(self, trajectory: ExperienceTrajectory) -> None:
         """Persist an execution trajectory record."""
+
         def _do_write():
             conn = self._get_conn()
             with conn:
@@ -105,9 +108,9 @@ class ExperienceReplayStore:
                 )
 
         from brjarvis.memory.sqlite_lock import run_sqlite_write
+
         run_sqlite_write(_do_write)
         logger.debug(f"Recorded trajectory {trajectory.trajectory_id} (Success: {trajectory.success_status})")
-
 
     def get_similar_failures(self, query: str, limit: int = 5) -> List[Dict[str, Any]]:
         """Retrieve recent failed trajectories matching query keywords."""
@@ -128,14 +131,16 @@ class ExperienceReplayStore:
 
         results = []
         for row in cursor.fetchall():
-            results.append({
-                "trajectory_id": row["trajectory_id"],
-                "goal_query": row["goal_query"],
-                "step_count": row["step_count"],
-                "tool_sequence": json.loads(row["tool_sequence"] or "[]"),
-                "failure_reason": row["failure_reason"],
-                "created_at": row["created_at"],
-            })
+            results.append(
+                {
+                    "trajectory_id": row["trajectory_id"],
+                    "goal_query": row["goal_query"],
+                    "step_count": row["step_count"],
+                    "tool_sequence": json.loads(row["tool_sequence"] or "[]"),
+                    "failure_reason": row["failure_reason"],
+                    "created_at": row["created_at"],
+                }
+            )
         return results
 
     def get_successful_patterns(self, query: str, limit: int = 5) -> List[Dict[str, Any]]:
@@ -157,13 +162,15 @@ class ExperienceReplayStore:
 
         results = []
         for row in cursor.fetchall():
-            results.append({
-                "trajectory_id": row["trajectory_id"],
-                "goal_query": row["goal_query"],
-                "step_count": row["step_count"],
-                "tool_sequence": json.loads(row["tool_sequence"] or "[]"),
-                "created_at": row["created_at"],
-            })
+            results.append(
+                {
+                    "trajectory_id": row["trajectory_id"],
+                    "goal_query": row["goal_query"],
+                    "step_count": row["step_count"],
+                    "tool_sequence": json.loads(row["tool_sequence"] or "[]"),
+                    "created_at": row["created_at"],
+                }
+            )
         return results
 
     def close(self) -> None:

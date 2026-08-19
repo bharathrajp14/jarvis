@@ -1,17 +1,16 @@
 # tests/unit/test_terminal_components.py — Unit Tests for Terminal UI Components
 from __future__ import annotations
 
-import pytest
-from rich.console import Console
 from io import StringIO
 
+from rich.console import Console
+
 from brjarvis.core.terminal.components import (
-    HeaderComponent,
-    ToolCallComponent,
     CollapsibleOutputComponent,
+    HeaderComponent,
     PermissionPromptComponent,
     PlanViewComponent,
-    StatusPanelComponent,
+    ToolCallComponent,
 )
 from brjarvis.security.permission_request import PermissionRequest, RiskLevel
 
@@ -41,7 +40,9 @@ class TestTerminalComponents:
         console = Console(file=output, force_terminal=True, width=100)
 
         ToolCallComponent.render_started(console, "web_search", "query='python async'")
-        ToolCallComponent.render_completed(console, "web_search", duration_ms=120.0, evidence="10 results found", verified=True)
+        ToolCallComponent.render_completed(
+            console, "web_search", duration_ms=120.0, evidence="10 results found", verified=True
+        )
         ToolCallComponent.render_failed(console, "file_read", error_msg="File not found", duration_ms=15.0)
 
         rendered = output.getvalue()

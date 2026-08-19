@@ -4,20 +4,22 @@ Tracks real-time health, latency, failure rates, and circuit-breaker states
 for all discovered models. Computes dynamic health_score to prevent hammering
 unhealthy or quota-exhausted models.
 """
+
 from __future__ import annotations
 
 import logging
 import threading
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Optional
+from typing import Optional
 
 logger = logging.getLogger("JARVIS.ModelHealth")
 
 
 class HealthState(str, Enum):
     """Real-time health status of a model."""
+
     AVAILABLE = "available"
     DEGRADED = "degraded"
     UNAVAILABLE = "unavailable"
@@ -27,6 +29,7 @@ class HealthState(str, Enum):
 @dataclass
 class ModelHealthRecord:
     """Historical telemetry and current health status for an individual model."""
+
     model_id: str
     state: HealthState = HealthState.UNKNOWN
     last_success: float = 0.0
@@ -54,7 +57,9 @@ class ModelHealthRecord:
         else:
             self.latency_ms = 0.7 * self.latency_ms + 0.3 * latency
 
-    def record_failure(self, error: str, is_timeout: bool = False, is_quota: bool = False, cooldown_seconds: float = 60.0) -> None:
+    def record_failure(
+        self, error: str, is_timeout: bool = False, is_quota: bool = False, cooldown_seconds: float = 60.0
+    ) -> None:
         now = time.time()
         self.last_failure = now
         self.failure_count += 1
@@ -84,7 +89,6 @@ class ModelHealthRecord:
         self.circuit_open_until = 0.0
         self.state = HealthState.DEGRADED
         return False
-
 
     @property
     def success_rate(self) -> float:
@@ -151,14 +155,7 @@ class ModelHealthService:
             rec = self.get_health(model_id)
             rec.record_success(actual_lat)
 
-
-    def record_failure(
-        self,
-        model_id: str,
-        error: str,
-        is_timeout: bool = False,
-        is_quota: bool = False
-    ) -> None:
+    def record_failure(self, model_id: str, error: str, is_timeout: bool = False, is_quota: bool = False) -> None:
         with self._lock:
             rec = self.get_health(model_id)
             rec.record_failure(error, is_timeout=is_timeout, is_quota=is_quota, cooldown_seconds=self.cooldown_seconds)

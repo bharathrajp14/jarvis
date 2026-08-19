@@ -4,7 +4,7 @@ from __future__ import annotations
 import inspect
 import logging
 import threading
-from typing import Any, Callable, Dict, List, Optional, Set, Type, TypeVar
+from typing import Any, Callable, Dict, List, Set, Type, TypeVar
 
 T = TypeVar("T")
 
@@ -75,9 +75,7 @@ class Container:
                     self._instances[interface] = instance
                     return instance
                 except Exception as exc:
-                    raise KeyError(
-                        f"Could not auto-resolve class {interface.__name__}: {exc}"
-                    ) from exc
+                    raise KeyError(f"Could not auto-resolve class {interface.__name__}: {exc}") from exc
 
             raise KeyError(f"No registration found for interface {interface}")
 
@@ -96,9 +94,7 @@ class Container:
         """Return human-readable list of all registered type names (for debugging)."""
         with self._lock:
             all_types: Set[Type[Any]] = (
-                set(self._instances)
-                | set(self._singleton_factories)
-                | set(self._transient_factories)
+                set(self._instances) | set(self._singleton_factories) | set(self._transient_factories)
             )
             return sorted(t.__name__ for t in all_types if hasattr(t, "__name__"))
 
@@ -115,9 +111,7 @@ class Container:
             n_inst = len(self._instances)
             n_sing = len(self._singleton_factories)
             n_tran = len(self._transient_factories)
-        return (
-            f"<Container instances={n_inst} singletons={n_sing} transients={n_tran}>"
-        )
+        return f"<Container instances={n_inst} singletons={n_sing} transients={n_tran}>"
 
 
 # ── Global singleton container ────────────────────────────────────────────────

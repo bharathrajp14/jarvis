@@ -2,12 +2,11 @@
 """
 Exports conversation history to multiple formats: PDF, Markdown, HTML, Plain Text.
 """
+
 from __future__ import annotations
 
 import logging
-import json
 import re
-import os
 from datetime import datetime
 from pathlib import Path
 
@@ -43,9 +42,9 @@ def export_chat(
 
     # Fetch conversation history
     try:
-        from brjarvis.memory.persistent_store import load_index
         # Get history from working memory
         from brjarvis.core.bootstrap import build_assistant_runtime
+
         runtime = build_assistant_runtime()
         history = runtime.orchestrator.working_memory.get()
     except Exception:
@@ -56,7 +55,7 @@ def export_chat(
         # Try to construct mock history if empty for demonstration
         history = [
             {"role": "user", "content": "Hello JARVIS"},
-            {"role": "assistant", "content": "Hello sir. How can I assist you today?"}
+            {"role": "assistant", "content": "Hello sir. How can I assist you today?"},
         ]
 
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -89,7 +88,7 @@ def _export_md(history: list[dict], path: Path):
         "# JARVIS MK37 — Conversation Log",
         f"Exported on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
         "---",
-        ""
+        "",
     ]
     for msg in history:
         role = msg.get("role", "unknown").upper()
@@ -134,16 +133,16 @@ def _export_html(history: list[dict], path: Path):
         role = msg.get("role", "unknown")
         content = msg.get("content", "").replace("<", "&lt;").replace(">", "&gt;").replace("\n", "<br>")
         # Simple code block formatting in HTML
-        content = re.sub(r'```(.*?)```', r'<pre>\1</pre>', content)
+        content = re.sub(r"```(.*?)```", r"<pre>\1</pre>", content)
 
         chat_html.append(
             f'  <div class="message {role}">\n'
             f'    <div class="role">{role}</div>\n'
             f'    <div class="content">{content}</div>\n'
-            f'  </div>'
+            f"  </div>"
         )
 
-    full_html = html_template.replace("__DATE__", datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+    full_html = html_template.replace("__DATE__", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
     full_html = full_html.replace("__CHAT__", "\n".join(chat_html))
     path.write_text(full_html, encoding="utf-8")
 
@@ -154,7 +153,7 @@ def _export_txt(history: list[dict], path: Path):
         "JARVIS MK37 — Conversation Log",
         f"Exported on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
         "=" * 50,
-        ""
+        "",
     ]
     for msg in history:
         role = msg.get("role", "unknown").upper()
@@ -170,15 +169,16 @@ def _export_pdf(history: list[dict], path: Path):
     """Export to PDF. Falls back to HTML-to-PDF or clean text export if library not available."""
     try:
         from fpdf import FPDF
+
         pdf = FPDF()
         pdf.add_page()
         pdf.set_font("Arial", size=12)
 
         # Title
         pdf.set_text_color(56, 189, 248)
-        pdf.cell(200, 10, txt="JARVIS MK37 — Conversation Log", ln=True, align='C')
+        pdf.cell(200, 10, txt="JARVIS MK37 — Conversation Log", ln=True, align="C")
         pdf.set_text_color(100, 116, 139)
-        pdf.cell(200, 10, txt=f"Exported on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", ln=True, align='C')
+        pdf.cell(200, 10, txt=f"Exported on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", ln=True, align="C")
         pdf.ln(10)
 
         # Content
@@ -195,7 +195,7 @@ def _export_pdf(history: list[dict], path: Path):
             pdf.set_text_color(15, 23, 42)
 
             # Split text into multi-line cells
-            pdf.multi_cell(0, 6, txt=content.encode('latin1', 'replace').decode('latin1'))
+            pdf.multi_cell(0, 6, txt=content.encode("latin1", "replace").decode("latin1"))
             pdf.ln(4)
 
         pdf.output(str(path))
@@ -209,6 +209,7 @@ def _export_pdf(history: list[dict], path: Path):
             path.unlink()
         try:
             import shutil
+
             shutil.copy(str(html_path), str(path))
         except Exception as e:
-            logger.debug('Suppressed exception: %s', e)
+            logger.debug("Suppressed exception: %s", e)

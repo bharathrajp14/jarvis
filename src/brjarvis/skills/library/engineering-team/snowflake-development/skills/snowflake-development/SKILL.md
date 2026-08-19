@@ -177,13 +177,17 @@ Agent specs use a JSON structure with top-level keys: `models`, `instructions`, 
 from snowflake.snowpark import Session
 import os
 
-session = Session.builder.configs({
-    "account": os.environ["SNOWFLAKE_ACCOUNT"],
-    "user": os.environ["SNOWFLAKE_USER"],
-    "password": os.environ["SNOWFLAKE_PASSWORD"],
-    "role": "my_role", "warehouse": "my_wh",
-    "database": "my_db", "schema": "my_schema"
-}).create()
+session = Session.builder.configs(
+    {
+        "account": os.environ["SNOWFLAKE_ACCOUNT"],
+        "user": os.environ["SNOWFLAKE_USER"],
+        "password": os.environ["SNOWFLAKE_PASSWORD"],
+        "role": "my_role",
+        "warehouse": "my_wh",
+        "database": "my_db",
+        "schema": "my_schema",
+    }
+).create()
 ```
 
 - Never hardcode credentials. Use environment variables or key pair auth.

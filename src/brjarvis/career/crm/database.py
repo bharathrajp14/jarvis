@@ -7,7 +7,9 @@ import sqlite3
 import threading
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Union
+
+from brjarvis.memory.canonical_db import get_canonical_db
 
 from ..models import (
     Application,
@@ -23,7 +25,6 @@ from ..models import (
     OfferStatus,
     PriorityLevel,
 )
-from brjarvis.memory.canonical_db import get_canonical_db
 
 logger = logging.getLogger("JARVIS.CareerCRM.Database")
 
@@ -42,6 +43,7 @@ class CareerCRMDatabase:
             self.db = db_manager
         elif db_path:
             from brjarvis.memory.canonical_db import CanonicalDatabaseManager
+
             self.db = CanonicalDatabaseManager(db_path=Path(db_path))
         else:
             self.db = get_canonical_db()
@@ -257,7 +259,8 @@ class CareerCRMDatabase:
     def save_application(self, app: Application) -> None:
         """Insert or update a canonical application entity."""
         with self.db.get_connection() as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 INSERT INTO career_applications_v2 (
                     application_id, task_id, candidate_id, job_id, company, job_title, job_url,
                     source, platform, location, employment_type, salary, currency, job_description_hash,
@@ -299,53 +302,61 @@ class CareerCRMDatabase:
                     priority = excluded.priority,
                     notes_json = excluded.notes_json,
                     data_json = excluded.data_json;
-            """, (
-                app.application_id,
-                app.task_id,
-                app.candidate_id,
-                app.job_id,
-                app.company,
-                app.job_title,
-                app.job_url,
-                app.source,
-                app.platform,
-                app.location,
-                app.employment_type,
-                app.salary,
-                app.currency,
-                app.job_description_hash,
-                app.match_score,
-                app.resume_version,
-                app.cover_letter_version,
-                app.application_package_id,
-                app.application_method,
-                app.application_status.value if isinstance(app.application_status, ApplicationStatus) else str(app.application_status),
-                app.submission_status,
-                app.confirmation_id,
-                app.confirmation_url,
-                app.date_discovered,
-                app.date_shortlisted,
-                app.date_prepared,
-                app.date_applied,
-                app.date_verified,
-                app.last_updated,
-                app.next_followup,
-                app.priority.value if isinstance(app.priority, PriorityLevel) else str(app.priority),
-                json.dumps(app.notes),
-                json.dumps(app.to_dict()),
-            ))
+            """,
+                (
+                    app.application_id,
+                    app.task_id,
+                    app.candidate_id,
+                    app.job_id,
+                    app.company,
+                    app.job_title,
+                    app.job_url,
+                    app.source,
+                    app.platform,
+                    app.location,
+                    app.employment_type,
+                    app.salary,
+                    app.currency,
+                    app.job_description_hash,
+                    app.match_score,
+                    app.resume_version,
+                    app.cover_letter_version,
+                    app.application_package_id,
+                    app.application_method,
+                    app.application_status.value
+                    if isinstance(app.application_status, ApplicationStatus)
+                    else str(app.application_status),
+                    app.submission_status,
+                    app.confirmation_id,
+                    app.confirmation_url,
+                    app.date_discovered,
+                    app.date_shortlisted,
+                    app.date_prepared,
+                    app.date_applied,
+                    app.date_verified,
+                    app.last_updated,
+                    app.next_followup,
+                    app.priority.value if isinstance(app.priority, PriorityLevel) else str(app.priority),
+                    json.dumps(app.notes),
+                    json.dumps(app.to_dict()),
+                ),
+            )
             conn.commit()
 
     def get_application(self, application_id: str) -> Optional[Application]:
         """Fetch application by application_id."""
         with self.db.get_connection() as conn:
-            cursor = conn.execute("SELECT data_json FROM career_applications_v2 WHERE application_id = ?", (application_id,))
+            cursor = conn.execute(
+                "SELECT data_json FROM career_applications_v2 WHERE application_id = ?", (application_id,)
+            )
             row = cursor.fetchone()
             if row:
                 return Application.from_dict(json.loads(row["data_json"]))
         return None
 
-    def update_application_status(self, application_id: str, status: Union[ApplicationStatus, str]) -> Optional[Application]:
+    def update_application_status(
+        self, application_id: str, status: Union[ApplicationStatus, str]
+    ) -> Optional[Application]:
         """Update an application's status and persist."""
         app = self.get_application(application_id)
         if not app:
@@ -356,11 +367,15 @@ class CareerCRMDatabase:
         self.save_application(app)
         return app
 
-    def find_application_by_job_or_company(self, company: str, job_title: Optional[str] = None, job_id: Optional[str] = None) -> Optional[Application]:
+    def find_application_by_job_or_company(
+        self, company: str, job_title: Optional[str] = None, job_id: Optional[str] = None
+    ) -> Optional[Application]:
         """Search application by company name, job title, or job_id."""
         with self.db.get_connection() as conn:
             if job_id:
-                cursor = conn.execute("SELECT data_json FROM career_applications_v2 WHERE job_id = ? LIMIT 1", (job_id,))
+                cursor = conn.execute(
+                    "SELECT data_json FROM career_applications_v2 WHERE job_id = ? LIMIT 1", (job_id,)
+                )
                 row = cursor.fetchone()
                 if row:
                     return Application.from_dict(json.loads(row["data_json"]))
@@ -368,7 +383,7 @@ class CareerCRMDatabase:
             if company and job_title:
                 cursor = conn.execute(
                     "SELECT data_json FROM career_applications_v2 WHERE LOWER(company) = LOWER(?) AND LOWER(job_title) = LOWER(?) LIMIT 1",
-                    (company.strip(), job_title.strip())
+                    (company.strip(), job_title.strip()),
                 )
                 row = cursor.fetchone()
                 if row:
@@ -377,7 +392,7 @@ class CareerCRMDatabase:
             if company:
                 cursor = conn.execute(
                     "SELECT data_json FROM career_applications_v2 WHERE LOWER(company) = LOWER(?) ORDER BY last_updated DESC LIMIT 1",
-                    (company.strip(),)
+                    (company.strip(),),
                 )
                 row = cursor.fetchone()
                 if row:
@@ -389,7 +404,7 @@ class CareerCRMDatabase:
         status: Optional[ApplicationStatus] = None,
         priority: Optional[PriorityLevel] = None,
         limit: int = 200,
-        offset: int = 0
+        offset: int = 0,
     ) -> List[Application]:
         """List applications with optional status and priority filters."""
         query = "SELECT data_json FROM career_applications_v2 WHERE 1=1"
@@ -413,7 +428,9 @@ class CareerCRMDatabase:
         """Get counts grouped by application status."""
         counts: Dict[str, int] = {st.value: 0 for st in ApplicationStatus}
         with self.db.get_connection() as conn:
-            cursor = conn.execute("SELECT application_status, COUNT(*) as cnt FROM career_applications_v2 GROUP BY application_status")
+            cursor = conn.execute(
+                "SELECT application_status, COUNT(*) as cnt FROM career_applications_v2 GROUP BY application_status"
+            )
             for row in cursor.fetchall():
                 counts[row["application_status"]] = row["cnt"]
         return counts
@@ -423,52 +440,67 @@ class CareerCRMDatabase:
     def record_event(self, event: ApplicationEvent) -> None:
         """Append an immutable application audit event."""
         with self.db.get_connection() as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 INSERT INTO career_application_events (
                     event_id, application_id, timestamp, source, actor, event_type,
                     evidence, confidence, previous_state, new_state, task_id, payload_json
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(event_id) DO NOTHING;
-            """, (
-                event.event_id,
-                event.application_id,
-                event.timestamp,
-                event.source,
-                event.actor,
-                event.event_type.value if isinstance(event.event_type, ApplicationEventType) else str(event.event_type),
-                event.evidence,
-                event.confidence,
-                event.previous_state,
-                event.new_state,
-                event.task_id,
-                json.dumps(event.payload),
-            ))
+            """,
+                (
+                    event.event_id,
+                    event.application_id,
+                    event.timestamp,
+                    event.source,
+                    event.actor,
+                    event.event_type.value
+                    if isinstance(event.event_type, ApplicationEventType)
+                    else str(event.event_type),
+                    event.evidence,
+                    event.confidence,
+                    event.previous_state,
+                    event.new_state,
+                    event.task_id,
+                    json.dumps(event.payload),
+                ),
+            )
             conn.commit()
-        logger.debug("📝 Recorded ApplicationEvent [%s] for %s (%s -> %s)", event.event_type, event.application_id, event.previous_state, event.new_state)
+        logger.debug(
+            "📝 Recorded ApplicationEvent [%s] for %s (%s -> %s)",
+            event.event_type,
+            event.application_id,
+            event.previous_state,
+            event.new_state,
+        )
 
     def get_events_for_application(self, application_id: str) -> List[ApplicationEvent]:
         """Fetch full chronological audit history for an application."""
         with self.db.get_connection() as conn:
             cursor = conn.execute(
                 "SELECT * FROM career_application_events WHERE application_id = ? ORDER BY timestamp ASC",
-                (application_id,)
+                (application_id,),
             )
             events = []
             for row in cursor.fetchall():
-                events.append(ApplicationEvent.from_dict({
-                    "event_id": row["event_id"],
-                    "application_id": row["application_id"],
-                    "timestamp": row["timestamp"],
-                    "source": row["source"],
-                    "actor": row["actor"],
-                    "event_type": row["event_type"],
-                    "evidence": row["evidence"],
-                    "confidence": row["confidence"],
-                    "previous_state": row["previous_state"],
-                    "new_state": row["new_state"],
-                    "task_id": row["task_id"],
-                    "payload": json.loads(row["payload_json"] or "{}"),
-                }))
+                events.append(
+                    ApplicationEvent.from_dict(
+                        {
+                            "event_id": row["event_id"],
+                            "application_id": row["application_id"],
+                            "timestamp": row["timestamp"],
+                            "source": row["source"],
+                            "actor": row["actor"],
+                            "event_type": row["event_type"],
+                            "evidence": row["evidence"],
+                            "confidence": row["confidence"],
+                            "previous_state": row["previous_state"],
+                            "new_state": row["new_state"],
+                            "task_id": row["task_id"],
+                            "payload": json.loads(row["payload_json"] or "{}"),
+                        }
+                    )
+                )
             return events
 
     def list_recent_events(self, limit: int = 50) -> List[ApplicationEvent]:
@@ -476,20 +508,22 @@ class CareerCRMDatabase:
         with self.db.get_connection() as conn:
             cursor = conn.execute("SELECT * FROM career_application_events ORDER BY timestamp DESC LIMIT ?", (limit,))
             return [
-                ApplicationEvent.from_dict({
-                    "event_id": row["event_id"],
-                    "application_id": row["application_id"],
-                    "timestamp": row["timestamp"],
-                    "source": row["source"],
-                    "actor": row["actor"],
-                    "event_type": row["event_type"],
-                    "evidence": row["evidence"],
-                    "confidence": row["confidence"],
-                    "previous_state": row["previous_state"],
-                    "new_state": row["new_state"],
-                    "task_id": row["task_id"],
-                    "payload": json.loads(row["payload_json"] or "{}"),
-                })
+                ApplicationEvent.from_dict(
+                    {
+                        "event_id": row["event_id"],
+                        "application_id": row["application_id"],
+                        "timestamp": row["timestamp"],
+                        "source": row["source"],
+                        "actor": row["actor"],
+                        "event_type": row["event_type"],
+                        "evidence": row["evidence"],
+                        "confidence": row["confidence"],
+                        "previous_state": row["previous_state"],
+                        "new_state": row["new_state"],
+                        "task_id": row["task_id"],
+                        "payload": json.loads(row["payload_json"] or "{}"),
+                    }
+                )
                 for row in cursor.fetchall()
             ]
 
@@ -498,7 +532,8 @@ class CareerCRMDatabase:
     def save_interview(self, interview: InterviewSchedule) -> None:
         """Insert or update an interview schedule record."""
         with self.db.get_connection() as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 INSERT INTO career_interviews (
                     interview_id, application_id, company, role, round, date, time_str,
                     timezone, utc_timestamp, local_timestamp, duration_minutes, meeting_url,
@@ -521,41 +556,50 @@ class CareerCRMDatabase:
                     calendar_event_id = excluded.calendar_event_id,
                     notes_json = excluded.notes_json,
                     data_json = excluded.data_json;
-            """, (
-                interview.interview_id,
-                interview.application_id,
-                interview.company,
-                interview.role,
-                interview.round,
-                interview.date,
-                interview.time_str,
-                interview.timezone,
-                interview.utc_timestamp,
-                interview.local_timestamp,
-                interview.duration_minutes,
-                interview.meeting_url,
-                interview.platform,
-                interview.interviewer,
-                interview.status,
-                interview.preparation_status,
-                interview.calendar_event_id,
-                json.dumps(interview.notes),
-                json.dumps(interview.to_dict()),
-            ))
+            """,
+                (
+                    interview.interview_id,
+                    interview.application_id,
+                    interview.company,
+                    interview.role,
+                    interview.round,
+                    interview.date,
+                    interview.time_str,
+                    interview.timezone,
+                    interview.utc_timestamp,
+                    interview.local_timestamp,
+                    interview.duration_minutes,
+                    interview.meeting_url,
+                    interview.platform,
+                    interview.interviewer,
+                    interview.status,
+                    interview.preparation_status,
+                    interview.calendar_event_id,
+                    json.dumps(interview.notes),
+                    json.dumps(interview.to_dict()),
+                ),
+            )
             conn.commit()
 
     def list_interviews(self, application_id: Optional[str] = None, limit: int = 100) -> List[InterviewSchedule]:
         """List scheduled and past interviews."""
         with self.db.get_connection() as conn:
             if application_id:
-                cursor = conn.execute("SELECT data_json FROM career_interviews WHERE application_id = ? ORDER BY date DESC LIMIT ?", (application_id, limit))
+                cursor = conn.execute(
+                    "SELECT data_json FROM career_interviews WHERE application_id = ? ORDER BY date DESC LIMIT ?",
+                    (application_id, limit),
+                )
             else:
-                cursor = conn.execute("SELECT data_json FROM career_interviews ORDER BY date DESC, time_str DESC LIMIT ?", (limit,))
-            
+                cursor = conn.execute(
+                    "SELECT data_json FROM career_interviews ORDER BY date DESC, time_str DESC LIMIT ?", (limit,)
+                )
+
             interviews = []
             for row in cursor.fetchall():
                 d = json.loads(row["data_json"])
-                interviews.append(InterviewSchedule(**{k: v for k, v in d.items() if k in InterviewSchedule.__dataclass_fields__}))
+                interviews.append(
+                    InterviewSchedule(**{k: v for k, v in d.items() if k in InterviewSchedule.__dataclass_fields__})
+                )
             return interviews
 
     # ── Offers CRUD ────────────────────────────────────────────────────────────
@@ -563,7 +607,8 @@ class CareerCRMDatabase:
     def save_offer(self, offer: OfferCandidate) -> None:
         """Insert or update an offer candidate/confirmed record."""
         with self.db.get_connection() as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 INSERT INTO career_offers (
                     offer_id, application_id, company, role, salary, currency, bonus,
                     benefits_json, location, work_mode, joining_date, offer_date, expiry_date,
@@ -592,32 +637,34 @@ class CareerCRMDatabase:
                     fact_analysis_json = excluded.fact_analysis_json,
                     notes_json = excluded.notes_json,
                     data_json = excluded.data_json;
-            """, (
-                offer.offer_id,
-                offer.application_id,
-                offer.company,
-                offer.role,
-                offer.salary,
-                offer.currency,
-                offer.bonus,
-                json.dumps(offer.benefits),
-                offer.location,
-                offer.work_mode,
-                offer.joining_date,
-                offer.offer_date,
-                offer.expiry_date,
-                offer.status.value if isinstance(offer.status, OfferStatus) else str(offer.status),
-                offer.confidence,
-                offer.evidence,
-                json.dumps(offer.conditions),
-                json.dumps(offer.documents_requested),
-                offer.contact_person,
-                offer.offer_url,
-                json.dumps(offer.attachment_names),
-                json.dumps(offer.fact_analysis),
-                json.dumps(offer.notes),
-                json.dumps(offer.to_dict()),
-            ))
+            """,
+                (
+                    offer.offer_id,
+                    offer.application_id,
+                    offer.company,
+                    offer.role,
+                    offer.salary,
+                    offer.currency,
+                    offer.bonus,
+                    json.dumps(offer.benefits),
+                    offer.location,
+                    offer.work_mode,
+                    offer.joining_date,
+                    offer.offer_date,
+                    offer.expiry_date,
+                    offer.status.value if isinstance(offer.status, OfferStatus) else str(offer.status),
+                    offer.confidence,
+                    offer.evidence,
+                    json.dumps(offer.conditions),
+                    json.dumps(offer.documents_requested),
+                    offer.contact_person,
+                    offer.offer_url,
+                    json.dumps(offer.attachment_names),
+                    json.dumps(offer.fact_analysis),
+                    json.dumps(offer.notes),
+                    json.dumps(offer.to_dict()),
+                ),
+            )
             conn.commit()
 
     def get_offer(self, offer_id: str) -> Optional[OfferCandidate]:
@@ -640,7 +687,10 @@ class CareerCRMDatabase:
         """List all tracked offer records."""
         with self.db.get_connection() as conn:
             if application_id:
-                cursor = conn.execute("SELECT data_json FROM career_offers WHERE application_id = ? ORDER BY offer_date DESC LIMIT ?", (application_id, limit))
+                cursor = conn.execute(
+                    "SELECT data_json FROM career_offers WHERE application_id = ? ORDER BY offer_date DESC LIMIT ?",
+                    (application_id, limit),
+                )
             else:
                 cursor = conn.execute("SELECT data_json FROM career_offers ORDER BY offer_date DESC LIMIT ?", (limit,))
 
@@ -653,7 +703,9 @@ class CareerCRMDatabase:
                 except Exception:
                     st_enum = OfferStatus.OFFER_CANDIDATE
                 d["status"] = st_enum
-                offers.append(OfferCandidate(**{k: v for k, v in d.items() if k in OfferCandidate.__dataclass_fields__}))
+                offers.append(
+                    OfferCandidate(**{k: v for k, v in d.items() if k in OfferCandidate.__dataclass_fields__})
+                )
             return offers
 
     # ── Follow-ups CRUD ────────────────────────────────────────────────────────
@@ -661,7 +713,8 @@ class CareerCRMDatabase:
     def save_followup(self, followup: FollowupRecord) -> None:
         """Insert or update a follow-up action record."""
         with self.db.get_connection() as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 INSERT INTO career_followups (
                     followup_id, application_id, company, role, reason, due_date,
                     priority, status, completed_date, draft_subject, draft_body,
@@ -677,28 +730,33 @@ class CareerCRMDatabase:
                     draft_body = excluded.draft_body,
                     notes_json = excluded.notes_json,
                     data_json = excluded.data_json;
-            """, (
-                followup.followup_id,
-                followup.application_id,
-                followup.company,
-                followup.role,
-                followup.reason,
-                followup.due_date,
-                followup.priority.value if isinstance(followup.priority, PriorityLevel) else str(followup.priority),
-                followup.status,
-                followup.completed_date,
-                followup.draft_subject,
-                followup.draft_body,
-                json.dumps(followup.notes),
-                json.dumps(followup.to_dict()),
-            ))
+            """,
+                (
+                    followup.followup_id,
+                    followup.application_id,
+                    followup.company,
+                    followup.role,
+                    followup.reason,
+                    followup.due_date,
+                    followup.priority.value if isinstance(followup.priority, PriorityLevel) else str(followup.priority),
+                    followup.status,
+                    followup.completed_date,
+                    followup.draft_subject,
+                    followup.draft_body,
+                    json.dumps(followup.notes),
+                    json.dumps(followup.to_dict()),
+                ),
+            )
             conn.commit()
 
     def list_followups(self, status: Optional[str] = None, limit: int = 100) -> List[FollowupRecord]:
         """List pending or completed follow-ups."""
         with self.db.get_connection() as conn:
             if status:
-                cursor = conn.execute("SELECT data_json FROM career_followups WHERE status = ? ORDER BY due_date ASC LIMIT ?", (status, limit))
+                cursor = conn.execute(
+                    "SELECT data_json FROM career_followups WHERE status = ? ORDER BY due_date ASC LIMIT ?",
+                    (status, limit),
+                )
             else:
                 cursor = conn.execute("SELECT data_json FROM career_followups ORDER BY due_date ASC LIMIT ?", (limit,))
 
@@ -711,7 +769,9 @@ class CareerCRMDatabase:
                 except Exception:
                     pri_enum = PriorityLevel.MEDIUM
                 d["priority"] = pri_enum
-                followups.append(FollowupRecord(**{k: v for k, v in d.items() if k in FollowupRecord.__dataclass_fields__}))
+                followups.append(
+                    FollowupRecord(**{k: v for k, v in d.items() if k in FollowupRecord.__dataclass_fields__})
+                )
             return followups
 
     # ── Email Intelligence & Idempotency CRUD ──────────────────────────────────
@@ -720,29 +780,34 @@ class CareerCRMDatabase:
         """Record an email intelligence event. Returns False if duplicate message_id_hash."""
         try:
             with self.db.get_connection() as conn:
-                conn.execute("""
+                conn.execute(
+                    """
                     INSERT INTO career_email_records (
                         email_event_id, application_id, message_id_hash, provider, sender,
                         sender_domain, subject, received_time, classification, confidence,
                         detected_event, action_taken, verification, processed_time, data_json
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """, (
-                    rec.email_event_id,
-                    rec.application_id,
-                    rec.message_id_hash,
-                    rec.provider,
-                    rec.sender,
-                    rec.sender_domain,
-                    rec.subject,
-                    rec.received_time,
-                    rec.classification.value if isinstance(rec.classification, EmailClassification) else str(rec.classification),
-                    rec.confidence,
-                    rec.detected_event,
-                    rec.action_taken,
-                    rec.verification,
-                    rec.processed_time,
-                    json.dumps(rec.to_dict()),
-                ))
+                """,
+                    (
+                        rec.email_event_id,
+                        rec.application_id,
+                        rec.message_id_hash,
+                        rec.provider,
+                        rec.sender,
+                        rec.sender_domain,
+                        rec.subject,
+                        rec.received_time,
+                        rec.classification.value
+                        if isinstance(rec.classification, EmailClassification)
+                        else str(rec.classification),
+                        rec.confidence,
+                        rec.detected_event,
+                        rec.action_taken,
+                        rec.verification,
+                        rec.processed_time,
+                        json.dumps(rec.to_dict()),
+                    ),
+                )
                 conn.commit()
                 return True
         except sqlite3.IntegrityError:
@@ -752,13 +817,17 @@ class CareerCRMDatabase:
     def is_email_processed(self, message_id_hash: str) -> bool:
         """Check if an email message hash has already been processed (idempotency guard)."""
         with self.db.get_connection() as conn:
-            cursor = conn.execute("SELECT 1 FROM career_email_records WHERE message_id_hash = ? LIMIT 1", (message_id_hash,))
+            cursor = conn.execute(
+                "SELECT 1 FROM career_email_records WHERE message_id_hash = ? LIMIT 1", (message_id_hash,)
+            )
             return cursor.fetchone() is not None
 
     def list_email_records(self, limit: int = 100) -> List[EmailEventRecord]:
         """List processed career email records."""
         with self.db.get_connection() as conn:
-            cursor = conn.execute("SELECT data_json FROM career_email_records ORDER BY processed_time DESC LIMIT ?", (limit,))
+            cursor = conn.execute(
+                "SELECT data_json FROM career_email_records ORDER BY processed_time DESC LIMIT ?", (limit,)
+            )
             records = []
             for row in cursor.fetchall():
                 d = json.loads(row["data_json"])
@@ -768,7 +837,9 @@ class CareerCRMDatabase:
                 except Exception:
                     cls_enum = EmailClassification.IRRELEVANT
                 d["classification"] = cls_enum
-                records.append(EmailEventRecord(**{k: v for k, v in d.items() if k in EmailEventRecord.__dataclass_fields__}))
+                records.append(
+                    EmailEventRecord(**{k: v for k, v in d.items() if k in EmailEventRecord.__dataclass_fields__})
+                )
             return records
 
     # ── Contacts CRUD ──────────────────────────────────────────────────────────
@@ -776,7 +847,8 @@ class CareerCRMDatabase:
     def save_contact(self, contact: CareerContact) -> None:
         """Save a hiring manager or recruiter contact."""
         with self.db.get_connection() as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 INSERT INTO career_contacts (
                     contact_id, application_id, company, name, title, email, phone,
                     linkedin_url, notes, created_at
@@ -790,42 +862,49 @@ class CareerCRMDatabase:
                     phone = excluded.phone,
                     linkedin_url = excluded.linkedin_url,
                     notes = excluded.notes;
-            """, (
-                contact.contact_id,
-                contact.application_id,
-                contact.company,
-                contact.name,
-                contact.title,
-                contact.email,
-                contact.phone,
-                contact.linkedin_url,
-                contact.notes,
-                contact.created_at,
-            ))
+            """,
+                (
+                    contact.contact_id,
+                    contact.application_id,
+                    contact.company,
+                    contact.name,
+                    contact.title,
+                    contact.email,
+                    contact.phone,
+                    contact.linkedin_url,
+                    contact.notes,
+                    contact.created_at,
+                ),
+            )
             conn.commit()
 
     def list_contacts(self, company: Optional[str] = None, limit: int = 100) -> List[CareerContact]:
         """List contacts, optionally filtered by company."""
         with self.db.get_connection() as conn:
             if company:
-                cursor = conn.execute("SELECT * FROM career_contacts WHERE LOWER(company) = LOWER(?) ORDER BY created_at DESC LIMIT ?", (company.strip(), limit))
+                cursor = conn.execute(
+                    "SELECT * FROM career_contacts WHERE LOWER(company) = LOWER(?) ORDER BY created_at DESC LIMIT ?",
+                    (company.strip(), limit),
+                )
             else:
                 cursor = conn.execute("SELECT * FROM career_contacts ORDER BY created_at DESC LIMIT ?", (limit,))
 
             contacts = []
             for row in cursor.fetchall():
-                contacts.append(CareerContact(
-                    contact_id=row["contact_id"],
-                    application_id=row["application_id"],
-                    company=row["company"],
-                    name=row["name"],
-                    title=row["title"] or "Recruiter",
-                    email=row["email"] or "",
-                    phone=row["phone"] or "",
-                    linkedin_url=row["linkedin_url"] or "",
-                    notes=row["notes"] or "",
-                    created_at=row["created_at"],
-                ))
+                contacts.append(
+                    CareerContact(
+                        contact_id=row["contact_id"],
+                        application_id=row["application_id"],
+                        company=row["company"],
+                        name=row["name"],
+                        title=row["title"] or "Recruiter",
+                        email=row["email"] or "",
+                        phone=row["phone"] or "",
+                        linkedin_url=row["linkedin_url"] or "",
+                        notes=row["notes"] or "",
+                        created_at=row["created_at"],
+                    )
+                )
             return contacts
 
 

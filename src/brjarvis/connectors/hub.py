@@ -9,17 +9,17 @@ Features:
   - Registers all connector tools into the main JARVIS tool registry
   - Handles errors gracefully (one bad connector never crashes JARVIS)
 """
+
 from __future__ import annotations
 
 import importlib
 import json
 import logging
 import pkgutil
-import traceback
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
-from .base import BaseConnector, ConnectorTool
+from .base import BaseConnector
 
 logger = logging.getLogger("JARVIS.ConnectorHub")
 
@@ -59,23 +59,14 @@ class ConnectorHub:
                 # Find all BaseConnector subclasses in the module
                 for attr_name in dir(mod):
                     obj = getattr(mod, attr_name)
-                    if (
-                        isinstance(obj, type)
-                        and issubclass(obj, BaseConnector)
-                        and obj is not BaseConnector
-                    ):
+                    if isinstance(obj, type) and issubclass(obj, BaseConnector) and obj is not BaseConnector:
                         try:
                             instance = obj()
                             self._connectors[instance.connector_id] = instance
                             status = "✅" if instance.is_configured else "⚠️ (needs config)"
-                            logger.info(
-                                "ConnectorHub: Loaded '%s' %s",
-                                instance.display_name, status
-                            )
+                            logger.info("ConnectorHub: Loaded '%s' %s", instance.display_name, status)
                         except Exception as e:
-                            logger.warning(
-                                "ConnectorHub: Could not instantiate %s: %s", attr_name, e
-                            )
+                            logger.warning("ConnectorHub: Could not instantiate %s: %s", attr_name, e)
             except Exception as e:
                 self._load_errors[module_name] = str(e)
                 logger.debug("ConnectorHub: Skipping '%s': %s", module_name, e)
@@ -83,7 +74,9 @@ class ConnectorHub:
         active = sum(1 for c in self._connectors.values() if c.is_configured)
         logger.info(
             "ConnectorHub: %d connectors loaded (%d active, %d need config)",
-            len(self._connectors), active, len(self._connectors) - active
+            len(self._connectors),
+            active,
+            len(self._connectors) - active,
         )
 
     # ── Routing ───────────────────────────────────────────────────────────────
@@ -110,16 +103,10 @@ class ConnectorHub:
         connector = self._connectors.get(connector_id)
         if not connector:
             available = list(self._connectors.keys())
-            return (
-                f"❌ Connector '{connector_id}' not found.\n"
-                f"Available connectors: {available}"
-            )
+            return f"❌ Connector '{connector_id}' not found.\nAvailable connectors: {available}"
 
         if not connector.is_configured:
-            return (
-                f"⚠️ Connector '{connector.display_name}' needs configuration.\n"
-                f"Setup guide: {connector.auth_hint}"
-            )
+            return f"⚠️ Connector '{connector.display_name}' needs configuration.\nSetup guide: {connector.auth_hint}"
 
         try:
             result = connector.call_tool(tool_name, args)
@@ -127,10 +114,7 @@ class ConnectorHub:
                 return json.dumps(result, indent=2, ensure_ascii=False)
             return str(result)
         except Exception as e:
-            logger.error(
-                "ConnectorHub: Error in %s/%s: %s",
-                connector_id, tool_name, e, exc_info=True
-            )
+            logger.error("ConnectorHub: Error in %s/%s: %s", connector_id, tool_name, e, exc_info=True)
             return f"❌ Error in connector '{connector_id}/{tool_name}': {e}"
 
     # ── Registry Queries ──────────────────────────────────────────────────────
@@ -139,16 +123,18 @@ class ConnectorHub:
         """Return a list of all registered connectors with their status."""
         results = []
         for cid, conn in self._connectors.items():
-            results.append({
-                "id": cid,
-                "name": conn.display_name,
-                "description": conn.description,
-                "icon": conn.icon,
-                "configured": conn.is_configured,
-                "requires_auth": conn.requires_auth,
-                "auth_hint": conn.auth_hint if not conn.is_configured else "",
-                "tools": [t.to_dict() for t in conn.list_tools()],
-            })
+            results.append(
+                {
+                    "id": cid,
+                    "name": conn.display_name,
+                    "description": conn.description,
+                    "icon": conn.icon,
+                    "configured": conn.is_configured,
+                    "requires_auth": conn.requires_auth,
+                    "auth_hint": conn.auth_hint if not conn.is_configured else "",
+                    "tools": [t.to_dict() for t in conn.list_tools()],
+                }
+            )
         return results
 
     def list_all_tools(self) -> List[Dict[str, Any]]:
@@ -158,14 +144,16 @@ class ConnectorHub:
             if not conn.is_configured:
                 continue
             for tool in conn.list_tools():
-                tools.append({
-                    "connector": cid,
-                    "connector_name": conn.display_name,
-                    "tool": tool.name,
-                    "full_name": f"{cid}/{tool.name}",
-                    "description": tool.description,
-                    "parameters": tool.parameters,
-                })
+                tools.append(
+                    {
+                        "connector": cid,
+                        "connector_name": conn.display_name,
+                        "tool": tool.name,
+                        "full_name": f"{cid}/{tool.name}",
+                        "description": tool.description,
+                        "parameters": tool.parameters,
+                    }
+                )
         return tools
 
     def get_connector(self, connector_id: str) -> Optional[BaseConnector]:
@@ -191,11 +179,12 @@ class ConnectorHub:
             lines.append("\n**Needs Configuration:**")
             lines.extend(needs_config)
         if self._load_errors:
-            lines.append(f"\n**Load Errors ({len(self._load_errors)}):** "
-                         f"{', '.join(self._load_errors.keys())}")
+            lines.append(f"\n**Load Errors ({len(self._load_errors)}):** {', '.join(self._load_errors.keys())}")
 
-        lines.append(f"\n*Total: {len(self._connectors)} connectors | "
-                     f"{sum(1 for c in self._connectors.values() if c.is_configured)} active*")
+        lines.append(
+            f"\n*Total: {len(self._connectors)} connectors | "
+            f"{sum(1 for c in self._connectors.values() if c.is_configured)} active*"
+        )
         return "\n".join(lines)
 
     def register_with_tool_registry(self) -> int:
@@ -224,6 +213,7 @@ class ConnectorHub:
                 def make_action(c_ref, t_name):
                     def action(args: Dict[str, Any]) -> str:
                         return c_ref.call_tool(t_name, args)
+
                     action.__name__ = f"connector_{c_ref.connector_id}_{t_name}"
                     return action
 

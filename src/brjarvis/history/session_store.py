@@ -15,10 +15,11 @@ Features:
   - Full-Text Search (FTS5) for instant phrase search across past sessions
   - Automatic session cleanup & retention policies
 """
+
 from __future__ import annotations
 
-import logging
 import json
+import logging
 import sqlite3
 import threading
 import time
@@ -109,7 +110,9 @@ class SessionStore:
         with self._lock:
             conn = self._get_conn()
             # Fast check if sessions table exists
-            table_check = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='sessions'").fetchone()
+            table_check = conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name='sessions'"
+            ).fetchone()
             if not table_check:
                 conn.executescript(_SCHEMA_SQL)
                 try:
@@ -147,7 +150,7 @@ class SessionStore:
                         conn.execute("ALTER TABLE turns ADD COLUMN latency_ms INTEGER")
                 conn.commit()
             except Exception as e:
-                logger.debug('SessionStore migration exception: %s', e)
+                logger.debug("SessionStore migration exception: %s", e)
 
     def _get_conn(self) -> sqlite3.Connection:
         """Return a thread-local connection (reuses if already open)."""
@@ -169,7 +172,7 @@ class SessionStore:
             try:
                 self._conn.close()
             except Exception as e:
-                logger.debug('Suppressed exception: %s', e)
+                logger.debug("Suppressed exception: %s", e)
             self._conn = None
 
     def __del__(self):
@@ -195,7 +198,7 @@ class SessionStore:
                 if attempt == 4:
                     logger.warning("[SessionStore] Database locked during new_session: %s", e)
                     return session_id
-                time.sleep(0.2 * (2 ** attempt))
+                time.sleep(0.2 * (2**attempt))
         return session_id
 
     def add_turn(
@@ -254,7 +257,7 @@ class SessionStore:
                 if attempt == 4:
                     logger.warning("[SessionStore] Operational error during add_turn: %s", e)
                     return 0
-                time.sleep(0.2 * (2 ** attempt))
+                time.sleep(0.2 * (2**attempt))
         return 0
 
     def close_session(self, session_id: str, summary: str | None = None) -> None:
@@ -384,9 +387,7 @@ class SessionStore:
         total_turns = conn.execute("SELECT COUNT(*) FROM turns").fetchone()[0]
         tool_calls = conn.execute("SELECT COUNT(*) FROM turns WHERE tool_name IS NOT NULL").fetchone()[0]
 
-        avg_row = conn.execute(
-            "SELECT AVG(turn_count) FROM sessions WHERE turn_count > 0"
-        ).fetchone()
+        avg_row = conn.execute("SELECT AVG(turn_count) FROM sessions WHERE turn_count > 0").fetchone()
         avg_turns = round(avg_row[0], 1) if avg_row and avg_row[0] else 0
 
         backends_row = conn.execute(

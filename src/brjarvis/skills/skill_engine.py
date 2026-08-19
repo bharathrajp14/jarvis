@@ -4,6 +4,7 @@ Learnable & Repeatable Skills System for BR JARVIS MK37.
 Enables saving successful task trajectories as declarative, editable, versioned,
 and testable YAML/JSON skill definitions with input schemas and verification assertions.
 """
+
 from __future__ import annotations
 
 import json
@@ -117,9 +118,11 @@ class SkillEngine:
             return True
         return False
 
-    def learn_skill_from_trajectory(self, goal: str, actions: List[Dict[str, Any]], skill_name: Optional[str] = None) -> SkillSchema:
+    def learn_skill_from_trajectory(
+        self, goal: str, actions: List[Dict[str, Any]], skill_name: Optional[str] = None
+    ) -> SkillSchema:
         """Extract a reusable parameterized Skill from a successful task action trace."""
-        name = skill_name or re.sub(r'[^a-zA-Z0-9_]', '_', goal[:30]).lower().strip('_')
+        name = skill_name or re.sub(r"[^a-zA-Z0-9_]", "_", goal[:30]).lower().strip("_")
         inputs = []
         steps = []
 
@@ -127,14 +130,16 @@ class SkillEngine:
             tool = act.get("tool", "run_code")
             params = act.get("parameters", {})
             step_desc = f"Execute {tool}"
-            steps.append(SkillStep(
-                step_id=f"step_{idx}",
-                tool=tool,
-                description=step_desc,
-                parameters=params,
-                target_device=act.get("target_device", "pc"),
-                target_app=act.get("target_app", "")
-            ))
+            steps.append(
+                SkillStep(
+                    step_id=f"step_{idx}",
+                    tool=tool,
+                    description=step_desc,
+                    parameters=params,
+                    target_device=act.get("target_device", "pc"),
+                    target_app=act.get("target_app", ""),
+                )
+            )
 
         skill = SkillSchema(
             name=name,
@@ -143,17 +148,20 @@ class SkillEngine:
             inputs=inputs,
             steps=steps,
             verification=["steps_completed"],
-            tags=["auto-learned", "workflow"]
+            tags=["auto-learned", "workflow"],
         )
         return skill
 
-    def execute_skill(self, skill_name: str, input_values: Dict[str, Any], tool_caller: Optional[Callable] = None) -> Dict[str, Any]:
+    def execute_skill(
+        self, skill_name: str, input_values: Dict[str, Any], tool_caller: Optional[Callable] = None
+    ) -> Dict[str, Any]:
         """Execute a skill by substituting inputs and running steps in order."""
         skill = self.get_skill(skill_name)
         if not skill:
             return {"success": False, "error": f"Skill '{skill_name}' not found"}
 
         from brjarvis.tools.registry import execute_tool
+
         dispatch_fn = tool_caller or execute_tool
 
         results = {}
@@ -177,14 +185,14 @@ class SkillEngine:
                     "skill": skill.name,
                     "failed_step": step.step_id,
                     "error": str(e),
-                    "completed_results": results
+                    "completed_results": results,
                 }
 
         return {
             "success": True,
             "skill": skill.name,
             "results": results,
-            "verification": "All steps executed successfully"
+            "verification": "All steps executed successfully",
         }
 
 

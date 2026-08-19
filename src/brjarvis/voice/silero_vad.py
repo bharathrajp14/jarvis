@@ -12,21 +12,22 @@ MK38 Enhancements:
   - Adaptive threshold: auto-raises when prob oscillates (unstable mic)
   - Silence streak tracker: resets ONNX RNN state to prevent state drift
 """
+
 from __future__ import annotations
 
 import logging
-import os
-import time
 import math
-import numpy as np
 from pathlib import Path
 from typing import Optional, Tuple
+
+import numpy as np
 
 logger = logging.getLogger("JARVIS.Voice.SileroVAD")
 
 _HAS_ORT = False
 try:
     import onnxruntime as ort
+
     _HAS_ORT = True
 except ImportError:
     _HAS_ORT = False
@@ -34,6 +35,7 @@ except ImportError:
 _HAS_TORCH = False
 try:
     import torch
+
     _HAS_TORCH = True
 except ImportError:
     _HAS_TORCH = False
@@ -57,7 +59,7 @@ class SileroVAD:
 
         self._session = None
         self._torch_model = None
-        self._onnx_input_names: list[str] = []   # auto-detected from model
+        self._onnx_input_names: list[str] = []  # auto-detected from model
         self._onnx_output_names: list[str] = []  # auto-detected from model
 
         # LSTM state tensors (v5: h, c shape (2,1,64) | v4: h, c separate or single state)
@@ -65,16 +67,16 @@ class SileroVAD:
         self._c: Optional[np.ndarray] = None
 
         # Adaptive threshold controls
-        self._consecutive_silence: int = 0    # silence chunk counter for state reset
-        self._total_state_resets: int = 0     # cumulative ONNX state resets (for testing/monitoring)
+        self._consecutive_silence: int = 0  # silence chunk counter for state reset
+        self._total_state_resets: int = 0  # cumulative ONNX state resets (for testing/monitoring)
         self._prob_history: list[float] = []  # track prob oscillations
         self._adaptive_threshold: float = threshold  # starts at base, adjusts dynamically
-
 
         # Noise calibrator integration
         self._calibrator = None
         try:
             from brjarvis.voice.noise_calibrator import get_calibrator
+
             self._calibrator = get_calibrator()
         except Exception:
             pass
@@ -93,6 +95,7 @@ class SileroVAD:
 
                 if not model_path.exists():
                     import urllib.request
+
                     url = "https://github.com/snakers4/silero-vad/raw/master/src/silero_vad/data/silero_vad.onnx"
                     logger.info("Downloading Silero VAD ONNX model...")
                     req = urllib.request.urlopen(url, timeout=3.0)
@@ -104,15 +107,11 @@ class SileroVAD:
                     opts = ort.SessionOptions()
                     opts.inter_op_num_threads = 1
                     opts.intra_op_num_threads = 1
-                    self._session = ort.InferenceSession(
-                        str(model_path), opts,
-                        providers=["CPUExecutionProvider"]
-                    )
+                    self._session = ort.InferenceSession(str(model_path), opts, providers=["CPUExecutionProvider"])
                     # Introspect actual model input/output names
                     self._onnx_input_names = [i.name for i in self._session.get_inputs()]
                     self._onnx_output_names = [o.name for o in self._session.get_outputs()]
-                    logger.debug("ONNX inputs: %s, outputs: %s",
-                                 self._onnx_input_names, self._onnx_output_names)
+                    logger.debug("ONNX inputs: %s, outputs: %s", self._onnx_input_names, self._onnx_output_names)
                     self._reset_states()
                     # Model Warmup pass to eliminate first-frame latency spike
                     try:
@@ -182,7 +181,7 @@ class SileroVAD:
         float_samples = shorts.astype(np.float32) / 32768.0
 
         # Compute RMS for SNR calculation
-        rms = float(np.sqrt(np.mean(float_samples ** 2)))
+        rms = float(np.sqrt(np.mean(float_samples**2)))
         snr_db = self._compute_snr_db(rms)
 
         # Get dynamic threshold (calibrator-based or adaptive)
@@ -241,7 +240,7 @@ class SileroVAD:
         elif len(float_samples) > 512:
             float_samples = float_samples[:512]
 
-        input_tensor = np.expand_dims(float_samples, axis=0)   # (1, 512)
+        input_tensor = np.expand_dims(float_samples, axis=0)  # (1, 512)
         sr_tensor = np.array([self.sample_rate], dtype=np.int64)
 
         # Build input dict from introspected names
@@ -279,19 +278,20 @@ class SileroVAD:
             logger.debug("ONNX primary inference failed, trying minimal fallback: %s", e)
             # Minimal fallback: just input + sr
             try:
-                out = self._session.run(None, {
-                    self._session.get_inputs()[0].name: input_tensor,
-                    self._session.get_inputs()[1].name: sr_tensor,
-                })
+                out = self._session.run(
+                    None,
+                    {
+                        self._session.get_inputs()[0].name: input_tensor,
+                        self._session.get_inputs()[1].name: sr_tensor,
+                    },
+                )
                 prob = float(out[0].ravel()[0])
                 return prob, prob >= threshold
             except Exception as e2:
                 logger.debug("ONNX minimal fallback failed: %s", e2)
                 return 0.0, False
 
-    def _fallback_infer(
-        self, float_samples: np.ndarray, rms: float, threshold: float
-    ) -> Tuple[float, bool]:
+    def _fallback_infer(self, float_samples: np.ndarray, rms: float, threshold: float) -> Tuple[float, bool]:
         """
         High-speed RMS + Zero Crossing Rate fallback VAD.
         Uses calibrator-based threshold if available.
@@ -301,9 +301,7 @@ class SileroVAD:
 
         # Use calibrator threshold if available
         rms_threshold = (
-            self._calibrator.get_vad_threshold()
-            if self._calibrator and self._calibrator.is_calibrated
-            else 0.018
+            self._calibrator.get_vad_threshold() if self._calibrator and self._calibrator.is_calibrated else 0.018
         )
 
         is_speech_flag = (rms > rms_threshold) and (0.03 < zero_crossings < 0.40)
@@ -334,8 +332,9 @@ class SileroVAD:
         if len(self._prob_history) >= 20:
             # Count oscillations: sign changes in prob around 0.3
             changes = sum(
-                1 for i in range(1, len(self._prob_history))
-                if (self._prob_history[i] > 0.3) != (self._prob_history[i-1] > 0.3)
+                1
+                for i in range(1, len(self._prob_history))
+                if (self._prob_history[i] > 0.3) != (self._prob_history[i - 1] > 0.3)
             )
             oscillation_rate = changes / len(self._prob_history)
 

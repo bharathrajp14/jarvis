@@ -38,6 +38,7 @@ World-class senior data scientist skill for production-grade AI/ML/Data systems.
 import numpy as np
 from scipy import stats
 
+
 def calculate_sample_size(baseline_rate, mde, alpha=0.05, power=0.8):
     """
     Calculate required sample size per variant.
@@ -51,6 +52,7 @@ def calculate_sample_size(baseline_rate, mde, alpha=0.05, power=0.8):
     z_beta = stats.norm.ppf(power)
     n = ((z_alpha + z_beta) / effect_size) ** 2
     return int(np.ceil(n))
+
 
 def analyze_experiment(control, treatment, alpha=0.05):
     """
@@ -72,6 +74,7 @@ def analyze_experiment(control, treatment, alpha=0.05):
         "ci_95": (ci_low, ci_high),
     }
 
+
 # --- Experiment checklist ---
 # 1. Define ONE primary metric and pre-register secondary metrics.
 # 2. Calculate sample size BEFORE starting: calculate_sample_size(0.10, 0.05)
@@ -92,23 +95,29 @@ from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.impute import SimpleImputer
 from sklearn.compose import ColumnTransformer
 
+
 def build_feature_pipeline(numeric_cols, categorical_cols, date_cols=None):
     """
     Returns a fitted-ready ColumnTransformer for structured tabular data.
     """
-    numeric_pipeline = Pipeline([
-        ("impute", SimpleImputer(strategy="median")),
-        ("scale",  StandardScaler()),
-    ])
-    categorical_pipeline = Pipeline([
-        ("impute", SimpleImputer(strategy="most_frequent")),
-        ("encode", OneHotEncoder(handle_unknown="ignore", sparse_output=False)),
-    ])
+    numeric_pipeline = Pipeline(
+        [
+            ("impute", SimpleImputer(strategy="median")),
+            ("scale", StandardScaler()),
+        ]
+    )
+    categorical_pipeline = Pipeline(
+        [
+            ("impute", SimpleImputer(strategy="most_frequent")),
+            ("encode", OneHotEncoder(handle_unknown="ignore", sparse_output=False)),
+        ]
+    )
     transformers = [
         ("num", numeric_pipeline, numeric_cols),
         ("cat", categorical_pipeline, categorical_cols),
     ]
     return ColumnTransformer(transformers, remainder="drop")
+
 
 def add_time_features(df, date_col):
     """Extract cyclical and lag features from a datetime column."""
@@ -120,6 +129,7 @@ def add_time_features(df, date_col):
     df["month_cos"] = np.cos(2 * np.pi * df[date_col].dt.month / 12)
     df["is_weekend"] = (df[date_col].dt.dayofweek >= 5).astype(int)
     return df
+
 
 # --- Feature engineering checklist ---
 # 1. Never fit transformers on the full dataset — fit on train, transform test.
@@ -138,9 +148,10 @@ import xgboost as xgb
 import mlflow
 
 SCORERS = {
-    "roc_auc":  make_scorer(roc_auc_score, needs_proba=True),
+    "roc_auc": make_scorer(roc_auc_score, needs_proba=True),
     "avg_prec": make_scorer(average_precision_score, needs_proba=True),
 }
+
 
 def evaluate_model(model, X, y, cv=5):
     """
@@ -148,7 +159,9 @@ def evaluate_model(model, X, y, cv=5):
     Use StratifiedKFold for classification to preserve class balance.
     """
     cv_results = cross_validate(
-        model, X, y,
+        model,
+        X,
+        y,
         cv=StratifiedKFold(n_splits=cv, shuffle=True, random_state=42),
         scoring=SCORERS,
         return_train_score=True,
@@ -162,19 +175,21 @@ def evaluate_model(model, X, y, cv=5):
         summary[metric]["overfit_gap"] = train_mean - test_scores.mean()
     return summary
 
+
 def train_and_log(model, X_train, y_train, X_test, y_test, run_name):
     """Train model and log all artefacts to MLflow."""
     with mlflow.start_run(run_name=run_name):
         model.fit(X_train, y_train)
         proba = model.predict_proba(X_test)[:, 1]
         metrics = {
-            "roc_auc":  roc_auc_score(y_test, proba),
+            "roc_auc": roc_auc_score(y_test, proba),
             "avg_prec": average_precision_score(y_test, proba),
         }
         mlflow.log_params(model.get_params())
         mlflow.log_metrics(metrics)
         mlflow.sklearn.log_model(model, "model")
         return metrics
+
 
 # --- Model evaluation checklist ---
 # 1. Always report AUC-PR alongside AUC-ROC for imbalanced datasets.
@@ -190,6 +205,7 @@ def train_and_log(model, X_train, y_train, X_test, y_test, run_name):
 ```python
 import statsmodels.formula.api as smf
 
+
 def diff_in_diff(df, outcome, treatment_col, post_col, controls=None):
     """
     Estimate ATT via OLS DiD with optional covariates.
@@ -197,18 +213,16 @@ def diff_in_diff(df, outcome, treatment_col, post_col, controls=None):
     Returns the interaction coefficient (treatment × post) and its p-value.
     """
     covariates = " + ".join(controls) if controls else ""
-    formula = (
-        f"{outcome} ~ {treatment_col} * {post_col}"
-        + (f" + {covariates}" if covariates else "")
-    )
+    formula = f"{outcome} ~ {treatment_col} * {post_col}" + (f" + {covariates}" if covariates else "")
     result = smf.ols(formula, data=df).fit(cov_type="HC3")
     interaction = f"{treatment_col}:{post_col}"
     return {
-        "att":     result.params[interaction],
+        "att": result.params[interaction],
         "p_value": result.pvalues[interaction],
-        "ci_95":   result.conf_int().loc[interaction].tolist(),
+        "ci_95": result.conf_int().loc[interaction].tolist(),
         "summary": result.summary(),
     }
+
 
 # --- Causal inference checklist ---
 # 1. Validate parallel trends in pre-period before trusting DiD estimates.

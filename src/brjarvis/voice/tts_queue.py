@@ -3,6 +3,7 @@
 Thread-safe prioritized speech queue for TTS engines supporting barge-in interrupts,
 cancellation, and priority dispatch (URGENT / NORMAL / BACKGROUND).
 """
+
 from __future__ import annotations
 
 import logging
@@ -17,9 +18,9 @@ logger = logging.getLogger(__name__)
 
 
 class SpeechPriority(IntEnum):
-    URGENT = 1     # System alarms, warnings, voice shortcuts
-    NORMAL = 2     # ReAct answers & assistant speak responses
-    BACKGROUND = 3 # Long background summaries
+    URGENT = 1  # System alarms, warnings, voice shortcuts
+    NORMAL = 2  # ReAct answers & assistant speak responses
+    BACKGROUND = 3  # Long background summaries
 
 
 @dataclass(order=True)
@@ -45,12 +46,22 @@ class TTSQueueManager:
     def set_handler(self, handler: Callable[[str], None]):
         self._speak_handler = handler
 
-    def enqueue(self, text: str, priority: SpeechPriority = SpeechPriority.NORMAL, on_start: Optional[Callable] = None, on_finish: Optional[Callable] = None):
+    def enqueue(
+        self,
+        text: str,
+        priority: SpeechPriority = SpeechPriority.NORMAL,
+        on_start: Optional[Callable] = None,
+        on_finish: Optional[Callable] = None,
+    ):
         if not text.strip():
             return
-        
+
         # If URGENT priority, interrupt any currently playing lower priority item
-        if priority == SpeechPriority.URGENT and self._current_item and self._current_item.priority > SpeechPriority.URGENT:
+        if (
+            priority == SpeechPriority.URGENT
+            and self._current_item
+            and self._current_item.priority > SpeechPriority.URGENT
+        ):
             self.cancel_current()
 
         item = SpeechItem(priority=int(priority), text=text, on_start=on_start, on_finish=on_finish)
@@ -86,17 +97,17 @@ class TTSQueueManager:
                 try:
                     item.on_start()
                 except Exception as e:
-                    logger.debug('Suppressed exception: %s', e)
+                    logger.debug("Suppressed exception: %s", e)
             if self._speak_handler:
                 try:
                     self._speak_handler(item.text)
                 except Exception as e:
-                    logger.debug('Suppressed exception: %s', e)
+                    logger.debug("Suppressed exception: %s", e)
             if item.on_finish:
                 try:
                     item.on_finish()
                 except Exception as e:
-                    logger.debug('Suppressed exception: %s', e)
+                    logger.debug("Suppressed exception: %s", e)
             self._current_item = None
             self._queue.task_done()
 

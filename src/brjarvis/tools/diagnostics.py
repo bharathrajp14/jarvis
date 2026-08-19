@@ -3,15 +3,15 @@
 Tool Diagnostics and Capability Health Monitoring for BR JARVIS MK40.2 / MK41.
 Inspects registration catalog, execution metrics, error rates, latencies, and provides smoke testing.
 """
+
 from __future__ import annotations
 
 import logging
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict
 
-from .domain import ToolCategory, ToolDefinition, ToolExecutionStatus
 from .registry import register_tool
-from .runtime import ToolRuntime, get_canonical_tool_runtime
+from .runtime import get_canonical_tool_runtime
 from .tool_result import ToolResult
 
 logger = logging.getLogger("JARVIS.Tools.Diagnostics")
@@ -25,6 +25,7 @@ class ToolDiagnostics:
         """Inspect all registered tools in the canonical catalog."""
         try:
             from .registry import _import_plugins
+
             _import_plugins(full=True)
         except Exception:
             pass
@@ -64,6 +65,7 @@ class ToolDiagnostics:
         """Run safe non-destructive read-only smoke tests on foundational tools."""
         try:
             from .registry import _import_plugins
+
             _import_plugins(full=True)
         except Exception:
             pass
@@ -110,7 +112,7 @@ class ToolDiagnostics:
         "type": "object",
         "properties": {
             "run_smoke_tests": {"type": "boolean", "description": "Whether to execute read-only smoke tests"}
-        }
+        },
     },
     category="diagnostic",
     risk_level="low",

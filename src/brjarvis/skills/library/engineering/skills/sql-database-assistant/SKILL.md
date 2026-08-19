@@ -369,11 +369,11 @@ export class User {
 **Declarative models**
 ```python
 class User(Base):
-    __tablename__ = 'users'
+    __tablename__ = "users"
     id = Column(Integer, primary_key=True)
     email = Column(String(255), unique=True, nullable=False)
     name = Column(String(255))
-    posts = relationship('Post', back_populates='author')
+    posts = relationship("Post", back_populates="author")
 ```
 
 **Session management**: Always use `with Session() as session:` context manager

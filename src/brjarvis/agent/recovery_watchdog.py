@@ -7,15 +7,17 @@ Features:
 - Automated Resume & Re-verification of recoverable tasks
 - Safe degradation and reporting for unrecoverable tasks
 """
+
 from __future__ import annotations
 
 import logging
 import time
 from typing import Any, Dict, List, Optional
 
-from .task_state import get_task_state_manager, TaskState, TaskStatus
 from brjarvis.events.bus import get_event_bus
 from brjarvis.events.types import TaskEvent
+
+from .task_state import TaskState, TaskStatus, get_task_state_manager
 
 logger = logging.getLogger("JARVIS.RecoveryWatchdog")
 
@@ -33,12 +35,7 @@ class TaskRecoveryWatchdog:
         active_tasks = self.task_state_mgr.list_tasks(limit=100)
         interrupted: List[TaskState] = []
 
-        interrupted_states = {
-            TaskStatus.RUNNING,
-            TaskStatus.PLANNING,
-            TaskStatus.RECOVERING,
-            TaskStatus.VERIFYING
-        }
+        interrupted_states = {TaskStatus.RUNNING, TaskStatus.PLANNING, TaskStatus.RECOVERING, TaskStatus.VERIFYING}
 
         for task in active_tasks:
             if task.status in interrupted_states:
@@ -50,42 +47,43 @@ class TaskRecoveryWatchdog:
 
         recovered_tasks = []
         for task in interrupted:
-            logger.warning("⚠️ Interrupted Task Found: [%s] '%s' (Status: %s)", task.task_id, task.goal[:50], task.status.value)
+            logger.warning(
+                "⚠️ Interrupted Task Found: [%s] '%s' (Status: %s)", task.task_id, task.goal[:50], task.status.value
+            )
             task.status = TaskStatus.RECOVERING
             task.updated_at = time.time()
 
             # Inspect checkpoints
             if task.checkpoints:
                 last_chk = task.checkpoints[-1]
-                logger.info("Task [%s] has checkpoint at step #%s. Ready for resume.", task.task_id, last_chk.get("step_index"))
+                logger.info(
+                    "Task [%s] has checkpoint at step #%s. Ready for resume.", task.task_id, last_chk.get("step_index")
+                )
                 task.status = TaskStatus.PAUSED
                 task.final_report = f"Recovered from unplanned shutdown at checkpoint step #{last_chk.get('step_index')}. Paused for user resume."
             else:
                 task.status = TaskStatus.FAILED
-                task.final_report = "Task interrupted during execution before initial checkpoint. Marked for manual review."
+                task.final_report = (
+                    "Task interrupted during execution before initial checkpoint. Marked for manual review."
+                )
 
             self.task_state_mgr.save_task(task)
-            recovered_tasks.append({
-                "task_id": task.task_id,
-                "goal": task.goal,
-                "status": task.status.value,
-                "report": task.final_report
-            })
+            recovered_tasks.append(
+                {"task_id": task.task_id, "goal": task.goal, "status": task.status.value, "report": task.final_report}
+            )
 
-            self.event_bus.publish(TaskEvent(
-                topic="task.recovered",
-                task_id=task.task_id,
-                goal=task.goal,
-                status=task.status.value,
-                payload={"final_report": task.final_report}
-            ))
+            self.event_bus.publish(
+                TaskEvent(
+                    topic="task.recovered",
+                    task_id=task.task_id,
+                    goal=task.goal,
+                    status=task.status.value,
+                    payload={"final_report": task.final_report},
+                )
+            )
 
         logger.info("✓ TaskRecoveryWatchdog: Processed %d interrupted tasks.", len(recovered_tasks))
-        return {
-            "status": "recovered",
-            "recovered_count": len(recovered_tasks),
-            "tasks": recovered_tasks
-        }
+        return {"status": "recovered", "recovered_count": len(recovered_tasks), "tasks": recovered_tasks}
 
 
 _GLOBAL_RECOVERY_WATCHDOG: Optional[TaskRecoveryWatchdog] = None

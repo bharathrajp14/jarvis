@@ -4,11 +4,12 @@ Universal File Ingestion Tools Plugin for JARVIS.
 Exposes tools to import files (.txt, .pdf, .docx, .md, .csv, .xlsx, .vcf)
 into persistent knowledge memory & vector similarity search.
 """
+
 from __future__ import annotations
 
-from pathlib import Path
-from .registry import register_tool
 from brjarvis.actions.file_importer import import_file_to_knowledge
+
+from .registry import register_tool
 
 
 @register_tool(
@@ -19,12 +20,16 @@ from brjarvis.actions.file_importer import import_file_to_knowledge
         "properties": {
             "file_path": {"type": "string", "description": "Absolute or workspace-relative path to document file"}
         },
-        "required": ["file_path"]
-    }
+        "required": ["file_path"],
+    },
 )
 def tool_import_file_to_knowledge(args: dict) -> str:
     """Import document or file into memory."""
-    path_str = args if isinstance(args, str) else str(args.get("file_path") or args.get("path") or args.get("file") or "").strip()
+    path_str = (
+        args
+        if isinstance(args, str)
+        else str(args.get("file_path") or args.get("path") or args.get("file") or "").strip()
+    )
     if not path_str:
         return "Error: Provide a 'file_path' to import."
 

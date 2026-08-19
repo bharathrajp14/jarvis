@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 from typing import List, Optional
+
 from .compressor import ContextCompressor
 from .token_counter import TokenCounter
 from .types import AssembledContext, ContextItem, ContextScope, TokenBudget
@@ -43,6 +44,7 @@ class ContextBuilder:
         """Retrieve and add relevant lessons learned from past corrections."""
         try:
             from brjarvis.memory.lessons import LessonStore
+
             ls = LessonStore()
             lessons = ls.get_relevant_lessons(query=query, limit=limit)
             if lessons:
@@ -63,6 +65,7 @@ class ContextBuilder:
         """Retrieve and add relevant persistent memories via Unified Memory."""
         try:
             from brjarvis.memory.unified_memory import get_unified_memory
+
             um = get_unified_memory()
             memories = um.recall(query=query, limit=limit, project_id=project_id)
             if memories:

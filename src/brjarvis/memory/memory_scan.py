@@ -3,6 +3,7 @@
 Memory file scanning with mtime tracking and freshness/age helpers.
 Ported from the Claude Code collection for JARVIS MK37.
 """
+
 from __future__ import annotations
 
 import math
@@ -10,7 +11,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
-from .persistent_store import get_memory_dir, parse_frontmatter, INDEX_FILENAME
+from .persistent_store import INDEX_FILENAME, get_memory_dir, parse_frontmatter
 
 MAX_MEMORY_FILES = 200
 
@@ -18,6 +19,7 @@ MAX_MEMORY_FILES = 200
 @dataclass
 class MemoryHeader:
     """Lightweight descriptor loaded from a memory file's frontmatter."""
+
     filename: str
     file_path: str
     mtime_s: float
@@ -40,14 +42,16 @@ def scan_memory_dir(mem_dir: Path, scope: str) -> list[MemoryHeader]:
             lines = fp.read_text(encoding="utf-8", errors="replace").splitlines()[:30]
             snippet = "\n".join(lines)
             meta, _ = parse_frontmatter(snippet)
-            headers.append(MemoryHeader(
-                filename=fp.name,
-                file_path=str(fp),
-                mtime_s=stat.st_mtime,
-                description=meta.get("description", ""),
-                type=meta.get("type", ""),
-                scope=scope,
-            ))
+            headers.append(
+                MemoryHeader(
+                    filename=fp.name,
+                    file_path=str(fp),
+                    mtime_s=stat.st_mtime,
+                    description=meta.get("description", ""),
+                    type=meta.get("type", ""),
+                    scope=scope,
+                )
+            )
         except Exception:
             continue
 
@@ -69,6 +73,7 @@ def scan_all_memories() -> list[MemoryHeader]:
 
 
 # ── Age / freshness ────────────────────────────────────────────────────────
+
 
 def memory_age_days(mtime_s: float) -> int:
     """Days since mtime_s (floor-rounded, clamped to 0 for future times)."""

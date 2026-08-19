@@ -8,6 +8,7 @@ Improvements over previous version:
 - All retry failures are logged at WARNING level
 - __enter__/__exit__ context manager replaces unreliable __del__
 """
+
 from __future__ import annotations
 
 import json
@@ -15,7 +16,6 @@ import logging
 import sqlite3
 import threading
 import time
-from pathlib import Path
 from typing import Any, Optional
 
 from .persistent_store import get_memory_dir
@@ -86,6 +86,7 @@ class ConversationStore:
         FIXED: All writes serialized through self._write_lock to prevent
         concurrent WAL corruption. Logs a WARNING if all retries fail.
         """
+
         def _do_write():
             with self._write_lock:
                 for attempt in range(5):
@@ -104,14 +105,11 @@ class ConversationStore:
                         logger.error(f"[ConversationStore] Write error: {exc}")
                         return
                 # All 5 retries exhausted
-                logger.warning(
-                    f"[ConversationStore] Write failed after 5 retries (DB likely locked). "
-                    f"SQL: {sql[:80]}"
-                )
+                logger.warning(f"[ConversationStore] Write failed after 5 retries (DB likely locked). SQL: {sql[:80]}")
 
         from brjarvis.memory.sqlite_lock import run_sqlite_write
-        run_sqlite_write(_do_write)
 
+        run_sqlite_write(_do_write)
 
     def start_session(self, session_id: str, mode: str = "general", backend: str = "gemini") -> None:
         """Start recording a new session."""
@@ -171,15 +169,17 @@ class ConversationStore:
                     args = json.loads(row["tool_args"])
                 except Exception:
                     args = row["tool_args"]
-            turns.append({
-                "timestamp":   row["timestamp"],
-                "role":        row["role"],
-                "content":     row["content"],
-                "tool_name":   row["tool_name"],
-                "tool_args":   args,
-                "tool_result": row["tool_result"],
-                "latency_ms":  row["latency_ms"],
-            })
+            turns.append(
+                {
+                    "timestamp": row["timestamp"],
+                    "role": row["role"],
+                    "content": row["content"],
+                    "tool_name": row["tool_name"],
+                    "tool_args": args,
+                    "tool_result": row["tool_result"],
+                    "latency_ms": row["latency_ms"],
+                }
+            )
         return turns
 
     def search_history(self, query: str, limit: int = 20) -> list[dict[str, Any]]:
@@ -199,12 +199,12 @@ class ConversationStore:
         return [
             {
                 "session_id": row["session_id"],
-                "timestamp":  row["timestamp"],
-                "role":       row["role"],
-                "content":    row["content"],
-                "tool_name":  row["tool_name"],
+                "timestamp": row["timestamp"],
+                "role": row["role"],
+                "content": row["content"],
+                "tool_name": row["tool_name"],
                 "tool_result": row["tool_result"],
-                "mode":       row["mode"],
+                "mode": row["mode"],
             }
             for row in cursor.fetchall()
         ]
@@ -224,13 +224,13 @@ class ConversationStore:
         )
         return [
             {
-                "id":          row["id"],
-                "start_time":  row["start_time"],
-                "end_time":    row["end_time"],
-                "mode":        row["mode"],
-                "backend":     row["backend"],
-                "summary":     row["summary"],
-                "turn_count":  row["turn_count"],
+                "id": row["id"],
+                "start_time": row["start_time"],
+                "end_time": row["end_time"],
+                "mode": row["mode"],
+                "backend": row["backend"],
+                "summary": row["summary"],
+                "turn_count": row["turn_count"],
             }
             for row in cursor.fetchall()
         ]

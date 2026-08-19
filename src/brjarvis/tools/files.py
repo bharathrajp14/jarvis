@@ -4,16 +4,18 @@ High-Fidelity Verified File Manager for BR JARVIS MK40.2 / MK41.
 Provides atomic writes, SHA-256 integrity verification, safe workspace containment,
 soft-delete (trash), directory inspection, and structured file metadata.
 """
+
 from __future__ import annotations
 
 import hashlib
 import os
 import shutil
 import tempfile
+import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Union
 
-from brjarvis.core.paths import paths, PathContainmentError
+from brjarvis.core.paths import PathContainmentError, paths
 
 
 class FileManager:
@@ -30,6 +32,10 @@ class FileManager:
         if p_str.startswith("/tmp") or p_str.startswith("tmp/"):
             p_rel = p_str.lstrip("/").replace("tmp/", "", 1).lstrip("/")
             p = (paths.TEMP_ROOT / p_rel).resolve()
+            try:
+                p.relative_to(paths.TEMP_ROOT.resolve())
+            except ValueError as exc:
+                raise PathContainmentError(f"Temporary path '{path}' escapes the approved temporary root.") from exc
             return p
 
         p = Path(path)
@@ -79,11 +85,7 @@ class FileManager:
         raw_bytes = content if is_bytes else content.encode(encoding)
 
         # 1. Write to temporary sibling file on the same filesystem
-        temp_fd, temp_path_str = tempfile.mkstemp(
-            prefix=f".{target.name}_",
-            suffix=".tmp",
-            dir=str(target.parent)
-        )
+        temp_fd, temp_path_str = tempfile.mkstemp(prefix=f".{target.name}_", suffix=".tmp", dir=str(target.parent))
         temp_path = Path(temp_path_str)
 
         try:
@@ -107,7 +109,9 @@ class FileManager:
 
         return {
             "path": str(target).replace("\\", "/"),
-            "relative_path": str(target.relative_to(self.workspace)).replace("\\", "/") if target.is_relative_to(self.workspace) else str(target),
+            "relative_path": str(target.relative_to(self.workspace)).replace("\\", "/")
+            if target.is_relative_to(self.workspace)
+            else str(target),
             "size_bytes": size_bytes,
             "sha256": sha256,
             "line_count": line_count,
@@ -165,14 +169,18 @@ class FileManager:
         for item in iterator:
             try:
                 st = item.stat()
-                entries.append({
-                    "name": item.name,
-                    "path": str(item).replace("\\", "/"),
-                    "relative_path": str(item.relative_to(self.workspace)).replace("\\", "/") if item.is_relative_to(self.workspace) else str(item),
-                    "is_dir": item.is_dir(),
-                    "size_bytes": st.st_size if item.is_file() else 0,
-                    "modified": st.st_mtime,
-                })
+                entries.append(
+                    {
+                        "name": item.name,
+                        "path": str(item).replace("\\", "/"),
+                        "relative_path": str(item.relative_to(self.workspace)).replace("\\", "/")
+                        if item.is_relative_to(self.workspace)
+                        else str(item),
+                        "is_dir": item.is_dir(),
+                        "size_bytes": st.st_size if item.is_file() else 0,
+                        "modified": st.st_mtime,
+                    }
+                )
             except (OSError, PermissionError):
                 continue
 
@@ -192,6 +200,11 @@ class FileManager:
             return {"path": str(target), "action": "permanently_deleted", "verified": not target.exists()}
         else:
             self.trash_dir.mkdir(parents=True, exist_ok=True)
-            trash_target = self.trash_dir / f"{target.name}_{int(tempfile._time.time())}"
+            trash_target = self.trash_dir / f"{target.name}_{int(time.time())}"
             shutil.move(str(target), str(trash_target))
-            return {"path": str(target), "trash_path": str(trash_target), "action": "moved_to_trash", "verified": not target.exists()}
+            return {
+                "path": str(target),
+                "trash_path": str(trash_target),
+                "action": "moved_to_trash",
+                "verified": not target.exists(),
+            }

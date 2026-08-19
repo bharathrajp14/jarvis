@@ -3,11 +3,11 @@
 Anthropic (Claude) backend connector for BR Core.
 Safe initialization, standardized error handling, and text streaming.
 """
+
 from __future__ import annotations
 
 import logging
 import os
-import traceback
 from typing import Generator
 
 from .base import BaseBackend
@@ -22,6 +22,7 @@ class ClaudeBackend(BaseBackend):
 
         try:
             from brjarvis.config.models import get_model
+
             default_model = get_model("claude") or "claude-sonnet-4-20250514"
         except Exception:
             default_model = "claude-sonnet-4-20250514"
@@ -33,13 +34,16 @@ class ClaudeBackend(BaseBackend):
         if not _api_key:
             try:
                 from brjarvis.core.config import get_config
+
                 _api_key = (get_config().secrets.anthropic_api_key or "").strip()
             except Exception:
                 pass
         if not _api_key:
             try:
-                from brjarvis.core.paths import paths
                 import json
+
+                from brjarvis.core.paths import paths
+
                 cfg_file = paths.CONFIG_ROOT / "api_keys.json"
                 if cfg_file.exists():
                     data = json.loads(cfg_file.read_text(encoding="utf-8"))
@@ -53,6 +57,7 @@ class ClaudeBackend(BaseBackend):
         if _api_key:
             try:
                 import anthropic
+
                 self.client = anthropic.Anthropic(api_key=_api_key)
                 logger.info("Using model: %s", self.model)
             except ImportError:
@@ -110,11 +115,16 @@ class ClaudeBackend(BaseBackend):
                 elif hasattr(block, "type") and block.type == "tool_use":
                     # Tool-use block: serialize as JSON string for orchestrator
                     import json as _json
-                    text_parts.append(_json.dumps({
-                        "tool_use": True,
-                        "name": getattr(block, "name", ""),
-                        "input": getattr(block, "input", {}),
-                    }))
+
+                    text_parts.append(
+                        _json.dumps(
+                            {
+                                "tool_use": True,
+                                "name": getattr(block, "name", ""),
+                                "input": getattr(block, "input", {}),
+                            }
+                        )
+                    )
             return "".join(text_parts)
         except Exception as e:
             logger.error("Claude Error: %s", e)
@@ -142,4 +152,3 @@ class ClaudeBackend(BaseBackend):
 
 # Alias for legacy compatibility
 AnthropicBackend = ClaudeBackend
-

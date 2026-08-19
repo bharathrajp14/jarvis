@@ -8,6 +8,7 @@ Combines:
 4. Semantic vector similarity (with automatic graceful fallback on vector failure)
 Ranks using an explainable, multi-factor scoring model.
 """
+
 from __future__ import annotations
 
 import logging
@@ -19,7 +20,7 @@ from typing import Any, Dict, List, Optional
 
 from .domain import CanonicalMemory, MemoryStatus, MemoryType
 from .store import CanonicalMemoryStore, get_canonical_store
-from .vector_store import VectorMemory, SearchResult
+from .vector_store import VectorMemory
 
 logger = logging.getLogger("JARVIS.HybridRetrieval")
 
@@ -27,15 +28,16 @@ logger = logging.getLogger("JARVIS.HybridRetrieval")
 @dataclass
 class RankedMemoryCandidate:
     """Memory retrieval result with full scoring breakdown and explainability."""
+
     memory: CanonicalMemory
-    similarity: float = 0.0          # Semantic vector similarity (0.0 to 1.0)
-    lexical_score: float = 0.0       # Keyword match score (0.0 to 1.0)
-    confidence: float = 1.0          # Stored confidence (0.0 to 1.0)
-    reliability: float = 1.0         # Source reliability (0.0 to 1.0)
-    temporal_score: float = 1.0      # Recency decay score (0.0 to 1.0)
-    scope_score: float = 1.0         # Project/scope relevance multiplier
-    final_score: float = 0.0         # Composite weighted ranking score
-    selection_reason: str = ""       # Human-readable justification
+    similarity: float = 0.0  # Semantic vector similarity (0.0 to 1.0)
+    lexical_score: float = 0.0  # Keyword match score (0.0 to 1.0)
+    confidence: float = 1.0  # Stored confidence (0.0 to 1.0)
+    reliability: float = 1.0  # Source reliability (0.0 to 1.0)
+    temporal_score: float = 1.0  # Recency decay score (0.0 to 1.0)
+    scope_score: float = 1.0  # Project/scope relevance multiplier
+    final_score: float = 0.0  # Composite weighted ranking score
+    selection_reason: str = ""  # Human-readable justification
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -44,7 +46,9 @@ class RankedMemoryCandidate:
             "attribute": self.memory.attribute,
             "content": self.memory.content,
             "memory_type": self.memory.memory_type.value,
-            "retention_class": self.memory.retention_class.value if hasattr(self.memory, "retention_class") else "NORMAL",
+            "retention_class": self.memory.retention_class.value
+            if hasattr(self.memory, "retention_class")
+            else "NORMAL",
             "project_id": self.memory.project_id,
             "scope": self.memory.scope,
             "similarity": round(self.similarity, 4),
@@ -155,7 +159,8 @@ class HybridRetrievalEngine:
                                 candidate_map[v_mem_id] = fetched
                                 logger.debug(
                                     "[Retrieval] Semantic-only candidate admitted: %s (score=%.3f)",
-                                    v_mem_id, v_score,
+                                    v_mem_id,
+                                    v_score,
                                 )
                     else:
                         # Fallback: no memory_id in metadata (legacy index) — try content match
@@ -192,7 +197,9 @@ class HybridRetrievalEngine:
             if q_lower in haystack:
                 lexical_score = 1.00
             elif q_words:
-                matched_words = sum(1 for w in q_words if (w in haystack or any(w in part for part in haystack.split())))
+                matched_words = sum(
+                    1 for w in q_words if (w in haystack or any(w in part for part in haystack.split()))
+                )
                 lexical_score = min(1.0, matched_words / len(q_words))
             else:
                 lexical_score = 0.10
@@ -216,12 +223,16 @@ class HybridRetrievalEngine:
             # Weights: Semantic (0.35), Lexical (0.25), Reliability (0.15), Confidence (0.10), Temporal (0.15) * Scope
             importance_multiplier = 0.75 + (0.50 * mem.importance)
             base_score = (
-                (0.35 * similarity)
-                + (0.25 * lexical_score)
-                + (0.15 * mem.reliability)
-                + (0.10 * mem.confidence)
-                + (0.15 * temporal_score)
-            ) * scope_score * importance_multiplier
+                (
+                    (0.35 * similarity)
+                    + (0.25 * lexical_score)
+                    + (0.15 * mem.reliability)
+                    + (0.10 * mem.confidence)
+                    + (0.15 * temporal_score)
+                )
+                * scope_score
+                * importance_multiplier
+            )
 
             # Penalties
             if mem.status == MemoryStatus.SUPERSEDED:

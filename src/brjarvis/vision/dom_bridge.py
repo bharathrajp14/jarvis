@@ -71,15 +71,16 @@ class CDPBridge:
             # Query DOM tree via WebSocket if websockets library is available
             if ws_url:
                 try:
-                    import websockets
                     import asyncio
+
+                    import websockets
 
                     async def _query_cdp_nodes():
                         async with websockets.connect(ws_url, close_timeout=1.0) as ws:
                             # Enable DOM domain
                             await ws.send(json.dumps({"id": 1, "method": "DOM.getDocument", "params": {"depth": 3}}))
                             doc_resp = json.loads(await ws.recv())
-                            
+
                             # Enable Accessibility domain
                             await ws.send(json.dumps({"id": 2, "method": "Accessibility.getFullAXTree"}))
                             ax_resp = json.loads(await ws.recv())
@@ -90,7 +91,11 @@ class CDPBridge:
                         role_val = n.get("role", {}).get("value", "generic")
                         name_val = n.get("name", {}).get("value", "")
                         if name_val and role_val in ("button", "link", "textbox", "searchbox", "checkbox"):
-                            ui_role = UIRole.BUTTON if role_val == "button" else (UIRole.INPUT if "box" in role_val else UIRole.TEXT)
+                            ui_role = (
+                                UIRole.BUTTON
+                                if role_val == "button"
+                                else (UIRole.INPUT if "box" in role_val else UIRole.TEXT)
+                            )
                             node = SemanticUINode(
                                 name=name_val,
                                 role=ui_role,

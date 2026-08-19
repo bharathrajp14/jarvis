@@ -6,9 +6,11 @@ Adversarial test suite covering:
 3. Lower-authority model inference trying to overwrite ground truth
 4. Corrupt metadata handling and database integrity verification
 """
+
 from __future__ import annotations
 
 import pytest
+
 from brjarvis.guardian.prompt_injection_shield import PromptInjectionShield
 from brjarvis.memory.canonical_db import CanonicalDatabaseManager
 from brjarvis.memory.conflict_engine import ConflictEngine, ConflictResolutionAction
@@ -34,7 +36,9 @@ def conflict_engine(store):
 
 def test_secret_redaction_before_persistence():
     """Verify secrets are redacted before saving to prevent credential leakage into memory."""
-    dirty_text = "My OpenAI API key is sk-1234567890abcdef123456 and Github token is ghp_123456789012345678901234567890123456"
+    dirty_text = (
+        "My OpenAI API key is sk-1234567890abcdef123456 and Github token is ghp_123456789012345678901234567890123456"
+    )
     clean = redact_secrets(dirty_text)
     assert "sk-" not in clean or "[REDACTED" in clean
     assert "ghp_" not in clean or "[REDACTED" in clean

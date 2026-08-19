@@ -11,6 +11,7 @@ CRITICAL FIX (Phase 2 - Forensic Audit):
   4. Exposes a SearchResult namedtuple with memory_id, text, score, metadata.
   5. Semantic candidates can now enter retrieval pool independently.
 """
+
 from __future__ import annotations
 
 import json
@@ -20,7 +21,6 @@ import os
 import re
 import threading
 import uuid
-from collections import namedtuple
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -34,6 +34,7 @@ _CHROMA_AVAILABLE = False
 
 try:
     import chromadb  # type: ignore
+
     _CHROMA_AVAILABLE = True
 except ImportError:
     pass
@@ -41,8 +42,10 @@ except ImportError:
 
 # ── Structured Search Result ──────────────────────────────────────────────────
 
+
 class SearchResult:
     """Structured result from VectorMemory.search() supporting attribute, tuple, and dict access."""
+
     __slots__ = ("memory_id", "text", "score", "metadata")
 
     def __init__(
@@ -95,7 +98,10 @@ class SearchResult:
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, SearchResult):
             return (self.memory_id, self.text, self.score, self.metadata) == (
-                other.memory_id, other.text, other.score, other.metadata
+                other.memory_id,
+                other.text,
+                other.score,
+                other.metadata,
             )
         if isinstance(other, dict):
             return self.to_dict() == other
@@ -117,6 +123,7 @@ def _load_api_key() -> str:
 
 
 # ── TF-IDF Fallback ───────────────────────────────────────────────────────────
+
 
 class TextSimilarityMemory:
     """Pure-Python TF-IDF similarity fallback when ChromaDB is unavailable.
@@ -198,12 +205,14 @@ class TextSimilarityMemory:
         for raw_score, entry in sorted(scored, key=lambda x: x[0], reverse=True)[:n]:
             norm_score = raw_score / max_score if max_score > 0 else 0.0
             meta = entry.get("metadata", {})
-            results.append(SearchResult(
-                memory_id=meta.get("memory_id", entry.get("id", "")),
-                text=entry.get("text", ""),
-                score=round(norm_score, 4),
-                metadata=meta,
-            ))
+            results.append(
+                SearchResult(
+                    memory_id=meta.get("memory_id", entry.get("id", "")),
+                    text=entry.get("text", ""),
+                    score=round(norm_score, 4),
+                    metadata=meta,
+                )
+            )
         return results
 
     def recall(self, query: str, n: int = 5) -> list[str]:
@@ -221,6 +230,7 @@ class TextSimilarityMemory:
 
 
 # ── Main VectorMemory Class ───────────────────────────────────────────────────
+
 
 class VectorMemory:
     """Unified vector memory with ChromaDB primary and TF-IDF fallback.
@@ -360,12 +370,14 @@ class VectorMemory:
                         similarity = max(0.0, min(1.0, 1.0 - (dist / 2.0)))
                         meta = metas[i] if i < len(metas) else {}
                         memory_id = (meta or {}).get("memory_id", "")
-                        results.append(SearchResult(
-                            memory_id=memory_id,
-                            text=doc,
-                            score=round(similarity, 4),
-                            metadata=meta or {},
-                        ))
+                        results.append(
+                            SearchResult(
+                                memory_id=memory_id,
+                                text=doc,
+                                score=round(similarity, 4),
+                                metadata=meta or {},
+                            )
+                        )
             except Exception as exc:
                 logger.debug("[VectorMemory] ChromaDB search() note: %s", exc)
                 results = []

@@ -139,10 +139,7 @@ See [anti_detection_patterns.md](references/anti_detection_patterns.md) for the 
 async def extract_single_page(url, selectors):
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
-        context = await browser.new_context(
-            viewport={"width": 1920, "height": 1080},
-            user_agent="Mozilla/5.0 ..."
-        )
+        context = await browser.new_context(viewport={"width": 1920, "height": 1080}, user_agent="Mozilla/5.0 ...")
         page = await context.new_page()
         await page.goto(url, wait_until="networkidle")
         data = await extract_listings(page, selectors["container"], selectors["fields"])

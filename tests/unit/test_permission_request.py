@@ -1,13 +1,11 @@
 # tests/unit/test_permission_request.py — Unit Tests for Permission Request Engine
 from __future__ import annotations
 
-import pytest
 from brjarvis.security.permission_request import (
     PermissionDecision,
     PermissionManager,
     PermissionRequest,
     RiskLevel,
-    get_permission_manager,
 )
 
 

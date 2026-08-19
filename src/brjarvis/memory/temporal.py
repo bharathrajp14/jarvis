@@ -9,6 +9,7 @@ Answers:
 - Why did it change?
 - Which record superseded the previous one?
 """
+
 from __future__ import annotations
 
 import logging
@@ -16,7 +17,7 @@ import time
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from .domain import CanonicalMemory, MemoryStatus
+from .domain import CanonicalMemory
 from .store import CanonicalMemoryStore, get_canonical_store
 
 logger = logging.getLogger("JARVIS.TemporalEngine")
@@ -105,21 +106,23 @@ class TemporalEngine:
                 if r.effective_until
                 else "Present (Current)"
             )
-            timeline.append({
-                "memory_id": r.memory_id,
-                "version": r.version,
-                "value": r.value,
-                "content": r.content,
-                "status": r.status.value,
-                "source_type": r.source_type.value,
-                "evidence": r.evidence,
-                "valid_from": from_dt,
-                "valid_until": until_dt,
-                "effective_from_ts": r.effective_from,
-                "effective_until_ts": r.effective_until,
-                "supersedes_memory_id": r.supersedes_memory_id,
-                "superseded_by_memory_id": r.superseded_by_memory_id,
-            })
+            timeline.append(
+                {
+                    "memory_id": r.memory_id,
+                    "version": r.version,
+                    "value": r.value,
+                    "content": r.content,
+                    "status": r.status.value,
+                    "source_type": r.source_type.value,
+                    "evidence": r.evidence,
+                    "valid_from": from_dt,
+                    "valid_until": until_dt,
+                    "effective_from_ts": r.effective_from,
+                    "effective_until_ts": r.effective_until,
+                    "supersedes_memory_id": r.supersedes_memory_id,
+                    "superseded_by_memory_id": r.superseded_by_memory_id,
+                }
+            )
         return timeline
 
     def explain_temporal_change(self, entity: str, attribute: str) -> str:
@@ -143,7 +146,9 @@ class TemporalEngine:
 
         current = self.get_current_truth(entity, attribute)
         if current:
-            lines.append(f"\n**Current Authority**: `{current.value}` (Status: {current.status.value}, v{current.version})")
+            lines.append(
+                f"\n**Current Authority**: `{current.value}` (Status: {current.status.value}, v{current.version})"
+            )
         return "\n".join(lines)
 
 

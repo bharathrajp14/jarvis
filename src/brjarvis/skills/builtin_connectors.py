@@ -2,6 +2,7 @@
 """
 Built-in connector skills for Gmail, WhatsApp, Telegram, Google Calendar, Notion, GitHub, Slack, and Microsoft 365.
 """
+
 from __future__ import annotations
 
 from .loader import SkillDef
@@ -11,7 +12,14 @@ CONNECTOR_SKILLS: list[SkillDef] = [
         name="gmail_assistant",
         description="Inspect inbox, read unread messages, compose and send emails via Gmail connector.",
         triggers=["/gmail", "/email", "check emails", "read gmail", "send email", "check unread messages"],
-        tools=["gmail_send", "gmail_reply", "send_email", "gmail_list_unread", "get_gmail_auth_status", "schedule_email"],
+        tools=[
+            "gmail_send",
+            "gmail_reply",
+            "send_email",
+            "gmail_list_unread",
+            "get_gmail_auth_status",
+            "schedule_email",
+        ],
         prompt="""
 You are the BR-JARVIS Executive Communications Specialist.
 
@@ -29,7 +37,7 @@ $ARGUMENTS
         domain="Email Communication",
         when_to_use="When the user asks to check, send, compose, or reply to emails in Gmail.",
         source="builtin",
-        user_invocable=True
+        user_invocable=True,
     ),
     SkillDef(
         name="whatsapp_assistant",
@@ -54,13 +62,19 @@ $ARGUMENTS
         domain="Instant Messaging",
         when_to_use="When the user wants to send or schedule WhatsApp messages.",
         source="builtin",
-        user_invocable=True
+        user_invocable=True,
     ),
     SkillDef(
         name="telegram_bot_assistant",
         description="Send Telegram alerts, monitor updates, and manage chat broadcasts.",
         triggers=["/telegram", "/tg", "send telegram", "telegram alert"],
-        tools=["send_telegram", "schedule_telegram_message", "telegram_get_updates", "telegram_bot_info", "manage_telegram_contacts"],
+        tools=[
+            "send_telegram",
+            "schedule_telegram_message",
+            "telegram_get_updates",
+            "telegram_bot_info",
+            "manage_telegram_contacts",
+        ],
         prompt="""
 You are the BR-JARVIS Telegram Automation Specialist.
 
@@ -77,7 +91,7 @@ $ARGUMENTS
         domain="Instant Messaging",
         when_to_use="When the user wants to interact with Telegram or broadcast Telegram messages.",
         source="builtin",
-        user_invocable=True
+        user_invocable=True,
     ),
     SkillDef(
         name="calendar_meeting_scheduler",
@@ -100,7 +114,7 @@ $ARGUMENTS
         domain="Calendar & Scheduling",
         when_to_use="When the user asks about their schedule or booking calendar events.",
         source="builtin",
-        user_invocable=True
+        user_invocable=True,
     ),
     SkillDef(
         name="notion_workspace_manager",
@@ -123,7 +137,7 @@ $ARGUMENTS
         domain="Workspace Knowledge",
         when_to_use="When the user requests searching, creating, or editing Notion pages.",
         source="builtin",
-        user_invocable=True
+        user_invocable=True,
     ),
     SkillDef(
         name="github_workflow_auditor",
@@ -147,7 +161,7 @@ $ARGUMENTS
         domain="Version Control",
         when_to_use="When the user asks to check GitHub PRs, issues, or review open pull requests.",
         source="builtin",
-        user_invocable=True
+        user_invocable=True,
     ),
     SkillDef(
         name="slack_channel_broadcaster",
@@ -170,7 +184,7 @@ $ARGUMENTS
         domain="Team Chat",
         when_to_use="When the user asks to post or broadcast messages to Slack.",
         source="builtin",
-        user_invocable=True
+        user_invocable=True,
     ),
     SkillDef(
         name="ms365_workspace_manager",
@@ -193,7 +207,7 @@ $ARGUMENTS
         domain="Office Automation",
         when_to_use="When the user asks to open or work with Microsoft 365 / Office Online.",
         source="builtin",
-        user_invocable=True
+        user_invocable=True,
     ),
 ]
 

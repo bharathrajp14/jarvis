@@ -7,9 +7,9 @@ import uuid
 from dataclasses import asdict, dataclass, field
 from typing import Any, Dict, List, Optional
 
-from .models import PriorityLevel
 from brjarvis.events.bus import get_event_bus
-from brjarvis.events.types import BaseEvent
+
+from .models import PriorityLevel
 
 logger = logging.getLogger("JARVIS.CareerNotifications")
 

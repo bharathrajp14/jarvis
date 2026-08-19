@@ -2,33 +2,45 @@
 from __future__ import annotations
 
 import logging
-import re
 from dataclasses import dataclass, field
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
-from .types import ExecutionResult, ExecutionStatus, VerificationOutcome
-from .verifier import UniversalVerifier, get_universal_verifier
+from .types import ExecutionStatus
+from .verifier import get_universal_verifier
 
 logger = logging.getLogger("JARVIS.CompletionGate")
 
 # Operation categories that a tool must match for goal coverage
 _OPERATION_TOOL_MAP: Dict[str, List[str]] = {
-    "CREATE_PORTFOLIO":    ["file_write", "create_file", "document_creator", "code_helper", "dev_agent", "file_controller"],
-    "PUSH_TO_GITHUB":      ["git_repo_mgr", "git_push"],
-    "GIT_COMMIT":          ["git_repo_mgr"],
-    "OPEN_PORTFOLIO":      ["open_app", "launch_app", "browser_open_url", "browser_control"],
-    "OPEN_APPLICATION":    ["open_app", "launch_app"],
-    "CREATE_DOCUMENT":     ["create_word_document", "create_pdf_document", "document_creator", "file_write", "file_controller"],
-    "WEB_SEARCH":          ["web_search", "browser_control"],
-    "INSTALL_DEPENDENCY":  ["code_helper", "system_tools"],
-    "EXECUTE_GOAL":        [],   # wildcard — any tool counts
+    "CREATE_PORTFOLIO": [
+        "file_write",
+        "create_file",
+        "document_creator",
+        "code_helper",
+        "dev_agent",
+        "file_controller",
+    ],
+    "PUSH_TO_GITHUB": ["git_repo_mgr", "git_push"],
+    "GIT_COMMIT": ["git_repo_mgr"],
+    "OPEN_PORTFOLIO": ["open_app", "launch_app", "browser_open_url", "browser_control"],
+    "OPEN_APPLICATION": ["open_app", "launch_app"],
+    "CREATE_DOCUMENT": [
+        "create_word_document",
+        "create_pdf_document",
+        "document_creator",
+        "file_write",
+        "file_controller",
+    ],
+    "WEB_SEARCH": ["web_search", "browser_control"],
+    "INSTALL_DEPENDENCY": ["code_helper", "system_tools"],
+    "EXECUTE_GOAL": [],  # wildcard — any tool counts
 }
 
 
 @dataclass
 class GateEvaluationResult:
     """Outcome of TaskCompletionGate evaluation."""
+
     is_approved: bool = False
     final_status: ExecutionStatus = ExecutionStatus.FAILED
     evidence_summary: str = ""
@@ -91,9 +103,7 @@ class TaskCompletionGate:
         from brjarvis.agent.execution_ledger import LedgerStatus
 
         executed_tools = {
-            e.tool_name
-            for e in ledger_entries
-            if e.status in (LedgerStatus.SUCCESS, LedgerStatus.PARTIAL)
+            e.tool_name for e in ledger_entries if e.status in (LedgerStatus.SUCCESS, LedgerStatus.PARTIAL)
         }
 
         all_covered = True
@@ -111,7 +121,9 @@ class TaskCompletionGate:
                 logger.warning(
                     "[CompletionGate] Required operation '%s' not covered by any executed tool. "
                     "Required one of: %s. Executed: %s",
-                    op, required_tools, list(executed_tools)
+                    op,
+                    required_tools,
+                    list(executed_tools),
                 )
 
         return all_covered
@@ -157,7 +169,7 @@ class TaskCompletionGate:
             step_id = step.get("step_id") or step.get("step") or idx + 1
             tool = step.get("tool") or step.get("tool_name") or ""
             is_critical = step.get("is_critical", True) if "is_critical" in step else step.get("critical", True)
-            
+
             raw_status = step.get("status", "")
             raw_output = str(step.get("result") or step.get("output") or "")
             raw_error = step.get("error")
@@ -167,10 +179,16 @@ class TaskCompletionGate:
                 continue
 
             # 1. Check explicit failure status or error
-            if raw_status in (ExecutionStatus.FAILED.value, "FAILED", "failed") or (raw_error and raw_status not in (ExecutionStatus.SUCCESS_VERIFIED.value, "SUCCESS_VERIFIED", "completed", "ok", "success")):
+            if raw_status in (ExecutionStatus.FAILED.value, "FAILED", "failed") or (
+                raw_error
+                and raw_status
+                not in (ExecutionStatus.SUCCESS_VERIFIED.value, "SUCCESS_VERIFIED", "completed", "ok", "success")
+            ):
                 if is_critical:
                     failed_critical += 1
-                    gate.blocking_reasons.append(f"Critical Step {step_id} [{tool}] failed: {raw_error or 'Execution failed'}")
+                    gate.blocking_reasons.append(
+                        f"Critical Step {step_id} [{tool}] failed: {raw_error or 'Execution failed'}"
+                    )
                 else:
                     failed_non_critical += 1
                     gate.degraded_steps.append(f"Non-critical Step {step_id} [{tool}] failed: {raw_error}")
@@ -181,7 +199,9 @@ class TaskCompletionGate:
             if not val_res.verified:
                 if is_critical:
                     failed_critical += 1
-                    gate.blocking_reasons.append(f"Step {step_id} [{tool}] output contains fatal error: {val_res.error}")
+                    gate.blocking_reasons.append(
+                        f"Step {step_id} [{tool}] output contains fatal error: {val_res.error}"
+                    )
                 else:
                     failed_non_critical += 1
                     gate.degraded_steps.append(f"Non-critical Step {step_id} [{tool}] had notice: {val_res.details}")
@@ -199,19 +219,29 @@ class TaskCompletionGate:
                     else:
                         if is_critical:
                             failed_critical += 1
-                            gate.blocking_reasons.append(f"Step {step_id} [{tool}] expected file '{filename}' was not verified on disk.")
+                            gate.blocking_reasons.append(
+                                f"Step {step_id} [{tool}] expected file '{filename}' was not verified on disk."
+                            )
                         else:
                             failed_non_critical += 1
                         continue
                 else:
-                    if raw_status in (ExecutionStatus.SUCCESS_VERIFIED.value, "SUCCESS_VERIFIED", "completed", "ok", "success"):
+                    if raw_status in (
+                        ExecutionStatus.SUCCESS_VERIFIED.value,
+                        "SUCCESS_VERIFIED",
+                        "completed",
+                        "ok",
+                        "success",
+                    ):
                         completed_verified += 1
                     else:
                         completed_unverified += 1
             elif tool in ("open_app", "launch_app"):
                 if raw_status in (ExecutionStatus.SUCCESS_UNVERIFIED.value, "SUCCESS_UNVERIFIED", "unverified"):
                     completed_unverified += 1
-                    gate.degraded_steps.append(f"Step {step_id} [{tool}] application launch command sent, but window was unverified.")
+                    gate.degraded_steps.append(
+                        f"Step {step_id} [{tool}] application launch command sent, but window was unverified."
+                    )
                 else:
                     args = step.get("parameters") or step.get("args") or {}
                     app_name = args.get("app_name") or args.get("name") or ""
@@ -222,11 +252,19 @@ class TaskCompletionGate:
                             completed_verified += 1
                         else:
                             completed_unverified += 1
-                            gate.degraded_steps.append(f"Step {step_id} [{tool}] application launch command sent, but window was not verified on screen.")
+                            gate.degraded_steps.append(
+                                f"Step {step_id} [{tool}] application launch command sent, but window was not verified on screen."
+                            )
                     else:
                         completed_verified += 1
             else:
-                if raw_status in (ExecutionStatus.SUCCESS_VERIFIED.value, "SUCCESS_VERIFIED", "completed", "ok", "success"):
+                if raw_status in (
+                    ExecutionStatus.SUCCESS_VERIFIED.value,
+                    "SUCCESS_VERIFIED",
+                    "completed",
+                    "ok",
+                    "success",
+                ):
                     completed_verified += 1
                 else:
                     completed_unverified += 1
@@ -281,7 +319,9 @@ class TaskCompletionGate:
                 )
                 logger.error(
                     "[CompletionGate] TASK_FAILED_RESULT_MISMATCH — goal '%s' required %s but got %s",
-                    goal[:80], required_operations, gate.required_operations_covered
+                    goal[:80],
+                    required_operations,
+                    gate.required_operations_covered,
                 )
 
         return gate

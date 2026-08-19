@@ -2,7 +2,9 @@
 from __future__ import annotations
 
 import sys
+
 from brjarvis.ui.app import run_voice_ui
+
 
 def main() -> int:
     try:
@@ -11,6 +13,7 @@ def main() -> int:
     except Exception as e:
         print(f"Error starting Desktop GUI: {e}")
         return 1
+
 
 if __name__ == "__main__":
     sys.exit(main())

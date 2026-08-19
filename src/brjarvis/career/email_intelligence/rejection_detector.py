@@ -4,16 +4,22 @@ from __future__ import annotations
 import logging
 import re
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict
 
 logger = logging.getLogger("JARVIS.EmailIntelligence.RejectionDetector")
 
 _REJECTION_EVIDENCE_PATTERNS = [
-    re.compile(r"thank you for your interest.*?however.*?(?:not moving forward|decided to pursue other|other candidates)", re.IGNORECASE | re.DOTALL),
+    re.compile(
+        r"thank you for your interest.*?however.*?(?:not moving forward|decided to pursue other|other candidates)",
+        re.IGNORECASE | re.DOTALL,
+    ),
     re.compile(r"we will not be (?:moving|proceeding) forward", re.IGNORECASE),
     re.compile(r"position has been (?:filled|closed|cancelled)", re.IGNORECASE),
     re.compile(r"not selected for an interview", re.IGNORECASE),
-    re.compile(r"after careful (?:review|consideration).*?(?:unable to offer|decided not to proceed)", re.IGNORECASE | re.DOTALL),
+    re.compile(
+        r"after careful (?:review|consideration).*?(?:unable to offer|decided not to proceed)",
+        re.IGNORECASE | re.DOTALL,
+    ),
 ]
 
 
@@ -52,7 +58,9 @@ class RejectionDetector:
                 return RejectionAnalysis(
                     is_rejection=True,
                     confidence=0.94,
-                    rejection_reason="Position filled / Other candidates selected" if not closed else "Position closed / Role cancelled",
+                    rejection_reason="Position filled / Other candidates selected"
+                    if not closed
+                    else "Position closed / Role cancelled",
                     evidence_snippet=snippet,
                     is_position_closed=closed,
                 )

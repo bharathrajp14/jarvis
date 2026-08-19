@@ -3,6 +3,7 @@
 Autonomous action controller for git repository workflows, diff inspection, branch management,
 and automated commit operations.
 """
+
 from __future__ import annotations
 
 import subprocess
@@ -23,7 +24,7 @@ class RepoControllerAction:
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
-                timeout=20
+                timeout=20,
             )
             return res.returncode, res.stdout.strip()
         except Exception as e:

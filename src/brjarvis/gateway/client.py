@@ -10,6 +10,7 @@ Enforces:
 - Server-Sent Events (SSE) streaming.
 - Strict Privacy Mode (PROXY_ONLY: blocks unintended direct cloud endpoints).
 """
+
 from __future__ import annotations
 
 import json
@@ -26,8 +27,10 @@ logger = logging.getLogger("JARVIS.ProxyBrainClient")
 # Structured Exceptions
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class ProxyBrainClientError(Exception):
     """Base exception for all Proxy Brain client operations."""
+
     def __init__(self, message: str, model: str = "", status_code: Optional[int] = None):
         super().__init__(message)
         self.model = model
@@ -36,31 +39,37 @@ class ProxyBrainClientError(Exception):
 
 class GatewayUnavailableError(ProxyBrainClientError):
     """Raised when the Proxy Brain gateway cannot be reached."""
+
     pass
 
 
 class ModelNotFoundError(ProxyBrainClientError):
     """Raised when the requested model is not found or not available."""
+
     pass
 
 
 class QuotaExceededError(ProxyBrainClientError):
     """Raised when no quota or accounts are available on the gateway (e.g. HTTP 503)."""
+
     pass
 
 
 class GatewayTimeoutError(ProxyBrainClientError):
     """Raised when a gateway request times out."""
+
     pass
 
 
 class GatewayAuthenticationError(ProxyBrainClientError):
     """Raised on authentication failures (e.g. HTTP 401/403)."""
+
     pass
 
 
 class MalformedResponseError(ProxyBrainClientError):
     """Raised when the gateway returns invalid or unparseable JSON."""
+
     pass
 
 
@@ -90,14 +99,18 @@ def sanitize_error_msg(msg: str) -> str:
 # Normalized Response Envelope
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 @dataclass
 class ModelResponse:
     """Standardized response envelope returned from all model completions."""
+
     text: str = ""
     tool_calls: list[dict[str, Any]] = field(default_factory=list)
     finish_reason: str = "stop"
     model: str = ""
-    usage: dict[str, int] = field(default_factory=lambda: {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0})
+    usage: dict[str, int] = field(
+        default_factory=lambda: {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+    )
     latency_ms: float = 0.0
     provider: str = "proxy_brain"
     request_id: str = ""
@@ -107,6 +120,7 @@ class ModelResponse:
 # ─────────────────────────────────────────────────────────────────────────────
 # Proxy Brain Client
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class ProxyBrainClient:
     """
@@ -118,7 +132,7 @@ class ProxyBrainClient:
         base_url: Optional[str] = None,
         api_key: Optional[str] = None,
         timeout: float = 30.0,
-        allow_direct_cloud: bool = False
+        allow_direct_cloud: bool = False,
     ):
         self.base_url = (
             base_url
@@ -128,13 +142,12 @@ class ProxyBrainClient:
         ).rstrip("/")
 
         self.api_key = (
-            api_key
-            or os.environ.get("BRJARVIS_PROXY_API_KEY")
-            or os.environ.get("OPENAI_API_KEY")
-            or "local-proxy-key"
+            api_key or os.environ.get("BRJARVIS_PROXY_API_KEY") or os.environ.get("OPENAI_API_KEY") or "local-proxy-key"
         )
         self.timeout = float(os.environ.get("BRJARVIS_GATEWAY_TIMEOUT", timeout))
-        self.allow_direct_cloud = allow_direct_cloud or os.environ.get("BRJARVIS_ALLOW_CLOUD_FALLBACK", "false").lower() == "true"
+        self.allow_direct_cloud = (
+            allow_direct_cloud or os.environ.get("BRJARVIS_ALLOW_CLOUD_FALLBACK", "false").lower() == "true"
+        )
 
         # Strict Privacy Guard: block public cloud endpoints unless explicitly allowed
         self._enforce_privacy_policy()
@@ -143,11 +156,8 @@ class ProxyBrainClient:
         self._openai_client = None
         try:
             from openai import OpenAI  # type: ignore
-            self._openai_client = OpenAI(
-                base_url=self.base_url,
-                api_key=self.api_key,
-                timeout=self.timeout
-            )
+
+            self._openai_client = OpenAI(base_url=self.base_url, api_key=self.api_key, timeout=self.timeout)
         except Exception as e:
             logger.debug("OpenAI SDK client not initialized, using HTTP requests adapter: %s", e)
 
@@ -169,7 +179,7 @@ class ProxyBrainClient:
         tools: Optional[list[dict[str, Any]]] = None,
         max_tokens: Optional[int] = None,
         temperature: float = 0.7,
-        json_mode: bool = False
+        json_mode: bool = False,
     ) -> ModelResponse:
         """
         Execute a synchronous completion against the Proxy Brain gateway.
@@ -211,8 +221,8 @@ class ProxyBrainClient:
                             "type": getattr(tc, "type", "function"),
                             "function": {
                                 "name": getattr(tc.function, "name", ""),
-                                "arguments": getattr(tc.function, "arguments", "{}")
-                            }
+                                "arguments": getattr(tc.function, "arguments", "{}"),
+                            },
                         }
                         extracted_tools.append(call_dict)
 
@@ -232,23 +242,17 @@ class ProxyBrainClient:
                     usage=usage_data,
                     latency_ms=round(latency_ms, 2),
                     provider="proxy_brain",
-                    request_id=getattr(resp, "id", "")
+                    request_id=getattr(resp, "id", ""),
                 )
             except Exception as exc:
                 self._handle_client_exception(exc, model)
 
         # 2. Fallback to direct HTTP request
         import requests
+
         url = f"{self.base_url}/chat/completions"
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
-        }
-        payload: dict[str, Any] = {
-            "model": model,
-            "messages": full_messages,
-            "temperature": temperature
-        }
+        headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
+        payload: dict[str, Any] = {"model": model, "messages": full_messages, "temperature": temperature}
         if max_tokens:
             payload["max_tokens"] = max_tokens
         if tools:
@@ -278,27 +282,49 @@ class ProxyBrainClient:
                     latency_ms=round(latency_ms, 2),
                     provider="proxy_brain",
                     request_id=data.get("id", ""),
-                    raw_response=data
+                    raw_response=data,
                 )
             elif r.status_code == 404:
-                raise ModelNotFoundError(f"Model '{model}' not found on Proxy Brain: {sanitize_error_msg(r.text)}", model=model, status_code=404)
+                raise ModelNotFoundError(
+                    f"Model '{model}' not found on Proxy Brain: {sanitize_error_msg(r.text)}",
+                    model=model,
+                    status_code=404,
+                )
             elif r.status_code in (401, 403):
-                raise GatewayAuthenticationError(f"Gateway authentication failure: {sanitize_error_msg(r.text)}", model=model, status_code=r.status_code)
+                raise GatewayAuthenticationError(
+                    f"Gateway authentication failure: {sanitize_error_msg(r.text)}",
+                    model=model,
+                    status_code=r.status_code,
+                )
             elif r.status_code == 503 or "quota" in r.text.lower():
-                raise QuotaExceededError(f"Model '{model}' quota exhausted on gateway: {sanitize_error_msg(r.text)}", model=model, status_code=r.status_code)
+                raise QuotaExceededError(
+                    f"Model '{model}' quota exhausted on gateway: {sanitize_error_msg(r.text)}",
+                    model=model,
+                    status_code=r.status_code,
+                )
             else:
-                raise ProxyBrainClientError(f"Gateway error HTTP {r.status_code}: {sanitize_error_msg(r.text)}", model=model, status_code=r.status_code)
+                raise ProxyBrainClientError(
+                    f"Gateway error HTTP {r.status_code}: {sanitize_error_msg(r.text)}",
+                    model=model,
+                    status_code=r.status_code,
+                )
 
         except (requests.Timeout, requests.exceptions.Timeout) as exc:
-            raise GatewayTimeoutError(f"Request to {self.base_url} timed out after {self.timeout}s", model=model) from exc
+            raise GatewayTimeoutError(
+                f"Request to {self.base_url} timed out after {self.timeout}s", model=model
+            ) from exc
         except (requests.ConnectionError, requests.exceptions.ConnectionError) as exc:
-            raise GatewayUnavailableError(f"Could not connect to Proxy Brain at {self.base_url}: {sanitize_error_msg(str(exc))}", model=model) from exc
+            raise GatewayUnavailableError(
+                f"Could not connect to Proxy Brain at {self.base_url}: {sanitize_error_msg(str(exc))}", model=model
+            ) from exc
         except json.JSONDecodeError as exc:
             raise MalformedResponseError(f"Invalid JSON returned by Proxy Brain: {exc}", model=model) from exc
         except ProxyBrainClientError:
             raise
         except Exception as exc:
-            raise ProxyBrainClientError(f"Unexpected gateway error: {sanitize_error_msg(str(exc))}", model=model) from exc
+            raise ProxyBrainClientError(
+                f"Unexpected gateway error: {sanitize_error_msg(str(exc))}", model=model
+            ) from exc
 
     def stream(
         self,
@@ -307,7 +333,7 @@ class ProxyBrainClient:
         system: str = "",
         tools: Optional[list[dict[str, Any]]] = None,
         max_tokens: Optional[int] = None,
-        temperature: float = 0.7
+        temperature: float = 0.7,
     ) -> Generator[str, None, None]:
         """Streaming chat completion yielding text chunks via SSE."""
         full_messages = []
@@ -341,17 +367,10 @@ class ProxyBrainClient:
 
         # 2. Direct HTTP SSE streaming
         import requests
+
         url = f"{self.base_url}/chat/completions"
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
-        }
-        payload = {
-            "model": model,
-            "messages": full_messages,
-            "temperature": temperature,
-            "stream": True
-        }
+        headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
+        payload = {"model": model, "messages": full_messages, "temperature": temperature, "stream": True}
         if max_tokens:
             payload["max_tokens"] = max_tokens
 
@@ -385,15 +404,23 @@ class ProxyBrainClient:
         if "timeout" in err_str or "timed out" in err_str:
             raise GatewayTimeoutError(f"Gateway request timed out: {exc}", model=model) from exc
         elif "connect" in err_str or "connection" in err_str or "refused" in err_str:
-            raise GatewayUnavailableError(f"Could not connect to Proxy Brain at {self.base_url}: {exc}", model=model) from exc
+            raise GatewayUnavailableError(
+                f"Could not connect to Proxy Brain at {self.base_url}: {exc}", model=model
+            ) from exc
         elif "quota" in err_str or "503" in err_str or "no accounts" in err_str:
             raise QuotaExceededError(f"Model '{model}' quota exceeded: {exc}", model=model, status_code=503) from exc
         elif "404" in err_str or "not found" in err_str or "unknown model" in err_str or "nonexistent" in err_str:
-            raise ModelNotFoundError(f"Model '{model}' not found on Proxy Brain: {exc}", status_code=404, model=model) from exc
+            raise ModelNotFoundError(
+                f"Model '{model}' not found on Proxy Brain: {exc}", status_code=404, model=model
+            ) from exc
         elif "401" in err_str or "403" in err_str or "unauthorized" in err_str:
-            raise GatewayAuthenticationError(f"Gateway authentication error: {exc}", status_code=401, model=model) from exc
+            raise GatewayAuthenticationError(
+                f"Gateway authentication error: {exc}", status_code=401, model=model
+            ) from exc
         else:
-            raise ProxyBrainClientError(f"Gateway execution error: {sanitize_error_msg(str(exc))}", model=model) from exc
+            raise ProxyBrainClientError(
+                f"Gateway execution error: {sanitize_error_msg(str(exc))}", model=model
+            ) from exc
 
 
 _global_client: Optional[ProxyBrainClient] = None

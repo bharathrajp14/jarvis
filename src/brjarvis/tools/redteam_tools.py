@@ -3,20 +3,23 @@
 Red team security tools plugin for JARVIS MK37.
 Exposes scoped OSINT, port scanning, header audits, and report generation.
 """
+
 from __future__ import annotations
 
 import json
-from pathlib import Path
+
 from .registry import register_tool
 
 
 def _get_scope_enforcer():
     from brjarvis.core.paths import paths
+
     scope_path = paths.STATE_ROOT / "current_scope.json"
     if not scope_path.exists():
         scope_path = paths.CONFIG_ROOT / "current_scope.json"
     if scope_path.exists():
         from brjarvis.guardian.redteam.scope import ScopeEnforcer
+
         return ScopeEnforcer(str(scope_path))
     return None
 
@@ -25,6 +28,7 @@ def _get_recon_engine():
     scope = _get_scope_enforcer()
     if scope:
         from redteam.recon import ReconEngine
+
         return ReconEngine(scope)
     return None
 
@@ -33,6 +37,7 @@ def _get_vuln_scanner():
     scope = _get_scope_enforcer()
     if scope:
         from redteam.vuln_scanner import VulnScanner
+
         return VulnScanner(scope)
     return None
 
@@ -44,10 +49,14 @@ def _get_vuln_scanner():
         "type": "object",
         "properties": {
             "host": {"type": "string", "description": "Target host IP or hostname"},
-            "ports": {"type": "array", "items": {"type": "integer"}, "description": "List of port numbers (default: common ports)"},
+            "ports": {
+                "type": "array",
+                "items": {"type": "integer"},
+                "description": "List of port numbers (default: common ports)",
+            },
         },
         "required": ["host"],
-    }
+    },
 )
 def tool_port_scan(args: dict) -> str:
     recon = _get_recon_engine()
@@ -69,7 +78,7 @@ def tool_port_scan(args: dict) -> str:
             "domain": {"type": "string", "description": "Target domain"},
         },
         "required": ["domain"],
-    }
+    },
 )
 def tool_dns_enum(args: dict) -> str:
     recon = _get_recon_engine()
@@ -91,7 +100,7 @@ def tool_dns_enum(args: dict) -> str:
             "url": {"type": "string", "description": "Target URL"},
         },
         "required": ["url"],
-    }
+    },
 )
 def tool_headers_audit(args: dict) -> str:
     recon = _get_recon_engine()
@@ -113,7 +122,7 @@ def tool_headers_audit(args: dict) -> str:
             "domain": {"type": "string", "description": "Target domain"},
         },
         "required": ["domain"],
-    }
+    },
 )
 def tool_whois_lookup(args: dict) -> str:
     recon = _get_recon_engine()
@@ -134,7 +143,7 @@ def tool_whois_lookup(args: dict) -> str:
             "host": {"type": "string", "description": "Target host"},
         },
         "required": ["host"],
-    }
+    },
 )
 def tool_nmap_scan(args: dict) -> str:
     scanner = _get_vuln_scanner()
@@ -155,10 +164,11 @@ def tool_nmap_scan(args: dict) -> str:
             "data": {"type": "object", "description": "Report data dict"},
         },
         "required": ["data"],
-    }
+    },
 )
 def tool_generate_report(args: dict) -> str:
     from redteam.report import generate_report
+
     data = args.get("data") or args.get("report_data") or {}
     return generate_report(data)
 
@@ -172,11 +182,12 @@ def tool_generate_report(args: dict) -> str:
             "content": {"type": "string", "description": "Content to inspect for injection vulnerabilities"},
         },
         "required": ["content"],
-    }
+    },
 )
 def audit_prompt_security(args: dict) -> str:
     """Audit content for prompt injection indicators (instruction-override phrases, fake roles, jailbreaks, etc.)."""
     import re
+
     content = args.get("content", "")
     if not isinstance(content, str):
         return "CLEAN"
@@ -214,7 +225,7 @@ def audit_prompt_security(args: dict) -> str:
         "<|im_end|>",
         "### new instructions",
         "### instruction",
-        "### response"
+        "### response",
     ]
     for marker in fake_role_markers:
         if marker in low_content:
@@ -227,7 +238,7 @@ def audit_prompt_security(args: dict) -> str:
             return "INJECTION DETECTED: Suspicious hidden zero-width character detected"
 
     # 4. Unusually long base64-looking blocks to hide instruction injections
-    base64_pat = re.compile(r'[A-Za-z0-9+/]{80,}=*')
+    base64_pat = re.compile(r"[A-Za-z0-9+/]{80,}=*")
     if base64_pat.search(content):
         return "INJECTION DETECTED: Large base64 payload block detected"
 

@@ -7,24 +7,27 @@ Provides:
   get_memory_context()      — full context string for system prompt (with MEMORY.md + Lessons)
   find_relevant_memories()  — keyword & vector relevance filtering
 """
+
 from __future__ import annotations
 
 import logging
+
+from .lessons import LessonStore
+from .memory_scan import memory_freshness_text, scan_all_memories
+from .memory_types import MEMORY_SYSTEM_PROMPT
 from .persistent_store import (
     INDEX_FILENAME,
-    MAX_INDEX_LINES,
     MAX_INDEX_BYTES,
+    MAX_INDEX_LINES,
     get_index_content,
     search_memory,
 )
-from .memory_scan import scan_all_memories, memory_freshness_text
-from .memory_types import MEMORY_SYSTEM_PROMPT
-from .lessons import LessonStore
 
 logger = logging.getLogger(__name__)
 
 
 # ── Index truncation ───────────────────────────────────────────────────────
+
 
 def truncate_index_content(raw: str) -> str:
     """Truncate MEMORY.md content to line AND byte limits, appending a warning."""
@@ -53,14 +56,12 @@ def truncate_index_content(raw: str) -> str:
     else:
         reason = f"{line_count} lines and {byte_count:,} bytes"
 
-    warning = (
-        f"\n\n> WARNING: {INDEX_FILENAME} is {reason}. "
-        "Only part of it was loaded."
-    )
+    warning = f"\n\n> WARNING: {INDEX_FILENAME} is {reason}. Only part of it was loaded."
     return truncated + warning
 
 
 # ── System prompt context ──────────────────────────────────────────────────
+
 
 def get_memory_context(include_guidance: bool = False) -> str:
     """Return memory context for injection into the system prompt.
@@ -88,7 +89,7 @@ def get_memory_context(include_guidance: bool = False) -> str:
             lesson_lines = [f"- {l['topic']}: {l['correction']}" for l in top_lessons]
             parts.append("[Learned Lessons & User Corrections]\n" + "\n".join(lesson_lines))
     except Exception as e:
-        logger.debug('Suppressed exception: %s', e)
+        logger.debug("Suppressed exception: %s", e)
     if not parts:
         return ""
 
@@ -99,6 +100,7 @@ def get_memory_context(include_guidance: bool = False) -> str:
 
 
 # ── Relevant memory finder ─────────────────────────────────────────────────
+
 
 def find_relevant_memories(
     query: str,
@@ -118,19 +120,21 @@ def find_relevant_memories(
     path_to_mtime = {h.file_path: h.mtime_s for h in headers}
 
     results = []
-    for entry in keyword_results[:max_results * 3]:
+    for entry in keyword_results[: max_results * 3]:
         mtime_s = path_to_mtime.get(entry.file_path, 0)
-        results.append({
-            "name": entry.name,
-            "description": entry.description,
-            "type": entry.type,
-            "scope": entry.scope,
-            "content": entry.content,
-            "file_path": entry.file_path,
-            "mtime_s": mtime_s,
-            "freshness_text": memory_freshness_text(mtime_s),
-            "confidence": entry.confidence,
-            "source": entry.source,
-        })
+        results.append(
+            {
+                "name": entry.name,
+                "description": entry.description,
+                "type": entry.type,
+                "scope": entry.scope,
+                "content": entry.content,
+                "file_path": entry.file_path,
+                "mtime_s": mtime_s,
+                "freshness_text": memory_freshness_text(mtime_s),
+                "confidence": entry.confidence,
+                "source": entry.source,
+            }
+        )
     results.sort(key=lambda r: r["mtime_s"], reverse=True)
     return results[:max_results]

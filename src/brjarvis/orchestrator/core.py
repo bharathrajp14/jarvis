@@ -10,6 +10,7 @@ Architecture highlights (v41.0):
 - Vector memory failures logged at WARNING instead of silent pass
 - MAX_TOOL_ITERATIONS cap enforced to prevent unbounded re-entrant loops
 """
+
 from __future__ import annotations
 
 import json
@@ -87,11 +88,11 @@ You are intelligent, precise, direct, and capable of executing complex tasks end
 """
 
 MODES = {
-    "recon":   "RECON MODE: You are a systematic OSINT analyst. Be methodical and exhaustive.",
+    "recon": "RECON MODE: You are a systematic OSINT analyst. Be methodical and exhaustive.",
     "exploit": "EXPLOIT MODE: Authorized vulnerability analysis only. Document everything.",
-    "report":  "REPORT MODE: Professional technical writing. Produce client-ready deliverables.",
+    "report": "REPORT MODE: Professional technical writing. Produce client-ready deliverables.",
     "planner": "PLANNER MODE: Decompose goals into ordered, actionable tasks.",
-    "coder":   "CODER MODE: Senior full-stack engineer. Write clean, tested, documented code.",
+    "coder": "CODER MODE: Senior full-stack engineer. Write clean, tested, documented code.",
     "analyst": "ANALYST MODE: Synthesize data into clear, actionable insights.",
     "general": "",
 }
@@ -109,16 +110,16 @@ MAX_TOOL_ITERATIONS: int = 25
 # parallel sub-agents each making one call) get a higher limit.  Risky or
 # stateful tools keep the conservative default of 3.
 _CYCLIC_THRESHOLDS: dict[str, int] = {
-    "run_code":        6,
+    "run_code": 6,
     "scratchpad_eval": 6,
     "scratchpad_write": 6,
-    "file_read":       6,
-    "file_write":      6,
+    "file_read": 6,
+    "file_write": 6,
     "file_controller": 6,
-    "web_search":      5,
-    "fetch_page":      5,
-    "fetch_raw":       5,
-    "code_helper":     5,
+    "web_search": 5,
+    "fetch_page": 5,
+    "fetch_raw": 5,
+    "code_helper": 5,
 }
 _DEFAULT_CYCLIC_THRESHOLD: int = 3
 
@@ -131,9 +132,11 @@ def _format_clean_tool_summary(tool_name: str, tool_args: dict) -> str:
         return f"[Executed Tool: {tool_name} query='{val}']"
     elif "action" in args:
         act = str(args["action"])
-        target = str(
-            args.get("path") or args.get("name") or args.get("app_name") or args.get("value") or ""
-        ).replace("\n", " ").strip()[:40]
+        target = (
+            str(args.get("path") or args.get("name") or args.get("app_name") or args.get("value") or "")
+            .replace("\n", " ")
+            .strip()[:40]
+        )
         return f"[Executed Tool: {tool_name} action='{act}' {target}]".strip()
     elif any(k in args for k in ("code", "script", "content")):
         lang = str(args.get("lang") or args.get("language") or "code")
@@ -151,9 +154,16 @@ def _synthesize_evidence_summary(tool_history: list[dict], user_input: str) -> s
         return "I analyzed your request, sir, but no tool operations were required or executed."
 
     tools_used = list(dict.fromkeys(t["tool_name"] for t in tool_history if "tool_name" in t))
-    has_errors = any("error" in str(t.get("result", "")).lower() or "failed" in str(t.get("result", "")).lower() for t in tool_history)
+    has_errors = any(
+        "error" in str(t.get("result", "")).lower() or "failed" in str(t.get("result", "")).lower()
+        for t in tool_history
+    )
 
-    header = f"Completed operations using {', '.join(tools_used)}, sir." if not has_errors else f"Operations completed with notable execution notices or errors, sir. (Tools: {', '.join(tools_used)})"
+    header = (
+        f"Completed operations using {', '.join(tools_used)}, sir."
+        if not has_errors
+        else f"Operations completed with notable execution notices or errors, sir. (Tools: {', '.join(tools_used)})"
+    )
     lines = [header, "", "### Execution Evidence:"]
     for t in tool_history:
         tname = t.get("tool_name", "tool")
@@ -166,12 +176,11 @@ def _synthesize_evidence_summary(tool_history: list[dict], user_input: str) -> s
     return "\n".join(lines)
 
 
-
 class JarvisOrchestrator:
-
     def __init__(self, router: AgentRouter | None = None, use_vector_memory: bool = True):
         if router is None:
             from brjarvis.router import AgentRouter as _AR
+
             router = _AR()
         self.router = router
         self.working_memory = WorkingMemory(max_tokens=120_000)
@@ -188,6 +197,7 @@ class JarvisOrchestrator:
             from brjarvis.history.audit_writer import set_session_id
             from brjarvis.history.linker import HistoryLinker
             from brjarvis.history.session_store import SessionStore
+
             self._session_store = SessionStore()
             self._history_linker = HistoryLinker()
             self._session_id = self._session_store.new_session(
@@ -201,6 +211,7 @@ class JarvisOrchestrator:
         # SQLite Conversation Store
         try:
             from brjarvis.memory.conversation_store import ConversationStore
+
             self.conversation_store = ConversationStore()
             if self._session_id:
                 self.conversation_store.start_session(
@@ -215,6 +226,7 @@ class JarvisOrchestrator:
         self._agent_session = None
         try:
             from brjarvis.agent.session import get_or_create_session
+
             self._agent_session = get_or_create_session(
                 session_id=self._session_id,
                 mode=self.current_mode,
@@ -230,6 +242,7 @@ class JarvisOrchestrator:
         # Done after DI registration so connectors can resolve runtime deps.
         try:
             from brjarvis.connectors.hub import get_hub
+
             hub = get_hub()
             hub.register_with_tool_registry()
             logger.info("[Orchestrator] Connector Hub booted: %d connectors", len(hub._connectors))
@@ -239,6 +252,7 @@ class JarvisOrchestrator:
         if use_vector_memory:
             try:
                 from brjarvis.memory.vector_store import VectorMemory
+
                 self.vector_memory = VectorMemory()
             except Exception as exc:
                 logger.warning(f"[Orchestrator] Vector memory unavailable: {exc}")
@@ -297,6 +311,7 @@ class JarvisOrchestrator:
         """Handle /memory subcommands: search, recent, project, stats."""
         try:
             from brjarvis.memory.unified_memory import get_unified_memory
+
             um = get_unified_memory()
 
             parts = cmd.split(maxsplit=2)
@@ -318,6 +333,7 @@ class JarvisOrchestrator:
 
             elif sub == "recent":
                 from brjarvis.memory.unified_memory import get_unified_memory
+
                 mem = get_unified_memory()
                 entries = mem.store.list_active(limit=5)
                 if not entries:
@@ -329,6 +345,7 @@ class JarvisOrchestrator:
 
             elif sub == "project":
                 from brjarvis.memory.unified_memory import get_unified_memory
+
                 mem = get_unified_memory()
                 entries = mem.store.list_active(scope="project", limit=5)
                 if not entries:
@@ -340,6 +357,7 @@ class JarvisOrchestrator:
 
             elif sub == "stats":
                 from brjarvis.memory.unified_memory import get_unified_memory
+
                 mem = get_unified_memory()
                 all_entries = mem.store.list_all(limit=500)
                 by_type: dict = {}
@@ -354,6 +372,7 @@ class JarvisOrchestrator:
             else:
                 # Default: show memory summary
                 from brjarvis.memory.unified_memory import get_unified_memory
+
                 mem = get_unified_memory()
                 entries = mem.store.list_active(limit=3)
                 total = len(mem.store.list_all(limit=500))
@@ -370,10 +389,15 @@ class JarvisOrchestrator:
         """Handle /tasks — list incomplete tasks from TaskState DB."""
         try:
             from brjarvis.agent.task_state import TaskStateManager, TaskStatus
+
             mgr = TaskStateManager()
             incomplete_statuses = [
-                TaskStatus.RUNNING, TaskStatus.PLANNING, TaskStatus.PAUSED,
-                TaskStatus.WAITING_APPROVAL, TaskStatus.RETRYING, TaskStatus.CREATED
+                TaskStatus.RUNNING,
+                TaskStatus.PLANNING,
+                TaskStatus.PAUSED,
+                TaskStatus.WAITING_APPROVAL,
+                TaskStatus.RETRYING,
+                TaskStatus.CREATED,
             ]
             tasks = []
             for status in incomplete_statuses:
@@ -406,11 +430,10 @@ class JarvisOrchestrator:
                 return "[History] No conversation history available."
             lines = ["[History] Recent working memory:"]
             for h in hist:
-                lines.append(f"  [{h.get('role','?').upper()}] {str(h.get('content',''))[:100]}")
+                lines.append(f"  [{h.get('role', '?').upper()}] {str(h.get('content', ''))[:100]}")
             return "\n".join(lines)
         except Exception as e:
             return f"[History] Error: {e}"
-
 
     _tool_prompt_cache: str = ""  # class-level cache for tool prompt block
     _tool_prompt_cache_ts: float = 0.0  # timestamp of last cache build (BUG-13 FIX)
@@ -418,12 +441,12 @@ class JarvisOrchestrator:
     @staticmethod
     def _clean_response(text: str) -> str:
         """Strip tool_call blocks, raw JSON tool invocations, and streaming tokens from LLM response."""
-        cleaned = re.sub(r'```tool_call\s*\n\s*\{.*?\}\s*\n\s*```', '', text, flags=re.DOTALL)
-        cleaned = re.sub(r'\{\s*"tool"\s*:\s*"[^"]+"\s*,\s*"args"\s*:\s*\{.*?\}\s*\}', '', cleaned, flags=re.DOTALL)
-        cleaned = re.sub(r'<\|start\|>.*?<\|call\|>', '', cleaned, flags=re.DOTALL)
-        cleaned = re.sub(r'<\|channel\|>.*?<\|call\|>', '', cleaned, flags=re.DOTALL)
-        cleaned = re.sub(r'<\|message\|>.*?<\|call\|>', '', cleaned, flags=re.DOTALL)
-        cleaned = re.sub(r'<\|.*?\|>', '', cleaned)
+        cleaned = re.sub(r"```tool_call\s*\n\s*\{.*?\}\s*\n\s*```", "", text, flags=re.DOTALL)
+        cleaned = re.sub(r'\{\s*"tool"\s*:\s*"[^"]+"\s*,\s*"args"\s*:\s*\{.*?\}\s*\}', "", cleaned, flags=re.DOTALL)
+        cleaned = re.sub(r"<\|start\|>.*?<\|call\|>", "", cleaned, flags=re.DOTALL)
+        cleaned = re.sub(r"<\|channel\|>.*?<\|call\|>", "", cleaned, flags=re.DOTALL)
+        cleaned = re.sub(r"<\|message\|>.*?<\|call\|>", "", cleaned, flags=re.DOTALL)
+        cleaned = re.sub(r"<\|.*?\|>", "", cleaned)
         return cleaned.strip()
 
     def _build_system(self, user_prompt: str = "") -> str:
@@ -446,6 +469,7 @@ class JarvisOrchestrator:
 
         try:
             from brjarvis.tools.registry import get_pruned_tool_prompt_block
+
             if user_prompt:
                 parts.append(get_pruned_tool_prompt_block(user_prompt))
             else:
@@ -496,13 +520,16 @@ class JarvisOrchestrator:
         low = user_input.lower().strip()
 
         # Check for task continuation / past reference
-        is_continuation = bool(re.search(
-            r"\b(continue|resume|pick up|last time|we were|yesterday|earlier|previous|what did we|what was|what were)\b",
-            low
-        ))
+        is_continuation = bool(
+            re.search(
+                r"\b(continue|resume|pick up|last time|we were|yesterday|earlier|previous|what did we|what was|what were)\b",
+                low,
+            )
+        )
 
         try:
             from brjarvis.memory.unified_memory import get_unified_memory
+
             um = get_unified_memory()
 
             # 1. Always retrieve structured memories (preferences, project, semantic, operational)
@@ -520,11 +547,27 @@ class JarvisOrchestrator:
                     blocks.append("### 🧠 Persistent Memory & Preferences\n" + "\n".join(m_lines))
 
             # 2. Operational Experience & Past Findings (always checked for continuations and technical tasks)
-            if is_continuation or any(w in low for w in ("audit", "report", "test", "build", "verify", "finding", "delete", "drop", "destroy", "remove")):
+            if is_continuation or any(
+                w in low
+                for w in (
+                    "audit",
+                    "report",
+                    "test",
+                    "build",
+                    "verify",
+                    "finding",
+                    "delete",
+                    "drop",
+                    "destroy",
+                    "remove",
+                )
+            ):
                 exp = um.get_relevant_experiences(user_input, limit=2)
                 exp_lines = []
                 for succ in exp.get("successes", []):
-                    exp_lines.append(f"- Successful pattern for '{succ.get('goal_query', '')[:60]}': tools={succ.get('tool_sequence', [])}")
+                    exp_lines.append(
+                        f"- Successful pattern for '{succ.get('goal_query', '')[:60]}': tools={succ.get('tool_sequence', [])}"
+                    )
                 for fail in exp.get("failures", []):
                     if fail.get("failure_reason"):
                         exp_lines.append(f"- Pitfall to avoid: {fail.get('failure_reason')[:150]}")
@@ -532,13 +575,20 @@ class JarvisOrchestrator:
                     blocks.append("### ⚡ Operational History & Lessons\n" + "\n".join(exp_lines))
 
             # 3. Recent Artifacts Context (if asking about reports, docs, spreadsheets)
-            if any(w in low for w in ("pdf", "docx", "excel", "report", "document", "artifact", "yesterday", "audit", "file")):
+            if any(
+                w in low
+                for w in ("pdf", "docx", "excel", "report", "document", "artifact", "yesterday", "audit", "file")
+            ):
                 try:
                     from brjarvis.agent.artifacts import get_artifact_manager
+
                     mgr = get_artifact_manager()
                     recent_artifacts = mgr.list_artifacts(limit=3)
                     if recent_artifacts:
-                        art_lines = [f"- {a.filename} ({a.category.upper()}) at '{a.host_path or a.sandbox_path}' [Verified: {a.verified}]" for a in recent_artifacts]
+                        art_lines = [
+                            f"- {a.filename} ({a.category.upper()}) at '{a.host_path or a.sandbox_path}' [Verified: {a.verified}]"
+                            for a in recent_artifacts
+                        ]
                         blocks.append("### 📄 Recent Verified Artifacts\n" + "\n".join(art_lines))
                 except Exception:
                     pass
@@ -554,6 +604,7 @@ class JarvisOrchestrator:
             return
         try:
             from brjarvis.memory.memory_types import redact_secrets
+
             clean_input = redact_secrets(user_input)
             clean_response = redact_secrets(response[:500])
 
@@ -637,12 +688,20 @@ class JarvisOrchestrator:
                     launched = DeterministicIntentEngine.open_url_in_browser(last_url, browser_name=target_browser)
                     if launched:
                         logger.debug(f"[Context] Resolved 'it' → {last_url} | Browser: {target_browser}")
-                        return augmented + f"\n[SYSTEM CONTEXT: 'it' refers to {last_url} — already opened in {target_browser}. Confirm to user.]"
+                        return (
+                            augmented
+                            + f"\n[SYSTEM CONTEXT: 'it' refers to {last_url} — already opened in {target_browser}. Confirm to user.]"
+                        )
                 except Exception as exc:
                     logger.warning(f"[Context] Browser launch failed: {exc}")
-                return augmented + f"\n[SYSTEM CONTEXT: The last result URL was {last_url}. Open it in {target_browser}.]"
+                return (
+                    augmented + f"\n[SYSTEM CONTEXT: The last result URL was {last_url}. Open it in {target_browser}.]"
+                )
             else:
-                return augmented + f"\n[SYSTEM CONTEXT: User wants to open the previous result in {target_browser}. Check conversation history for URL.]"
+                return (
+                    augmented
+                    + f"\n[SYSTEM CONTEXT: User wants to open the previous result in {target_browser}. Check conversation history for URL.]"
+                )
 
         return augmented
 
@@ -685,7 +744,7 @@ class JarvisOrchestrator:
                         # Verify word boundary
                         if len(clean_input) == len(c):
                             match_len = len(c)
-                        elif not clean_input[len(c)].isalnum() and clean_input[len(c)] != '_':
+                        elif not clean_input[len(c)].isalnum() and clean_input[len(c)] != "_":
                             match_len = len(c)
                         else:
                             continue
@@ -715,12 +774,14 @@ class JarvisOrchestrator:
 
                 try:
                     event_bus = get_event_bus()
-                    event_bus.publish(TaskEvent(
-                        topic="task.fast_path.executed",
-                        task_id=str(uuid.uuid4()),
-                        goal=user_input,
-                        status="completed",
-                    ))
+                    event_bus.publish(
+                        TaskEvent(
+                            topic="task.fast_path.executed",
+                            task_id=str(uuid.uuid4()),
+                            goal=user_input,
+                            status="completed",
+                        )
+                    )
                 except Exception:
                     pass
                 return result_text
@@ -759,16 +820,17 @@ class JarvisOrchestrator:
         final_response = ""
         success = True
 
-
         event_bus = get_event_bus()
         task_id = str(uuid.uuid4())
 
-        event_bus.publish(TaskEvent(
-            topic="task.react.start",
-            task_id=task_id,
-            goal=user_input,
-            status="started",
-        ))
+        event_bus.publish(
+            TaskEvent(
+                topic="task.react.start",
+                task_id=task_id,
+                goal=user_input,
+                status="started",
+            )
+        )
 
         while True:
             # ── Absolute hard-cap failsafe (TOP_20 #13) ──────────────────────
@@ -796,7 +858,11 @@ class JarvisOrchestrator:
                 try:
                     summary_prompt = "All planned sub-tasks have finished. Synthesize a clean, direct, human-readable summary of the final output for the user. Do NOT call any tools."
                     self.working_memory.add("user", summary_prompt)
-                    sum_resp = self.router.run(profile, self.working_memory.get(), "Do NOT call any tools. Return only natural language summary.")
+                    sum_resp = self.router.run(
+                        profile,
+                        self.working_memory.get(),
+                        "Do NOT call any tools. Return only natural language summary.",
+                    )
                     final_response = self._clean_response(sum_resp)
                 except Exception:
                     pass
@@ -841,12 +907,14 @@ class JarvisOrchestrator:
             except Exception as exc:
                 final_response = f"Backend error: {exc}"
                 success = False
-                event_bus.publish(TaskEvent(
-                    topic="task.react.failed",
-                    task_id=task_id,
-                    goal=user_input,
-                    status=f"error: {exc}",
-                ))
+                event_bus.publish(
+                    TaskEvent(
+                        topic="task.react.failed",
+                        task_id=task_id,
+                        goal=user_input,
+                        status=f"error: {exc}",
+                    )
+                )
                 if not stream:
                     break
                 yield final_response
@@ -884,7 +952,11 @@ class JarvisOrchestrator:
                         try:
                             summary_prompt = "Tool execution has completed. Provide a clean, direct, human-readable summary of the actions performed. Do NOT call any tools."
                             self.working_memory.add("user", summary_prompt)
-                            sum_resp = self.router.run(profile, self.working_memory.get(), "Do NOT call any tools. Return only natural language summary.")
+                            sum_resp = self.router.run(
+                                profile,
+                                self.working_memory.get(),
+                                "Do NOT call any tools. Return only natural language summary.",
+                            )
                             final_response = self._clean_response(sum_resp)
                         except Exception:
                             pass
@@ -903,7 +975,11 @@ class JarvisOrchestrator:
                         try:
                             summary_prompt = "Tool execution has completed. Provide a clean, direct, human-readable summary of the actions performed. Do NOT call any tools."
                             self.working_memory.add("user", summary_prompt)
-                            sum_resp = self.router.run(profile, self.working_memory.get(), "Do NOT call any tools. Return only natural language summary.")
+                            sum_resp = self.router.run(
+                                profile,
+                                self.working_memory.get(),
+                                "Do NOT call any tools. Return only natural language summary.",
+                            )
                             final_response = self._clean_response(sum_resp)
                         except Exception:
                             pass
@@ -911,11 +987,12 @@ class JarvisOrchestrator:
                             final_response = _synthesize_evidence_summary(tool_history, user_input)
                         break
 
-
                 if stream:
                     yield f"\n[JARVIS] 🔧 Step {step + 1}: {tool_name}...\n"
                 else:
-                    logger.info(f"[Orchestrator] 🧠 Step {step + 1}/{budget.current_budget}: {tool_name}({list(tool_args.keys() if tool_args else [])})")
+                    logger.info(
+                        f"[Orchestrator] 🧠 Step {step + 1}/{budget.current_budget}: {tool_name}({list(tool_args.keys() if tool_args else [])})"
+                    )
 
                 t_tool = time.monotonic()
 
@@ -933,18 +1010,23 @@ class JarvisOrchestrator:
 
                 tool_ms = int((time.monotonic() - t_tool) * 1000)
 
-                tool_history.append({
-                    "step": step,
-                    "tool_name": tool_name,
-                    "args": tool_args,
-                    "result": tool_result,
-                })
+                tool_history.append(
+                    {
+                        "step": step,
+                        "tool_name": tool_name,
+                        "args": tool_args,
+                        "result": tool_result,
+                    }
+                )
 
                 self._record_turn(
-                    "assistant", response[:2000],
-                    tool_name=tool_name, tool_args=tool_args,
+                    "assistant",
+                    response[:2000],
+                    tool_name=tool_name,
+                    tool_args=tool_args,
                     tool_result=str(tool_result)[:2000],
-                    backend=profile.value, latency_ms=tool_ms,
+                    backend=profile.value,
+                    latency_ms=tool_ms,
                 )
 
                 clean = self._clean_response(response)
@@ -956,7 +1038,9 @@ class JarvisOrchestrator:
                 # Truncate large results for context efficiency
                 str_res = str(tool_result)
                 if len(str_res) > 4000:
-                    str_res = str_res[:2000] + "\n\n[... output truncated for context efficiency ...]\n\n" + str_res[-1500:]
+                    str_res = (
+                        str_res[:2000] + "\n\n[... output truncated for context efficiency ...]\n\n" + str_res[-1500:]
+                    )
                 self.working_memory.add("user", f"[Tool Result for '{tool_name}']:\n{str_res}")
 
                 if stream:
@@ -969,10 +1053,16 @@ class JarvisOrchestrator:
             else:
                 # Multi-task continuation nudge (non-streaming only)
                 if not stream:
-                    is_multitask = any(k in user_input.lower() for k in ("1.", "2.", "3.", "concurrently", "in parallel", "workflow", "together"))
+                    is_multitask = any(
+                        k in user_input.lower()
+                        for k in ("1.", "2.", "3.", "concurrently", "in parallel", "workflow", "together")
+                    )
                     if is_multitask and step > 0 and step < 4 and not prompted_continuation:
                         prompted_continuation = True
-                        self.working_memory.add("user", "[SYSTEM DIRECTIVE: You completed initial sub-tasks, but the user prompt requested multiple numbered/parallel tasks. Continue executing tools for all remaining items before giving your final text response.]")
+                        self.working_memory.add(
+                            "user",
+                            "[SYSTEM DIRECTIVE: You completed initial sub-tasks, but the user prompt requested multiple numbered/parallel tasks. Continue executing tools for all remaining items before giving your final text response.]",
+                        )
                         step += 1
                         continue
 
@@ -997,6 +1087,7 @@ class JarvisOrchestrator:
                 if "import os" in clean_check:
                     try:
                         import ast
+
                         ast.parse(clean_check)
                         is_raw_python_payload = True
                     except SyntaxError:
@@ -1026,12 +1117,14 @@ class JarvisOrchestrator:
             self._save_turn(user_input, final_response)
 
             if success:
-                event_bus.publish(TaskEvent(
-                    topic="task.react.completed",
-                    task_id=task_id,
-                    goal=user_input,
-                    status="completed",
-                ))
+                event_bus.publish(
+                    TaskEvent(
+                        topic="task.react.completed",
+                        task_id=task_id,
+                        goal=user_input,
+                        status="completed",
+                    )
+                )
             yield final_response  # used as return value trick below
         else:
             self._save_turn(user_input, final_response)
@@ -1041,6 +1134,7 @@ class JarvisOrchestrator:
         # ── Guardian / Prompt Injection Defense ───────────────────────────────
         try:
             from brjarvis.guardian.prompt_injection_shield import get_prompt_injection_shield
+
             shield = get_prompt_injection_shield()
             injection_result = shield.inspect(user_input)
             if injection_result.is_injection and injection_result.risk_level in ("high", "critical"):
@@ -1068,6 +1162,7 @@ class JarvisOrchestrator:
         # ── Composite Stage Decomposition ─────────────────────────────────────
         try:
             from brjarvis.agent.stage_decomposer import StageDecomposer, StageExecutionEngine
+
             if StageDecomposer.is_composite_task(user_input):
                 logger.info("[Orchestrator] Multi-step composite task detected. Decomposing into bounded stages...")
                 stages = StageDecomposer.decompose(user_input, parent_task_id=self._session_id)
@@ -1218,6 +1313,7 @@ class JarvisOrchestrator:
         summary = ""
         try:
             from brjarvis.memory.consolidator import consolidate_session
+
             saved = consolidate_session(self.working_memory.get(), router=self.router)
             if saved:
                 summary = f"Consolidated {len(saved)} memories: {', '.join(saved)}"
@@ -1232,7 +1328,8 @@ class JarvisOrchestrator:
                 self._session_store.close_session(self._session_id, summary=summary)
                 if self._history_linker and self._history_linker.available:
                     self._history_linker.on_session_close(
-                        self._session_id, summary,
+                        self._session_id,
+                        summary,
                         mode=self.current_mode,
                         backend=self.router.default.value,
                     )

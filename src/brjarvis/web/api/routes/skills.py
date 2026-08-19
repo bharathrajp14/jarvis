@@ -40,15 +40,17 @@ async def get_skills_list():
 
         for s in load_skills():
             triggers = getattr(s, "triggers", []) or [f"/{s.name}"]
-            payload.append({
-                "name": s.name,
-                "description": s.description or "Built-in automation skill.",
-                "triggers": triggers,
-                "command": triggers[0] if triggers else f"/{s.name}",
-                "user_invocable": getattr(s, "user_invocable", True),
-                "argument_hint": getattr(s, "argument_hint", ""),
-                "type": "template",
-            })
+            payload.append(
+                {
+                    "name": s.name,
+                    "description": s.description or "Built-in automation skill.",
+                    "triggers": triggers,
+                    "command": triggers[0] if triggers else f"/{s.name}",
+                    "user_invocable": getattr(s, "user_invocable", True),
+                    "argument_hint": getattr(s, "argument_hint", ""),
+                    "type": "template",
+                }
+            )
     except Exception as e:
         logger.warning(f"Error loading prompt skills: {e}")
 
@@ -56,15 +58,17 @@ async def get_skills_list():
         engine = get_skill_engine()
         for ds in engine.list_skills():
             if not any(p["name"] == ds.name for p in payload):
-                payload.append({
-                    "name": ds.name,
-                    "description": ds.description or "Declarative workflow capability.",
-                    "triggers": [f"/{ds.name}"],
-                    "command": f"/{ds.name}",
-                    "user_invocable": True,
-                    "argument_hint": "inputs JSON",
-                    "type": "declarative",
-                })
+                payload.append(
+                    {
+                        "name": ds.name,
+                        "description": ds.description or "Declarative workflow capability.",
+                        "triggers": [f"/{ds.name}"],
+                        "command": f"/{ds.name}",
+                        "user_invocable": True,
+                        "argument_hint": "inputs JSON",
+                        "type": "declarative",
+                    }
+                )
     except Exception as e:
         logger.warning(f"Error loading declarative skills: {e}")
 

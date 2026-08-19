@@ -6,10 +6,12 @@ Test 35  — Wrong result: Portfolio requested, unrelated report created → TAS
 Test 36  — Partial success: Portfolio created + GitHub push failed → PARTIAL_SUCCESS not SUCCESS_VERIFIED
 Test 37  — Blocked tool: tool blocked → BLOCKED/REQUIRES_PERMISSION, not SUCCESS
 """
+
 from __future__ import annotations
 
+from unittest.mock import MagicMock
+
 import pytest
-from unittest.mock import MagicMock, patch
 
 
 @pytest.fixture
@@ -28,6 +30,7 @@ def gate():
 
 def _ledger_entry(tool_name, task_id="task_a", step_id="step_1", status="SUCCESS", verification="SUCCESS"):
     from brjarvis.agent.execution_ledger import LedgerEntry, LedgerStatus
+
     return LedgerEntry(
         tool_name=tool_name,
         task_id=task_id,
@@ -41,13 +44,13 @@ def _ledger_entry(tool_name, task_id="task_a", step_id="step_1", status="SUCCESS
 
 # ── Test 33/34: Task identity ─────────────────────────────────────────────────
 
+
 @pytest.mark.unit
 def test_task_a_entries_cannot_satisfy_task_b_goal(gate):
     """
     MK40.2 Test 33/34: A completed portfolio task's ledger entries must NOT
     satisfy a GitHub-push-only goal that was never executed.
     """
-    from brjarvis.core.execution.types import ExecutionStatus
 
     # Task A ran: created portfolio files (file_write)
     task_a_ledger = [
@@ -96,13 +99,13 @@ def test_completed_task_a_result_not_returned_for_task_b(gate):
 
 # ── Test 35: Wrong result → TASK_FAILED_RESULT_MISMATCH ─────────────────────
 
+
 @pytest.mark.unit
 def test_wrong_result_portfolio_requested_report_created(gate):
     """
     MK40.2 Test 35: User requested portfolio creation. Tool created an unrelated
     architecture report instead. CompletionGate must return TASK_FAILED_RESULT_MISMATCH.
     """
-    from brjarvis.core.execution.types import ExecutionStatus
 
     # Ledger shows only document_creator ran (created a .docx report)
     # But the required operation is CREATE_PORTFOLIO which maps to file_write/code_helper/dev_agent
@@ -113,12 +116,16 @@ def test_wrong_result_portfolio_requested_report_created(gate):
 
     result = gate.evaluate_task(
         goal="Create a professional portfolio website",
-        steps=[{
-            "step": 1, "tool": "document_creator",
-            "status": "SUCCESS", "critical": True,
-            "result": "Architecture Report.docx created",
-            "parameters": {}
-        }],
+        steps=[
+            {
+                "step": 1,
+                "tool": "document_creator",
+                "status": "SUCCESS",
+                "critical": True,
+                "result": "Architecture Report.docx created",
+                "parameters": {},
+            }
+        ],
         ledger_entries=ledger,
         required_operations=["CREATE_PORTFOLIO"],
     )
@@ -137,13 +144,13 @@ def test_wrong_result_portfolio_requested_report_created(gate):
 
 # ── Test 36: Partial success ──────────────────────────────────────────────────
 
+
 @pytest.mark.unit
 def test_partial_success_portfolio_ok_github_push_failed(gate):
     """
     MK40.2 Test 36: Portfolio was created successfully, but GitHub push FAILED.
     Gate must return PARTIAL_SUCCESS, never SUCCESS_VERIFIED.
     """
-    from brjarvis.core.execution.types import ExecutionStatus
 
     # Ledger: portfolio file created (SUCCESS), git push failed (FAILED)
     ledger = [
@@ -152,10 +159,23 @@ def test_partial_success_portfolio_ok_github_push_failed(gate):
     ]
 
     steps = [
-        {"step": 1, "tool": "file_write", "status": "SUCCESS", "critical": True,
-         "result": "portfolio.html created", "parameters": {"path": "workspace/portfolio.html"}},
-        {"step": 2, "tool": "git_repo_mgr", "status": "FAILED", "critical": True,
-         "result": None, "error": "Authentication failed", "parameters": {}},
+        {
+            "step": 1,
+            "tool": "file_write",
+            "status": "SUCCESS",
+            "critical": True,
+            "result": "portfolio.html created",
+            "parameters": {"path": "workspace/portfolio.html"},
+        },
+        {
+            "step": 2,
+            "tool": "git_repo_mgr",
+            "status": "FAILED",
+            "critical": True,
+            "result": None,
+            "error": "Authentication failed",
+            "parameters": {},
+        },
     ]
 
     result = gate.evaluate_task(
@@ -175,13 +195,13 @@ def test_partial_success_portfolio_ok_github_push_failed(gate):
 
 # ── Test 37: Blocked tool → not SUCCESS ──────────────────────────────────────
 
+
 @pytest.mark.unit
 def test_blocked_tool_not_reported_as_success(gate):
     """
     MK40.2 Test 37: When run_code is blocked (PERMISSION_DENIED / BLOCKED),
     the gate must not report the step as successful.
     """
-    from brjarvis.core.execution.types import ExecutionStatus
     from brjarvis.agent.execution_ledger import LedgerEntry, LedgerStatus
 
     # Ledger shows the tool was blocked
@@ -195,13 +215,16 @@ def test_blocked_tool_not_reported_as_success(gate):
         stdout="BLOCKED: PERMISSION_DENIED",
     )
 
-    steps = [{
-        "step": 1, "tool": "code_helper",
-        "status": "FAILED",
-        "critical": True,
-        "error": "PERMISSION_DENIED",
-        "parameters": {},
-    }]
+    steps = [
+        {
+            "step": 1,
+            "tool": "code_helper",
+            "status": "FAILED",
+            "critical": True,
+            "error": "PERMISSION_DENIED",
+            "parameters": {},
+        }
+    ]
 
     result = gate.evaluate_task(
         goal="Run Python script",

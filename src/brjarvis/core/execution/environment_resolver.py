@@ -3,12 +3,11 @@ from __future__ import annotations
 
 import logging
 import os
-import platform
 import shutil
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 from .types import EnvironmentProfile, RuntimeType
 
@@ -18,7 +17,7 @@ logger = logging.getLogger("JARVIS.EnvironmentResolver")
 class EnvironmentResolver:
     """
     Deterministic 6-Tier Environment Resolution Engine for BR JARVIS.
-    
+
     Precedence Policy:
       Tier 1: Explicit task / runtime configuration
       Tier 2: Project-local environment (.venv / node_modules)
@@ -188,7 +187,7 @@ class EnvironmentResolver:
     def resolve_node(self, project_root: Optional[Path | str] = None) -> EnvironmentProfile:
         """Resolve Node.js executable."""
         root = Path(project_root).resolve() if project_root else self.default_project_root
-        
+
         # Check project node_modules/.bin first
         local_node = root / "node_modules" / ".bin" / ("node.cmd" if sys.platform == "win32" else "node")
         if local_node.exists():
@@ -277,7 +276,7 @@ class EnvironmentResolver:
     def resolve_browser(self) -> EnvironmentProfile:
         """Resolve Playwright Chromium browser executable path."""
         py_prof = self.resolve_python()
-        
+
         # Check standard Playwright cache directory
         user_home = Path.home()
         if sys.platform == "win32":
@@ -335,11 +334,22 @@ class EnvironmentResolver:
     def get_runtime_environment_vars(self, profile: EnvironmentProfile) -> Dict[str, str]:
         """Build a clean sanitized environment dict tailored to the resolved runtime."""
         env: Dict[str, str] = {}
-        
+
         # Preserve safe system essentials
         safe_keys = {
-            "PATH", "SYSTEMROOT", "WINDIR", "COMSPEC", "PATHEXT",
-            "TEMP", "TMP", "LANG", "LC_ALL", "TERM", "HOMEDRIVE", "HOMEPATH", "USERPROFILE"
+            "PATH",
+            "SYSTEMROOT",
+            "WINDIR",
+            "COMSPEC",
+            "PATHEXT",
+            "TEMP",
+            "TMP",
+            "LANG",
+            "LC_ALL",
+            "TERM",
+            "HOMEDRIVE",
+            "HOMEPATH",
+            "USERPROFILE",
         }
         for k, v in os.environ.items():
             if k.upper() in safe_keys:
@@ -392,12 +402,19 @@ class EnvironmentResolver:
     def _find_best_system_python(self) -> Optional[str]:
         """Find best system Python executable, skipping Windows Store 0-byte execution aliases."""
         candidates: List[str] = []
-        
+
         # py launcher if available
         py_launcher = shutil.which("py")
         if py_launcher:
             try:
-                res = subprocess.run([py_launcher, "-3.12", "-c", "import sys; print(sys.executable)"], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=3)
+                res = subprocess.run(
+                    [py_launcher, "-3.12", "-c", "import sys; print(sys.executable)"],
+                    capture_output=True,
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
+                    timeout=3,
+                )
                 if res.returncode == 0 and res.stdout.strip():
                     candidates.append(res.stdout.strip())
             except Exception:
@@ -428,7 +445,9 @@ class EnvironmentResolver:
 
     def _inspect_python_version(self, exec_path: str) -> str:
         try:
-            res = subprocess.run([exec_path, "--version"], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=3)
+            res = subprocess.run(
+                [exec_path, "--version"], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=3
+            )
             if res.returncode == 0:
                 out = (res.stdout or res.stderr).strip()
                 return out.replace("Python ", "")

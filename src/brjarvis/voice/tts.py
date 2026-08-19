@@ -3,21 +3,22 @@
 Sentence-level pipelined streaming TTS engine with zero sentence pauses,
 instant <200ms audio startup, parallel pre-fetching, and HD Windows OneCore Female Natural Voice.
 """
+
 from __future__ import annotations
 
 import asyncio
 import logging
 import os
-import re
-import sys
-import time
-import uuid
 import queue
+import re
 import shutil
+import subprocess
+import sys
 import tempfile
 import threading
-import subprocess
+import time
 import traceback
+import uuid
 from pathlib import Path
 
 logger = logging.getLogger("JARVIS.TTS")
@@ -25,6 +26,7 @@ logger = logging.getLogger("JARVIS.TTS")
 
 try:
     import pythoncom
+
     _HAS_PYTHONCOM = True
 except ImportError:
     _HAS_PYTHONCOM = False
@@ -33,6 +35,7 @@ _OS = "Windows" if sys.platform == "win32" else ("Darwin" if sys.platform == "da
 
 try:
     import edge_tts
+
     _HAS_EDGE_TTS = True
 except ImportError:
     _HAS_EDGE_TTS = False
@@ -46,6 +49,7 @@ def resolve_output_device() -> int | str | None:
         return int(out_dev)
     try:
         import sounddevice as sd
+
         devices = sd.query_devices()
         for idx, dev in enumerate(devices):
             if dev.get("max_output_channels", 0) > 0 and out_dev.lower() in dev.get("name", "").lower():
@@ -58,6 +62,7 @@ def resolve_output_device() -> int | str | None:
 def _is_bing_reachable(timeout: float = 0.4) -> bool:
     """Fast socket probe to check if Microsoft Bing Edge-TTS endpoint is reachable."""
     import socket
+
     try:
         sock = socket.create_connection(("speech.platform.bing.com", 443), timeout=timeout)
         sock.close()
@@ -68,6 +73,7 @@ def _is_bing_reachable(timeout: float = 0.4) -> bool:
 
 class MCIPlayer:
     """Play MP3/WAV files using sounddevice, Windows MCI, or system audio utilities."""
+
     _winmm = None
     _lock = threading.Lock()
     _active_processes: dict[str, subprocess.Popen] = {}
@@ -77,6 +83,7 @@ class MCIPlayer:
     def _init_winmm(cls):
         if cls._winmm is None and _OS == "Windows":
             import ctypes
+
             cls._winmm = ctypes.windll.winmm
 
     @classmethod
@@ -86,8 +93,9 @@ class MCIPlayer:
 
         # Try sounddevice + soundfile first for ultra-low latency
         try:
-            import soundfile as sf
             import sounddevice as sd
+            import soundfile as sf
+
             data, fs = sf.read(filepath_str, dtype="float32")
             out_dev = resolve_output_device()
             sd.play(data, fs, device=out_dev)
@@ -101,7 +109,7 @@ class MCIPlayer:
             if cls._winmm:
                 cmd_open = f'open "{filepath_str}" type mpegvideo alias {alias}'
                 cls._winmm.mciSendStringW(cmd_open, None, 0, 0)
-                cmd_play = f'play {alias}'
+                cmd_play = f"play {alias}"
                 cls._winmm.mciSendStringW(cmd_play, None, 0, 0)
                 return alias
 
@@ -113,7 +121,11 @@ class MCIPlayer:
 
         for player in ["ffplay", "mpv", "cvlc", "aplay"]:
             if shutil.which(player):
-                cmd = [player, "-nodisp", "-autoexit", filepath_str] if player == "ffplay" else ([player, "--no-terminal", filepath_str] if player == "mpv" else [player, filepath_str])
+                cmd = (
+                    [player, "-nodisp", "-autoexit", filepath_str]
+                    if player == "ffplay"
+                    else ([player, "--no-terminal", filepath_str] if player == "mpv" else [player, filepath_str])
+                )
                 proc = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                 with cls._lock:
                     cls._active_processes[alias] = proc
@@ -128,6 +140,7 @@ class MCIPlayer:
 
         try:
             import sounddevice as sd
+
             if sd.get_stream() and sd.get_stream().active:
                 return True
         except Exception:
@@ -137,6 +150,7 @@ class MCIPlayer:
             cls._init_winmm()
             if cls._winmm:
                 import ctypes
+
                 buf = ctypes.create_unicode_buffer(128)
                 cls._winmm.mciSendStringW(f"status {alias} mode", buf, 128, 0)
                 return buf.value.strip().lower() == "playing"
@@ -152,6 +166,7 @@ class MCIPlayer:
     def stop(cls, alias: str):
         try:
             import sounddevice as sd
+
             sd.stop()
         except Exception:
             pass
@@ -174,6 +189,7 @@ class MCIPlayer:
     def stop_all(cls):
         try:
             import sounddevice as sd
+
             sd.stop()
         except Exception:
             pass
@@ -263,7 +279,7 @@ def summarize_for_speech(text: str, max_chars: int = 600) -> str:
     truncated = clean[:max_chars]
     last_punct = max(truncated.rfind("."), truncated.rfind("!"), truncated.rfind("?"))
     if last_punct > 100:
-        return truncated[:last_punct + 1]
+        return truncated[: last_punct + 1]
     return truncated.strip() + "..."
 
 
@@ -271,10 +287,10 @@ class NeuralTTS:
     """High-quality pipelined text-to-speech engine with zero sentence gap and instant audio startup."""
 
     VOICES = {
-        "default":   "en-US-AriaNeural",       # Soft, ultra-natural, warm neural female voice
-        "female_us": "en-US-JennyNeural",      # Warm American female
-        "female_gb": "en-GB-SoniaNeural",      # Elegant British female
-        "male_us":   "en-US-GuyNeural",         # American male
+        "default": "en-US-AriaNeural",  # Soft, ultra-natural, warm neural female voice
+        "female_us": "en-US-JennyNeural",  # Warm American female
+        "female_gb": "en-GB-SoniaNeural",  # Elegant British female
+        "male_us": "en-US-GuyNeural",  # American male
     }
 
     def __init__(self, voice_key: str = "default", rate: str = "+0%", pitch: str = "+0Hz"):
@@ -285,14 +301,13 @@ class NeuralTTS:
         self._temp_dir.mkdir(exist_ok=True)
         self._current_alias = None
         self._is_speaking = False
-        self._cancel_event = threading.Event()   # instant cancel signal
-        self._generation_id = 0                  # monotonic generation counter for task isolation
-        self._gen_lock = threading.Lock()         # thread lock for generation ID
-        self._last_edge_check = 0.0              # timestamp of last DNS socket check
-        self._edge_cooldown_until = 0.0          # cooldown timestamp when Edge-TTS fails
+        self._cancel_event = threading.Event()  # instant cancel signal
+        self._generation_id = 0  # monotonic generation counter for task isolation
+        self._gen_lock = threading.Lock()  # thread lock for generation ID
+        self._last_edge_check = 0.0  # timestamp of last DNS socket check
+        self._edge_cooldown_until = 0.0  # cooldown timestamp when Edge-TTS fails
         threading.Thread(target=self._prune_cache, daemon=True).start()
         self._init_fallback_speaker()
-
 
     def _init_fallback_speaker(self):
         """Always initialize local fallback speaker for robust runtime recovery."""
@@ -323,8 +338,9 @@ class NeuralTTS:
             if _HAS_PYTHONCOM:
                 pythoncom.CoInitialize()
             import win32com.client
+
             self._sapi_speaker = win32com.client.Dispatch("SAPI.SpVoice")
-            
+
             # Try loading HD Windows Speech_OneCore Natural Voices
             onecore_loaded = False
             try:
@@ -369,7 +385,6 @@ class NeuralTTS:
             logger.warning(f"SAPI5 fallback failed: {e}")
             self._sapi_speaker = None
 
-
     def _init_linux_tts(self):
         """Initialize Linux speech dispatcher or espeak fallback."""
         if shutil.which("spd-say") or shutil.which("espeak") or shutil.which("espeak-ng"):
@@ -394,6 +409,7 @@ class NeuralTTS:
         self._is_speaking = False
         try:
             from brjarvis.voice.audio_bus import AudioBus
+
             AudioBus.get_instance().set_echo_gate(False)
         except Exception:
             pass
@@ -417,14 +433,13 @@ class NeuralTTS:
             gen_id = self._generation_id
 
         thread = threading.Thread(
-            target=self._speak_streaming_worker,
-            args=(text, on_start, on_finish, gen_id),
-            daemon=True
+            target=self._speak_streaming_worker, args=(text, on_start, on_finish, gen_id), daemon=True
         )
         thread.start()
 
     def speak_stream(self, token_generator, on_start=None, on_finish=None):
         """Streaming text token generator interface for continuous speech playback."""
+
         def text_collector():
             parts = []
             for token in token_generator:
@@ -447,8 +462,9 @@ class NeuralTTS:
         now = time.time()
         use_edge = _HAS_EDGE_TTS
 
-        if os.environ.get("JARVIS_OFFLINE_TTS", "").lower() in ("true", "1", "yes") or \
-           os.environ.get("JARVIS_FORCE_OFFLINE", "").lower() in ("true", "1", "yes"):
+        if os.environ.get("JARVIS_OFFLINE_TTS", "").lower() in ("true", "1", "yes") or os.environ.get(
+            "JARVIS_FORCE_OFFLINE", ""
+        ).lower() in ("true", "1", "yes"):
             use_edge = False
 
         if use_edge and now < self._edge_cooldown_until:
@@ -468,7 +484,9 @@ class NeuralTTS:
                     return (str(mp3_path), sentence)
 
                 try:
-                    communicate = edge_tts.Communicate(text=sentence, voice=self.voice, rate=self.rate, pitch=self.pitch)
+                    communicate = edge_tts.Communicate(
+                        text=sentence, voice=self.voice, rate=self.rate, pitch=self.pitch
+                    )
                     loop = asyncio.new_event_loop()
                     try:
                         loop.run_until_complete(communicate.save(str(mp3_path)))
@@ -487,12 +505,12 @@ class NeuralTTS:
 
         return ("sapi5", sentence)
 
-
     def _speak_streaming_worker(self, text: str, on_start, on_finish, gen_id: int):
         """Parallel producer-consumer pipelined speech worker. Pre-fetches next sentences while current audio plays for ZERO gap after periods."""
         self._is_speaking = True
         try:
             from brjarvis.voice.audio_bus import AudioBus
+
             AudioBus.get_instance().set_echo_gate(True)
         except Exception:
             pass
@@ -552,6 +570,7 @@ class NeuralTTS:
             self._current_alias = None
             try:
                 from brjarvis.voice.audio_bus import AudioBus
+
                 AudioBus.get_instance().set_echo_gate(False)
             except Exception:
                 pass
@@ -595,6 +614,7 @@ class NeuralTTS:
                     logger.info(f"[JARVIS] SAPI5 async speak notice: {e}")
 
             import win32com.client
+
             local_speaker = win32com.client.Dispatch("SAPI.SpVoice")
             try:
                 cat = win32com.client.Dispatch("SAPI.SpObjectTokenCategory")
@@ -651,4 +671,3 @@ class TextToSpeechEngine(NeuralTTS):
         if res_file and res_file != "sapi5" and Path(res_file).exists():
             return res_file
         return None
-

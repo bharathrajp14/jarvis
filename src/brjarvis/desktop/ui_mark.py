@@ -25,14 +25,19 @@ import sys
 import threading
 import time
 import traceback
-from pathlib import Path
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 1.  Python version guard & automatic reroute to stable Python 3.12
 # ─────────────────────────────────────────────────────────────────────────────
-if __name__ == "__main__" and sys.version_info >= (3, 14) and sys.platform == "win32" and not os.environ.get("JARVIS_IGNORE_PY314"):
+if (
+    __name__ == "__main__"
+    and sys.version_info >= (3, 14)
+    and sys.platform == "win32"
+    and not os.environ.get("JARVIS_IGNORE_PY314")
+):
     import shutil
     import subprocess
+
     _py_cmd = shutil.which("py")
     if _py_cmd:
         for _ver in ("-3.12", "-3.13", "-3.11"):
@@ -63,6 +68,7 @@ if sys.platform == "win32":
         pass
 
 from brjarvis.ui import setup_qt_paths
+
 setup_qt_paths()
 
 
@@ -89,31 +95,24 @@ log = logging.getLogger("ui_mark")
 _USE_PYSIDE6 = False
 try:
     import PySide6  # type: ignore[import-not-found] # noqa: F401
+
     _USE_PYSIDE6 = True
 except ImportError:
     try:
         import PyQt6  # type: ignore[import-not-found] # noqa: F401
     except ImportError:
         print(
-            "[ui_mark] ❌ Neither PySide6 nor PyQt6 is installed.\n"
-            "         Run: py -3.12 -m pip install PySide6",
+            "[ui_mark] ❌ Neither PySide6 nor PyQt6 is installed.\n         Run: py -3.12 -m pip install PySide6",
             file=sys.stderr,
         )
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 6.  Import UI components — these are the only public exports of this module
 # ─────────────────────────────────────────────────────────────────────────────
-from brjarvis.ui.colors import C, apply_ui_accent, current_palette, retheme_all_widgets, qcol  # noqa: E402
-from brjarvis.ui.widgets import (  # noqa: E402
-    HudCanvas, MetricBar, LogWidget,
-    SubAgentTaskWidget, SubAgentTaskPanel, FileDropZone,
-)
-from brjarvis.ui.overlays import (  # noqa: E402
-    SetupOverlay, HueWheel, CustomizeOverlay, ClipboardPanel, RemoteKeyOverlay,
-)
-from brjarvis.ui.main_window import MainWindow  # noqa: E402
 from brjarvis.ui.app import (  # noqa: E402
-    JarvisUI, HeadlessJarvisUI, is_gui_available, _RootShim,
+    HeadlessJarvisUI,
+    JarvisUI,
+    is_gui_available,
 )
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -125,6 +124,7 @@ _DEFAULT_PORT = 8000
 def _is_jarvis_running(port: int) -> bool:
     """Check if an active JARVIS backend server is responding on the given port."""
     import urllib.request
+
     try:
         req = urllib.request.Request(f"http://127.0.0.1:{port}/api/health", headers={"User-Agent": "JARVIS-Ping"})
         with urllib.request.urlopen(req, timeout=0.8) as resp:
@@ -140,7 +140,7 @@ def _find_available_jarvis_port(preferred_port: int = 8000) -> int:
     """Return preferred_port if free or running JARVIS, otherwise find a free fallback port."""
     if _is_jarvis_running(preferred_port) or _port_free(preferred_port):
         return preferred_port
-    
+
     for p in (8080, 8088, 8888, 5000, 8001, 8002):
         if _is_jarvis_running(p) or _port_free(p):
             return p
@@ -193,8 +193,10 @@ def _start_backend_server() -> threading.Thread:
 
         try:
             import uvicorn
+
             try:
                 from brjarvis.web.api.server import create_app
+
                 _fastapi_app = create_app()
             except Exception:
                 from brjarvis.web.api.app import app as _fastapi_app
@@ -254,6 +256,7 @@ def _start_voice_worker(ui: JarvisUI | HeadlessJarvisUI) -> threading.Thread:
     def _worker() -> None:
         try:
             from brjarvis.voice.assistant import BRVoiceAssistant
+
             assistant = BRVoiceAssistant(ui)
             ui.on_interrupt = assistant.stop_speech
             asyncio.run(assistant.run())
@@ -280,6 +283,7 @@ def _start_voice_worker(ui: JarvisUI | HeadlessJarvisUI) -> threading.Thread:
 # ─────────────────────────────────────────────────────────────────────────────
 def _install_signal_handlers() -> None:
     """Install SIGINT/SIGTERM handlers for clean shutdown on Ctrl+C or kill."""
+
     def _shutdown(sig: int, _frame) -> None:  # type: ignore[type-arg]
         print(f"\n[ui_mark] Received signal {sig} — shutting down gracefully...")
         sys.exit(0)
@@ -370,8 +374,7 @@ if __name__ == "__main__":
     except BaseException as exc:  # pylint: disable=broad-except
         _write_crash_log(exc)
         print(
-            f"[ui_mark] ❌ Fatal error: {exc!r}\n"
-            f"          Full trace written to: {_CRASH_LOG}",
+            f"[ui_mark] ❌ Fatal error: {exc!r}\n          Full trace written to: {_CRASH_LOG}",
             file=sys.stderr,
         )
         raise SystemExit(1) from exc

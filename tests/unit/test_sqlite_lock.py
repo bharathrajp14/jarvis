@@ -1,14 +1,16 @@
 """Unit tests for Concurrency-Safe SQLite Locking."""
+
 from __future__ import annotations
 
-import asyncio
 import pytest
-from brjarvis.memory.sqlite_lock import _get_async_sqlite_lock, run_sqlite_write, async_run_sqlite_write
+
+from brjarvis.memory.sqlite_lock import async_run_sqlite_write, run_sqlite_write
 
 
 @pytest.mark.unit
 def test_sync_sqlite_write_execution():
     """Verify synchronous SQLite write runner executes in background worker."""
+
     def sample_write(val: int) -> int:
         return val * 2
 
@@ -20,6 +22,7 @@ def test_sync_sqlite_write_execution():
 @pytest.mark.asyncio
 async def test_async_sqlite_write_execution():
     """Verify async SQLite write runner acquires lock and executes correctly."""
+
     def sample_write(name: str) -> str:
         return f"written_{name}"
 

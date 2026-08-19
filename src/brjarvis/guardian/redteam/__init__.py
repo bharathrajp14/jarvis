@@ -1,12 +1,13 @@
 """BR JARVIS Red Team Security Audit Package."""
+
 from __future__ import annotations
 
 import sys
 
 from . import recon, report, scope, vuln_scanner
-from .scope import ScopeEnforcer, DEFAULT_SCOPE
 from .recon import ReconEngine
-from .report import generate_report, generate_html_report
+from .report import generate_html_report, generate_report
+from .scope import DEFAULT_SCOPE, ScopeEnforcer
 from .vuln_scanner import VulnScanner
 
 # Register legacy top-level aliases
@@ -32,4 +33,3 @@ __all__ = [
     "generate_html_report",
     "VulnScanner",
 ]
-

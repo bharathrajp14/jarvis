@@ -4,11 +4,12 @@ High-performance prompt caching & token budget manager.
 Hashes system prompts and history context blocks using SHA-256 to eliminate redundant
 token consumption and reduce model completion latency.
 """
+
 from __future__ import annotations
 
 import hashlib
 import time
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 
 
 class PromptCacheManager:

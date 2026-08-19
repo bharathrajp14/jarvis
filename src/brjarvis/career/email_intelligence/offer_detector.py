@@ -5,15 +5,24 @@ import logging
 import re
 import time
 import uuid
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 from ..models import OfferCandidate, OfferStatus
 
 logger = logging.getLogger("JARVIS.EmailIntelligence.OfferDetector")
 
-_SALARY_REGEX = re.compile(r"(\$|₹|£|€|USD|INR|EUR|GBP)\s?([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]+)?|\d+k?)\s?(?:per\s+(?:annum|year|month)|/yr|/month|p\.a\.|annual)?", re.IGNORECASE)
-_EXPIRY_REGEX = re.compile(r"(?:expires|valid\s+(?:until|through)|deadline|respond\s+by|accept\s+by)\s*:?\s*([A-Za-z]+\s+\d{1,2},?\s+\d{4}|\d{1,2}[/-]\d{1,2}[/-]\d{2,4})", re.IGNORECASE)
-_JOINING_REGEX = re.compile(r"(?:start\s+date|joining\s+date|commence\s+employment|first\s+day)\s*:?\s*([A-Za-z]+\s+\d{1,2},?\s+\d{4}|\d{1,2}[/-]\d{1,2}[/-]\d{2,4})", re.IGNORECASE)
+_SALARY_REGEX = re.compile(
+    r"(\$|₹|£|€|USD|INR|EUR|GBP)\s?([0-9]{1,3}(?:,[0-9]{3})*(?:\.[0-9]+)?|\d+k?)\s?(?:per\s+(?:annum|year|month)|/yr|/month|p\.a\.|annual)?",
+    re.IGNORECASE,
+)
+_EXPIRY_REGEX = re.compile(
+    r"(?:expires|valid\s+(?:until|through)|deadline|respond\s+by|accept\s+by)\s*:?\s*([A-Za-z]+\s+\d{1,2},?\s+\d{4}|\d{1,2}[/-]\d{1,2}[/-]\d{2,4})",
+    re.IGNORECASE,
+)
+_JOINING_REGEX = re.compile(
+    r"(?:start\s+date|joining\s+date|commence\s+employment|first\s+day)\s*:?\s*([A-Za-z]+\s+\d{1,2},?\s+\d{4}|\d{1,2}[/-]\d{1,2}[/-]\d{2,4})",
+    re.IGNORECASE,
+)
 
 
 class OfferDetector:
@@ -39,7 +48,7 @@ class OfferDetector:
         Returns OfferCandidate in staged state.
         """
         combined_text = f"{subject}\n{body}"
-        
+
         # 1. Detect salary & currency
         salary_match = _SALARY_REGEX.search(combined_text)
         salary_str = ""
@@ -61,15 +70,23 @@ class OfferDetector:
         # 3. Detect bonus & benefits
         bonus_str = ""
         if "sign-on bonus" in combined_text.lower() or "signing bonus" in combined_text.lower():
-            b_match = _SALARY_REGEX.search(combined_text[combined_text.lower().find("bonus"):])
+            b_match = _SALARY_REGEX.search(combined_text[combined_text.lower().find("bonus") :])
             bonus_str = b_match.group(0) if b_match else "Signing Bonus Mentioned"
 
         benefits: List[str] = []
         if "health" in combined_text.lower() or "medical" in combined_text.lower():
             benefits.append("Health & Medical Insurance")
-        if "401k" in combined_text.lower() or "provident fund" in combined_text.lower() or "pension" in combined_text.lower():
+        if (
+            "401k" in combined_text.lower()
+            or "provident fund" in combined_text.lower()
+            or "pension" in combined_text.lower()
+        ):
             benefits.append("Retirement / 401(k) / PF")
-        if "equity" in combined_text.lower() or "rsu" in combined_text.lower() or "stock options" in combined_text.lower():
+        if (
+            "equity" in combined_text.lower()
+            or "rsu" in combined_text.lower()
+            or "stock options" in combined_text.lower()
+        ):
             benefits.append("Equity / RSUs")
         if "paid time off" in combined_text.lower() or "pto" in combined_text.lower():
             benefits.append("Paid Time Off")
@@ -78,12 +95,19 @@ class OfferDetector:
         work_mode = "Remote"
         if "hybrid" in combined_text.lower():
             work_mode = "Hybrid"
-        elif "on-site" in combined_text.lower() or "onsite" in combined_text.lower() or "in-office" in combined_text.lower():
+        elif (
+            "on-site" in combined_text.lower()
+            or "onsite" in combined_text.lower()
+            or "in-office" in combined_text.lower()
+        ):
             work_mode = "Onsite"
 
         # 5. Conditions & Documents requested
         conditions: List[str] = []
-        if any(w in combined_text.lower() for w in ("background check", "background verification", "background screening", "contingent")):
+        if any(
+            w in combined_text.lower()
+            for w in ("background check", "background verification", "background screening", "contingent")
+        ):
             conditions.append("Contingent on successful background verification")
         if "reference" in combined_text.lower():
             conditions.append("Reference checks required")
@@ -105,8 +129,12 @@ class OfferDetector:
                 "salary_specified": bool(salary_str),
                 "expiry_urgent": bool(expiry_date),
                 "has_contingencies": bool(conditions),
-                "missing_terms": [k for k, v in [("salary", salary_str), ("joining_date", joining_date), ("expiry_date", expiry_date)] if not v],
-            }
+                "missing_terms": [
+                    k
+                    for k, v in [("salary", salary_str), ("joining_date", joining_date), ("expiry_date", expiry_date)]
+                    if not v
+                ],
+            },
         }
 
         # Calculate evidence confidence
@@ -139,8 +167,14 @@ class OfferDetector:
             conditions=conditions,
             attachment_names=attachments or [],
             fact_analysis=fact_analysis,
-            notes=[f"Detected on {time.strftime('%Y-%m-%d %H:%M')} (Confidence: {round(confidence*100)}%)"]
+            notes=[f"Detected on {time.strftime('%Y-%m-%d %H:%M')} (Confidence: {round(confidence * 100)}%)"],
         )
 
-        logger.info("💼 Offer Candidate Detected: [%s] for %s (%s) — Status: %s", offer.offer_id, offer.company, offer.role, offer.status.value)
+        logger.info(
+            "💼 Offer Candidate Detected: [%s] for %s (%s) — Status: %s",
+            offer.offer_id,
+            offer.company,
+            offer.role,
+            offer.status.value,
+        )
         return offer

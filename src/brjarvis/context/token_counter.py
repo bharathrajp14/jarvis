@@ -9,6 +9,7 @@ logger = logging.getLogger("JARVIS.TokenCounter")
 
 try:
     import tiktoken
+
     _TIKTOKEN_AVAILABLE = True
     _encoder = tiktoken.get_encoding("cl100k_base")
 except Exception:
@@ -24,7 +25,7 @@ class TokenCounter:
         """Calculate token length for a string, message list, or dict representation."""
         if not text:
             return 0
-        
+
         if isinstance(text, list):
             # Message list: sum content of turns
             total = 0
@@ -48,7 +49,7 @@ class TokenCounter:
             try:
                 return len(_encoder.encode(text))
             except Exception as e:
-                logger.debug('Suppressed exception: %s', e)
+                logger.debug("Suppressed exception: %s", e)
         # Fallback estimation: average 3.8 characters per token for English/Code
         return max(1, int(len(text) / 3.8))
 

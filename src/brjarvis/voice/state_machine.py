@@ -6,6 +6,7 @@ Defines all 16 formal voice states, transition validation rules, error
 classifications, and bidirectional UI synchronization. Replaces unstructured
 boolean flags with a verifiable state engine.
 """
+
 from __future__ import annotations
 
 import enum
@@ -19,6 +20,7 @@ logger = logging.getLogger("JARVIS.Voice.StateMachine")
 
 class VoiceState(str, enum.Enum):
     """Formal states of the BR JARVIS Voice Assistant."""
+
     IDLE = "IDLE"
     WAKE_DETECTION = "WAKE_DETECTION"
     WAKE_CONFIRMED = "WAKE_CONFIRMED"
@@ -41,6 +43,7 @@ class VoiceState(str, enum.Enum):
 
 class VoiceErrorType(str, enum.Enum):
     """Categorized voice subsystem error types."""
+
     NONE = "NONE"
     MICROPHONE_UNAVAILABLE = "MICROPHONE_UNAVAILABLE"
     MICROPHONE_DISCONNECTED = "MICROPHONE_DISCONNECTED"
@@ -271,10 +274,7 @@ class VoiceStateMachine:
                 self._listeners.remove(callback)
 
     def transition_to(
-        self,
-        new_state: VoiceState,
-        context: Optional[Dict[str, Any]] = None,
-        force: bool = False
+        self, new_state: VoiceState, context: Optional[Dict[str, Any]] = None, force: bool = False
     ) -> bool:
         """
         Attempt transition to `new_state`.
@@ -288,8 +288,7 @@ class VoiceStateMachine:
             allowed = VALID_TRANSITIONS.get(old_state, set())
             if new_state not in allowed and not force:
                 logger.warning(
-                    "[VoiceStateMachine] Invalid transition rejected: %s -> %s",
-                    old_state.value, new_state.value
+                    "[VoiceStateMachine] Invalid transition rejected: %s -> %s", old_state.value, new_state.value
                 )
                 return False
 
@@ -301,8 +300,9 @@ class VoiceStateMachine:
 
             logger.info(
                 "[VoiceStateMachine] Transition: %s -> %s (held %.2fs)",
-                old_state.value, new_state.value,
-                time.monotonic() - self._state_entered_time
+                old_state.value,
+                new_state.value,
+                time.monotonic() - self._state_entered_time,
             )
 
             # Sync with UI if bound
@@ -365,6 +365,6 @@ class VoiceStateMachine:
             if hasattr(self._ui_ref, "set_state"):
                 self._ui_ref.set_state(mapped_ui_state)
             if hasattr(self._ui_ref, "speaking"):
-                self._ui_ref.speaking = (state == VoiceState.SPEAKING)
+                self._ui_ref.speaking = state == VoiceState.SPEAKING
         except Exception as e:
             logger.debug("[VoiceStateMachine] UI sync error: %s", e)

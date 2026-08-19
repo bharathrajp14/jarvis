@@ -1,49 +1,50 @@
 # router/diagnostics.py — Structured Backend Diagnostics & Error Classification for BR JARVIS
 from __future__ import annotations
+
 """
 Comprehensive structured diagnostic subsystem for multi-backend execution.
 Classifies all model, provider, network, and tool failures into distinct FailureType categories,
 strips credentials from diagnostic traces, and generates user-facing and developer-facing reports.
 """
 
-import json
 import logging
 import re
 import time
-import uuid
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Optional
 
 logger = logging.getLogger("JARVIS.Router.Diagnostics")
 
 
 class FailureType(str, Enum):
-    MODEL_UNAVAILABLE    = "MODEL_UNAVAILABLE"
-    AUTH_FAILURE         = "AUTH_FAILURE"
-    RATE_LIMIT           = "RATE_LIMIT"
-    QUOTA_EXCEEDED       = "QUOTA_EXCEEDED"
-    NETWORK_ERROR        = "NETWORK_ERROR"
-    TIMEOUT              = "TIMEOUT"
-    INVALID_REQUEST      = "INVALID_REQUEST"
-    INVALID_TOOL_SCHEMA  = "INVALID_TOOL_SCHEMA"
+    MODEL_UNAVAILABLE = "MODEL_UNAVAILABLE"
+    AUTH_FAILURE = "AUTH_FAILURE"
+    RATE_LIMIT = "RATE_LIMIT"
+    QUOTA_EXCEEDED = "QUOTA_EXCEEDED"
+    NETWORK_ERROR = "NETWORK_ERROR"
+    TIMEOUT = "TIMEOUT"
+    INVALID_REQUEST = "INVALID_REQUEST"
+    INVALID_TOOL_SCHEMA = "INVALID_TOOL_SCHEMA"
     UNSUPPORTED_MODALITY = "UNSUPPORTED_MODALITY"
-    CONTEXT_TOO_LARGE    = "CONTEXT_TOO_LARGE"
-    PROVIDER_ERROR       = "PROVIDER_ERROR"
-    PARSER_ERROR         = "PARSER_ERROR"
-    TOOL_ERROR           = "TOOL_ERROR"
-    POLICY_DENIED        = "POLICY_DENIED"
-    INTERNAL_ERROR       = "INTERNAL_ERROR"
+    CONTEXT_TOO_LARGE = "CONTEXT_TOO_LARGE"
+    PROVIDER_ERROR = "PROVIDER_ERROR"
+    PARSER_ERROR = "PARSER_ERROR"
+    TOOL_ERROR = "TOOL_ERROR"
+    POLICY_DENIED = "POLICY_DENIED"
+    INTERNAL_ERROR = "INTERNAL_ERROR"
 
 
 # Transient failure types eligible for bounded retry with exponential backoff
-TRANSIENT_FAILURE_TYPES = frozenset({
-    FailureType.RATE_LIMIT,
-    FailureType.QUOTA_EXCEEDED,
-    FailureType.NETWORK_ERROR,
-    FailureType.TIMEOUT,
-    FailureType.PROVIDER_ERROR,
-})
+TRANSIENT_FAILURE_TYPES = frozenset(
+    {
+        FailureType.RATE_LIMIT,
+        FailureType.QUOTA_EXCEEDED,
+        FailureType.NETWORK_ERROR,
+        FailureType.TIMEOUT,
+        FailureType.PROVIDER_ERROR,
+    }
+)
 
 
 # Regex patterns to sanitize sensitive credentials from error logs and traces
@@ -74,7 +75,7 @@ class BackendAttempt:
     provider: str
     model: str
     status: str  # "SUCCESS", "FAILED", "RETRYING"
-    stage: str   # "provider_request", "tool_call_normalization", "model_routing", "output_parsing"
+    stage: str  # "provider_request", "tool_call_normalization", "model_routing", "output_parsing"
     error_type: FailureType
     error: str
     latency_ms: int = 0
@@ -111,11 +112,11 @@ class TaskExecutionDiagnostic:
     def format_developer_trace(self) -> str:
         """Format full structured diagnostic trace for developer inspection and logs."""
         lines = [
-            f"=== TASK_EXECUTION_FAILED ===",
+            "=== TASK_EXECUTION_FAILED ===",
             f"trace_id: {self.trace_id}",
             f"task_id:  {self.task_id}",
             f"goal:     {self.goal[:120]}...",
-            f"",
+            "",
             f"Backend attempts ({len(self.attempts)}):",
         ]
         for idx, att in enumerate(self.attempts, 1):
@@ -124,12 +125,14 @@ class TaskExecutionDiagnostic:
             lines.append(f"    model:      {att.model}")
             lines.append(f"    status:     {att.status}")
             lines.append(f"    stage:      {att.stage}")
-            lines.append(f"    error_type: {att.error_type.value if hasattr(att.error_type, 'value') else att.error_type}")
+            lines.append(
+                f"    error_type: {att.error_type.value if hasattr(att.error_type, 'value') else att.error_type}"
+            )
             lines.append(f"    error:      {sanitize_diagnostic_text(att.error)}")
             lines.append(f"    latency:    {att.latency_ms}ms")
             if att.http_status:
                 lines.append(f"    http_code:  {att.http_status}")
-        lines.append(f"")
+        lines.append("")
         lines.append(f"Final reason: {self.final_reason}")
         lines.append(f"Recovery:     {self.recovery_action}")
         return "\n".join(lines)
@@ -175,7 +178,10 @@ def classify_exception(exc: Exception, http_status: Optional[int] = None) -> tup
     combined = f"{exc_type}: {msg}".lower()
 
     # 1. Timeout detection
-    if any(k in combined for k in ("timeout", "timed out", "timeouterror", "deadline exceeded", "readtimeout", "connecttimeout")):
+    if any(
+        k in combined
+        for k in ("timeout", "timed out", "timeouterror", "deadline exceeded", "readtimeout", "connecttimeout")
+    ):
         return FailureType.TIMEOUT, sanitize_diagnostic_text(msg)
 
     # 2. Rate limits & Quotas
@@ -185,23 +191,60 @@ def classify_exception(exc: Exception, http_status: Optional[int] = None) -> tup
         return FailureType.QUOTA_EXCEEDED, sanitize_diagnostic_text(msg)
 
     # 3. Authentication & Authorization
-    if http_status in (401, 403) or any(k in combined for k in ("unauthorized", "invalid api key", "auth_error", "forbidden", "permission denied", "access denied", "authentication")):
+    if http_status in (401, 403) or any(
+        k in combined
+        for k in (
+            "unauthorized",
+            "invalid api key",
+            "auth_error",
+            "forbidden",
+            "permission denied",
+            "access denied",
+            "authentication",
+        )
+    ):
         return FailureType.AUTH_FAILURE, sanitize_diagnostic_text(msg)
 
     # 4. Context too large
-    if any(k in combined for k in ("context length", "maximum context", "token limit", "prompt is too long", "too many tokens", "exceeds context window")):
+    if any(
+        k in combined
+        for k in (
+            "context length",
+            "maximum context",
+            "token limit",
+            "prompt is too long",
+            "too many tokens",
+            "exceeds context window",
+        )
+    ):
         return FailureType.CONTEXT_TOO_LARGE, sanitize_diagnostic_text(msg)
 
     # 5. Network / Connection errors
-    if any(k in combined for k in ("connection refused", "connection error", "connecterror", "remotedisconnected", "failed to establish a new connection", "socket.error", "network unreachable")):
+    if any(
+        k in combined
+        for k in (
+            "connection refused",
+            "connection error",
+            "connecterror",
+            "remotedisconnected",
+            "failed to establish a new connection",
+            "socket.error",
+            "network unreachable",
+        )
+    ):
         return FailureType.NETWORK_ERROR, sanitize_diagnostic_text(msg)
 
     # 6. Model unavailable / Not found
-    if http_status == 404 or any(k in combined for k in ("model not found", "model unavailable", "does not exist", "unsupported model")):
+    if http_status == 404 or any(
+        k in combined for k in ("model not found", "model unavailable", "does not exist", "unsupported model")
+    ):
         return FailureType.MODEL_UNAVAILABLE, sanitize_diagnostic_text(msg)
 
     # 7. Invalid tool schema / Parsing error
-    if any(k in combined for k in ("invalid tool schema", "schema validation error", "tools parameter invalid", "function schema")):
+    if any(
+        k in combined
+        for k in ("invalid tool schema", "schema validation error", "tools parameter invalid", "function schema")
+    ):
         return FailureType.INVALID_TOOL_SCHEMA, sanitize_diagnostic_text(msg)
     if any(k in combined for k in ("jsondecodeerror", "parsererror", "failed to parse", "invalid json")):
         return FailureType.PARSER_ERROR, sanitize_diagnostic_text(msg)
@@ -215,7 +258,10 @@ def classify_exception(exc: Exception, http_status: Optional[int] = None) -> tup
         return FailureType.INVALID_REQUEST, sanitize_diagnostic_text(msg)
 
     # 10. Provider / 5xx error
-    if (http_status and http_status >= 500) or any(k in combined for k in ("internal server error", "502 bad gateway", "503 service unavailable", "504 gateway timeout")):
+    if (http_status and http_status >= 500) or any(
+        k in combined
+        for k in ("internal server error", "502 bad gateway", "503 service unavailable", "504 gateway timeout")
+    ):
         return FailureType.PROVIDER_ERROR, sanitize_diagnostic_text(msg)
 
     return FailureType.PROVIDER_ERROR, sanitize_diagnostic_text(msg)

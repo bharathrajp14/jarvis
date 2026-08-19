@@ -5,6 +5,7 @@ import asyncio
 import logging
 import time
 from typing import Any, Callable, Dict, Optional
+
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger("JARVIS.Process")
@@ -57,7 +58,7 @@ class ProcessSupervisor:
                     logger.error(f"❌ ProcessSupervisor: Process [{name}] crashed: {e}")
                     if auto_restart and restarts < max_restarts:
                         restarts += 1
-                        backoff = 2 ** restarts
+                        backoff = 2**restarts
                         logger.warning(f"🔄 Restarting [{name}] in {backoff}s (Attempt {restarts}/{max_restarts})...")
                         await asyncio.sleep(backoff)
                     else:

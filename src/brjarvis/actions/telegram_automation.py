@@ -14,19 +14,19 @@ Telegram Bot API Limitation:
   A bot can only send messages to users who have FIRST messaged the bot,
   or to groups/channels where the bot has been added as a member.
   This is a Telegram platform rule (not a code limitation).
-  
+
 Fallback:
   If TELEGRAM_BOT_TOKEN is not set, falls back to the desktop GUI automation
   (opens Telegram desktop app and uses pyautogui to type the message).
 """
+
 from __future__ import annotations
 
 import json
 import logging
 import os
-import re
-import time
 import threading
+import time
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -44,6 +44,7 @@ def _get_bot_token() -> str:
         # Try loading .env manually as a fallback
         try:
             from brjarvis.core.paths import paths
+
             env_path = paths.ENV_FILE
             if env_path.exists():
                 for line in env_path.read_text(encoding="utf-8").splitlines():
@@ -60,6 +61,7 @@ def _get_bot_token() -> str:
 
 def _get_contacts_file() -> Path:
     from brjarvis.core.paths import paths
+
     cfg_dir = paths.PROJECT_ROOT / ".jarvis"
     cfg_dir.mkdir(parents=True, exist_ok=True)
     return cfg_dir / "telegram_contacts.json"
@@ -67,6 +69,7 @@ def _get_contacts_file() -> Path:
 
 def _get_scheduled_file() -> Path:
     from brjarvis.core.paths import paths
+
     cfg_dir = paths.PROJECT_ROOT / ".jarvis"
     cfg_dir.mkdir(parents=True, exist_ok=True)
     return cfg_dir / "scheduled_telegram.json"
@@ -95,10 +98,9 @@ class TelegramAutomation:
         if self._session is None:
             try:
                 import requests
+
                 self._session = requests.Session()
-                self._session.headers.update({
-                    "User-Agent": "BR-Jarvis/1.0 TelegramBot"
-                })
+                self._session.headers.update({"User-Agent": "BR-Jarvis/1.0 TelegramBot"})
             except ImportError:
                 logger.error("'requests' package not installed. Run: pip install requests")
         return self._session
@@ -111,8 +113,7 @@ class TelegramAutomation:
         """
         if not self._token:
             raise RuntimeError(
-                "TELEGRAM_BOT_TOKEN not configured. "
-                "Add it to your .env file. See .env.template for instructions."
+                "TELEGRAM_BOT_TOKEN not configured. Add it to your .env file. See .env.template for instructions."
             )
 
         url = _TELEGRAM_API_BASE.format(token=self._token, method=method)
@@ -129,9 +130,7 @@ class TelegramAutomation:
         if not data.get("ok"):
             err_code = data.get("error_code", "?")
             err_desc = data.get("description", "Unknown error")
-            raise RuntimeError(
-                f"Telegram API error [{err_code}]: {err_desc}"
-            )
+            raise RuntimeError(f"Telegram API error [{err_code}]: {err_desc}")
         return data
 
     # ── Contact Management ─────────────────────────────────────────────────────
@@ -148,9 +147,7 @@ class TelegramAutomation:
 
     def _save_contacts(self):
         try:
-            self._contacts_file.write_text(
-                json.dumps(self._contacts, indent=2), encoding="utf-8"
-            )
+            self._contacts_file.write_text(json.dumps(self._contacts, indent=2), encoding="utf-8")
         except Exception as e:
             logger.error(f"Failed saving Telegram contacts: {e}")
 
@@ -212,6 +209,7 @@ class TelegramAutomation:
         # 4. UnifiedContactStore (JARVIS shared contact store)
         try:
             from brjarvis.memory.contact_manager import get_contact_store
+
             store = get_contact_store()
             match = store.resolve_name(rec)
             if match:
@@ -285,15 +283,14 @@ class TelegramAutomation:
 
             logger.info(
                 "[Telegram Bot API] Sending to %s (chat_id=%s): '%s...'",
-                display_name, chat_id, message_text[:40],
+                display_name,
+                chat_id,
+                message_text[:40],
             )
 
             result = self._api_call("sendMessage", payload)
             msg_id = result.get("result", {}).get("message_id", "?")
-            return (
-                f"✅ Telegram message sent to {display_name} (chat_id: {chat_id}).\n"
-                f"   Message ID: {msg_id}"
-            )
+            return f"✅ Telegram message sent to {display_name} (chat_id: {chat_id}).\n   Message ID: {msg_id}"
 
         except RuntimeError as e:
             err_str = str(e)
@@ -315,11 +312,14 @@ class TelegramAutomation:
         """Fallback: send via Telegram desktop app using pyautogui."""
         try:
             from brjarvis.actions.send_message import send_message as gui_send
-            result = gui_send({
-                "platform": "telegram",
-                "receiver": receiver,
-                "message_text": message_text,
-            })
+
+            result = gui_send(
+                {
+                    "platform": "telegram",
+                    "receiver": receiver,
+                    "message_text": message_text,
+                }
+            )
             return result
         except Exception as e:
             return (
@@ -398,19 +398,14 @@ class TelegramAutomation:
                 data = json.loads(self._scheduled_file.read_text(encoding="utf-8"))
                 now = time.time()
                 # Keep only items scheduled within the next 30 days or up to 5min past
-                return [
-                    item for item in data
-                    if item.get("target_ts", 0) > (now - 300)
-                ]
+                return [item for item in data if item.get("target_ts", 0) > (now - 300)]
             except Exception:
                 pass
         return []
 
     def _save_scheduled(self):
         try:
-            self._scheduled_file.write_text(
-                json.dumps(self._scheduled_queue, indent=2), encoding="utf-8"
-            )
+            self._scheduled_file.write_text(json.dumps(self._scheduled_queue, indent=2), encoding="utf-8")
         except Exception:
             pass
 
@@ -425,10 +420,7 @@ class TelegramAutomation:
             due = [item for item in self._scheduled_queue if item.get("target_ts", 0) <= now]
 
             if due:
-                self._scheduled_queue = [
-                    item for item in self._scheduled_queue
-                    if item.get("target_ts", 0) > now
-                ]
+                self._scheduled_queue = [item for item in self._scheduled_queue if item.get("target_ts", 0) > now]
                 self._save_scheduled()
 
                 for item in due:
@@ -444,7 +436,8 @@ class TelegramAutomation:
                         except Exception as e:
                             logger.error(
                                 "[Telegram Scheduler] Failed to send to %s: %s",
-                                item["recipient"], e,
+                                item["recipient"],
+                                e,
                             )
 
             time.sleep(10)

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import sys
+
 from brjarvis.core.cli import main as cli_main
 
 

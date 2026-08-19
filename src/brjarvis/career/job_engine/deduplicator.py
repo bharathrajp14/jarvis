@@ -4,7 +4,7 @@ from __future__ import annotations
 import hashlib
 import logging
 import re
-from typing import Dict, List, Set, Tuple
+from typing import List, Set
 
 from ..models import JobPosting
 
@@ -26,7 +26,7 @@ class JobDeduplicator:
     @classmethod
     def normalize_str(cls, text: str) -> str:
         """Normalize string removing punctuation and extra whitespace."""
-        return re.sub(r'[^\w\s]', '', text.lower()).strip()
+        return re.sub(r"[^\w\s]", "", text.lower()).strip()
 
     @classmethod
     def compute_signature(cls, job: JobPosting) -> str:

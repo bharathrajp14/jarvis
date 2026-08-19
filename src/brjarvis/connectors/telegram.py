@@ -4,6 +4,7 @@ Telegram Bot Connector for BR JARVIS.
 Allows sending instant alerts, markdown messages, and documents directly to Telegram.
 Uses TELEGRAM_BOT_TOKEN and TELEGRAM_ALLOWED_USERS from environment.
 """
+
 from __future__ import annotations
 
 import json
@@ -21,7 +22,6 @@ _BASE_API = "https://api.telegram.org/bot"
 
 
 class TelegramConnector(BaseConnector):
-
     @property
     def _token(self) -> str:
         return os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
@@ -74,7 +74,10 @@ class TelegramConnector(BaseConnector):
                     "type": "object",
                     "properties": {
                         "message": {"type": "string", "description": "Message content to send"},
-                        "chat_id": {"type": "string", "description": "Optional Telegram chat ID (defaults to TELEGRAM_ALLOWED_USERS)"},
+                        "chat_id": {
+                            "type": "string",
+                            "description": "Optional Telegram chat ID (defaults to TELEGRAM_ALLOWED_USERS)",
+                        },
                     },
                     "required": ["message"],
                 },

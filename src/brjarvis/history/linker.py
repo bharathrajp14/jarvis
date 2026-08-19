@@ -10,16 +10,14 @@ Features:
   - ChromaDB with Gemini text-embedding-004
   - Pure-Python TF-IDF similarity fallback when ChromaDB is unavailable
 """
+
 from __future__ import annotations
 
-import logging
 import json
-import math
-import os
+import logging
 import re
 from pathlib import Path
 from typing import Any
-
 
 _DB_DIR = Path.home() / ".jarvis" / "history"
 _COLLECTION_NAME = "session_links"
@@ -27,6 +25,7 @@ _COLLECTION_NAME = "session_links"
 _chroma_available = False
 try:
     import chromadb
+
     _chroma_available = True
 except ImportError:
     pass
@@ -51,7 +50,7 @@ class HistoryLinker:
                     metadata={"hnsw:space": "cosine"},
                 )
             except Exception as e:
-                logger.debug('Suppressed exception: %s', e)
+                logger.debug("Suppressed exception: %s", e)
         if not self.available:
             self._load_fallback()
 
@@ -71,12 +70,13 @@ class HistoryLinker:
             self._fallback_file.parent.mkdir(parents=True, exist_ok=True)
             self._fallback_file.write_text(json.dumps(self._fallback_entries, indent=2), encoding="utf-8")
         except Exception as e:
-            logger.debug('Suppressed exception: %s', e)
+            logger.debug("Suppressed exception: %s", e)
+
     def on_session_close(self, session_id: str, summary: str, mode: str = "", backend: str = "") -> None:
         """Embed a session summary into the vector store on close."""
         if not summary or not summary.strip():
             return
-        
+
         if self.available:
             try:
                 self._collection.upsert(
@@ -85,16 +85,18 @@ class HistoryLinker:
                     metadatas=[{"mode": mode, "backend": backend}],
                 )
             except Exception as e:
-                logger.debug('Suppressed exception: %s', e)
+                logger.debug("Suppressed exception: %s", e)
         else:
             # Fallback storage
             self._fallback_entries = [e for e in self._fallback_entries if e["session_id"] != session_id]
-            self._fallback_entries.append({
-                "session_id": session_id,
-                "summary": summary,
-                "mode": mode,
-                "backend": backend,
-            })
+            self._fallback_entries.append(
+                {
+                    "session_id": session_id,
+                    "summary": summary,
+                    "mode": mode,
+                    "backend": backend,
+                }
+            )
             self._save_fallback()
 
     def find_related(self, session_id: str, n: int = 5) -> list[dict]:
@@ -128,12 +130,14 @@ class HistoryLinker:
                         continue
                     dist = search["distances"][0][i] if search["distances"] else 0
                     meta = search["metadatas"][0][i] if search["metadatas"] else {}
-                    results.append({
-                        "session_id": sid,
-                        "similarity": round(max(0.0, 1.0 - dist), 3),
-                        "mode": meta.get("mode", ""),
-                        "backend": meta.get("backend", ""),
-                    })
+                    results.append(
+                        {
+                            "session_id": sid,
+                            "similarity": round(max(0.0, 1.0 - dist), 3),
+                            "mode": meta.get("mode", ""),
+                            "backend": meta.get("backend", ""),
+                        }
+                    )
 
                 return results[:n]
             except Exception as e:
@@ -144,8 +148,8 @@ class HistoryLinker:
             current = next((e for e in self._fallback_entries if e["session_id"] == session_id), None)
             if not current:
                 return []
-            
-            q_words = set(re.findall(r'\w+', current["summary"].lower()))
+
+            q_words = set(re.findall(r"\w+", current["summary"].lower()))
             if not q_words:
                 return []
 
@@ -153,17 +157,22 @@ class HistoryLinker:
             for e in self._fallback_entries:
                 if e["session_id"] == session_id:
                     continue
-                d_words = re.findall(r'\w+', e["summary"].lower())
+                d_words = re.findall(r"\w+", e["summary"].lower())
                 overlap = q_words.intersection(set(d_words))
                 if overlap:
                     sim = len(overlap) / float(len(q_words | set(d_words)))
-                    ranked.append((sim, {
-                        "session_id": e["session_id"],
-                        "similarity": round(sim, 3),
-                        "mode": e.get("mode", ""),
-                        "backend": e.get("backend", ""),
-                    }))
-            
+                    ranked.append(
+                        (
+                            sim,
+                            {
+                                "session_id": e["session_id"],
+                                "similarity": round(sim, 3),
+                                "mode": e.get("mode", ""),
+                                "backend": e.get("backend", ""),
+                            },
+                        )
+                    )
+
             ranked.sort(key=lambda x: x[0], reverse=True)
             return [item[1] for item in ranked[:n]]
 
@@ -187,10 +196,7 @@ class HistoryLinker:
                         summary = item["summary"]
 
                 if summary:
-                    context_block = (
-                        f"[Related Session Context (similarity: {rel['similarity']:.2f})]:\n"
-                        f"{summary[:500]}"
-                    )
+                    context_block = f"[Related Session Context (similarity: {rel['similarity']:.2f})]:\n{summary[:500]}"
                     working_memory.add("user", context_block)
                     injected += 1
             except Exception:

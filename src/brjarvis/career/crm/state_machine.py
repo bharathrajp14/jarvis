@@ -3,10 +3,8 @@ from __future__ import annotations
 
 import logging
 import time
-import uuid
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Dict, Optional, Set, Tuple
 
-from .database import get_career_crm_db
 from ..models import (
     Application,
     ApplicationEvent,
@@ -14,6 +12,7 @@ from ..models import (
     ApplicationStatus,
     PriorityLevel,
 )
+from .database import get_career_crm_db
 
 logger = logging.getLogger("JARVIS.CareerCRM.StateMachine")
 
@@ -177,9 +176,7 @@ _VALID_TRANSITIONS: Dict[ApplicationStatus, Set[ApplicationStatus]] = {
     ApplicationStatus.WITHDRAWN: {
         ApplicationStatus.DISCOVERED,
     },
-    ApplicationStatus.UNKNOWN: {
-        st for st in ApplicationStatus
-    },
+    ApplicationStatus.UNKNOWN: {st for st in ApplicationStatus},
 }
 
 
@@ -199,7 +196,10 @@ class ApplicationStateMachine:
         if target_status in allowed or current_status == ApplicationStatus.UNKNOWN:
             return True, f"Valid transition from {current_status.value} to {target_status.value}."
 
-        return False, f"Invalid transition: Cannot advance directly from {current_status.value} to {target_status.value}."
+        return (
+            False,
+            f"Invalid transition: Cannot advance directly from {current_status.value} to {target_status.value}.",
+        )
 
     @classmethod
     def transition(
@@ -229,7 +229,9 @@ class ApplicationStateMachine:
             try:
                 target_status_enum = ApplicationStatus(target_status.upper())
             except Exception:
-                raise ValueError(f"Invalid application status string: '{target_status}'. Must be a deterministic status.")
+                raise ValueError(
+                    f"Invalid application status string: '{target_status}'. Must be a deterministic status."
+                )
         else:
             target_status_enum = target_status
 
@@ -268,7 +270,11 @@ class ApplicationStateMachine:
         # Update priority based on high-value milestones
         if target_status_enum in (ApplicationStatus.OFFER_RECEIVED, ApplicationStatus.FINAL_ROUND):
             app.priority = PriorityLevel.CRITICAL
-        elif target_status_enum in (ApplicationStatus.INTERVIEW_REQUESTED, ApplicationStatus.INTERVIEW_SCHEDULED, ApplicationStatus.TECHNICAL_ROUND):
+        elif target_status_enum in (
+            ApplicationStatus.INTERVIEW_REQUESTED,
+            ApplicationStatus.INTERVIEW_SCHEDULED,
+            ApplicationStatus.TECHNICAL_ROUND,
+        ):
             app.priority = PriorityLevel.HIGH
 
         if note:
@@ -312,10 +318,16 @@ class ApplicationStateMachine:
                 "job_title": app.job_title,
                 "note": note,
                 "confirmation_id": confirmation_id,
-            }
+            },
         )
         db.record_event(audit_event)
 
-        logger.info("✅ State Transition Succeeded: [%s] %s -> %s (Source: %s, Conf: %.2f)",
-                    app.application_id, prev_status.value, target_status_enum.value, source, confidence)
+        logger.info(
+            "✅ State Transition Succeeded: [%s] %s -> %s (Source: %s, Conf: %.2f)",
+            app.application_id,
+            prev_status.value,
+            target_status_enum.value,
+            source,
+            confidence,
+        )
         return app

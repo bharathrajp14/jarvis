@@ -4,6 +4,7 @@ Focus Management & Semantic Action Router.
 Maps normalized mouse clicks, double-clicks, and keyboard shortcuts to safe semantic actions
 with full keyboard-mouse parity (scroll, tool toggle, URL opening, file jumping, permissions).
 """
+
 from __future__ import annotations
 
 import logging

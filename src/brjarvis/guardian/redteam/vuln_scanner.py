@@ -27,8 +27,11 @@ class VulnScanner:
 
         result = subprocess.run(
             ["nmap", "-sV", "-O", "--open", host],
-            capture_output=True, text=True,
-            encoding="utf-8", errors="replace", timeout=120
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=120,
         )
         self.scope.audit_log("nmap_service_scan", host, "ok")
         return result.stdout
@@ -41,8 +44,11 @@ class VulnScanner:
 
         result = subprocess.run(
             ["nuclei", "-u", target, "-t", templates, "-silent"],
-            capture_output=True, text=True,
-            encoding="utf-8", errors="replace", timeout=300
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+            timeout=300,
         )
         self.scope.audit_log("nuclei_scan", target, "ok")
         return result.stdout

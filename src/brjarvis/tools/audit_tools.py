@@ -2,14 +2,13 @@
 """
 Codebase Auditor, Security Vulnerability Scanner, and Code Quality Suite.
 """
+
 from __future__ import annotations
 
-import logging
 import ast
-import os
+import logging
 import re
 from pathlib import Path
-from typing import Any
 
 from .registry import register_tool
 
@@ -17,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 from brjarvis.core.paths import paths
+
 
 def _get_workspace_dir() -> Path:
     return paths.PROJECT_ROOT
@@ -29,8 +29,8 @@ def _get_workspace_dir() -> Path:
         "type": "object",
         "properties": {
             "target_dir": {"type": "string", "description": "Target folder path to audit (defaults to workspace root)"}
-        }
-    }
+        },
+    },
 )
 def audit_codebase(args: dict) -> str:
     """Audit python files in workspace."""
@@ -67,11 +67,13 @@ def audit_codebase(args: dict) -> str:
                     security_findings.append(f" - {rel_str} → Usage of exec()")
 
             # 3. Check Hardcoded API Keys / Passwords
-            if re.search(r"""(?:api[_-]?key|secret|password)\s*=\s*['"][a-zA-Z0-9_\-]{20,}['"]""", content, re.IGNORECASE):
+            if re.search(
+                r"""(?:api[_-]?key|secret|password)\s*=\s*['"][a-zA-Z0-9_\-]{20,}['"]""", content, re.IGNORECASE
+            ):
                 security_findings.append(f" - {rel_str} → Possible hardcoded API key or secret token")
 
         except Exception as e:
-            logger.debug('Suppressed exception: %s', e)
+            logger.debug("Suppressed exception: %s", e)
     status_str = "🟢 CLEAN" if not syntax_errors and not security_findings else "⚠️ ISSUES DETECTED"
 
     report = [

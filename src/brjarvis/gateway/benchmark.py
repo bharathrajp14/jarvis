@@ -9,6 +9,7 @@ Evaluates:
 
 Runs on-demand (lazy validation) to avoid expensive startup bottlenecks.
 """
+
 from __future__ import annotations
 
 import json
@@ -17,7 +18,7 @@ import threading
 import time
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Optional
+from typing import Optional
 
 from .capabilities import CapabilityState, get_capability_registry
 from .client import ProxyBrainClient, get_proxy_brain_client
@@ -28,6 +29,7 @@ logger = logging.getLogger("JARVIS.ModelBenchmark")
 
 class BenchmarkTaskType(str, Enum):
     """Benchmark evaluation categories."""
+
     CHAT = "chat"
     REASONING = "reasoning"
     CODE = "code"
@@ -40,6 +42,7 @@ class BenchmarkTaskType(str, Enum):
 @dataclass
 class BenchmarkScore:
     """Evaluation metrics for a model across task types."""
+
     model_id: str
     task_scores: dict[str, float] = field(default_factory=dict)
     schema_adherence_rate: float = 1.0
@@ -68,10 +71,7 @@ class ModelBenchmarkService:
     Manages lazy, on-demand benchmarking of model candidates.
     """
 
-    def __init__(
-        self,
-        client: Optional[ProxyBrainClient] = None
-    ):
+    def __init__(self, client: Optional[ProxyBrainClient] = None):
         self.client = client or get_proxy_brain_client()
         self.capabilities = get_capability_registry()
         self.health = get_health_service()
@@ -93,7 +93,7 @@ class ModelBenchmarkService:
                 model=model_id,
                 messages=[{"role": "user", "content": "respond with pong"}],
                 max_tokens=10,
-                temperature=0.1
+                temperature=0.1,
             )
             latency = (time.monotonic() - t0) * 1000
             self.health.record_success(model_id, latency)
@@ -109,7 +109,7 @@ class ModelBenchmarkService:
 
     def probe_structured_output(self, model_id: str) -> bool:
         """Level 3 Probe: Verify JSON structured output capability."""
-        prompt = "Return valid JSON exactly: {\"status\": \"ok\", \"code\": 200}"
+        prompt = 'Return valid JSON exactly: {"status": "ok", "code": 200}'
         t0 = time.monotonic()
         try:
             resp = self.client.complete(
@@ -117,7 +117,7 @@ class ModelBenchmarkService:
                 messages=[{"role": "user", "content": prompt}],
                 max_tokens=50,
                 temperature=0.1,
-                json_mode=True
+                json_mode=True,
             )
             latency = (time.monotonic() - t0) * 1000
             self.health.record_success(model_id, latency)
@@ -142,18 +142,16 @@ class ModelBenchmarkService:
 
     def probe_tool_calling(self, model_id: str) -> bool:
         """Level 3 Probe: Verify native function calling capability."""
-        test_tool = [{
-            "type": "function",
-            "function": {
-                "name": "lookup_weather",
-                "description": "Get weather for city",
-                "parameters": {
-                    "type": "object",
-                    "properties": {"city": {"type": "string"}},
-                    "required": ["city"]
-                }
+        test_tool = [
+            {
+                "type": "function",
+                "function": {
+                    "name": "lookup_weather",
+                    "description": "Get weather for city",
+                    "parameters": {"type": "object", "properties": {"city": {"type": "string"}}, "required": ["city"]},
+                },
             }
-        }]
+        ]
         t0 = time.monotonic()
         try:
             resp = self.client.complete(
@@ -161,7 +159,7 @@ class ModelBenchmarkService:
                 messages=[{"role": "user", "content": "What is the weather in Tokyo?"}],
                 tools=test_tool,
                 max_tokens=60,
-                temperature=0.1
+                temperature=0.1,
             )
             latency = (time.monotonic() - t0) * 1000
             self.health.record_success(model_id, latency)

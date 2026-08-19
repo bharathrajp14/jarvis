@@ -3,18 +3,21 @@ from __future__ import annotations
 
 import logging
 from typing import Dict, List, Optional, Tuple
+
 from brjarvis.core.native_bridge import fast_hash
 
 logger = logging.getLogger("JARVIS.ScreenAnalyst")
 
 try:
     from mss import mss
+
     _MSS_AVAILABLE = True
 except ImportError:
     _MSS_AVAILABLE = False
 
 try:
     from PIL import ImageGrab
+
     _PIL_AVAILABLE = True
 except ImportError:
     _PIL_AVAILABLE = False
@@ -60,7 +63,7 @@ class ScreenAnalyst:
                         mon = monitors[idx]
                     else:
                         mon = monitors[1] if len(monitors) > 1 else monitors[0]
-                    
+
                     sct_img = sct.grab(mon)
                     width, height = sct_img.width, sct_img.height
                     raw_bytes = bytes(sct_img.raw)

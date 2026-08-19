@@ -3,24 +3,25 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import os
 import shutil
 import subprocess
 import sys
-import time
-from typing import Any, Dict, List, Optional
-from .types import ActionResult, ActionType, ComputerAction
+from typing import List, Optional
+
+from brjarvis.actions.clipboard_utils import get_clipboard_text, set_clipboard_text
 from brjarvis.core.runtime import get_runtime
 from brjarvis.events.bus import get_event_bus
 from brjarvis.events.types import AuditEvent
 from brjarvis.security.permissions import check_permission
 from brjarvis.vision.engine import get_vision_engine
-from brjarvis.actions.clipboard_utils import get_clipboard_text, set_clipboard_text
+
+from .types import ActionResult, ActionType, ComputerAction
 
 logger = logging.getLogger("JARVIS.ComputerOperator")
 
 try:
     import pyautogui
+
     # Enforce PyAutoGUI Fail-Safe security: moving mouse to corner immediately aborts automation
     pyautogui.FAILSAFE = True
     _PYAUTOGUI_AVAILABLE = True
@@ -29,6 +30,7 @@ except ImportError:
 
 try:
     import pyperclip
+
     _PYPERCLIP_AVAILABLE = True
 except ImportError:
     _PYPERCLIP_AVAILABLE = False
@@ -87,7 +89,13 @@ class ComputerOperator:
                     pyautogui.scroll(clicks, x=action.x, y=action.y)
 
             elif action.action_type == ActionType.DRAG_AND_DROP:
-                if _PYAUTOGUI_AVAILABLE and action.x is not None and action.y is not None and action.target_x is not None and action.target_y is not None:
+                if (
+                    _PYAUTOGUI_AVAILABLE
+                    and action.x is not None
+                    and action.y is not None
+                    and action.target_x is not None
+                    and action.target_y is not None
+                ):
                     pyautogui.moveTo(action.x, action.y)
                     pyautogui.dragTo(action.target_x, action.target_y, duration=0.5)
 
@@ -121,7 +129,7 @@ class ComputerOperator:
                     action_id=action.action_id,
                     success=True,
                     verification_message=f"Screenshot captured ({report.screen_width}x{report.screen_height})",
-                    data=report.image_path
+                    data=report.image_path,
                 )
 
             elif action.action_type in (ActionType.WINDOW_FOCUS, ActionType.APP_FOCUS):
@@ -133,12 +141,14 @@ class ComputerOperator:
                 )
 
             # Audit event
-            self.event_bus.publish(AuditEvent(
-                topic="audit.action",
-                action_type=action.action_type.value,
-                target=action.description or "desktop",
-                user_confirmed=not action.requires_approval
-            ))
+            self.event_bus.publish(
+                AuditEvent(
+                    topic="audit.action",
+                    action_type=action.action_type.value,
+                    target=action.description or "desktop",
+                    user_confirmed=not action.requires_approval,
+                )
+            )
 
             # Post-action state verification via VisionEngine
             report = self.vision.analyze_screen(force_refresh=True)
@@ -148,17 +158,22 @@ class ComputerOperator:
 
         except Exception as ex:
             if "FailSafeException" in type(ex).__name__:
-                logger.critical("🛑 PyAutoGUI FailSafe triggered during action %s. Automation immediately halted.", action.action_type.value)
-                self.event_bus.publish(AuditEvent(
-                    topic="audit.failsafe",
-                    action_type="failsafe_abort",
-                    target=action.action_type.value,
-                    user_confirmed=False
-                ))
+                logger.critical(
+                    "🛑 PyAutoGUI FailSafe triggered during action %s. Automation immediately halted.",
+                    action.action_type.value,
+                )
+                self.event_bus.publish(
+                    AuditEvent(
+                        topic="audit.failsafe",
+                        action_type="failsafe_abort",
+                        target=action.action_type.value,
+                        user_confirmed=False,
+                    )
+                )
                 return ActionResult(
                     action_id=action.action_id,
                     success=False,
-                    verification_message="Emergency FailSafe triggered by user: Desktop automation immediately halted."
+                    verification_message="Emergency FailSafe triggered by user: Desktop automation immediately halted.",
                 )
             logger.error("❌ ComputerOperator action failed: %s", ex, exc_info=True)
             return ActionResult(action_id=action.action_id, success=False, verification_message=str(ex))
@@ -176,9 +191,10 @@ class ComputerOperator:
         if sys.platform == "win32":
             try:
                 import ctypes
+
                 user32 = ctypes.windll.user32
                 found_hwnd = None
-                
+
                 def enum_windows_callback(hwnd, extra):
                     nonlocal found_hwnd
                     if user32.IsWindowVisible(hwnd):
@@ -245,7 +261,9 @@ class ComputerOperator:
         )
         return self.execute_action(action)
 
-    def scroll(self, clicks: int, x: Optional[int] = None, y: Optional[int] = None, description: str = "") -> ActionResult:
+    def scroll(
+        self, clicks: int, x: Optional[int] = None, y: Optional[int] = None, description: str = ""
+    ) -> ActionResult:
         action = ComputerAction(
             action_type=ActionType.MOUSE_SCROLL,
             x=x,

@@ -4,18 +4,18 @@ Transcript Trajectory Logger for BR JARVIS.
 Logs chronological step execution, tool calls, model thoughts, and sub-agent outputs
 into JSON Lines format (transcript.jsonl & transcript_full.jsonl).
 """
+
 from __future__ import annotations
 
 import json
-import os
-import sys
 import time
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 
 def _get_log_dir() -> Path:
     from brjarvis.core.paths import paths
+
     ldir = paths.LOG_ROOT / "transcripts"
     ldir.mkdir(parents=True, exist_ok=True)
     return ldir

@@ -3,10 +3,10 @@
 Standardized failure categorization, stuck-task detection, tool-call deduplication,
 exponential backoff, and automatic replanning for Autonomous Agent 2.0.
 """
+
 from __future__ import annotations
 
 import logging
-import re
 import time
 from dataclasses import dataclass
 from enum import Enum
@@ -48,7 +48,9 @@ class RecoveryEngine:
         self.max_step_retries = max_step_retries
         self._action_call_history: List[Tuple[str, str, float]] = []  # (tool_name, params_hash, timestamp)
 
-    def analyze_failure(self, tool_name: str, error_text: str, context: Optional[Dict[str, Any]] = None) -> FailureAnalysis:
+    def analyze_failure(
+        self, tool_name: str, error_text: str, context: Optional[Dict[str, Any]] = None
+    ) -> FailureAnalysis:
         err = (error_text or "").lower()
         ctx = context or {}
 
@@ -60,7 +62,10 @@ class RecoveryEngine:
                 suggested_action="pause_for_user",
                 retry_allowed=False,
                 backoff_seconds=0.0,
-                details={"requires_user": True, "prompt": "Please complete the CAPTCHA or verification challenge on your screen/browser."},
+                details={
+                    "requires_user": True,
+                    "prompt": "Please complete the CAPTCHA or verification challenge on your screen/browser.",
+                },
             )
 
         if "locked" in err or "pin required" in err or "biometric" in err or "waiting_for_user_authentication" in err:
@@ -95,7 +100,13 @@ class RecoveryEngine:
                 details={"tool": tool_name},
             )
 
-        if "timeout" in err or "timed out" in err or "connection refused" in err or "econnrefused" in err or "network" in err:
+        if (
+            "timeout" in err
+            or "timed out" in err
+            or "connection refused" in err
+            or "econnrefused" in err
+            or "network" in err
+        ):
             return FailureAnalysis(
                 category=FailureCategory.NETWORK_FAILURE,
                 message="Network error or connection timeout during action.",
@@ -106,7 +117,12 @@ class RecoveryEngine:
             )
 
         # 4. Element / UI target not found
-        if "element not found" in err or "selector not found" in err or "unable to locate" in err or "no matching control" in err:
+        if (
+            "element not found" in err
+            or "selector not found" in err
+            or "unable to locate" in err
+            or "no matching control" in err
+        ):
             return FailureAnalysis(
                 category=FailureCategory.ELEMENT_NOT_FOUND,
                 message="Target UI element was not found in active DOM or Accessibility tree.",
@@ -150,12 +166,13 @@ class RecoveryEngine:
     def check_loop_or_stuck(self, tool_name: str, params_str: str) -> bool:
         """Returns True if the agent is stuck in an infinite repetitive call loop."""
         import hashlib
+
         call_hash = hashlib.sha256(f"{tool_name}:{params_str}".encode("utf-8")).hexdigest()
         now = time.time()
         self._action_call_history.append((tool_name, call_hash, now))
 
         # Inspect last N calls
-        recent = [h for t, h, ts in self._action_call_history[-self.max_consecutive_duplicates:]]
+        recent = [h for t, h, ts in self._action_call_history[-self.max_consecutive_duplicates :]]
         if len(recent) >= self.max_consecutive_duplicates and len(set(recent)) == 1:
             logger.error("🛑 RecoveryEngine: Infinite tool loop detected on '%s'!", tool_name)
             return True

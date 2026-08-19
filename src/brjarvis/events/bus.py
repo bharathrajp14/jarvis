@@ -61,11 +61,7 @@ class EventBus:
             return True
         # AMQP-style: '*' matches one segment, '#' matches any
         if pattern not in self._regex_cache:
-            regex_str = (
-                "^"
-                + pattern.replace(".", r"\.").replace("*", r"[^.]+").replace("#", r".*")
-                + "$"
-            )
+            regex_str = "^" + pattern.replace(".", r"\.").replace("*", r"[^.]+").replace("#", r".*") + "$"
             self._regex_cache[pattern] = re.compile(regex_str)
         return bool(self._regex_cache[pattern].match(topic))
 
@@ -80,11 +76,13 @@ class EventBus:
 
     def _push_dlq(self, event: BaseEvent, handler: EventHandler, error: str) -> None:
         """Push a failed handler record to the Dead Letter Queue (capped deque)."""
-        self._dlq.append({
-            "event":   event,
-            "handler": getattr(handler, "__name__", str(handler)),
-            "error":   error,
-        })
+        self._dlq.append(
+            {
+                "event": event,
+                "handler": getattr(handler, "__name__", str(handler)),
+                "error": error,
+            }
+        )
 
     async def publish_async(self, event: BaseEvent) -> None:
         """Publish an event asynchronously to all matching subscriber callbacks."""
@@ -127,6 +125,7 @@ class EventBus:
                                         f"raised on topic '{ev.topic}': {exc}"
                                     )
                                     self._push_dlq(ev, h, str(exc))
+
                             return _done_cb
 
                         task = loop.create_task(handler(event))

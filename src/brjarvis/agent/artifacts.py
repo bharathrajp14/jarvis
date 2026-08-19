@@ -8,6 +8,7 @@ Features:
 - Path traversal prevention, symlink/reparse-point escape defense, and file integrity hashing (SHA-256).
 - Platform-safe configurable host artifact root (%USERPROFILE%\\Documents\\BR-JARVIS\\artifacts\\).
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -27,24 +28,78 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 logger = logging.getLogger("JARVIS.Artifacts")
 
 # Explicit allowlist of safe user-facing artifact extensions
-ALLOWED_ARTIFACT_EXTENSIONS: frozenset[str] = frozenset({
-    ".html", ".htm", ".md", ".markdown", ".txt", ".json", ".csv", ".tsv",
-    ".pdf", ".docx", ".xlsx", ".png", ".jpg", ".jpeg", ".gif", ".svg",
-    ".webp", ".log", ".xml", ".yaml", ".yml"
-})
+ALLOWED_ARTIFACT_EXTENSIONS: frozenset[str] = frozenset(
+    {
+        ".html",
+        ".htm",
+        ".md",
+        ".markdown",
+        ".txt",
+        ".json",
+        ".csv",
+        ".tsv",
+        ".pdf",
+        ".docx",
+        ".xlsx",
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".gif",
+        ".svg",
+        ".webp",
+        ".log",
+        ".xml",
+        ".yaml",
+        ".yml",
+    }
+)
 
 # Forbidden file patterns that must NEVER leave sandbox or be exported
-BLOCKED_ARTIFACT_NAMES: frozenset[str] = frozenset({
-    ".env", ".env.local", ".env.production", ".git", ".gitignore", ".npmrc",
-    ".pypirc", "id_rsa", "id_ed25519", "id_dsa", "known_hosts", "authorized_keys",
-    "credentials", "secrets.json", "secrets.yaml", "secrets.env", "passwd",
-    "shadow", "sam", "system32"
-})
+BLOCKED_ARTIFACT_NAMES: frozenset[str] = frozenset(
+    {
+        ".env",
+        ".env.local",
+        ".env.production",
+        ".git",
+        ".gitignore",
+        ".npmrc",
+        ".pypirc",
+        "id_rsa",
+        "id_ed25519",
+        "id_dsa",
+        "known_hosts",
+        "authorized_keys",
+        "credentials",
+        "secrets.json",
+        "secrets.yaml",
+        "secrets.env",
+        "passwd",
+        "shadow",
+        "sam",
+        "system32",
+    }
+)
 
-BLOCKED_ARTIFACT_EXTENSIONS: frozenset[str] = frozenset({
-    ".exe", ".dll", ".so", ".dylib", ".sh", ".bat", ".ps1", ".cmd", ".vbs",
-    ".pem", ".key", ".pfx", ".pkcs12", ".env", ".pyc", ".pyo"
-})
+BLOCKED_ARTIFACT_EXTENSIONS: frozenset[str] = frozenset(
+    {
+        ".exe",
+        ".dll",
+        ".so",
+        ".dylib",
+        ".sh",
+        ".bat",
+        ".ps1",
+        ".cmd",
+        ".vbs",
+        ".pem",
+        ".key",
+        ".pfx",
+        ".pkcs12",
+        ".env",
+        ".pyc",
+        ".pyo",
+    }
+)
 
 
 @dataclass
@@ -58,6 +113,7 @@ class ArtifactMetadata:
 @dataclass
 class ArtifactRecord:
     """Represents a tracked user-facing artifact through its complete lifecycle."""
+
     artifact_id: str
     task_id: str = "default"
     sandbox_path: Optional[str] = None
@@ -97,6 +153,7 @@ class ArtifactManager:
                 self._host_artifacts_dir = Path(env_dir).resolve()
             else:
                 from brjarvis.core.paths import paths
+
                 self._host_artifacts_dir = paths.ARTIFACT_ROOT
 
         try:
@@ -166,7 +223,7 @@ class ArtifactManager:
         # Strip path separators
         clean = os.path.basename(str(filename).strip().replace("\\", "/"))
         # Remove dangerous characters
-        clean = re.sub(r'[^\w\-_\.]', '_', clean)
+        clean = re.sub(r"[^\w\-_\.]", "_", clean)
         if not clean or clean in (".", ".."):
             clean = f"artifact_{uuid.uuid4().hex[:8]}.txt"
         return clean
@@ -221,7 +278,7 @@ class ArtifactManager:
                 filename=src_path.name,
                 created=False,
                 exported=False,
-                error=err_msg
+                error=err_msg,
             )
             with self._lock:
                 self._records[artifact_id] = rec
@@ -237,7 +294,7 @@ class ArtifactManager:
                 filename=src_path.name,
                 created=True,
                 exported=False,
-                error=err_msg
+                error=err_msg,
             )
             with self._lock:
                 self._records[artifact_id] = rec
@@ -255,7 +312,7 @@ class ArtifactManager:
                 filename=src_path.name,
                 created=True,
                 exported=False,
-                error=err_msg
+                error=err_msg,
             )
             with self._lock:
                 self._records[artifact_id] = rec
@@ -274,7 +331,7 @@ class ArtifactManager:
                 filename=filename,
                 created=True,
                 exported=False,
-                error=err_msg
+                error=err_msg,
             )
             with self._lock:
                 self._records[artifact_id] = rec
@@ -307,7 +364,7 @@ class ArtifactManager:
                 sha256=src_hash,
                 created=True,
                 exported=False,
-                error=err_msg
+                error=err_msg,
             )
             with self._lock:
                 self._records[artifact_id] = rec
@@ -332,7 +389,7 @@ class ArtifactManager:
                 sha256=src_hash,
                 created=True,
                 exported=False,
-                error=err_msg
+                error=err_msg,
             )
             with self._lock:
                 self._records[artifact_id] = rec
@@ -351,7 +408,7 @@ class ArtifactManager:
                 sha256=src_hash,
                 created=True,
                 exported=False,
-                error=err_msg
+                error=err_msg,
             )
             with self._lock:
                 self._records[artifact_id] = rec
@@ -369,7 +426,7 @@ class ArtifactManager:
                 sha256=src_hash,
                 created=True,
                 exported=False,
-                error=err_msg
+                error=err_msg,
             )
             with self._lock:
                 self._records[artifact_id] = rec
@@ -391,7 +448,7 @@ class ArtifactManager:
                 created=True,
                 exported=False,
                 host_verified=False,
-                error=err_msg
+                error=err_msg,
             )
             with self._lock:
                 self._records[artifact_id] = rec
@@ -411,7 +468,7 @@ class ArtifactManager:
             created=True,
             exported=True,
             host_verified=True,
-            error=None
+            error=None,
         )
 
         with self._lock:
@@ -422,20 +479,25 @@ class ArtifactManager:
         try:
             from brjarvis.events.bus import get_event_bus
             from brjarvis.events.types import ArtifactLifecycleEvent
+
             bus = get_event_bus()
-            bus.publish(ArtifactLifecycleEvent(
-                topic="artifact.exported",
-                artifact_id=artifact_id,
-                task_id=task_id,
-                path=str(dest_canonical),
-                mime_type=rec.mime_type,
-                checksum=dest_hash,
-                verified=True,
-            ))
+            bus.publish(
+                ArtifactLifecycleEvent(
+                    topic="artifact.exported",
+                    artifact_id=artifact_id,
+                    task_id=task_id,
+                    path=str(dest_canonical),
+                    mime_type=rec.mime_type,
+                    checksum=dest_hash,
+                    verified=True,
+                )
+            )
         except Exception:
             pass
 
-        logger.info("⚡ Successfully exported artifact '%s' -> '%s' (SHA256: %s)", filename, dest_canonical, dest_hash[:12])
+        logger.info(
+            "⚡ Successfully exported artifact '%s' -> '%s' (SHA256: %s)", filename, dest_canonical, dest_hash[:12]
+        )
         return rec
 
     def ensure_host_artifact(
@@ -491,7 +553,11 @@ class ArtifactManager:
                         if r.sandbox_path and Path(r.sandbox_path).name == p.name and r.exported and r.host_path:
                             if Path(r.host_path).exists():
                                 return True, r.host_path, r
-                return False, f"Artifact created, but could not export it to the user workspace: Sandbox file '{p.name}' is missing.", None
+                return (
+                    False,
+                    f"Artifact created, but could not export it to the user workspace: Sandbox file '{p.name}' is missing.",
+                    None,
+                )
 
         # Regular host path
         try:
@@ -516,14 +582,18 @@ class ArtifactManager:
         opened: bool = False,
         observed: bool = False,
         browser_verified: bool = False,
-        error: Optional[str] = None
+        error: Optional[str] = None,
     ) -> Optional[ArtifactRecord]:
         """Update browser verification lifecycle state on an artifact record."""
         with self._lock:
             rec = self._records.get(artifact_id_or_path)
             if not rec:
                 for r in self._records.values():
-                    if r.host_path == artifact_id_or_path or r.sandbox_path == artifact_id_or_path or r.filename == artifact_id_or_path:
+                    if (
+                        r.host_path == artifact_id_or_path
+                        or r.sandbox_path == artifact_id_or_path
+                        or r.filename == artifact_id_or_path
+                    ):
                         rec = r
                         break
             if rec:
@@ -545,7 +615,7 @@ class ArtifactManager:
         art_id = f"art_{uuid.uuid4().hex[:8]}"
         size = p.stat().st_size if p.exists() else 0
         sha = self.compute_sha256(p) if p.exists() else ""
-        
+
         rec = ArtifactRecord(
             artifact_id=art_id,
             task_id=task_id,
@@ -602,6 +672,7 @@ def get_artifact_manager() -> ArtifactManager:
 # Markdown Artifact Document Generator (Antigravity Specification)
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class ArtifactDocument:
     """Represents a structured Markdown artifact document."""
 
@@ -653,7 +724,9 @@ class ArtifactDocument:
         return self.filepath.resolve()
 
 
-def make_file_link(filepath: str | Path, text: str | None = None, start_line: int | None = None, end_line: int | None = None) -> str:
+def make_file_link(
+    filepath: str | Path, text: str | None = None, start_line: int | None = None, end_line: int | None = None
+) -> str:
     """Format clickable file:// markdown link."""
     p = Path(filepath).resolve()
     uri = p.as_uri()

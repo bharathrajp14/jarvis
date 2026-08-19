@@ -17,5 +17,5 @@ except Exception:
     pass
 
 if __name__ == "__main__":
-    from brjarvis.apps.desktop import main
+    from brjarvis.desktop.float_widget import main
     sys.exit(main())

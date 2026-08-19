@@ -83,6 +83,7 @@ def get_orchestrator() -> Optional[JarvisOrchestrator]:
     if ORCHESTRATOR is None:
         try:
             from brjarvis.core.bootstrap import build_assistant_runtime
+
             runtime = build_assistant_runtime()
             ORCHESTRATOR = runtime.orchestrator
         except Exception as e:

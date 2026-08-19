@@ -4,10 +4,10 @@ Conscious Step Planner & Adaptive Flexible Step Budget Engine for BR JARVIS.
 Dynamically plans execution sub-steps and calculates flexible step budgets
 that adaptively expand as long as active progress velocity is detected.
 """
+
 from __future__ import annotations
 
-import re
-from typing import Dict, List, Any, Tuple
+from typing import Any, Dict, List, Tuple
 
 
 class AdaptiveStepBudget:
@@ -25,7 +25,7 @@ class AdaptiveStepBudget:
         Returns (should_continue, status_message, was_extended).
         """
         if current_step < self.current_budget:
-            return True, f"Step {current_step+1}/{self.current_budget} within active budget", False
+            return True, f"Step {current_step + 1}/{self.current_budget} within active budget", False
 
         # Check ceiling
         if self.current_budget >= self.max_ceiling:
@@ -61,16 +61,54 @@ class StepPlanner:
         g_low = goal.lower().strip()
 
         # Classify task complexity
-        is_complex = any(k in g_low for k in [
-            "build", "scaffold", "refactor", "architecture", "multi", "parallel",
-            "implement", "all in", "full", "complete", "pipeline", "scratchpad",
-            "recreate", "create", "book", "startbook", "manual", "guide",
-            "publication", "document", "workspace", "dataset", "longform", "suite"
-        ])
-        is_medium = any(k in g_low for k in [
-            "search", "analyze", "find", "read", "check", "inspect", "report",
-            "edit", "update", "fix", "write", "test", "run", "generate"
-        ])
+        is_complex = any(
+            k in g_low
+            for k in [
+                "build",
+                "scaffold",
+                "refactor",
+                "architecture",
+                "multi",
+                "parallel",
+                "implement",
+                "all in",
+                "full",
+                "complete",
+                "pipeline",
+                "scratchpad",
+                "recreate",
+                "create",
+                "book",
+                "startbook",
+                "manual",
+                "guide",
+                "publication",
+                "document",
+                "workspace",
+                "dataset",
+                "longform",
+                "suite",
+            ]
+        )
+        is_medium = any(
+            k in g_low
+            for k in [
+                "search",
+                "analyze",
+                "find",
+                "read",
+                "check",
+                "inspect",
+                "report",
+                "edit",
+                "update",
+                "fix",
+                "write",
+                "test",
+                "run",
+                "generate",
+            ]
+        )
 
         if is_complex:
             initial_budget = 25
@@ -100,7 +138,9 @@ class StepPlanner:
                 "Execute direct user action or response",
             ]
 
-        is_fast_path = complexity == "LOW" or any(k in g_low for k in ["whatsapp", "hello", "call", "open", "status", "say", "email"])
+        is_fast_path = complexity == "LOW" or any(
+            k in g_low for k in ["whatsapp", "hello", "call", "open", "status", "say", "email"]
+        )
 
         return {
             "goal": goal,

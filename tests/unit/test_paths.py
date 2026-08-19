@@ -1,11 +1,10 @@
 """Unit tests for Path Authority and Workspace Lifecycle Manager."""
+
 from __future__ import annotations
 
-import os
-from pathlib import Path
 import pytest
 
-from brjarvis.core.paths import paths, find_project_root, find_python_executable, PathManager
+from brjarvis.core.paths import PathManager, find_project_root, paths
 
 
 @pytest.mark.unit
@@ -34,7 +33,7 @@ def test_path_manager_ensure_directories(tmp_path):
     custom_root = tmp_path / "custom_project"
     custom_root.mkdir(parents=True, exist_ok=True)
     pm = PathManager(root=custom_root)
-    
+
     assert pm.DOCUMENTS_DIR.exists()
     assert pm.RESUMES_DIR.exists()
     assert pm.CAREER_DIR.exists()

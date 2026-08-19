@@ -3,6 +3,7 @@
 Modular FastAPI Application Factory for BR JARVIS Autonomous Control Plane.
 Mounts all route routers with authentication, CORS, security headers, rate limiting, and lifespan management.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -59,14 +60,15 @@ from .state import (
 
 logger = logging.getLogger("JARVIS.API.Server")
 
-_RICH_RE = re.compile(r'\[/?[a-z_]+\]', re.IGNORECASE)
+_RICH_RE = re.compile(r"\[/?[a-z_]+\]", re.IGNORECASE)
 
 
 def strip_rich(text: str) -> str:
-    return _RICH_RE.sub('', text)
+    return _RICH_RE.sub("", text)
 
 
 # ── Canonical WebSocket Logging Handler (Clean Logging without sys.stdout hacks) ─
+
 
 class WSLogHandler(logging.Handler):
     """Standard logging handler that broadcasts formatted logs to active WebSockets."""
@@ -91,8 +93,8 @@ class WSLogHandler(logging.Handler):
             msg = self.format(record)
             clean_msg = strip_rich(msg).strip()
             # Redact secrets from broadcasted logs
-            clean_msg = re.sub(r'AIzaSy[A-Za-z0-9_\-]{33}', '[REDACTED_API_KEY]', clean_msg)
-            clean_msg = re.sub(r'sk-[A-Za-z0-9_\-]{20,}', '[REDACTED_API_KEY]', clean_msg)
+            clean_msg = re.sub(r"AIzaSy[A-Za-z0-9_\-]{33}", "[REDACTED_API_KEY]", clean_msg)
+            clean_msg = re.sub(r"sk-[A-Za-z0-9_\-]{20,}", "[REDACTED_API_KEY]", clean_msg)
             if clean_msg:
                 asyncio.run_coroutine_threadsafe(broadcast_log(clean_msg), self._loop)
         except Exception:
@@ -107,13 +109,14 @@ logging.getLogger("JARVIS").addHandler(ws_log_handler)
 async def _send_ws_log(ws: WebSocket, line: str):
     try:
         from starlette.websockets import WebSocketState
+
         if ws.client_state == WebSocketState.CONNECTED:
-            await asyncio.wait_for(ws.send_json({
-                "event_id": str(uuid.uuid4()),
-                "type": "log",
-                "payload": {"message": line},
-                "message": line
-            }), timeout=0.5)
+            await asyncio.wait_for(
+                ws.send_json(
+                    {"event_id": str(uuid.uuid4()), "type": "log", "payload": {"message": line}, "message": line}
+                ),
+                timeout=0.5,
+            )
     except Exception:
         async with get_ws_lock():
             ACTIVE_WEBSOCKETS.discard(ws)
@@ -165,6 +168,7 @@ async def lifespan(app: FastAPI):
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """Inject standard security headers for browser protection."""
+
     async def dispatch(self, request: Request, call_next):
         response = await call_next(request)
         response.headers["X-Content-Type-Options"] = "nosniff"
@@ -187,10 +191,7 @@ def create_app() -> FastAPI:
     """Create and configure the production FastAPI application."""
     require_server_api_key()
     app = FastAPI(
-        title="BR JARVIS Autonomous Operating Platform",
-        version=VERSION,
-        description=DESCRIPTION,
-        lifespan=lifespan
+        title="BR JARVIS Autonomous Operating Platform", version=VERSION, description=DESCRIPTION, lifespan=lifespan
     )
 
     # Security Headers Middleware
@@ -273,9 +274,9 @@ def create_app() -> FastAPI:
                             "request_id": req_id,
                             "error": {
                                 "code": "UNAUTHORIZED",
-                                "message": "Authentication required: Valid API Key or Session needed."
-                            }
-                        }
+                                "message": "Authentication required: Valid API Key or Session needed.",
+                            },
+                        },
                     )
         return await call_next(request)
 
@@ -286,13 +287,13 @@ def create_app() -> FastAPI:
         return JSONResponse(
             status_code=500,
             content={
-                    "success": False,
-                    "error": {
-                        "code": "INTERNAL_SERVER_ERROR",
-                        "message": "An internal server error occurred while processing the request."
-                    }
-                }
-            )
+                "success": False,
+                "error": {
+                    "code": "INTERNAL_SERVER_ERROR",
+                    "message": "An internal server error occurred while processing the request.",
+                },
+            },
+        )
 
     # 404 Exception Handler with Glassmorphic Web Fallback
     @app.exception_handler(StarletteHTTPException)
@@ -305,7 +306,7 @@ def create_app() -> FastAPI:
                     return FileResponse(index_file)
         return JSONResponse(
             status_code=exc.status_code,
-            content={"success": False, "error": {"code": "NOT_FOUND", "message": exc.detail}}
+            content={"success": False, "error": {"code": "NOT_FOUND", "message": exc.detail}},
         )
 
     # Mount Route Routers
@@ -354,7 +355,7 @@ def create_app() -> FastAPI:
         "Cache-Control": "no-cache, no-store, must-revalidate",
         "Pragma": "no-cache",
         "Expires": "0",
-        "Clear-Site-Data": '"cache"',   # Tells browsers to drop SW cache on each load
+        "Clear-Site-Data": '"cache"',  # Tells browsers to drop SW cache on each load
     }
 
     @app.get("/")
@@ -372,11 +373,14 @@ def create_app() -> FastAPI:
     async def get_sw():
         sw_file = WEB_DIR / "sw.js"
         if sw_file.exists():
-            return FileResponse(sw_file, headers={
-                "Cache-Control": "no-cache, no-store, must-revalidate",
-                "Pragma": "no-cache",
-                "Expires": "0",
-            })
+            return FileResponse(
+                sw_file,
+                headers={
+                    "Cache-Control": "no-cache, no-store, must-revalidate",
+                    "Pragma": "no-cache",
+                    "Expires": "0",
+                },
+            )
         raise HTTPException(status_code=404, detail="sw.js not found")
 
     @app.get("/web/app.js")

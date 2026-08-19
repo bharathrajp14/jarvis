@@ -4,10 +4,10 @@ Built-in editor skills for BR-JARVIS MK37.
 Combines filesystem and AST refactoring tools with PC control to operate code editors
 (VS Code, Cursor, etc.) autonomously.
 """
+
 from __future__ import annotations
 
 from .loader import SkillDef, register_builtin_skill
-
 
 _EDITOR_OPEN_PROMPT = """\
 Open a file or project directory in the user's code editor.
@@ -62,57 +62,65 @@ $ARGUMENTS
 
 
 def _register_editor_builtins() -> None:
-    register_builtin_skill(SkillDef(
-        name="editor_open",
-        description="Open a file or directory in the code editor (VS Code, Cursor, etc.)",
-        triggers=["/editor-open", "/open-in-editor", "open in editor"],
-        tools=["open_workspace_file", "open_app", "focus_window"],
-        prompt=_EDITOR_OPEN_PROMPT,
-        file_path="builtin:editor_open",
-        category="engineering",
-        domain="Editor Control",
-        user_invocable=True,
-        source="builtin"
-    ))
+    register_builtin_skill(
+        SkillDef(
+            name="editor_open",
+            description="Open a file or directory in the code editor (VS Code, Cursor, etc.)",
+            triggers=["/editor-open", "/open-in-editor", "open in editor"],
+            tools=["open_workspace_file", "open_app", "focus_window"],
+            prompt=_EDITOR_OPEN_PROMPT,
+            file_path="builtin:editor_open",
+            category="engineering",
+            domain="Editor Control",
+            user_invocable=True,
+            source="builtin",
+        )
+    )
 
-    register_builtin_skill(SkillDef(
-        name="editor_goto",
-        description="Navigate to a specific line, class, or symbol in the active editor",
-        triggers=["/editor-goto", "/goto-symbol", "/goto-line"],
-        tools=["focus_window", "keyboard_hotkey", "keyboard_type", "keyboard_press"],
-        prompt=_EDITOR_GOTO_PROMPT,
-        file_path="builtin:editor_goto",
-        category="engineering",
-        domain="Editor Control",
-        user_invocable=True,
-        source="builtin"
-    ))
+    register_builtin_skill(
+        SkillDef(
+            name="editor_goto",
+            description="Navigate to a specific line, class, or symbol in the active editor",
+            triggers=["/editor-goto", "/goto-symbol", "/goto-line"],
+            tools=["focus_window", "keyboard_hotkey", "keyboard_type", "keyboard_press"],
+            prompt=_EDITOR_GOTO_PROMPT,
+            file_path="builtin:editor_goto",
+            category="engineering",
+            domain="Editor Control",
+            user_invocable=True,
+            source="builtin",
+        )
+    )
 
-    register_builtin_skill(SkillDef(
-        name="smart_patch",
-        description="Perform AST-aware syntax refactoring and precise code modifications",
-        triggers=["/smart-patch", "/ast-refactor", "/code-patch"],
-        tools=["code_refactor", "file_read", "file_write", "batch_file_ops", "run_code"],
-        prompt=_SMART_PATCH_PROMPT,
-        file_path="builtin:smart_patch",
-        category="engineering",
-        domain="Code Refactoring",
-        user_invocable=True,
-        source="builtin"
-    ))
+    register_builtin_skill(
+        SkillDef(
+            name="smart_patch",
+            description="Perform AST-aware syntax refactoring and precise code modifications",
+            triggers=["/smart-patch", "/ast-refactor", "/code-patch"],
+            tools=["code_refactor", "file_read", "file_write", "batch_file_ops", "run_code"],
+            prompt=_SMART_PATCH_PROMPT,
+            file_path="builtin:smart_patch",
+            category="engineering",
+            domain="Code Refactoring",
+            user_invocable=True,
+            source="builtin",
+        )
+    )
 
-    register_builtin_skill(SkillDef(
-        name="format_lint",
-        description="Auto-format and lint code files across the workspace",
-        triggers=["/format", "/lint", "/clean-code"],
-        tools=["run_code", "file_list", "batch_file_ops"],
-        prompt=_FORMAT_LINT_PROMPT,
-        file_path="builtin:format_lint",
-        category="engineering",
-        domain="Code Quality",
-        user_invocable=True,
-        source="builtin"
-    ))
+    register_builtin_skill(
+        SkillDef(
+            name="format_lint",
+            description="Auto-format and lint code files across the workspace",
+            triggers=["/format", "/lint", "/clean-code"],
+            tools=["run_code", "file_list", "batch_file_ops"],
+            prompt=_FORMAT_LINT_PROMPT,
+            file_path="builtin:format_lint",
+            category="engineering",
+            domain="Code Quality",
+            user_invocable=True,
+            source="builtin",
+        )
+    )
 
 
 _register_editor_builtins()

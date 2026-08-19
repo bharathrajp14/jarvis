@@ -1,11 +1,8 @@
 # tests/unit/test_agent_session.py — Unit Tests for Canonical AgentSession Model
 from __future__ import annotations
 
-import pytest
-import time
 from brjarvis.agent.session import (
     AgentSession,
-    SessionTurn,
     get_or_create_session,
     list_active_sessions,
 )
@@ -195,7 +192,8 @@ class TestAgentSession:
         assert "Run linter" in hoff["next_steps"]
 
     def test_session_database_persistence(self):
-        from brjarvis.agent.session import reset_active_session, delete_session
+        from brjarvis.agent.session import delete_session, reset_active_session
+
         sess_id = "test-sess-db-persist"
         sess = get_or_create_session(sess_id, mode="research")
         sess.add_user_turn("Research quantum computing algorithms")
@@ -213,4 +211,3 @@ class TestAgentSession:
         assert "quantum computing" in recovered.turns[0].content
 
         delete_session(sess_id)
-

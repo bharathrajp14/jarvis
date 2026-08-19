@@ -1,6 +1,7 @@
 """
 tests/conftest.py — Global Pytest Configuration and Fixtures for BR JARVIS MK40.2+
 """
+
 from __future__ import annotations
 
 import os
@@ -21,7 +22,6 @@ _SRC = _ROOT / "src"
 for _p in [str(_SRC), str(_ROOT)]:
     if _p not in sys.path:
         sys.path.insert(0, _p)
-
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -69,8 +69,16 @@ def sample_profile_data():
         "location": "San Francisco, CA (Remote)",
         "summary": "AI Systems Engineer specializing in autonomous agent architectures, FastAPI backends, and multi-model LLM orchestration.",
         "skills": [
-            "Python", "FastAPI", "PyTorch", "Autonomous Agents", "System Architecture",
-            "SQLite WAL", "Three.js", "Docker", "REST APIs", "WebSockets"
+            "Python",
+            "FastAPI",
+            "PyTorch",
+            "Autonomous Agents",
+            "System Architecture",
+            "SQLite WAL",
+            "Three.js",
+            "Docker",
+            "REST APIs",
+            "WebSockets",
         ],
         "experience": [
             {
@@ -79,17 +87,17 @@ def sample_profile_data():
                 "period": "2023 - Present",
                 "highlights": [
                     "Designed high-throughput LLM gateway routing with Shannon entropy analysis, reducing latency by 45%.",
-                    "Architected SQLite WAL thread-safe persistence and vector indexing for 500,000+ items."
-                ]
+                    "Architected SQLite WAL thread-safe persistence and vector indexing for 500,000+ items.",
+                ],
             }
         ],
         "education": [
             {
                 "institution": "Stanford University",
                 "degree": "B.S. in Computer Science (Artificial Intelligence)",
-                "year": "2022"
+                "year": "2022",
             }
-        ]
+        ],
     }
 
 

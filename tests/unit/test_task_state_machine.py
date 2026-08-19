@@ -1,7 +1,9 @@
 """Unit tests for Autonomous Task State Machine & Queue."""
+
 from __future__ import annotations
 
 import pytest
+
 from brjarvis.agent.task_state import TaskStateManager, TaskStatus
 
 

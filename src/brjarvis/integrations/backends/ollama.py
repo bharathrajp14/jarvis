@@ -3,6 +3,7 @@
 Ollama backend for local/private inference.
 Safe initialization, standardized error handling, JSON schema mode, and text streaming.
 """
+
 from __future__ import annotations
 
 import json
@@ -23,6 +24,7 @@ class OllamaBackend(BaseBackend):
     def __init__(self, model: Optional[str] = None, host: Optional[str] = None):
         try:
             from brjarvis.config.models import get_model
+
             default_model = get_model("ollama") or "llama3"
         except Exception:
             default_model = "llama3"

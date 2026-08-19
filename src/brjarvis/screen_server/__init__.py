@@ -3,4 +3,5 @@
 Provides:
   - ScreenShareServer — asyncio WebSocket server for broadcasting screen frames
 """
+
 from __future__ import annotations

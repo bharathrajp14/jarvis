@@ -5,10 +5,10 @@ import json
 import logging
 import os
 import threading
-from pathlib import Path
-from typing import Any, Dict, List, Literal, Optional, Set
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field, field_validator
+
 from brjarvis.core.paths import paths
 
 BASE_DIR = paths.PROJECT_ROOT
@@ -24,6 +24,7 @@ _ENVIRONMENTS = {"development", "production", "testing", "staging"}
 
 class ConfigurationError(Exception):
     """Raised when configuration validation fails."""
+
     pass
 
 
@@ -62,7 +63,7 @@ class SecurityConfig(BaseModel):
             "http://localhost:3000",
             "http://127.0.0.1:3000",
         ],
-        description="Allowed CORS origins"
+        description="Allowed CORS origins",
     )
     session_ttl_seconds: float = Field(default=86400.0, description="Web session time-to-live")
     ws_ticket_ttl_seconds: float = Field(default=60.0, description="WebSocket one-time ticket TTL")
@@ -90,7 +91,9 @@ class SecretsConfig(BaseModel):
 
 
 class SystemConfig(BaseModel):
-    environment: str = Field(default="development", description="Execution environment (development, production, testing)")
+    environment: str = Field(
+        default="development", description="Execution environment (development, production, testing)"
+    )
     debug: bool = Field(default=False, description="Debug mode flag")
     log_level: str = Field(default="INFO", description="Logging verbosity")
     log_format: str = Field(default="json", description="Log output format (console, json)")
@@ -123,12 +126,16 @@ class HardwareConfig(BaseModel):
 
 
 class CareerConfig(BaseModel):
-    tracker_path: str = Field(default="BR_JARVIS_Career_Tracker.xlsx", description="Path to projected Excel career tracker")
+    tracker_path: str = Field(
+        default="BR_JARVIS_Career_Tracker.xlsx", description="Path to projected Excel career tracker"
+    )
     profile_dir: str = Field(default=".jarvis/career/", description="Directory storing canonical profile data")
     backup_dir: str = Field(default=".jarvis/backups/", description="Directory storing versioned Excel backups")
     email_sync_hours: int = Field(default=24, description="Lookback window for recruitment email sync")
     match_threshold: float = Field(default=0.70, description="Minimum confidence for automated application matching")
-    auto_confirm_offer: bool = Field(default=False, description="Strict safety flag: Auto-confirming offers is prohibited by default")
+    auto_confirm_offer: bool = Field(
+        default=False, description="Strict safety flag: Auto-confirming offers is prohibited by default"
+    )
 
 
 class JarvisConfig(BaseModel):
@@ -144,18 +151,24 @@ class JarvisConfig(BaseModel):
     def validate_production(self) -> None:
         """Validate configuration for production deployments."""
         if self.system.environment == "production":
-            has_llm_key = any([
-                self.secrets.gemini_api_key,
-                self.secrets.openai_api_key,
-                self.secrets.anthropic_api_key,
-                self.secrets.deepseek_api_key,
-                self.secrets.mistral_api_key,
-                self.secrets.nvidia_api_key,
-            ])
+            has_llm_key = any(
+                [
+                    self.secrets.gemini_api_key,
+                    self.secrets.openai_api_key,
+                    self.secrets.anthropic_api_key,
+                    self.secrets.deepseek_api_key,
+                    self.secrets.mistral_api_key,
+                    self.secrets.nvidia_api_key,
+                ]
+            )
             if not has_llm_key and not os.environ.get("OPENAI_BASE_URL"):
-                raise ConfigurationError("Production startup failed: No valid LLM backend credentials or proxy gateway configured.")
+                raise ConfigurationError(
+                    "Production startup failed: No valid LLM backend credentials or proxy gateway configured."
+                )
             if not self.security.server_api_key:
-                _logger.warning("[Production Config Alert] SERVER_API_KEY is not set. API endpoints are running in open mode.")
+                _logger.warning(
+                    "[Production Config Alert] SERVER_API_KEY is not set. API endpoints are running in open mode."
+                )
 
     @classmethod
     def load(cls, overrides: Optional[Dict[str, Any]] = None) -> "JarvisConfig":
@@ -171,6 +184,7 @@ class JarvisConfig(BaseModel):
         if env_file.exists():
             try:
                 from dotenv import load_dotenv
+
                 load_dotenv(env_file)
             except ImportError:
                 pass
@@ -320,6 +334,7 @@ def get_config(force_reload: bool = False) -> JarvisConfig:
 
 # ── MK40.2: Model & Credential Display (§29, §30) ────────────────────────────
 
+
 def get_credential_source() -> Dict[str, str]:
     """
     Determine which API credential is active and return source metadata.
@@ -357,7 +372,11 @@ def get_credential_source() -> Dict[str, str]:
     elif google_key:
         return {"source": "GOOGLE_API_KEY", "conflict": False, "warning": None}
     else:
-        return {"source": "NOT_CONFIGURED", "conflict": False, "warning": "No Google/Gemini API key found in environment."}
+        return {
+            "source": "NOT_CONFIGURED",
+            "conflict": False,
+            "warning": "No Google/Gemini API key found in environment.",
+        }
 
 
 def get_model_display_info() -> Dict[str, str]:
@@ -374,21 +393,21 @@ def get_model_display_info() -> Dict[str, str]:
 
     # Map backend to specific model ID and provider string
     backend_model_map: Dict[str, tuple[str, str]] = {
-        "gemini":   ("Google DeepMind", cfg.models.gemini),
-        "claude":   ("Anthropic",       cfg.models.claude),
-        "gpt":      ("OpenAI",          cfg.models.gpt),
-        "ollama":   ("Ollama (local)",  cfg.models.ollama),
-        "nvidia":   ("NVIDIA NIM",      cfg.models.nvidia),
-        "mistral":  ("Mistral AI",      cfg.models.mistral),
+        "gemini": ("Google DeepMind", cfg.models.gemini),
+        "claude": ("Anthropic", cfg.models.claude),
+        "gpt": ("OpenAI", cfg.models.gpt),
+        "ollama": ("Ollama (local)", cfg.models.ollama),
+        "nvidia": ("NVIDIA NIM", cfg.models.nvidia),
+        "mistral": ("Mistral AI", cfg.models.mistral),
     }
 
     provider, model_id = backend_model_map.get(backend, ("Unknown Provider", backend))
 
     return {
-        "provider":          provider,
-        "model":             model_id,
-        "backend_key":       backend,
-        "endpoint":          os.environ.get("JARVIS_GATEWAY_URL", "localhost (direct API)"),
+        "provider": provider,
+        "model": model_id,
+        "backend_key": backend,
+        "endpoint": os.environ.get("JARVIS_GATEWAY_URL", "localhost (direct API)"),
         "credential_source": cred["source"],
         "credential_conflict": str(cred["conflict"]),
         "credential_warning": cred.get("warning") or "",

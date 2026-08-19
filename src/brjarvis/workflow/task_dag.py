@@ -1,14 +1,16 @@
 from __future__ import annotations
+
 import logging
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Sequence
 from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional, Sequence
 
 logger = logging.getLogger("JARVIS.TaskDAG")
 
 
 # ── BUG-016 FIX: DAG Cycle Detection ──────────────────────────────────────────
+
 
 def detect_cycles(nodes: Sequence["DAGNode"]) -> None:
     """
@@ -32,6 +34,7 @@ def detect_cycles(nodes: Sequence["DAGNode"]) -> None:
             in_degree[node.node_id] += 1
 
     from collections import deque
+
     queue: deque[str] = deque(nid for nid, deg in in_degree.items() if deg == 0)
     processed = 0
 
@@ -73,6 +76,7 @@ def topological_order(nodes: Sequence["DAGNode"]) -> list["DAGNode"]:
             in_degree[node.node_id] += 1
 
     from collections import deque
+
     queue: deque[str] = deque(nid for nid, deg in in_degree.items() if deg == 0)
     result: list["DAGNode"] = []
 
@@ -92,7 +96,6 @@ class DAGNodeState(Enum):
     RUNNING = "RUNNING"
     COMPLETED = "COMPLETED"
     FAILED = "FAILED"
-
 
 
 class DAGNode:
@@ -148,8 +151,8 @@ class PersistentTaskDAG:
     """Persistent storage engine for scheduling and recovering workflow Task DAGs using SQLite WAL."""
 
     def __init__(self, db_path: Optional[Path] = None):
-        import sqlite3
         from brjarvis.memory.persistent_store import get_memory_dir
+
         if db_path:
             self.db_path = Path(db_path)
         else:
@@ -160,6 +163,7 @@ class PersistentTaskDAG:
 
     def _init_db(self) -> None:
         import sqlite3
+
         conn = sqlite3.connect(str(self.db_path), timeout=15.0)
         try:
             conn.execute("PRAGMA journal_mode=WAL")
@@ -188,27 +192,27 @@ class PersistentTaskDAG:
             conn.close()
 
     def checkpoint(self, task_id: str, goal: str, nodes: List[Any], status: str) -> None:
-        import sqlite3
         import json
+        import sqlite3
+
         conn = sqlite3.connect(str(self.db_path), timeout=15.0)
         try:
             conn.execute("PRAGMA journal_mode=WAL")
             conn.execute(
-                "INSERT OR REPLACE INTO task_dags (task_id, goal, status) VALUES (?, ?, ?)",
-                (task_id, goal, status)
+                "INSERT OR REPLACE INTO task_dags (task_id, goal, status) VALUES (?, ?, ?)", (task_id, goal, status)
             )
 
             for node in nodes:
                 node_id = getattr(node, "node_id", str(id(node)))
                 node_status = getattr(node, "status", "PENDING")
-                
+
                 input_dict = {
                     "title": getattr(node, "title", str(node)),
                     "dependencies": getattr(node, "dependencies", []),
                     "executed_at": getattr(node, "executed_at", None),
                 }
                 input_data_str = json.dumps(input_dict, ensure_ascii=False)
-                
+
                 output_data = getattr(node, "result", None)
                 error_msg = getattr(node, "error", None)
                 if node_status == "FAILED" and not error_msg:
@@ -220,57 +224,56 @@ class PersistentTaskDAG:
                     (task_id, node_id, status, input_data, output_data, error)
                     VALUES (?, ?, ?, ?, ?, ?)
                     """,
-                    (task_id, node_id, node_status, input_data_str, output_data, error_msg)
+                    (task_id, node_id, node_status, input_data_str, output_data, error_msg),
                 )
             conn.commit()
         finally:
             conn.close()
 
     def resume(self, task_id: str) -> Optional[Dict[str, Any]]:
-        import sqlite3
         import json
+        import sqlite3
+
         conn = sqlite3.connect(str(self.db_path), timeout=15.0)
         try:
             conn.row_factory = sqlite3.Row
             cursor = conn.cursor()
-            
+
             cursor.execute("SELECT goal, status FROM task_dags WHERE task_id = ?", (task_id,))
             dag_row = cursor.fetchone()
             if not dag_row:
                 return None
-            
+
             cursor.execute(
                 "SELECT node_id, status, input_data, output_data, error FROM task_dag_nodes WHERE task_id = ?",
-                (task_id,)
+                (task_id,),
             )
             node_rows = cursor.fetchall()
-            
+
             nodes = []
             for row in node_rows:
                 node_id = row["node_id"]
                 node_status = row["status"]
                 output_data = row["output_data"]
                 error_msg = row["error"]
-                
+
                 try:
                     input_dict = json.loads(row["input_data"]) if row["input_data"] else {}
                 except Exception:
                     input_dict = {}
-                
-                nodes.append(DAGNode(
-                    node_id=node_id,
-                    title=input_dict.get("title", node_id),
-                    status=node_status,
-                    dependencies=input_dict.get("dependencies", []),
-                    result=output_data,
-                    executed_at=input_dict.get("executed_at"),
-                ))
-            
-            return {
-                "goal": dag_row["goal"],
-                "status": dag_row["status"],
-                "nodes": nodes
-            }
+
+                nodes.append(
+                    DAGNode(
+                        node_id=node_id,
+                        title=input_dict.get("title", node_id),
+                        status=node_status,
+                        dependencies=input_dict.get("dependencies", []),
+                        result=output_data,
+                        executed_at=input_dict.get("executed_at"),
+                    )
+                )
+
+            return {"goal": dag_row["goal"], "status": dag_row["status"], "nodes": nodes}
         finally:
             conn.close()
 
@@ -333,7 +336,8 @@ class ParallelDAGExecutor:
 
                 # Identify all ready nodes: PENDING and all dependencies COMPLETED
                 ready_candidates = [
-                    n for n in nodes
+                    n
+                    for n in nodes
                     if n.status == "PENDING"
                     and all(dep in completed_ids for dep in n.dependencies)
                     and not any(dep in failed_ids for dep in n.dependencies)
@@ -376,9 +380,7 @@ class ParallelDAGExecutor:
                 for n in ready_nodes:
                     n.status = "RUNNING"
 
-                futures = {
-                    pool.submit(node_runner, n): n for n in ready_nodes
-                }
+                futures = {pool.submit(node_runner, n): n for n in ready_nodes}
 
                 for future in concurrent.futures.as_completed(futures):
                     node = futures[future]
@@ -409,4 +411,3 @@ class ParallelDAGExecutor:
             failed_nodes=list(failed_ids),
             duration_sec=time.monotonic() - t_start,
         )
-

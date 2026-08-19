@@ -1,12 +1,14 @@
 """Integration tests for Career OS Pipeline (Scraping -> ATS Scoring -> CRM)."""
+
 from __future__ import annotations
 
 import pytest
+
 from brjarvis.career.ats_engine import ATSEngine
 from brjarvis.career.crm.database import CareerCRMDatabase
 from brjarvis.career.models import ApplicationRecord, ApplicationStatus
-from tests.fixtures.sample_resumes import SAMPLE_AI_ENGINEER_RESUME
 from tests.fixtures.sample_job_descriptions import JOB_DESCRIPTION_SENIOR_AI_BACKEND
+from tests.fixtures.sample_resumes import SAMPLE_AI_ENGINEER_RESUME
 
 
 @pytest.mark.integration
@@ -24,7 +26,7 @@ def test_career_os_evaluation_and_crm_pipeline(tmp_path):
         company_name="Scale AI",
         job_title="Senior AI Backend Engineer",
         status=ApplicationStatus.MATCHED,
-        match_score=score_report.total_score
+        match_score=score_report.total_score,
     )
     crm.save_application(app)
 

@@ -1,13 +1,13 @@
 # core/terminal/theme.py — Design System & Visual Tokens for BR JARVIS CLI
 from __future__ import annotations
 
-import sys
 from typing import Dict
 
 try:
-    from rich.theme import Theme
+    from rich.box import DOUBLE, HEAVY, ROUNDED, SIMPLE, Box
     from rich.style import Style
-    from rich.box import ROUNDED, HEAVY, DOUBLE, SIMPLE, Box
+    from rich.theme import Theme
+
     HAS_RICH = True
 except ImportError:
     HAS_RICH = False
@@ -47,6 +47,7 @@ MODE_COLORS: Dict[str, str] = {
     "researcher": COLOR_ORANGE,
     "automation": COLOR_CYAN,
 }
+
 
 # ── Glyphs & Symbols ─────────────────────────────────────────────────────────
 class Glyphs:
@@ -100,41 +101,39 @@ def get_terminal_theme() -> Theme | None:
     """Generate custom Rich Theme for BR JARVIS CLI."""
     if not HAS_RICH:
         return None
-    return Theme({
-        "jarvis.primary": f"bold {COLOR_CYAN}",
-        "jarvis.secondary": COLOR_BLUE,
-        "jarvis.success": f"bold {COLOR_GREEN}",
-        "jarvis.warning": f"bold {COLOR_AMBER}",
-        "jarvis.danger": f"bold {COLOR_RED}",
-        "jarvis.accent": f"bold {COLOR_MAGENTA}",
-        "jarvis.dim": COLOR_DIM,
-        "jarvis.highlight": f"bold {COLOR_WHITE}",
-        "jarvis.teal": f"bold {COLOR_TEAL}",
-        "jarvis.orange": f"bold {COLOR_ORANGE}",
-        "jarvis.muted": COLOR_MUTED,
-
-        # Tool styles
-        "tool.name": f"bold {COLOR_CYAN}",
-        "tool.arg.key": f"{COLOR_TEAL}",
-        "tool.arg.val": f"{COLOR_WHITE}",
-        "tool.success": f"bold {COLOR_GREEN}",
-        "tool.failed": f"bold {COLOR_RED}",
-        "tool.latency": f"dim {COLOR_DIM}",
-
-        # Verification styles
-        "verify.pass": f"bold {COLOR_GREEN}",
-        "verify.fail": f"bold {COLOR_RED}",
-        "verify.evidence": f"{COLOR_DIM}",
-
-        # Prompt styles
-        "prompt.user": f"bold {COLOR_CYAN}",
-        "prompt.mode": f"bold {COLOR_AMBER}",
-        "prompt.arrow": f"bold {COLOR_TEAL}",
-
-        # Markdown & Callout styles
-        "callout.note": f"bold {COLOR_CYAN}",
-        "callout.tip": f"bold {COLOR_GREEN}",
-        "callout.warning": f"bold {COLOR_AMBER}",
-        "callout.danger": f"bold {COLOR_RED}",
-        "callout.important": f"bold {COLOR_MAGENTA}",
-    })
+    return Theme(
+        {
+            "jarvis.primary": f"bold {COLOR_CYAN}",
+            "jarvis.secondary": COLOR_BLUE,
+            "jarvis.success": f"bold {COLOR_GREEN}",
+            "jarvis.warning": f"bold {COLOR_AMBER}",
+            "jarvis.danger": f"bold {COLOR_RED}",
+            "jarvis.accent": f"bold {COLOR_MAGENTA}",
+            "jarvis.dim": COLOR_DIM,
+            "jarvis.highlight": f"bold {COLOR_WHITE}",
+            "jarvis.teal": f"bold {COLOR_TEAL}",
+            "jarvis.orange": f"bold {COLOR_ORANGE}",
+            "jarvis.muted": COLOR_MUTED,
+            # Tool styles
+            "tool.name": f"bold {COLOR_CYAN}",
+            "tool.arg.key": f"{COLOR_TEAL}",
+            "tool.arg.val": f"{COLOR_WHITE}",
+            "tool.success": f"bold {COLOR_GREEN}",
+            "tool.failed": f"bold {COLOR_RED}",
+            "tool.latency": f"dim {COLOR_DIM}",
+            # Verification styles
+            "verify.pass": f"bold {COLOR_GREEN}",
+            "verify.fail": f"bold {COLOR_RED}",
+            "verify.evidence": f"{COLOR_DIM}",
+            # Prompt styles
+            "prompt.user": f"bold {COLOR_CYAN}",
+            "prompt.mode": f"bold {COLOR_AMBER}",
+            "prompt.arrow": f"bold {COLOR_TEAL}",
+            # Markdown & Callout styles
+            "callout.note": f"bold {COLOR_CYAN}",
+            "callout.tip": f"bold {COLOR_GREEN}",
+            "callout.warning": f"bold {COLOR_AMBER}",
+            "callout.danger": f"bold {COLOR_RED}",
+            "callout.important": f"bold {COLOR_MAGENTA}",
+        }
+    )

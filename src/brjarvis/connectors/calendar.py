@@ -4,22 +4,20 @@ Google Calendar & Task Management Connector for BR JARVIS.
 Integrates with Google Calendar API and local calendar engine to schedule events,
 list upcoming meetings, and search event schedules.
 """
+
 from __future__ import annotations
 
-import json
 import logging
-import os
-from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from brjarvis.actions.calendar_engine import get_calendar_engine
+
 from .base import BaseConnector, ConnectorTool
 
 logger = logging.getLogger("JARVIS.Connectors.Calendar")
 
 
 class CalendarConnector(BaseConnector):
-
     @property
     def connector_id(self) -> str:
         return "calendar"
@@ -57,11 +55,18 @@ class CalendarConnector(BaseConnector):
                     "type": "object",
                     "properties": {
                         "title": {"type": "string", "description": "Title or task summary"},
-                        "start_time": {"type": "string", "description": "Start time (e.g. 'tomorrow 3pm', '2026-08-01 10:00')"},
+                        "start_time": {
+                            "type": "string",
+                            "description": "Start time (e.g. 'tomorrow 3pm', '2026-08-01 10:00')",
+                        },
                         "end_time": {"type": "string", "description": "Optional end time"},
                         "description": {"type": "string", "description": "Optional event details/notes"},
                         "location": {"type": "string", "description": "Optional event location or meeting URL"},
-                        "reminder_minutes": {"type": "integer", "description": "Reminder alert in minutes", "default": 15},
+                        "reminder_minutes": {
+                            "type": "integer",
+                            "description": "Reminder alert in minutes",
+                            "default": 15,
+                        },
                     },
                     "required": ["title", "start_time"],
                 },
@@ -83,7 +88,10 @@ class CalendarConnector(BaseConnector):
                 parameters={
                     "type": "object",
                     "properties": {
-                        "query": {"type": "string", "description": "Keyword to search for in event titles/descriptions"},
+                        "query": {
+                            "type": "string",
+                            "description": "Keyword to search for in event titles/descriptions",
+                        },
                     },
                     "required": ["query"],
                 },
@@ -119,8 +127,10 @@ class CalendarConnector(BaseConnector):
                 reminder_minutes=int(args.get("reminder_minutes") or 15),
             )
             if res.get("success"):
-                loc_str = f" @ {res['location']}" if res.get('location') else ""
-                return f"📅 Event Created! #{res['event_id']}: '{res['title']}' starting at {res['start_time']}{loc_str}."
+                loc_str = f" @ {res['location']}" if res.get("location") else ""
+                return (
+                    f"📅 Event Created! #{res['event_id']}: '{res['title']}' starting at {res['start_time']}{loc_str}."
+                )
             return f"Failed to create event: {res.get('error', 'Unknown error')}"
 
         elif norm_tool in ("list_events", "list", "upcoming", "events", "agenda"):
@@ -136,7 +146,7 @@ class CalendarConnector(BaseConnector):
             lines = [f"📅 **Upcoming Calendar Events (Next {days} days):**"]
             for ev in events:
                 eid = ev.get("id") or ev.get("event_id")
-                loc = f" (Location: {ev['location']})" if ev.get('location') else ""
+                loc = f" (Location: {ev['location']})" if ev.get("location") else ""
                 lines.append(f"• #{eid} **{ev['title']}** — {ev['start_time']}{loc}")
             return "\n".join(lines)
 

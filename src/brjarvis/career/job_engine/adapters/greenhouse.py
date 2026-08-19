@@ -3,14 +3,13 @@ from __future__ import annotations
 
 import json
 import logging
-import re
 import time
 import urllib.request
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 
-from .base import BasePlatformAdapter
+from ...models import ApplicationQuestion, JobPosting, PlatformPolicy, PlatformPolicyState
 from ..models import SearchFilters
-from ...models import ApplicationPackage, ApplicationQuestion, JobPosting, PlatformPolicy, PlatformPolicyState
+from .base import BasePlatformAdapter
 
 logger = logging.getLogger("JARVIS.GreenhouseAdapter")
 
@@ -51,7 +50,9 @@ class GreenhouseAdapter(BasePlatformAdapter):
                 for bj in board_jobs:
                     # Filter by keywords
                     title = bj.title.lower()
-                    if filters.keywords and not any(kw.lower() in title or kw.lower() in bj.description.lower() for kw in filters.keywords):
+                    if filters.keywords and not any(
+                        kw.lower() in title or kw.lower() in bj.description.lower() for kw in filters.keywords
+                    ):
                         continue
                     if filters.target_roles and not any(tr.lower() in title for tr in filters.target_roles):
                         continue
@@ -65,7 +66,7 @@ class GreenhouseAdapter(BasePlatformAdapter):
         if not jobs:
             jobs.extend(self._get_verified_benchmark_postings(filters))
 
-        return jobs[:filters.limit]
+        return jobs[: filters.limit]
 
     def get_job_details(self, job_id: str, url: Optional[str] = None) -> Optional[JobPosting]:
         """Retrieve job posting details."""
@@ -153,20 +154,26 @@ class GreenhouseAdapter(BasePlatformAdapter):
                 content = rj.get("content", "")
                 app_url = rj.get("absolute_url", f"https://boards.greenhouse.io/{board_token}/jobs/{rj.get('id')}")
 
-                results.append(JobPosting(
-                    job_id=j_id,
-                    source="greenhouse",
-                    platform="Greenhouse",
-                    company=board_token.capitalize(),
-                    title=title,
-                    location=loc,
-                    remote_type="remote" if "remote" in loc.lower() else "hybrid" if "hybrid" in loc.lower() else "onsite",
-                    employment_type="Full-time",
-                    salary="",
-                    description=content[:2000],
-                    application_url=app_url,
-                    posted_date=rj.get("updated_at", ""),
-                ))
+                results.append(
+                    JobPosting(
+                        job_id=j_id,
+                        source="greenhouse",
+                        platform="Greenhouse",
+                        company=board_token.capitalize(),
+                        title=title,
+                        location=loc,
+                        remote_type="remote"
+                        if "remote" in loc.lower()
+                        else "hybrid"
+                        if "hybrid" in loc.lower()
+                        else "onsite",
+                        employment_type="Full-time",
+                        salary="",
+                        description=content[:2000],
+                        application_url=app_url,
+                        posted_date=rj.get("updated_at", ""),
+                    )
+                )
             return results
 
     def _get_verified_benchmark_postings(self, filters: SearchFilters) -> List[JobPosting]:

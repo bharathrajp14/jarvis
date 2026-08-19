@@ -3,6 +3,7 @@
 Canonical Universal Tool Execution Runtime for BR JARVIS MK40.2 / MK41.
 The single authoritative execution lifecycle for all capabilities, tools, and actions.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -190,12 +191,15 @@ class ToolRuntime:
         # ── Stage 4: Prompt Injection Preflight ──
         try:
             from brjarvis.guardian.prompt_injection_shield import check_prompt_injection
+
             for arg_k, arg_v in normalized_args.items():
                 if isinstance(arg_v, str) and len(arg_v) > 30:
                     is_inj, reason = check_prompt_injection(arg_v)
                     if is_inj:
                         duration_ms = (time.perf_counter() - t0) * 1000.0
-                        logger.warning(f"🛡️ Security Alert: Injection pattern in '{canonical_name}' arg '{arg_k}': {reason}")
+                        logger.warning(
+                            f"🛡️ Security Alert: Injection pattern in '{canonical_name}' arg '{arg_k}': {reason}"
+                        )
                         return ToolResult.blocked(
                             tool_name=canonical_name,
                             reason=f"Security Alert: Blocked by prompt injection defense in argument '{arg_k}'.",
@@ -212,7 +216,9 @@ class ToolRuntime:
             RiskLevel.CRITICAL: SecRiskLevel.CRITICAL,
         }
         sec_risk = risk_map.get(tool_def.risk_level, SecRiskLevel.LOW)
-        resource_target = str(normalized_args.get("path") or normalized_args.get("url") or normalized_args.get("recipient") or "")
+        resource_target = str(
+            normalized_args.get("path") or normalized_args.get("url") or normalized_args.get("recipient") or ""
+        )
 
         policy_decision = evaluate_action_policy(
             action=canonical_name,
@@ -233,12 +239,9 @@ class ToolRuntime:
             )
 
         # ── Stage 6: Human Approval Interlock ──
-        is_allow_all = (
-            policy_decision in (ActionDecision.ALLOW, ActionDecision.ALLOW_FOR_SESSION)
-            and (
-                PERMISSIONS.mode == PermissionMode.ALLOW_ALL
-                or os.environ.get("JARVIS_PERMISSION_MODE", "").strip().lower() in ("auto", "allow_all")
-            )
+        is_allow_all = policy_decision in (ActionDecision.ALLOW, ActionDecision.ALLOW_FOR_SESSION) and (
+            PERMISSIONS.mode == PermissionMode.ALLOW_ALL
+            or os.environ.get("JARVIS_PERMISSION_MODE", "").strip().lower() in ("auto", "allow_all")
         )
         protected_permission = tool_def.permission_required.strip().upper() != "PUBLIC_READ"
         needs_approval = (not is_allow_all) and (
@@ -253,6 +256,7 @@ class ToolRuntime:
             if task_id:
                 try:
                     from brjarvis.agent.task_state import get_task_state_manager
+
                     get_task_state_manager().request_approval(
                         task_id=task_id,
                         action_id=step_id or inv_id,
@@ -273,6 +277,7 @@ class ToolRuntime:
         if tool_def.is_read_only and tool_def.cache_policy != CachePolicy.NO_CACHE:
             try:
                 from brjarvis.memory.unified_memory import get_unified_memory
+
                 mem = get_unified_memory()
                 cached = mem.get_cached_tool_result(canonical_name, normalized_args)
                 if cached is not None:
@@ -291,11 +296,13 @@ class ToolRuntime:
 
         # ── Stage 8: Publish Start Telemetry Event ──
         try:
-            get_event_bus().publish(ToolExecutionEvent(
-                topic="tool.exec.start",
-                tool_name=canonical_name,
-                args=normalized_args,
-            ))
+            get_event_bus().publish(
+                ToolExecutionEvent(
+                    topic="tool.exec.start",
+                    tool_name=canonical_name,
+                    args=normalized_args,
+                )
+            )
         except Exception:
             pass
 
@@ -307,8 +314,12 @@ class ToolRuntime:
             if inspect.iscoroutinefunction(handler):
                 raw_res = await asyncio.wait_for(handler(normalized_args), timeout=tool_def.timeout_sec)
             else:
-                # Run synchronous handlers in thread pool to prevent event loop blocking
-                raw_res = await asyncio.to_thread(self._invoke_sync_handler, handler, normalized_args)
+                # Run synchronous handlers in a worker thread, but keep the
+                # awaitable bounded by the same contract as async handlers.
+                raw_res = await asyncio.wait_for(
+                    asyncio.to_thread(self._invoke_sync_handler, handler, normalized_args),
+                    timeout=tool_def.timeout_sec,
+                )
 
         except asyncio.TimeoutError:
             duration_ms = (time.perf_counter() - t0) * 1000.0
@@ -345,7 +356,10 @@ class ToolRuntime:
         if tool_def.is_read_only and result_obj.success:
             try:
                 from brjarvis.memory.unified_memory import get_unified_memory
-                get_unified_memory().cache_tool_result(canonical_name, normalized_args, result_obj.data, ttl=tool_def.cache_ttl_seconds)
+
+                get_unified_memory().cache_tool_result(
+                    canonical_name, normalized_args, result_obj.data, ttl=tool_def.cache_ttl_seconds
+                )
             except Exception:
                 pass
         elif not tool_def.is_read_only and result_obj.success:
@@ -356,14 +370,16 @@ class ToolRuntime:
         self._record_ledger_and_wal(result_obj, task_id=task_id, step_id=step_id, parameters=normalized_args)
 
         try:
-            get_event_bus().publish(ToolExecutionEvent(
-                topic="tool.exec.completed" if result_obj.success else "tool.exec.failed",
-                tool_name=canonical_name,
-                args=normalized_args,
-                success=result_obj.success,
-                result=result_obj.output,
-                duration_ms=duration_ms,
-            ))
+            get_event_bus().publish(
+                ToolExecutionEvent(
+                    topic="tool.exec.completed" if result_obj.success else "tool.exec.failed",
+                    tool_name=canonical_name,
+                    args=normalized_args,
+                    success=result_obj.success,
+                    result=result_obj.output,
+                    duration_ms=duration_ms,
+                )
+            )
         except Exception:
             pass
 
@@ -391,6 +407,7 @@ class ToolRuntime:
         if loop is not None and loop.is_running():
             # Current thread has a running event loop. Execute on dedicated worker thread.
             import concurrent.futures
+
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
                 future = pool.submit(
                     asyncio.run,
@@ -403,7 +420,7 @@ class ToolRuntime:
                         device=device,
                         application=application,
                         confirmed=confirmed,
-                    )
+                    ),
                 )
                 return future.result()
         else:
@@ -460,6 +477,7 @@ class ToolRuntime:
 
         try:
             from brjarvis.agent.verifier import ActionVerifier
+
             v_res = ActionVerifier.verify_action(tool_def.name, args, str_output)
             verified = v_res.verified
             evidence = v_res.evidence or v_res.details
@@ -475,7 +493,9 @@ class ToolRuntime:
             logger.debug(f"Verification pass note: {ver_err}")
 
         # Construct physical Observation object
-        subject_target = str(args.get("path") or args.get("url") or args.get("recipient") or args.get("app_name") or tool_def.name)
+        subject_target = str(
+            args.get("path") or args.get("url") or args.get("recipient") or args.get("app_name") or tool_def.name
+        )
         obs = Observation(
             subject=subject_target,
             property="execution_state",
@@ -504,6 +524,7 @@ class ToolRuntime:
         """Invalidate affected read caches on mutation."""
         try:
             from brjarvis.memory.unified_memory import get_unified_memory
+
             mem = get_unified_memory()
             if tool_def.category == ToolCategory.FILESYSTEM:
                 mem.invalidate_tool_cache("file_read")
@@ -519,9 +540,9 @@ class ToolRuntime:
 
     def _record_metrics(self, tool_name: str, success: bool, duration_ms: float):
         """Record operational telemetry for the tool."""
-        m = self._metrics.setdefault(tool_name, {
-            "calls": 0, "successes": 0, "failures": 0, "total_duration_ms": 0.0, "avg_duration_ms": 0.0
-        })
+        m = self._metrics.setdefault(
+            tool_name, {"calls": 0, "successes": 0, "failures": 0, "total_duration_ms": 0.0, "avg_duration_ms": 0.0}
+        )
         m["calls"] += 1
         if success:
             m["successes"] += 1
@@ -543,6 +564,7 @@ class ToolRuntime:
 
         try:
             from brjarvis.agent.execution_ledger import LedgerEntry, LedgerStatus, get_execution_ledger
+
             ledger = get_execution_ledger()
             status_map = {
                 ToolExecutionStatus.SUCCESS: LedgerStatus.SUCCESS,
@@ -574,6 +596,7 @@ class ToolRuntime:
 
         try:
             from brjarvis.agent.task_state import get_task_state_manager
+
             state_mgr = get_task_state_manager()
             state_mgr.record_step_wal(
                 task_id=task_id,

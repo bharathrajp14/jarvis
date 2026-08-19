@@ -3,10 +3,12 @@
 Dedicated CriticAgent that reviews execution plans, step outputs, and tool responses
 to prevent hallucinated completions and enforce output accuracy.
 """
+
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
+
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger("JARVIS.CriticAgent")
@@ -55,7 +57,7 @@ class CriticAgent:
         # Check for explicit failure messages
         error_keywords = ["exception", "traceback", "commandnotfoundexception", "permissiondenied"]
         if any(kw in clean_output.lower() for kw in error_keywords):
-            criticisms.append(f"Output contains execution error keywords.")
+            criticisms.append("Output contains execution error keywords.")
             return CritiqueResult(
                 is_valid=False,
                 quality_score=0.3,

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import asdict, dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from .models import CareerProfile, JobPosting
 
@@ -57,41 +57,43 @@ class InterviewPrepGenerator:
         star_stories = []
         for exp in profile.experience[:2]:
             metric = exp.metrics[0] if exp.metrics else "delivered high-availability production architecture"
-            star_stories.append(STARStory(
-                title=f"Architecting Autonomous Control at {exp.company}",
-                situation=f"At {exp.company}, we faced complex real-time execution and agent reliability requirements.",
-                task="Ensure 100% deterministic physical side-effect verification and sub-200ms latency across 260+ tools.",
-                action="Constructed the Universal Execution Runtime, integrated fail-closed permission evaluation, and built dual-channel Silero VAD audio streams.",
-                result=f"Achieved {metric} with zero false-success reports across all tool actions.",
-                technologies=exp.technologies[:5],
-            ))
+            star_stories.append(
+                STARStory(
+                    title=f"Architecting Autonomous Control at {exp.company}",
+                    situation=f"At {exp.company}, we faced complex real-time execution and agent reliability requirements.",
+                    task="Ensure 100% deterministic physical side-effect verification and sub-200ms latency across 260+ tools.",
+                    action="Constructed the Universal Execution Runtime, integrated fail-closed permission evaluation, and built dual-channel Silero VAD audio streams.",
+                    result=f"Achieved {metric} with zero false-success reports across all tool actions.",
+                    technologies=exp.technologies[:5],
+                )
+            )
 
         # Role-specific Technical Questions
         tech_questions = [
             {
                 "question": f"How do you design deterministic verification gates for autonomous tool execution in a system like {co}'s?",
-                "talking_point": "Discuss the fail-closed TaskCompletionGate, physical file/process inspection, and why LLM return values alone are not proof."
+                "talking_point": "Discuss the fail-closed TaskCompletionGate, physical file/process inspection, and why LLM return values alone are not proof.",
             },
             {
                 "question": "How do you handle multi-step agent recovery when external APIs or browser operations fail?",
-                "talking_point": "Explain exponential backoff with jitter, sandbox jail isolation, and interactive manual handoff when anti-bot barriers are detected."
+                "talking_point": "Explain exponential backoff with jitter, sandbox jail isolation, and interactive manual handoff when anti-bot barriers are detected.",
             },
             {
                 "question": "How do you structure hierarchical memory for long-running agentic workflows?",
-                "talking_point": "Detail the 7-tier memory architecture (L0 scratchpad to L6 experience replay) with decay-weighted semantic vector retrieval."
-            }
+                "talking_point": "Detail the 7-tier memory architecture (L0 scratchpad to L6 experience replay) with decay-weighted semantic vector retrieval.",
+            },
         ]
 
         # Behavioral Questions
         behavioral_questions = [
             {
                 "question": "Tell me about a time you identified a critical architectural flaw before production release.",
-                "talking_point": "Discuss how you caught sandbox path exposure and race conditions in browser contexts, resolving them with thread-safe async locks."
+                "talking_point": "Discuss how you caught sandbox path exposure and race conditions in browser contexts, resolving them with thread-safe async locks.",
             },
             {
                 "question": "How do you prioritize technical excellence against rapid feature delivery?",
-                "talking_point": "Emphasize writing automated deterministic test suites and robust static verification rather than accumulating tech debt."
-            }
+                "talking_point": "Emphasize writing automated deterministic test suites and robust static verification rather than accumulating tech debt.",
+            },
         ]
 
         # Company Research Points

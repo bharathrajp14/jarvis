@@ -3,18 +3,19 @@
 Append-only Audit Log for autonomous actions, self-upgrades, and routing shifts.
 Includes automatic log file rotation.
 """
+
 from __future__ import annotations
 
-import logging
 import json
+import logging
 import time
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
 AUDIT_LOG_FILE = Path("workspace/logs/autonomy_audit.jsonl")
-_MAX_BYTES = 5 * 1024 * 1024   # 5 MB per audit log
-_MAX_ROTATIONS = 3             # keep up to 3 rotated log files
+_MAX_BYTES = 5 * 1024 * 1024  # 5 MB per audit log
+_MAX_ROTATIONS = 3  # keep up to 3 rotated log files
 
 
 class AuditLog:
@@ -39,8 +40,9 @@ class AuditLog:
                 target.unlink()
             AUDIT_LOG_FILE.rename(target)
         except Exception as e:
-            logger.exception('Boot critical exception encountered in guardian/audit_log.py')
+            logger.exception("Boot critical exception encountered in guardian/audit_log.py")
             raise e
+
     @classmethod
     def log(
         cls,
@@ -66,7 +68,7 @@ class AuditLog:
             with open(AUDIT_LOG_FILE, "a", encoding="utf-8") as f:
                 f.write(json.dumps(record) + "\n")
         except Exception as e:
-            logger.exception('Boot critical exception encountered in guardian/audit_log.py')
+            logger.exception("Boot critical exception encountered in guardian/audit_log.py")
             raise e
         return record
 
@@ -84,6 +86,6 @@ class AuditLog:
                     if line:
                         records.append(json.loads(line))
         except Exception as e:
-            logger.exception('Boot critical exception encountered in guardian/audit_log.py')
+            logger.exception("Boot critical exception encountered in guardian/audit_log.py")
             raise e
         return records

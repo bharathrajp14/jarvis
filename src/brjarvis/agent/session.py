@@ -3,16 +3,14 @@
 Canonical Agent Session state model for BR JARVIS.
 The single authoritative state container shared across CLI, Web, Voice, Desktop, and API clients.
 """
+
 from __future__ import annotations
 
-import json
 import logging
-import os
 import time
 import uuid
 from dataclasses import asdict, dataclass, field
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Union
+from typing import Any, Dict, List, Optional, Union
 
 from brjarvis.contracts.session import SessionState
 from brjarvis.core.paths import paths
@@ -20,8 +18,6 @@ from brjarvis.events.bus import get_event_bus
 from brjarvis.events.types import SessionLifecycleEvent
 from brjarvis.memory.canonical_db import get_canonical_db
 from brjarvis.security.permission_request import (
-    PermissionDecision,
-    PermissionManager,
     PermissionRequest,
     get_permission_manager,
 )
@@ -49,6 +45,7 @@ class SessionTurn:
 @dataclass
 class AgentSession:
     """The canonical stateful agent session unit for BR JARVIS."""
+
     session_id: str = field(default_factory=lambda: f"sess-{uuid.uuid4().hex[:8]}")
     session_name: str = ""
     working_directory: str = field(default_factory=lambda: str(paths.PROJECT_ROOT))
@@ -89,15 +86,17 @@ class AgentSession:
 
     def _publish_session_event(self, action: str) -> None:
         try:
-            get_event_bus().publish(SessionLifecycleEvent(
-                topic=f"session.{action}",
-                session_id=self.session_id,
-                action=action,
-                mode=self.current_mode,
-                active_model=self.active_model,
-                turns_count=len(self.turns),
-                correlation_id=self.correlation_id,
-            ))
+            get_event_bus().publish(
+                SessionLifecycleEvent(
+                    topic=f"session.{action}",
+                    session_id=self.session_id,
+                    action=action,
+                    mode=self.current_mode,
+                    active_model=self.active_model,
+                    turns_count=len(self.turns),
+                    correlation_id=self.correlation_id,
+                )
+            )
         except Exception as e:
             logger.debug("Session event emission note: %s", e)
 
@@ -201,11 +200,13 @@ class AgentSession:
 
     def clear_active_task(self) -> None:
         if self.active_task_id:
-            self.task_history.append({
-                "task_id": self.active_task_id,
-                "label": self.active_task_label,
-                "completed_at": time.time(),
-            })
+            self.task_history.append(
+                {
+                    "task_id": self.active_task_id,
+                    "label": self.active_task_label,
+                    "completed_at": time.time(),
+                }
+            )
         self.active_task_id = None
         self.active_task_label = None
         self.updated_at = time.time()
@@ -231,12 +232,14 @@ class AgentSession:
             self.active_plan = {"goal": "Dynamic Plan", "steps": []}
         steps = self.active_plan.setdefault("steps", [])
         new_step_num = len(steps) + 1
-        steps.append({
-            "step": new_step_num,
-            "description": description,
-            "tool": tool,
-            "status": "pending",
-        })
+        steps.append(
+            {
+                "step": new_step_num,
+                "description": description,
+                "tool": tool,
+                "status": "pending",
+            }
+        )
         self.updated_at = time.time()
         return new_step_num
 
@@ -437,6 +440,7 @@ class AgentSession:
             logger.debug("Session canonical DB persistence note: %s", e)
         try:
             from brjarvis.history.session_store import SessionStore
+
             store = SessionStore()
             store.save_session(self.session_id, self.to_dict())
         except Exception:
@@ -512,6 +516,7 @@ def get_or_create_session(
     if session_id:
         try:
             from brjarvis.history.session_store import SessionStore
+
             store = SessionStore()
             saved = store.get_session(session_id)
             if saved:
@@ -556,4 +561,3 @@ def delete_session(session_id: str) -> bool:
 
 def reset_active_session() -> None:
     _SESSION_CACHE.clear()
-

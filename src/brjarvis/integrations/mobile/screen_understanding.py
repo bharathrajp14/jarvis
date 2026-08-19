@@ -4,11 +4,12 @@ Multimodal Android Screen Understanding Engine for BR JARVIS MK37.
 Combines Accessibility Tree hierarchy + OCR text layout + Vision models to locate
 and interact with UI controls semantically without hardcoded screen coordinates.
 """
+
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from dataclasses import dataclass
+from typing import List, Optional, Tuple
 
 from .protocol import AccessibilityNode
 
@@ -45,11 +46,7 @@ class MobileScreenUnderstanding:
         return nodes
 
     def find_element(
-        self,
-        root: AccessibilityNode,
-        query: str,
-        class_name_filter: Optional[str] = None,
-        clickable_only: bool = False
+        self, root: AccessibilityNode, query: str, class_name_filter: Optional[str] = None, clickable_only: bool = False
     ) -> Optional[UIElementMatch]:
         """Find best matching UI element by text, description, or resource ID."""
         q = query.lower().strip()
@@ -105,11 +102,13 @@ class MobileScreenUnderstanding:
                     bounds=b,
                     center=(center_x, center_y),
                     confidence=score,
-                    match_source=source
+                    match_source=source,
                 )
 
         if best_match and best_score >= 0.7:
-            logger.info("Found UI element '%s' (score=%.2f, source=%s)", best_match.text, best_score, best_match.match_source)
+            logger.info(
+                "Found UI element '%s' (score=%.2f, source=%s)", best_match.text, best_score, best_match.match_source
+            )
             return best_match
 
         return None
@@ -122,7 +121,7 @@ class MobileScreenUnderstanding:
             label = (n.text or n.content_description or "").strip()
             if label:
                 kind = "Button" if n.is_clickable else ("Input" if n.is_editable else "Text")
-                lines.append(f"- [{kind}] \"{label}\" (id: {n.node_id})")
+                lines.append(f'- [{kind}] "{label}" (id: {n.node_id})')
         return "\n".join(lines[:40]) if lines else "Empty or blank screen."
 
 

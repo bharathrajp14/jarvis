@@ -41,18 +41,21 @@ class AddContactRequest(BaseModel):
 async def list_memories(scope: str = "all"):
     """List persistent memories."""
     from brjarvis.memory.persistent_store import load_entries
+
     scopes = ["user", "project"] if scope == "all" else [scope]
     entries = []
     for s in scopes:
         for e in load_entries(s):
-            entries.append({
-                "name": e.name,
-                "description": e.description,
-                "type": e.type,
-                "content": e.content,
-                "scope": e.scope,
-                "created": e.created
-            })
+            entries.append(
+                {
+                    "name": e.name,
+                    "description": e.description,
+                    "type": e.type,
+                    "content": e.content,
+                    "scope": e.scope,
+                    "created": e.created,
+                }
+            )
     return {"memories": entries}
 
 
@@ -60,6 +63,7 @@ async def list_memories(scope: str = "all"):
 async def save_memory_entry(req: SaveMemoryRequest):
     """Save/update a persistent memory entry."""
     from brjarvis.memory.persistent_store import MemoryEntry, save_memory
+
     entry = MemoryEntry(
         name=req.name,
         description=req.description,
@@ -75,6 +79,7 @@ async def save_memory_entry(req: SaveMemoryRequest):
 async def delete_memory_entry(name: str, scope: str = "user"):
     """Delete a persistent memory entry."""
     from brjarvis.memory.persistent_store import delete_memory
+
     delete_memory(name, scope=scope)
     return {"message": f"Memory '{name}' deleted successfully."}
 
@@ -83,6 +88,7 @@ async def delete_memory_entry(name: str, scope: str = "user"):
 async def get_contacts_endpoint(query: str = Query("", description="Search filter query")):
     """Get contacts list from UnifiedContactStore with optional search filter."""
     from brjarvis.memory.contact_manager import get_contact_store
+
     store = get_contact_store()
     results = store.search_contacts(query) if query else store.get_all_contacts()
     return {"total": len(results), "contacts": results}
@@ -92,6 +98,7 @@ async def get_contacts_endpoint(query: str = Query("", description="Search filte
 async def add_contact_endpoint(req: AddContactRequest):
     """Add a new contact directly to the UnifiedContactStore."""
     from brjarvis.memory.contact_manager import get_contact_store
+
     store = get_contact_store()
     try:
         result = store.add_contact(
@@ -113,6 +120,7 @@ async def import_contacts_endpoint(
 ):
     """Import contacts from uploaded .vcf/.csv file or file path."""
     from brjarvis.memory.contact_manager import get_contact_store
+
     store = get_contact_store()
 
     if file:
@@ -180,7 +188,7 @@ async def remember_note(req: RememberRequest):
 
         words = text.split()
         title_slug = "_".join(words[:4]).lower() if words else "note"
-        title_slug = re.sub(r'[^a-z0-9_]', '', title_slug) or "capture"
+        title_slug = re.sub(r"[^a-z0-9_]", "", title_slug) or "capture"
 
         captures_dir = paths.CAPTURE_ROOT
         captures_dir.mkdir(parents=True, exist_ok=True)
@@ -192,6 +200,7 @@ async def remember_note(req: RememberRequest):
         filepath.write_text(content, encoding="utf-8")
 
         from brjarvis.actions.rag_library import scan_markdown_notes
+
         graph_data = scan_markdown_notes(str(_BASE_DIR))
         new_node_index = len(graph_data["nodes"]) - 1
 
@@ -202,7 +211,7 @@ async def remember_note(req: RememberRequest):
             "filename": filename,
             "node_index": new_node_index,
             "graph": graph_data,
-            "confirmation": confirmation
+            "confirmation": confirmation,
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -213,6 +222,7 @@ async def get_galaxy_data():
     """Return 3D Knowledge Galaxy nodes and links from scanned notes."""
     try:
         from brjarvis.actions.rag_library import scan_markdown_notes
+
         return scan_markdown_notes(str(_BASE_DIR))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

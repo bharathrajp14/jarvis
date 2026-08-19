@@ -5,6 +5,7 @@ Executes code in an isolated subprocess jail with strict environment filtering,
 automatic dependency preflight, virtual environment resolution, and timeout protection.
 Cross-platform: Windows, Linux, macOS.
 """
+
 from __future__ import annotations
 
 import logging

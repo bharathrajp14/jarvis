@@ -46,7 +46,7 @@ async def create_agent_routine(req: CreateRoutineRequest):
         trigger_config=req.trigger_config,
         skill_name=req.skill_name,
         target_device=req.target_device,
-        requires_approval=req.requires_approval
+        requires_approval=req.requires_approval,
     )
     return {"status": "created", "routine": r.to_dict()}
 

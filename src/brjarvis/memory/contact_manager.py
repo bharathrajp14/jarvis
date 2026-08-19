@@ -15,18 +15,17 @@ Provides:
 - Privacy log masking (phone/email anonymization helpers)
 - Atomic file writes & thread safety
 """
+
 from __future__ import annotations
 
-import logging
 import base64
 import csv
 import hashlib
 import hmac
 import json
+import logging
 import os
-import quopri
 import re
-import sys
 from pathlib import Path
 from threading import RLock
 from typing import Any, Dict, List, Optional
@@ -35,6 +34,7 @@ logger = logging.getLogger(__name__)
 
 
 from brjarvis.core.paths import paths
+
 
 def get_base_dir() -> Path:
     return paths.PROJECT_ROOT
@@ -103,6 +103,7 @@ class ContactCipher:
         self._fernet = None
         try:
             from cryptography.fernet import Fernet
+
             if len(key_bytes) != 44:
                 derived = base64.urlsafe_b64encode(hashlib.sha256(key_bytes).digest())
                 self._fernet = Fernet(derived)
@@ -118,14 +119,14 @@ class ContactCipher:
 
         salt = os.urandom(16)
         master = hashlib.sha256(self.key_bytes + salt).digest()
-        
+
         ks = bytearray()
         counter = 0
         while len(ks) < len(data):
             ks.extend(hashlib.sha256(master + counter.to_bytes(4, "big")).digest())
             counter += 1
 
-        ks_bytes = ks[:len(data)]
+        ks_bytes = ks[: len(data)]
         cipher_int = int.from_bytes(data, "big") ^ int.from_bytes(ks_bytes, "big")
         cipher_bytes = cipher_int.to_bytes(len(data), "big")
 
@@ -143,7 +144,7 @@ class ContactCipher:
             salt = enc_bytes[4:20]
             tag = enc_bytes[20:52]
             cipher_bytes = enc_bytes[52:]
-            
+
             master = hashlib.sha256(self.key_bytes + salt).digest()
             expected_tag = hmac.new(master, cipher_bytes, hashlib.sha256).digest()
             if not hmac.compare_digest(tag, expected_tag):
@@ -155,7 +156,7 @@ class ContactCipher:
                 ks.extend(hashlib.sha256(master + counter.to_bytes(4, "big")).digest())
                 counter += 1
 
-            ks_bytes = ks[:len(cipher_bytes)]
+            ks_bytes = ks[: len(cipher_bytes)]
             plain_int = int.from_bytes(cipher_bytes, "big") ^ int.from_bytes(ks_bytes, "big")
             plain_bytes = plain_int.to_bytes(len(cipher_bytes), "big")
             return plain_bytes.decode("utf-8")
@@ -169,7 +170,7 @@ class ContactCipher:
             while len(ks) < len(cipher_bytes):
                 ks.extend(hashlib.sha256(master + counter.to_bytes(4, "big")).digest())
                 counter += 1
-            ks_bytes = ks[:len(cipher_bytes)]
+            ks_bytes = ks[: len(cipher_bytes)]
             plain_int = int.from_bytes(cipher_bytes, "big") ^ int.from_bytes(ks_bytes, "big")
             plain_bytes = plain_int.to_bytes(len(cipher_bytes), "big")
             return plain_bytes.decode("utf-8", errors="replace")
@@ -199,7 +200,11 @@ def parse_vcard_stream(text: str) -> List[Dict[str, Any]]:
         if in_photo:
             if raw_line.startswith(" ") or raw_line.startswith("\t"):
                 continue
-            if ":" not in raw_line and not raw_line.upper().startswith("BEGIN:") and not raw_line.upper().startswith("END:"):
+            if (
+                ":" not in raw_line
+                and not raw_line.upper().startswith("BEGIN:")
+                and not raw_line.upper().startswith("END:")
+            ):
                 continue
             in_photo = False
 
@@ -350,7 +355,7 @@ class UnifiedContactStore:
             try:
                 raw_json = json.dumps(self._contacts, ensure_ascii=False)
                 encrypted_bytes = self.cipher.encrypt(raw_json)
-                
+
                 try:
                     self.storage_path.write_bytes(encrypted_bytes)
                 except PermissionError:
@@ -405,10 +410,18 @@ class UnifiedContactStore:
         norm_phone = self.normalize_phone(phone_number) or existing.get("phone_number", "")
         norm_email = email.strip() or existing.get("email", "")
 
-        phones_list = list(set((existing.get("all_phones", []) or []) + [norm_phone] + [self.normalize_phone(p) for p in (all_phones or [])]))
+        phones_list = list(
+            set(
+                (existing.get("all_phones", []) or [])
+                + [norm_phone]
+                + [self.normalize_phone(p) for p in (all_phones or [])]
+            )
+        )
         phones_list = [p for p in phones_list if p]
 
-        emails_list = list(set((existing.get("all_emails", []) or []) + [norm_email] + [e.strip() for e in (all_emails or [])]))
+        emails_list = list(
+            set((existing.get("all_emails", []) or []) + [norm_email] + [e.strip() for e in (all_emails or [])])
+        )
         emails_list = [e for e in emails_list if e]
 
         important_flag = is_important or existing.get("is_important", False) or (source == "primary_vcf")
@@ -645,9 +658,13 @@ class UnifiedContactStore:
         if q_norm_phone and len(q_norm_phone) >= 7:
             for group in (important_contacts, other_contacts):
                 for c in group:
-                    all_phones = [self.normalize_phone(p) for p in (c.get("all_phones", []) or [c.get("phone_number", "")])]
+                    all_phones = [
+                        self.normalize_phone(p) for p in (c.get("all_phones", []) or [c.get("phone_number", "")])
+                    ]
                     for c_phone in all_phones:
-                        if c_phone and (c_phone == q_norm_phone or c_phone.endswith(q_norm_phone) or q_norm_phone.endswith(c_phone)):
+                        if c_phone and (
+                            c_phone == q_norm_phone or c_phone.endswith(q_norm_phone) or q_norm_phone.endswith(c_phone)
+                        ):
                             return c
 
         # Exact name or ID match

@@ -4,13 +4,12 @@ Automated System Application Path Resolver and Configuration Engine for BR JARVI
 Automatically scans the Windows Registry, Start Menu, LocalAppData, Program Files,
 and System PATH to build an indexed, fuzzy-searchable, and persistent app_paths.json registry.
 """
+
 from __future__ import annotations
 
 import json
 import logging
 import os
-import platform
-import re
 import shutil
 import subprocess
 import sys
@@ -146,7 +145,7 @@ class ApplicationResolver:
                                         "name": subkey_name,
                                         "path": clean_path,
                                         "type": "executable",
-                                        "source": "Registry App Paths"
+                                        "source": "Registry App Paths",
                                     }
                         except Exception:
                             continue
@@ -177,7 +176,7 @@ class ApplicationResolver:
                             "name": entry.stem,
                             "path": str(entry),
                             "type": "shortcut" if entry.suffix.lower() == ".lnk" else "executable",
-                            "source": "Start Menu"
+                            "source": "Start Menu",
                         }
 
     def _scan_windows_standard_directories(self, discovered: Dict[str, Dict[str, Any]]) -> None:
@@ -208,7 +207,7 @@ class ApplicationResolver:
                                 "name": sub.stem,
                                 "path": str(sub),
                                 "type": "executable",
-                                "source": "Standard Directory"
+                                "source": "Standard Directory",
                             }
                     elif sub.is_dir():
                         for item in sub.glob("*.exe"):
@@ -218,7 +217,7 @@ class ApplicationResolver:
                                     "name": item.stem,
                                     "path": str(item),
                                     "type": "executable",
-                                    "source": "Standard Directory"
+                                    "source": "Standard Directory",
                                 }
             except Exception:
                 continue
@@ -262,7 +261,11 @@ class ApplicationResolver:
                                 if disp_name and (install_loc or disp_icon):
                                     stem = str(disp_name).lower().strip()
                                     target_path = None
-                                    if disp_icon and str(disp_icon).lower().endswith(".exe") and os.path.exists(str(disp_icon).strip('"')):
+                                    if (
+                                        disp_icon
+                                        and str(disp_icon).lower().endswith(".exe")
+                                        and os.path.exists(str(disp_icon).strip('"'))
+                                    ):
                                         target_path = str(disp_icon).strip('"')
                                     elif install_loc and os.path.isdir(str(install_loc).strip('"')):
                                         # Look for exe inside install_loc
@@ -276,7 +279,7 @@ class ApplicationResolver:
                                             "name": str(disp_name),
                                             "path": target_path,
                                             "type": "executable",
-                                            "source": "Uninstall Registry"
+                                            "source": "Uninstall Registry",
                                         }
                         except Exception:
                             continue
@@ -295,7 +298,7 @@ class ApplicationResolver:
                     "name": app.stem,
                     "path": str(app),
                     "type": "app_bundle",
-                    "source": "macOS Applications"
+                    "source": "macOS Applications",
                 }
 
     def _scan_linux_desktop_files(self, discovered: Dict[str, Dict[str, Any]]) -> None:
@@ -303,7 +306,7 @@ class ApplicationResolver:
         dirs = [
             Path("/usr/share/applications"),
             Path("/usr/local/share/applications"),
-            Path.home() / ".local/share/applications"
+            Path.home() / ".local/share/applications",
         ]
         for d in dirs:
             if not d.exists():
@@ -324,7 +327,7 @@ class ApplicationResolver:
                             "name": name,
                             "path": exec_cmd,
                             "type": "desktop_entry",
-                            "source": "Linux Desktop Entry"
+                            "source": "Linux Desktop Entry",
                         }
                 except Exception:
                     continue
@@ -411,10 +414,15 @@ class ApplicationResolver:
                     return True, f"Opened web URL '{url}' in default browser."
                 except Exception as w_err:
                     return False, f"Failed to open URL '{url}': {w_err}"
-            return False, f"Could not find or resolve executable path for '{app_query}'. Run sync_app_paths to refresh system index."
+            return (
+                False,
+                f"Could not find or resolve executable path for '{app_query}'. Run sync_app_paths to refresh system index.",
+            )
 
         target_path, target_type = resolved
-        logger.info("[AppResolver] Launching '%s' via resolved path: %s (%s, url=%s)", app_query, target_path, target_type, url)
+        logger.info(
+            "[AppResolver] Launching '%s' via resolved path: %s (%s, url=%s)", app_query, target_path, target_type, url
+        )
 
         try:
             if sys.platform == "win32":
@@ -433,20 +441,16 @@ class ApplicationResolver:
                         if url:
                             cmd.append(url)
                         subprocess.Popen(cmd, shell=False)
-                    return True, f"Launched application shortcut: '{target_path}'" + (f" with URL '{url}'" if url else "")
+                    return True, f"Launched application shortcut: '{target_path}'" + (
+                        f" with URL '{url}'" if url else ""
+                    )
 
                 # Direct executable
                 work_dir = str(Path(target_path).parent) if os.path.isfile(target_path) else None
                 cmd = [target_path]
                 if url:
                     cmd.append(url)
-                subprocess.Popen(
-                    cmd,
-                    cwd=work_dir,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL,
-                    shell=False
-                )
+                subprocess.Popen(cmd, cwd=work_dir, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, shell=False)
                 return True, f"Launched '{app_query}' ({target_path})" + (f" -> {url}" if url else "")
 
             elif sys.platform == "darwin":

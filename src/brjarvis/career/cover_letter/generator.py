@@ -4,7 +4,7 @@ from __future__ import annotations
 import logging
 import time
 from pathlib import Path
-from typing import Any, Dict, Optional, Union
+from typing import Optional, Union
 
 from ..models import CareerProfile, JobPosting
 
@@ -13,6 +13,7 @@ logger = logging.getLogger("JARVIS.CoverLetter")
 # Try FPDF for PDF export
 try:
     from fpdf import FPDF
+
     _FPDF_AVAILABLE = True
 except ImportError:
     _FPDF_AVAILABLE = False
@@ -100,7 +101,7 @@ Sincerely,
 
         paragraphs = text.strip().split("\n\n")
         for p in paragraphs:
-            clean_p = p.strip().encode('latin-1', 'replace').decode('latin-1')
+            clean_p = p.strip().encode("latin-1", "replace").decode("latin-1")
             if clean_p.startswith("•") or clean_p.startswith("-"):
                 for line in clean_p.splitlines():
                     pdf.set_font("Helvetica", "", 9.5)

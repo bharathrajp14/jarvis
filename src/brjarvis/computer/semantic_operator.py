@@ -3,12 +3,13 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Optional, Tuple
+from typing import Optional
+
+from brjarvis.vision.engine import get_vision_engine
+from brjarvis.vision.types import SemanticUIGraph, SemanticUINode, UIRole
 
 from .operator import get_computer_operator
 from .types import ActionResult, ActionType, ComputerAction
-from brjarvis.vision.engine import get_vision_engine
-from brjarvis.vision.types import SemanticUIGraph, SemanticUINode, UIRole
 
 logger = logging.getLogger("JARVIS.SemanticComputerOperator")
 
@@ -71,8 +72,7 @@ class SemanticComputerOperator:
         center_y = node.bbox.center_y
 
         logger.info(
-            f"🖱️ Resolved target '{target.component_name}' ({node.role.value}) -> "
-            f"Coordinates ({center_x}, {center_y})"
+            f"🖱️ Resolved target '{target.component_name}' ({node.role.value}) -> Coordinates ({center_x}, {center_y})"
         )
 
         action = ComputerAction(
@@ -84,18 +84,15 @@ class SemanticComputerOperator:
 
         return self.operator.execute_action(action)
 
-    def _resolve_target_node(
-        self, target: SemanticTarget, graph: SemanticUIGraph
-    ) -> Optional[SemanticUINode]:
+    def _resolve_target_node(self, target: SemanticTarget, graph: SemanticUIGraph) -> Optional[SemanticUINode]:
         """Find matching node in SemanticUIGraph with exact or fuzzy substring matching."""
         target_clean = target.component_name.lower().strip()
         matches = graph.find_by_name(target_clean)
-        
+
         # Fuzzy match fallback if exact name match returns nothing
         if not matches and graph.nodes:
             matches = [
-                n for n in graph.nodes.values() 
-                if target_clean in n.name.lower() or n.name.lower() in target_clean
+                n for n in graph.nodes.values() if target_clean in n.name.lower() or n.name.lower() in target_clean
             ]
 
         if target.role:

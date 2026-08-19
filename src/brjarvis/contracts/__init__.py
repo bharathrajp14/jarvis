@@ -3,6 +3,7 @@
 BR JARVIS MK40.2+ Canonical Contracts Package.
 Exports all typed, serializable contracts across all architectural planes.
 """
+
 from __future__ import annotations
 
 from .agent import AgentDefinition, AgentRequest, AgentResponse, AgentRole

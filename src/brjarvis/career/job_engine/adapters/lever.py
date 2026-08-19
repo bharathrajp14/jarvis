@@ -5,17 +5,16 @@ import json
 import logging
 import time
 import urllib.request
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 
-from .base import BasePlatformAdapter
-from ..models import SearchFilters
 from ...models import (
-    ApplicationPackage,
     ApplicationQuestion,
     JobPosting,
     PlatformPolicy,
     PlatformPolicyState,
 )
+from ..models import SearchFilters
+from .base import BasePlatformAdapter
 
 logger = logging.getLogger("JARVIS.LeverAdapter")
 
@@ -53,7 +52,9 @@ class LeverAdapter(BasePlatformAdapter):
                 site_jobs = self._fetch_site_postings(site)
                 for sj in site_jobs:
                     title = sj.title.lower()
-                    if filters.keywords and not any(kw.lower() in title or kw.lower() in sj.description.lower() for kw in filters.keywords):
+                    if filters.keywords and not any(
+                        kw.lower() in title or kw.lower() in sj.description.lower() for kw in filters.keywords
+                    ):
                         continue
                     if filters.target_roles and not any(tr.lower() in title for tr in filters.target_roles):
                         continue
@@ -66,7 +67,7 @@ class LeverAdapter(BasePlatformAdapter):
         if not jobs:
             jobs.extend(self._get_verified_benchmark_postings(filters))
 
-        return jobs[:filters.limit]
+        return jobs[: filters.limit]
 
     def get_job_details(self, job_id: str, url: Optional[str] = None) -> Optional[JobPosting]:
         filters = SearchFilters(limit=50)
@@ -129,20 +130,26 @@ class LeverAdapter(BasePlatformAdapter):
                 app_url = rp.get("hostedUrl", "")
                 desc = rp.get("descriptionPlain", "")
 
-                results.append(JobPosting(
-                    job_id=j_id,
-                    source="lever",
-                    platform="Lever",
-                    company=site.capitalize(),
-                    title=title,
-                    location=loc,
-                    remote_type="remote" if "remote" in loc.lower() else "hybrid" if "hybrid" in loc.lower() else "onsite",
-                    employment_type="Full-time",
-                    salary="",
-                    description=desc[:2000],
-                    application_url=app_url,
-                    posted_date=time.strftime("%Y-%m-%d"),
-                ))
+                results.append(
+                    JobPosting(
+                        job_id=j_id,
+                        source="lever",
+                        platform="Lever",
+                        company=site.capitalize(),
+                        title=title,
+                        location=loc,
+                        remote_type="remote"
+                        if "remote" in loc.lower()
+                        else "hybrid"
+                        if "hybrid" in loc.lower()
+                        else "onsite",
+                        employment_type="Full-time",
+                        salary="",
+                        description=desc[:2000],
+                        application_url=app_url,
+                        posted_date=time.strftime("%Y-%m-%d"),
+                    )
+                )
             return results
 
     def _get_verified_benchmark_postings(self, filters: SearchFilters) -> List[JobPosting]:

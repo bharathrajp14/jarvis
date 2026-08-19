@@ -1,21 +1,20 @@
 # core/terminal/commands.py — Modular Slash Command Engine for BR JARVIS CLI MK41
 from __future__ import annotations
 
-import json
 import logging
 import os
+import sys
 import time
 import uuid
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Tuple
 
-from .renderer import TerminalRenderer
-from .theme import Glyphs, MODE_COLORS, HAS_RICH
 from ..version import BUILD, CODENAME, VERSION
+from .theme import HAS_RICH, MODE_COLORS, Glyphs
 
 try:
-    from rich.table import Table
     from rich.box import ROUNDED
+    from rich.table import Table
 except ImportError:
     Table = None
     ROUNDED = None
@@ -25,29 +24,23 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger("JARVIS.TerminalCommands")
 
-VALID_MODES = [
-    "general", "coder", "analyst", "recon",
-    "exploit", "report", "planner", "researcher", "automation"
-]
+VALID_MODES = ["general", "coder", "analyst", "recon", "exploit", "report", "planner", "researcher", "automation"]
 
 # Permission mode aliases → canonical names
 PERMISSION_ALIASES = {
-    "auto":               "allow_all",
-    "allow_all":          "allow_all",
-    "plan":               "plan",
-    "accept_edits":       "accept_edits",
-    "confirm_destructive":"confirm_destructive",
-    "confirm_all":        "confirm_all",
-    "deny":               "deny_all",
-    "deny_all":           "deny_all",
+    "auto": "allow_all",
+    "allow_all": "allow_all",
+    "plan": "plan",
+    "accept_edits": "accept_edits",
+    "confirm_destructive": "confirm_destructive",
+    "confirm_all": "confirm_all",
+    "deny": "deny_all",
+    "deny_all": "deny_all",
 }
 
 
 # Safe exit command aliases
-EXIT_COMMANDS = {
-    "/quit", "/exit", "/q", "quit", "exit", "q",
-    ":q", ":quit", ":exit", "bye", "goodbye"
-}
+EXIT_COMMANDS = {"/quit", "/exit", "/q", "quit", "exit", "q", ":q", ":quit", ":exit", "bye", "goodbye"}
 
 
 class SlashCommandHandler:
@@ -79,72 +72,66 @@ class SlashCommandHandler:
             res = self._cmd_palette(args_str)
             return True if res is None else res
 
-
         dispatch_map = {
             # Core
-            "/help":         self._cmd_help,
-            "/status":       self._cmd_status,
-            "/version":      self._cmd_version,
-            "/clear":        self._cmd_clear,
-            "/config":       self._cmd_config,
-
+            "/help": self._cmd_help,
+            "/status": self._cmd_status,
+            "/version": self._cmd_version,
+            "/clear": self._cmd_clear,
+            "/config": self._cmd_config,
             # Agent & planning
-            "/mode":         lambda: self._cmd_mode(args_str),
-            "/agents":       lambda: self._cmd_mode(args_str),
-            "/model":        lambda: self._cmd_model(args_str),
-            "/models":       lambda: self._cmd_model(args_str),
-            "/plan":         lambda: self._cmd_plan(args_str),
-            "/permission":   lambda: self._cmd_permission(args_str),
-            "/permissions":  lambda: self._cmd_permission(args_str),
-            "/style":        lambda: self._cmd_style(args_str),
-            "/verbose":      lambda: self._cmd_verbose(args_str),
-            "/mouse":        lambda: self._cmd_mouse(args_str),
-            "/tui":          lambda: self._cmd_tui(args_str),
-            "/interrupt":    self._cmd_interrupt,
-
+            "/mode": lambda: self._cmd_mode(args_str),
+            "/agents": lambda: self._cmd_mode(args_str),
+            "/model": lambda: self._cmd_model(args_str),
+            "/models": lambda: self._cmd_model(args_str),
+            "/plan": lambda: self._cmd_plan(args_str),
+            "/permission": lambda: self._cmd_permission(args_str),
+            "/permissions": lambda: self._cmd_permission(args_str),
+            "/style": lambda: self._cmd_style(args_str),
+            "/verbose": lambda: self._cmd_verbose(args_str),
+            "/mouse": lambda: self._cmd_mouse(args_str),
+            "/tui": lambda: self._cmd_tui(args_str),
+            "/interrupt": self._cmd_interrupt,
             # Task lifecycle
-            "/tasks":        lambda: self._cmd_tasks(args_str),
-            "/pause":        lambda: self._cmd_pause(args_str),
-            "/resume":       lambda: self._cmd_resume(args_str),
-            "/cancel":       lambda: self._cmd_cancel(args_str),
-            "/retry":        lambda: self._cmd_retry(args_str),
-            "/approve":      lambda: self._cmd_approve(args_str),
-            "/continue":     self._cmd_continue,
-
+            "/tasks": lambda: self._cmd_tasks(args_str),
+            "/pause": lambda: self._cmd_pause(args_str),
+            "/resume": lambda: self._cmd_resume(args_str),
+            "/cancel": lambda: self._cmd_cancel(args_str),
+            "/retry": lambda: self._cmd_retry(args_str),
+            "/approve": lambda: self._cmd_approve(args_str),
+            "/continue": self._cmd_continue,
             # Verification
-            "/verify":       lambda: self._cmd_verify(args_str),
-            "/diff":         lambda: self._cmd_diff(args_str),
-
+            "/verify": lambda: self._cmd_verify(args_str),
+            "/diff": lambda: self._cmd_diff(args_str),
             # Session
-            "/session":      lambda: self._cmd_session(args_str),
-            "/sessions":     self._cmd_sessions,
-            "/history":      lambda: self._cmd_history(args_str),
-            "/rename":       lambda: self._cmd_rename(args_str),
-            "/context":      self._cmd_context,
-            "/compact":      self._cmd_compact,
-            "/flush":        self._cmd_compact,
-            "/export":       lambda: self._cmd_export(args_str),
-
+            "/session": lambda: self._cmd_session(args_str),
+            "/sessions": self._cmd_sessions,
+            "/history": lambda: self._cmd_history(args_str),
+            "/rename": lambda: self._cmd_rename(args_str),
+            "/context": self._cmd_context,
+            "/compact": self._cmd_compact,
+            "/flush": self._cmd_compact,
+            "/export": lambda: self._cmd_export(args_str),
             # Tools & infrastructure
-            "/tools":        lambda: self._cmd_tools(args_str),
-            "/skills":       lambda: self._cmd_skills(args_str),
-            "/connectors":   lambda: self._cmd_connectors(args_str),
-            "/doctor":       lambda: self._cmd_doctor(args_str),
-            "/usage":        self._cmd_usage,
-
+            "/tools": lambda: self._cmd_tools(args_str),
+            "/skills": lambda: self._cmd_skills(args_str),
+            "/connectors": lambda: self._cmd_connectors(args_str),
+            "/doctor": lambda: self._cmd_doctor(args_str),
+            "/usage": self._cmd_usage,
             # Memory
-            "/memory":       lambda: self._cmd_memory(args_str),
-
+            "/memory": lambda: self._cmd_memory(args_str),
             # Career OS
-            "/career":       lambda: self._cmd_career(args_str),
+            "/career": lambda: self._cmd_career(args_str),
             "/applications": lambda: self._cmd_applications(args_str),
-            "/interviews":   lambda: self._cmd_interviews(args_str),
-            "/offers":       lambda: self._cmd_offers(args_str),
-            "/emails":       lambda: self._cmd_emails(args_str),
-            "/resume":       lambda: self._cmd_resume(args_str),
-            "/jobs":         lambda: self._cmd_jobs(args_str),
-            "/apply":        lambda: self._cmd_apply(args_str),
-            "/ats":          lambda: self._cmd_ats(args_str),
+            "/interviews": lambda: self._cmd_interviews(args_str),
+            "/offers": lambda: self._cmd_offers(args_str),
+            "/emails": lambda: self._cmd_emails(args_str),
+            "/career-resume": lambda: self._cmd_career_resume(args_str),
+            "/resume-generate": lambda: self._cmd_career_resume(args_str),
+            "/jobs": lambda: self._cmd_jobs(args_str),
+
+            "/apply": lambda: self._cmd_apply(args_str),
+            "/ats": lambda: self._cmd_ats(args_str),
         }
 
         handler = dispatch_map.get(action)
@@ -179,6 +166,7 @@ class SlashCommandHandler:
         """Display interactive command palette."""
         try:
             from .autocomplete import SLASH_COMMANDS
+
             cmds = SLASH_COMMANDS
             if query:
                 q = query.lower()
@@ -210,62 +198,62 @@ class SlashCommandHandler:
 
             rows = [
                 # Agent
-                ("Agent",        "/mode <name>",           f"Switch mode: {', '.join(VALID_MODES)}"),
-                ("Agent",        "/model [backend]",        "View or switch active AI backend"),
-                ("Agent",        "/permission [mode]",      "View or set permission policy"),
-                ("Agent",        "/style [compact|verbose]","Set output verbosity style"),
-                ("Agent",        "/verbose [on|off]",       "Toggle verbose debug output"),
-                ("Agent",        "/mouse [on|off|status]",  "Toggle interactive mouse support (cursor, scroll, menus)"),
+                ("Agent", "/mode <name>", f"Switch mode: {', '.join(VALID_MODES)}"),
+                ("Agent", "/model [backend]", "View or switch active AI backend"),
+                ("Agent", "/permission [mode]", "View or set permission policy"),
+                ("Agent", "/style [compact|verbose]", "Set output verbosity style"),
+                ("Agent", "/verbose [on|off]", "Toggle verbose debug output"),
+                ("Agent", "/mouse [on|off|status]", "Toggle interactive mouse support (cursor, scroll, menus)"),
                 # Planning
-                ("Planning",     "/plan <goal>",            "Decompose goal → approve → execute"),
-                ("Planning",     "/approve [task_id]",      "Approve pending task gate (auto-detects if omitted)"),
+                ("Planning", "/plan <goal>", "Decompose goal → approve → execute"),
+                ("Planning", "/approve [task_id]", "Approve pending task gate (auto-detects if omitted)"),
                 # Tasks
-                ("Tasks",        "/tasks [id]",             "Dashboard or task detail"),
-                ("Tasks",        "/pause <task_id>",        "Pause running task"),
-                ("Tasks",        "/resume <task_id>",       "Resume paused task"),
-                ("Tasks",        "/cancel <task_id>",       "Cancel task"),
-                ("Tasks",        "/retry <task_id>",        "Retry failed task from checkpoint"),
-                ("Tasks",        "/continue",               "Resume latest incomplete session"),
+                ("Tasks", "/tasks [id]", "Dashboard or task detail"),
+                ("Tasks", "/pause <task_id>", "Pause running task"),
+                ("Tasks", "/resume <task_id>", "Resume paused task"),
+                ("Tasks", "/cancel <task_id>", "Cancel task"),
+                ("Tasks", "/retry <task_id>", "Retry failed task from checkpoint"),
+                ("Tasks", "/continue", "Resume latest incomplete session"),
                 # Memory
-                ("Memory",       "/memory search <q>",      "Search vector store"),
-                ("Memory",       "/memory recent",          "Latest stored memories"),
-                ("Memory",       "/memory project",         "Project & workspace context"),
-                ("Memory",       "/memory stats",           "Memory type breakdown"),
-                ("Memory",       "/memory forget <id>",     "Remove specific memory entry"),
-                ("Memory",       "/compact",                "Consolidate to long-term store"),
+                ("Memory", "/memory search <q>", "Search vector store"),
+                ("Memory", "/memory recent", "Latest stored memories"),
+                ("Memory", "/memory project", "Project & workspace context"),
+                ("Memory", "/memory stats", "Memory type breakdown"),
+                ("Memory", "/memory forget <id>", "Remove specific memory entry"),
+                ("Memory", "/compact", "Consolidate to long-term store"),
                 # Session
-                ("Session",      "/context",                "Show session context & model"),
-                ("Session",      "/history [n]",            "Session turn history"),
-                ("Session",      "/history task <id>",      "Task execution history"),
-                ("Session",      "/rename <name>",          "Name this session"),
-                ("Session",      "/export [format]",        "Export session transcript"),
+                ("Session", "/context", "Show session context & model"),
+                ("Session", "/history [n]", "Session turn history"),
+                ("Session", "/history task <id>", "Task execution history"),
+                ("Session", "/rename <name>", "Name this session"),
+                ("Session", "/export [format]", "Export session transcript"),
                 # Tools
-                ("Tools",        "/tools [search <q>]",     "Browse tool catalog"),
-                ("Tools",        "/tools health",           "Check tool registry health"),
-                ("Tools",        "/tools failed",           "Show recently failed tools"),
-                ("Tools",        "/connectors",             "Connector status overview"),
-                ("Tools",        "/connectors <name>",      "Specific connector detail"),
+                ("Tools", "/tools [search <q>]", "Browse tool catalog"),
+                ("Tools", "/tools health", "Check tool registry health"),
+                ("Tools", "/tools failed", "Show recently failed tools"),
+                ("Tools", "/connectors", "Connector status overview"),
+                ("Tools", "/connectors <name>", "Specific connector detail"),
                 # Diagnostics
-                ("Diagnostics",  "/doctor",                 "Interactive system health check"),
-                ("Diagnostics",  "/status",                 "Subsystem telemetry"),
-                ("Diagnostics",  "/usage",                  "Token & request usage stats"),
+                ("Diagnostics", "/doctor", "Interactive system health check"),
+                ("Diagnostics", "/status", "Subsystem telemetry"),
+                ("Diagnostics", "/usage", "Token & request usage stats"),
                 # Verification
-                ("Verify",       "/verify [path]",          "Verify file existence/integrity"),
-                ("Verify",       "/diff <file>",            "Syntax-highlighted file diff"),
+                ("Verify", "/verify [path]", "Verify file existence/integrity"),
+                ("Verify", "/diff <file>", "Syntax-highlighted file diff"),
                 # Career OS
-                ("Career OS",    "/career [stats|sync]",    "Career profile & analytics"),
-                ("Career OS",    "/applications",           "Tracked applications"),
-                ("Career OS",    "/interviews",             "Upcoming interviews"),
-                ("Career OS",    "/offers",                 "Detected job offers"),
-                ("Career OS",    "/emails",                 "Career email intelligence"),
-                ("Career OS",    "/resume [role]",          "Generate/tailor resume"),
-                ("Career OS",    "/jobs <query>",           "Search job postings"),
-                ("Career OS",    "/apply <job_id>",         "Prepare application package"),
-                ("Career OS",    "/ats [role]",             "Run ATS compatibility audit"),
+                ("Career OS", "/career [stats|sync]", "Career profile & analytics"),
+                ("Career OS", "/applications", "Tracked applications"),
+                ("Career OS", "/interviews", "Upcoming interviews"),
+                ("Career OS", "/offers", "Detected job offers"),
+                ("Career OS", "/emails", "Career email intelligence"),
+                ("Career OS", "/resume [role]", "Generate/tailor resume"),
+                ("Career OS", "/jobs <query>", "Search job postings"),
+                ("Career OS", "/apply <job_id>", "Prepare application package"),
+                ("Career OS", "/ats [role]", "Run ATS compatibility audit"),
                 # Control
-                ("Control",      "/clear",                  "Clear terminal screen"),
-                ("Control",      "/version",                "Build & version info"),
-                ("Control",      "/quit",                   "Exit with consolidation"),
+                ("Control", "/clear", "Clear terminal screen"),
+                ("Control", "/version", "Build & version info"),
+                ("Control", "/quit", "Exit with consolidation"),
             ]
             for cat, cmd, desc in rows:
                 table.add_row(cat, cmd, desc)
@@ -284,12 +272,14 @@ class SlashCommandHandler:
 
         try:
             from brjarvis.tools.registry import TOOL_SCHEMAS
+
             tool_count = len(TOOL_SCHEMAS)
         except Exception:
             tool_count = 0
 
         try:
             from brjarvis.memory.unified_memory import get_unified_memory
+
             um = get_unified_memory()
             mem_summary = f"{len(um._cache) if hasattr(um, '_cache') else 'Active'} cached memories"
         except Exception:
@@ -300,9 +290,10 @@ class SlashCommandHandler:
         # MK40.2: Specific model & credential source info
         try:
             from brjarvis.core.config import get_model_display_info
+
             model_info = get_model_display_info()
             backend_disp = f"{model_info['provider']} — {model_info['model']}"
-            cred_disp = model_info['credential_source']
+            cred_disp = model_info["credential_source"]
             if model_info.get("credential_conflict") == "True":
                 cred_disp += " (CONFLICT: both Google & Gemini keys set)"
         except Exception:
@@ -310,19 +301,19 @@ class SlashCommandHandler:
             cred_disp = "Environment"
 
         status_data = {
-            "Version & Build":    f"v{VERSION} ({CODENAME}, Build {BUILD})",
-            "Active Agent Mode":  current_mode.upper(),
-            "Session ID":         session_id,
-            "Session Name":       self.session.session_name or "(unnamed)",
-            "Active Model":       backend_disp,
-            "Credential Source":  cred_disp,
-            "Permission Mode":    perm_mode,
-            "Output Style":       self.session.output_style,
-            "Registered Tools":   f"{tool_count} tools",
-            "Unified Memory":     mem_summary,
-            "Execution Ledger":   "Append-Only SQLite WAL Active",
-            "Action Verifier":    "Host & Sandbox Validation Active",
-            "Security Policy":    "FAIL-CLOSED (Guardian Protected)",
+            "Version & Build": f"v{VERSION} ({CODENAME}, Build {BUILD})",
+            "Active Agent Mode": current_mode.upper(),
+            "Session ID": session_id,
+            "Session Name": self.session.session_name or "(unnamed)",
+            "Active Model": backend_disp,
+            "Credential Source": cred_disp,
+            "Permission Mode": perm_mode,
+            "Output Style": self.session.output_style,
+            "Registered Tools": f"{tool_count} tools",
+            "Unified Memory": mem_summary,
+            "Execution Ledger": "Append-Only SQLite WAL Active",
+            "Action Verifier": "Host & Sandbox Validation Active",
+            "Security Policy": "FAIL-CLOSED (Guardian Protected)",
         }
         self.renderer.render_status_table(status_data)
 
@@ -331,10 +322,13 @@ class SlashCommandHandler:
     def _cmd_mode(self, mode_name: str) -> None:
         """Switch active agent persona mode."""
         if not mode_name:
-            current = getattr(self.session.orchestrator, "current_mode", "general") if self.session.orchestrator else self.session.current_mode
+            current = (
+                getattr(self.session.orchestrator, "current_mode", "general")
+                if self.session.orchestrator
+                else self.session.current_mode
+            )
             self.renderer.render_markdown(
-                f"**Current Mode:** `{current.upper()}`\n\n"
-                f"Available: {', '.join(f'`{m}`' for m in VALID_MODES)}"
+                f"**Current Mode:** `{current.upper()}`\n\nAvailable: {', '.join(f'`{m}`' for m in VALID_MODES)}"
             )
             return
 
@@ -372,7 +366,8 @@ class SlashCommandHandler:
         runtime = self.session.runtime
         active = (
             getattr(runtime.config.models, "default_backend", "gemini")
-            if runtime and hasattr(runtime, "config") else "gemini"
+            if runtime and hasattr(runtime, "config")
+            else "gemini"
         )
 
         # Check available backends
@@ -413,11 +408,14 @@ class SlashCommandHandler:
     def _get_model_registry(self) -> List[Dict[str, Any]]:
         """Build model registry from environment and config."""
         import os
+
         backends = [
             {
                 "name": "gemini",
                 "model": "gemini-2.5-flash",
-                "status": "available" if os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY") else "no_key",
+                "status": "available"
+                if os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+                else "no_key",
                 "context": "1M",
                 "capabilities": ["vision", "code", "reasoning", "function_calling"],
             },
@@ -477,19 +475,19 @@ class SlashCommandHandler:
         os.environ["JARVIS_PERMISSION_MODE"] = canonical.upper()
         try:
             from brjarvis.security.permissions import PERMISSIONS
+
             PERMISSIONS.set_mode(canonical)
         except Exception:
             pass
         try:
             from brjarvis.security.policy_engine import get_policy_engine
+
             get_policy_engine().set_mode(canonical)
         except Exception:
             pass
 
         if HAS_RICH and self.renderer.console:
-            self.renderer.console.print(
-                f"[bold green]{Glyphs.SHIELD} Permission mode → {canonical.upper()}[/]"
-            )
+            self.renderer.console.print(f"[bold green]{Glyphs.SHIELD} Permission mode → {canonical.upper()}[/]")
         else:
             print(f"🛡️ Permission: {canonical.upper()}")
 
@@ -498,10 +496,7 @@ class SlashCommandHandler:
     def _cmd_plan(self, goal: str) -> None:
         """Run step planner with approval gate before execution."""
         if not goal:
-            self.renderer.render_error(
-                "Missing Goal",
-                "Provide a goal: `/plan Build a REST API in Python`"
-            )
+            self.renderer.render_error("Missing Goal", "Provide a goal: `/plan Build a REST API in Python`")
             return
 
         if HAS_RICH and self.renderer.console:
@@ -554,6 +549,7 @@ class SlashCommandHandler:
             elif choice == "edit":
                 if HAS_RICH and self.renderer.console:
                     from rich.prompt import Prompt as RPrompt
+
                     try:
                         new_goal = RPrompt.ask("  Edit goal").strip()
                         if new_goal.lower() in EXIT_COMMANDS or new_goal.lower() in ("cancel", "c"):
@@ -633,7 +629,13 @@ class SlashCommandHandler:
                 steps = ["Inspect codebase", "Plan implementation", "Write code", "Run tests", "Verify output"]
                 risk = "Low"
             elif any(k in goal_lower for k in ["research", "search", "find"]):
-                steps = ["Define research scope", "Search web sources", "Collect data", "Analyze findings", "Produce report"]
+                steps = [
+                    "Define research scope",
+                    "Search web sources",
+                    "Collect data",
+                    "Analyze findings",
+                    "Produce report",
+                ]
                 external = ["Web search"]
                 risk = "Low"
             else:
@@ -666,6 +668,7 @@ class SlashCommandHandler:
         """Create a TaskState for the approved plan."""
         try:
             from brjarvis.agent.task_state import get_task_state_manager
+
             mgr = get_task_state_manager()
             task = mgr.create_task(
                 goal=goal,
@@ -673,7 +676,7 @@ class SlashCommandHandler:
                 goal_spec={
                     "plan_id": plan_id,
                     "planned_steps": steps,
-                }
+                },
             )
             # Store plan in task
             task.plan = {"plan_id": plan_id, "steps": steps, "goal": goal}
@@ -690,6 +693,7 @@ class SlashCommandHandler:
         """List active tasks or show task detail."""
         try:
             from brjarvis.agent.task_state import get_task_state_manager
+
             mgr = get_task_state_manager()
 
             # Task detail if ID provided
@@ -719,7 +723,8 @@ class SlashCommandHandler:
             self.renderer.render_error("Missing Task ID", "Usage: `/pause <task_id>`")
             return
         try:
-            from brjarvis.agent.task_state import get_task_state_manager, TaskStatus
+            from brjarvis.agent.task_state import TaskStatus, get_task_state_manager
+
             mgr = get_task_state_manager()
             state = mgr.update_status(task_id, TaskStatus.WAITING_FOR_USER)
             if state:
@@ -735,7 +740,8 @@ class SlashCommandHandler:
             self._cmd_continue()
             return
         try:
-            from brjarvis.agent.task_state import get_task_state_manager, TaskStatus
+            from brjarvis.agent.task_state import TaskStatus, get_task_state_manager
+
             mgr = get_task_state_manager()
             task = mgr.get_task(args_str)
             if not task:
@@ -756,12 +762,17 @@ class SlashCommandHandler:
             self.renderer.render_error("Missing Task ID", "Usage: `/cancel <task_id>`")
             return
         try:
-            from brjarvis.agent.task_state import get_task_state_manager, TaskStatus
+            from brjarvis.agent.task_state import TaskStatus, get_task_state_manager
+
             mgr = get_task_state_manager()
             state = mgr.update_status(task_id, TaskStatus.CANCELLED)
             if state:
                 self.session.clear_active_task()
-                self.renderer.render_markdown(f"[bold red]{Glyphs.CROSS} Task `{task_id}` cancelled.[/bold red]" if HAS_RICH else f"✗ Task {task_id} cancelled.")
+                self.renderer.render_markdown(
+                    f"[bold red]{Glyphs.CROSS} Task `{task_id}` cancelled.[/bold red]"
+                    if HAS_RICH
+                    else f"✗ Task {task_id} cancelled."
+                )
             else:
                 self.renderer.render_error("Task Not Found", f"No task with ID '{task_id}'")
         except Exception as e:
@@ -773,7 +784,8 @@ class SlashCommandHandler:
             self.renderer.render_error("Missing Task ID", "Usage: `/retry <task_id>`")
             return
         try:
-            from brjarvis.agent.task_state import get_task_state_manager, TaskStatus
+            from brjarvis.agent.task_state import TaskStatus, get_task_state_manager
+
             mgr = get_task_state_manager()
             task = mgr.get_task(task_id)
             if not task:
@@ -793,7 +805,8 @@ class SlashCommandHandler:
         task_id = (task_id or "").strip()
         if not task_id:
             try:
-                from brjarvis.agent.task_state import get_task_state_manager, TaskStatus
+                from brjarvis.agent.task_state import TaskStatus, get_task_state_manager
+
                 mgr = get_task_state_manager()
                 if self.session._active_task_id:
                     t = mgr.get_task(self.session._active_task_id)
@@ -808,11 +821,14 @@ class SlashCommandHandler:
                 logger.debug("Auto-detect approval task note: %s", ex)
 
         if not task_id:
-            self.renderer.render_error("No Pending Approval", "No task is currently waiting for approval. Usage: `/approve <task_id>`")
+            self.renderer.render_error(
+                "No Pending Approval", "No task is currently waiting for approval. Usage: `/approve <task_id>`"
+            )
             return
 
         try:
             from brjarvis.agent.task_state import get_task_state_manager
+
             mgr = get_task_state_manager()
             task = mgr.get_task(task_id)
             if not task:
@@ -823,10 +839,20 @@ class SlashCommandHandler:
             state = mgr.resolve_approval(task_id, req_id, approved=True)
             self.session.clear_active_task()
             if state:
-                self.renderer.render_markdown(f"[bold green]{Glyphs.CHECK} Approval granted for task `{task_id}`.[/]" if HAS_RICH else f"✓ Approved: {task_id}")
-                self.session.execute_turn(f"[APPROVED:{task_id}] Continue approved task: {task.goal or task.user_request}")
+                self.renderer.render_markdown(
+                    f"[bold green]{Glyphs.CHECK} Approval granted for task `{task_id}`.[/]"
+                    if HAS_RICH
+                    else f"✓ Approved: {task_id}"
+                )
+                self.session.execute_turn(
+                    f"[APPROVED:{task_id}] Continue approved task: {task.goal or task.user_request}"
+                )
             else:
-                self.renderer.render_markdown(f"[bold green]{Glyphs.CHECK} Task `{task_id}` marked as approved.[/]" if HAS_RICH else f"✓ Approved: {task_id}")
+                self.renderer.render_markdown(
+                    f"[bold green]{Glyphs.CHECK} Task `{task_id}` marked as approved.[/]"
+                    if HAS_RICH
+                    else f"✓ Approved: {task_id}"
+                )
         except Exception as e:
             self.renderer.render_error("Approve Failed", str(e))
 
@@ -834,21 +860,18 @@ class SlashCommandHandler:
         """Resume latest incomplete session or task."""
         try:
             from brjarvis.agent.task_state import get_task_state_manager
+
             mgr = get_task_state_manager()
             tasks = mgr.list_tasks(limit=5)
             # Find latest non-completed task
-            incomplete = [
-                t for t in tasks
-                if str(t.status) not in ("SUCCESS_VERIFIED", "CANCELLED", "FAILED")
-            ]
+            incomplete = [t for t in tasks if str(t.status) not in ("SUCCESS_VERIFIED", "CANCELLED", "FAILED")]
             if not incomplete:
                 self.renderer.render_markdown("_No incomplete tasks found. Start fresh with a new goal._")
                 return
             task = incomplete[0]
             goal = task.goal or task.user_request
             self.renderer.render_markdown(
-                f"**Resuming:** [{task.task_id}] _{goal[:80]}_\n\n"
-                f"**Status:** `{task.status}`"
+                f"**Resuming:** [{task.task_id}] _{goal[:80]}_\n\n**Status:** `{task.status}`"
             )
             self.session.set_active_task(task.task_id, goal[:24])
             self.session.execute_turn(f"[CONTINUE_TASK:{task.task_id}] {goal}")
@@ -863,14 +886,15 @@ class SlashCommandHandler:
         orch = self.session.orchestrator
 
         context: Dict[str, Any] = {
-            "Session ID":        self.session.session_id[:16],
-            "Session Name":      self.session.session_name or "(unnamed)",
-            "Mode":              self.session.current_mode.upper(),
-            "Output Style":      self.session.output_style,
-            "Permission Mode":   os.environ.get("JARVIS_PERMISSION_MODE", "CONFIRM_DESTRUCTIVE"),
-            "Active Model":      (
+            "Session ID": self.session.session_id[:16],
+            "Session Name": self.session.session_name or "(unnamed)",
+            "Mode": self.session.current_mode.upper(),
+            "Output Style": self.session.output_style,
+            "Permission Mode": os.environ.get("JARVIS_PERMISSION_MODE", "CONFIRM_DESTRUCTIVE"),
+            "Active Model": (
                 getattr(runtime.config.models, "default_backend", "gemini")
-                if runtime and hasattr(runtime, "config") else "gemini"
+                if runtime and hasattr(runtime, "config")
+                else "gemini"
             ),
         }
 
@@ -879,6 +903,7 @@ class SlashCommandHandler:
 
         try:
             from brjarvis.memory.unified_memory import get_unified_memory
+
             um = get_unified_memory()
             cache_count = len(um._cache) if hasattr(um, "_cache") else "?"
             context["Memory Cache"] = f"{cache_count} entries"
@@ -887,6 +912,7 @@ class SlashCommandHandler:
 
         try:
             from brjarvis.tools.registry import TOOL_SCHEMAS
+
             context["Tools Registered"] = f"{len(TOOL_SCHEMAS)} tools"
         except Exception:
             pass
@@ -912,6 +938,7 @@ class SlashCommandHandler:
         """Handle /memory commands: search, recent, project, stats, forget."""
         try:
             from brjarvis.memory.unified_memory import get_unified_memory
+
             um = get_unified_memory()
 
             parts = subcmd_line.split(maxsplit=1)
@@ -927,6 +954,7 @@ class SlashCommandHandler:
 
             elif sub in ("recent", "latest"):
                 from brjarvis.memory.persistent_store import load_index
+
                 entries = load_index("user")[:8]
                 mem_list = [{"type": e.type, "name": e.name, "content": e.content} for e in entries]
                 if not mem_list:
@@ -936,6 +964,7 @@ class SlashCommandHandler:
 
             elif sub in ("project", "workspace"):
                 from brjarvis.memory.persistent_store import load_index
+
                 entries = [e for e in load_index("user") if e.type in ("project", "operational")][:8]
                 mem_list = [{"type": e.type, "name": e.name, "content": e.content} for e in entries]
                 if not mem_list:
@@ -945,6 +974,7 @@ class SlashCommandHandler:
 
             elif sub in ("stats", "summary"):
                 from brjarvis.memory.persistent_store import load_index
+
                 user_e = load_index("user")
                 proj_e = load_index("project")
                 by_type: dict = {}
@@ -958,6 +988,7 @@ class SlashCommandHandler:
             elif sub == "forget" and arg:
                 try:
                     from brjarvis.memory.persistent_store import delete_entry
+
                     delete_entry(arg)
                     self.renderer.render_markdown(f"{Glyphs.CHECK} Memory entry `{arg}` removed.")
                 except Exception:
@@ -992,6 +1023,7 @@ class SlashCommandHandler:
 
         try:
             from brjarvis.tools.registry import TOOL_SCHEMAS, _import_plugins
+
             _import_plugins()
             self.renderer.render_tools_table(TOOL_SCHEMAS, filter_query=filter_query)
         except Exception as e:
@@ -1001,12 +1033,13 @@ class SlashCommandHandler:
         """Check tool registry health."""
         try:
             from brjarvis.tools.registry import TOOL_SCHEMAS
+
             total = len(TOOL_SCHEMAS)
             self.renderer.render_markdown(
                 f"### Tool Registry Health\n"
                 f"- **Total Tools:** `{total}`\n"
                 f"- **Status:** {Glyphs.CHECK} Registry loaded successfully\n"
-                f"- **Categories:** {len(set(t.get('category','') for t in TOOL_SCHEMAS))} categories\n"
+                f"- **Categories:** {len(set(t.get('category', '') for t in TOOL_SCHEMAS))} categories\n"
             )
         except Exception as e:
             self.renderer.render_error("Tool Health Check Failed", str(e))
@@ -1043,6 +1076,7 @@ class SlashCommandHandler:
     def _get_connector_registry(self) -> List[Dict[str, Any]]:
         """Build connector status from environment."""
         import os
+
         return [
             {
                 "name": "GitHub",
@@ -1092,8 +1126,8 @@ class SlashCommandHandler:
 
     def _cmd_doctor(self) -> None:
         """Run interactive system diagnostic health checks."""
-        import sys
         import os
+        import sys
 
         if HAS_RICH and self.renderer.console:
             self.renderer.console.print("[bold cyan]🩺 Running BR JARVIS System Check...[/bold cyan]\n")
@@ -1111,6 +1145,7 @@ class SlashCommandHandler:
         # .env configuration
         try:
             from brjarvis.core.paths import paths
+
             dotenv_ok = paths.DOTENV_FILE.exists()
         except Exception:
             dotenv_ok = False
@@ -1120,13 +1155,24 @@ class SlashCommandHandler:
         has_gemini = bool(os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY"))
         has_openai = bool(os.environ.get("OPENAI_API_KEY"))
         has_anthropic = bool(os.environ.get("ANTHROPIC_API_KEY"))
-        checks.append({"name": "Gemini API Key", "ok": has_gemini, "detail": "GEMINI_API_KEY" if has_gemini else "Missing"})
-        checks.append({"name": "OpenAI API Key", "ok": has_openai, "detail": "OPENAI_API_KEY" if has_openai else "Not configured"})
-        checks.append({"name": "Anthropic API Key", "ok": has_anthropic, "detail": "ANTHROPIC_API_KEY" if has_anthropic else "Not configured"})
+        checks.append(
+            {"name": "Gemini API Key", "ok": has_gemini, "detail": "GEMINI_API_KEY" if has_gemini else "Missing"}
+        )
+        checks.append(
+            {"name": "OpenAI API Key", "ok": has_openai, "detail": "OPENAI_API_KEY" if has_openai else "Not configured"}
+        )
+        checks.append(
+            {
+                "name": "Anthropic API Key",
+                "ok": has_anthropic,
+                "detail": "ANTHROPIC_API_KEY" if has_anthropic else "Not configured",
+            }
+        )
 
         # Rich
         try:
             import rich
+
             ver = getattr(rich, "__version__", "Installed")
             checks.append({"name": "Rich (terminal UI)", "ok": True, "detail": ver})
         except ImportError:
@@ -1135,14 +1181,18 @@ class SlashCommandHandler:
         # prompt_toolkit
         try:
             import prompt_toolkit
+
             ver = getattr(prompt_toolkit, "__version__", "Installed")
             checks.append({"name": "prompt_toolkit (autocomplete)", "ok": True, "detail": ver})
         except ImportError:
-            checks.append({"name": "prompt_toolkit (autocomplete)", "ok": False, "detail": "pip install prompt_toolkit"})
+            checks.append(
+                {"name": "prompt_toolkit (autocomplete)", "ok": False, "detail": "pip install prompt_toolkit"}
+            )
 
         # Tool registry
         try:
             from brjarvis.tools.registry import TOOL_SCHEMAS, _import_plugins
+
             _import_plugins()
             checks.append({"name": f"Tool Registry ({len(TOOL_SCHEMAS)} tools)", "ok": True, "detail": ""})
         except Exception as e:
@@ -1151,6 +1201,7 @@ class SlashCommandHandler:
         # Memory
         try:
             from brjarvis.memory.unified_memory import get_unified_memory
+
             get_unified_memory()
             checks.append({"name": "Unified Memory", "ok": True, "detail": "SQLite WAL active"})
         except Exception as e:
@@ -1163,21 +1214,30 @@ class SlashCommandHandler:
         # Browser
         try:
             import playwright
+
             checks.append({"name": "Browser (Playwright)", "ok": True, "detail": ""})
         except ImportError:
             try:
                 import selenium
+
                 checks.append({"name": "Browser (Selenium)", "ok": True, "detail": ""})
             except ImportError:
                 checks.append({"name": "Browser", "ok": False, "detail": "playwright or selenium not installed"})
 
         # GitHub connector
         github_ok = bool(os.environ.get("GITHUB_TOKEN"))
-        checks.append({"name": "GitHub Connector", "ok": github_ok, "detail": "Token configured" if github_ok else "GITHUB_TOKEN not set"})
+        checks.append(
+            {
+                "name": "GitHub Connector",
+                "ok": github_ok,
+                "detail": "Token configured" if github_ok else "GITHUB_TOKEN not set",
+            }
+        )
 
         # Career OS
         try:
             from brjarvis.career.profile_manager import get_profile_manager
+
             get_profile_manager()
             checks.append({"name": "Career OS", "ok": True, "detail": ""})
         except Exception as e:
@@ -1185,14 +1245,18 @@ class SlashCommandHandler:
 
         # Compute overall health
         failures = [c for c in checks if not c["ok"]]
-        critical_failures = [c for c in failures if any(k in c["name"].lower() for k in ["python", "tool registry", "orchestrator"])]
+        critical_failures = [
+            c for c in failures if any(k in c["name"].lower() for k in ["python", "tool registry", "orchestrator"])
+        ]
 
         if not failures:
             overall = "HEALTHY"
         elif critical_failures:
             overall = f"FAILED — {len(critical_failures)} critical issue(s)"
         else:
-            overall = f"DEGRADED — {len(failures)} non-critical issue(s) — " + ", ".join(c["name"] for c in failures[:3])
+            overall = f"DEGRADED — {len(failures)} non-critical issue(s) — " + ", ".join(
+                c["name"] for c in failures[:3]
+            )
 
         self.renderer.render_doctor_report(checks, overall)
 
@@ -1205,7 +1269,7 @@ class SlashCommandHandler:
 
         stats: Dict[str, Any] = {
             "Session Duration": f"{(time.time() - self._session_start) / 60:.1f} minutes",
-            "Session ID":       self.session.session_id[:16],
+            "Session ID": self.session.session_id[:16],
         }
 
         try:
@@ -1223,6 +1287,7 @@ class SlashCommandHandler:
 
         try:
             from brjarvis.tools.registry import TOOL_SCHEMAS
+
             stats["Registered Tools"] = len(TOOL_SCHEMAS)
         except Exception:
             pass
@@ -1238,6 +1303,7 @@ class SlashCommandHandler:
         """Run verification check on file or path."""
         try:
             from brjarvis.agent.verifier import get_action_verifier
+
             verifier = get_action_verifier()
             if target_path:
                 res = verifier.verify_file_operation(target_path, "read")
@@ -1275,8 +1341,9 @@ class SlashCommandHandler:
         # 1. /history task <id>
         if sub == "task" and arg:
             try:
-                from brjarvis.agent.task_state import get_task_state_manager
                 from brjarvis.agent.execution_ledger import get_execution_ledger
+                from brjarvis.agent.task_state import get_task_state_manager
+
                 mgr = get_task_state_manager()
                 task = mgr.get_task(arg)
                 if task:
@@ -1297,6 +1364,7 @@ class SlashCommandHandler:
         if sub in ("tools", "ledger"):
             try:
                 from brjarvis.agent.execution_ledger import get_execution_ledger
+
                 ledger = get_execution_ledger()
                 target_task = arg or self.session._active_task_id or ""
                 if target_task:
@@ -1316,6 +1384,7 @@ class SlashCommandHandler:
         if sub == "search" and arg:
             try:
                 from brjarvis.history.session_store import SessionStore
+
                 store = SessionStore()
                 results = store.search(arg, limit=8)
                 if not results:
@@ -1340,7 +1409,7 @@ class SlashCommandHandler:
         try:
             orch = self.session.orchestrator
             if orch and hasattr(orch, "working_memory"):
-                history = orch.working_memory.get()[-(limit * 2):]
+                history = orch.working_memory.get()[-(limit * 2) :]
                 if not history:
                     self.renderer.render_markdown("_No conversation history in current session._")
                     return
@@ -1378,7 +1447,9 @@ class SlashCommandHandler:
         if args_str.lower() in ("on", "1", "true", "yes"):
             self.session.verbose = True
             if HAS_RICH and self.renderer.console:
-                self.renderer.console.print("[bold yellow]⚠ Verbose mode ON — showing tool arguments, timings, routing[/]")
+                self.renderer.console.print(
+                    "[bold yellow]⚠ Verbose mode ON — showing tool arguments, timings, routing[/]"
+                )
             else:
                 print("Verbose: ON")
         elif args_str.lower() in ("off", "0", "false", "no"):
@@ -1396,6 +1467,7 @@ class SlashCommandHandler:
     def _cmd_mouse(self, args_str: str = "") -> None:
         """Toggle or configure interactive mouse support in terminal session."""
         from .events import MouseCaptureMode
+
         sub = args_str.strip().lower()
 
         def _notify(rich_msg: str, plain_msg: str) -> None:
@@ -1406,10 +1478,16 @@ class SlashCommandHandler:
 
         if sub in ("on", "enable", "1", "true", "yes"):
             self.session.set_mouse_support(True)
-            _notify(f"[bold green]{Glyphs.CHECK} Mouse mode: INTERACTIVE[/bold green] (clicks, selection, URLs, expandable tools, scrolling).", "✓ Mouse mode: INTERACTIVE.")
+            _notify(
+                f"[bold green]{Glyphs.CHECK} Mouse mode: INTERACTIVE[/bold green] (clicks, selection, URLs, expandable tools, scrolling).",
+                "✓ Mouse mode: INTERACTIVE.",
+            )
         elif sub in ("off", "disable", "0", "false", "no"):
             self.session.set_mouse_support(False)
-            _notify(f"[bold yellow]⚠ Mouse mode: OFF[/bold yellow]. Native terminal text selection is active.", "⚠ Mouse mode: OFF.")
+            _notify(
+                "[bold yellow]⚠ Mouse mode: OFF[/bold yellow]. Native terminal text selection is active.",
+                "⚠ Mouse mode: OFF.",
+            )
         elif sub == "interactive":
             if hasattr(self.session, "set_mouse_capture_mode"):
                 self.session.set_mouse_capture_mode(MouseCaptureMode.MOUSE_INTERACTIVE)
@@ -1421,13 +1499,19 @@ class SlashCommandHandler:
                 self.session.set_mouse_capture_mode(MouseCaptureMode.MOUSE_SCROLL)
             else:
                 self.session.set_mouse_support(True)
-            _notify(f"[bold cyan]◆ Mouse mode: SCROLL ONLY[/bold cyan]. Wheel scrolls transcript; native terminal selection preserved.", "◆ Mouse mode: SCROLL ONLY.")
+            _notify(
+                "[bold cyan]◆ Mouse mode: SCROLL ONLY[/bold cyan]. Wheel scrolls transcript; native terminal selection preserved.",
+                "◆ Mouse mode: SCROLL ONLY.",
+            )
         elif sub in ("full", "all"):
             if hasattr(self.session, "set_mouse_capture_mode"):
                 self.session.set_mouse_capture_mode(MouseCaptureMode.MOUSE_FULL)
             else:
                 self.session.set_mouse_support(True)
-            _notify(f"[bold magenta]◆ Mouse mode: FULL CAPTURE[/bold magenta] (motion hover tracking + all interactive features).", "◆ Mouse mode: FULL CAPTURE.")
+            _notify(
+                "[bold magenta]◆ Mouse mode: FULL CAPTURE[/bold magenta] (motion hover tracking + all interactive features).",
+                "◆ Mouse mode: FULL CAPTURE.",
+            )
         elif sub in ("status", "info"):
             mode_val = getattr(self.session, "mouse_capture_mode", MouseCaptureMode.MOUSE_OFF)
             mode_str = mode_val.value if hasattr(mode_val, "value") else str(mode_val)
@@ -1455,7 +1539,9 @@ class SlashCommandHandler:
             if hasattr(self.session, "state_guard"):
                 self.session.state_guard.enter_alternate_screen()
                 self.session.render_header()
-            self.renderer.render_markdown(f"{Glyphs.CHECK} Switched to **Fullscreen TUI Mode** (Alternate screen active).")
+            self.renderer.render_markdown(
+                f"{Glyphs.CHECK} Switched to **Fullscreen TUI Mode** (Alternate screen active)."
+            )
         elif sub in ("default", "inline", "normal", "exit"):
             if hasattr(self.session, "state_guard"):
                 self.session.state_guard.exit_alternate_screen()
@@ -1474,6 +1560,7 @@ class SlashCommandHandler:
         """Export session transcript to artifact."""
         try:
             from brjarvis.agent.artifacts import get_artifact_manager
+
             mgr = get_artifact_manager()
             orch = self.session.orchestrator
             history = orch.working_memory.get() if orch and hasattr(orch, "working_memory") else []
@@ -1510,7 +1597,9 @@ class SlashCommandHandler:
                 res = orch.consolidate_on_exit()
                 if hasattr(orch, "working_memory") and hasattr(orch.working_memory, "trim"):
                     orch.working_memory.trim(max_turns=4)
-                self.renderer.render_markdown(f"{Glyphs.CHECK} **Memory Consolidated:** {res or 'Working memory trimmed.'}")
+                self.renderer.render_markdown(
+                    f"{Glyphs.CHECK} **Memory Consolidated:** {res or 'Working memory trimmed.'}"
+                )
             else:
                 self.renderer.render_markdown("Memory consolidation completed.")
         except Exception as e:
@@ -1527,9 +1616,7 @@ class SlashCommandHandler:
 
     def _cmd_version(self) -> None:
         """Display canonical version info."""
-        self.renderer.render_markdown(
-            f"**BR JARVIS:** `v{VERSION}` | Codename: `{CODENAME}` | Build: `{BUILD}`"
-        )
+        self.renderer.render_markdown(f"**BR JARVIS:** `v{VERSION}` | Codename: `{CODENAME}` | Build: `{BUILD}`")
 
     # ── Quit ──────────────────────────────────────────────────────────────────
 
@@ -1543,8 +1630,8 @@ class SlashCommandHandler:
     def _cmd_career(self, args_str: str = "") -> None:
         """Career Profile and Funnel Analytics overview."""
         try:
-            from brjarvis.career.profile_manager import get_profile_manager
             from brjarvis.career.analytics import CareerAnalyticsEngine
+            from brjarvis.career.profile_manager import get_profile_manager
 
             mgr = get_profile_manager()
             profile = mgr.get_profile()
@@ -1553,11 +1640,14 @@ class SlashCommandHandler:
 
             if "sync" in args_str.lower():
                 from brjarvis.career.spreadsheet.projection import get_spreadsheet_projection
+
                 self.renderer.render_markdown("⏳ _Synchronizing Career Database and Excel Projection..._")
                 proj = get_spreadsheet_projection()
                 res = proj.project_database_to_excel()
                 if res.get("status") == "SUCCESS_VERIFIED":
-                    self.renderer.render_markdown(f"{Glyphs.CHECK} **Career Tracker Excel Synchronized:** `{res['target_path']}`")
+                    self.renderer.render_markdown(
+                        f"{Glyphs.CHECK} **Career Tracker Excel Synchronized:** `{res['target_path']}`"
+                    )
                 else:
                     self.renderer.render_markdown(f"⚠ **Sync Notice:** {res}")
                 return
@@ -1565,7 +1655,9 @@ class SlashCommandHandler:
             if "onboard" in args_str.lower():
                 qs = mgr.get_onboarding_questions(profile)
                 if not qs:
-                    self.renderer.render_markdown(f"{Glyphs.CHECK} **Profile Onboarding Complete:** Zero missing critical fields.")
+                    self.renderer.render_markdown(
+                        f"{Glyphs.CHECK} **Profile Onboarding Complete:** Zero missing critical fields."
+                    )
                     return
                 self.renderer.render_markdown(f"### 📋 Career Onboarding ({len(qs)} missing fields):")
                 for idx, q in enumerate(qs, 1):
@@ -1583,9 +1675,9 @@ class SlashCommandHandler:
                 return
 
             self.renderer.render_markdown(f"""### 💼 Career Profile: **{profile.contact.full_name}**
-* **Completeness:** `{val['score']}%` ({val['status']})
-* **Target Roles:** {', '.join(profile.preferences.target_roles) or 'Not Specified'}
-* **Work Mode:** {profile.preferences.remote_preference.replace('_', ' ').title()}
+* **Completeness:** `{val["score"]}%` ({val["status"]})
+* **Target Roles:** {", ".join(profile.preferences.target_roles) or "Not Specified"}
+* **Work Mode:** {profile.preferences.remote_preference.replace("_", " ").title()}
 * **Experience:** {len(profile.experience)} entries │ **Projects:** {len(profile.projects)} │ **Skills:** {sum(len(s.skills) for s in profile.skills)}
 
 #### 📊 Pipeline:
@@ -1599,11 +1691,13 @@ class SlashCommandHandler:
         """List tracked job applications."""
         try:
             from brjarvis.career.crm.database import get_career_crm_db
+
             db = get_career_crm_db()
             apps = db.list_applications(limit=25)
             arg_low = args_str.lower().strip()
             if "followup" in arg_low:
                 from brjarvis.career.crm.followup_engine import get_followup_engine
+
                 fol_engine = get_followup_engine()
                 pending = fol_engine.get_pending_followups()
                 if not pending:
@@ -1611,14 +1705,18 @@ class SlashCommandHandler:
                     return
                 self.renderer.render_markdown(f"### ⏰ Pending Follow-ups ({len(pending)}):")
                 for f in pending:
-                    self.renderer.render_markdown(f"• `[{f.followup_id}]` **{f.company}** — {f.role} (Due: `{f.due_date}`)")
+                    self.renderer.render_markdown(
+                        f"• `[{f.followup_id}]` **{f.company}** — {f.role} (Due: `{f.due_date}`)"
+                    )
                 return
             if not apps:
                 self.renderer.render_markdown("_No tracked applications. Use `/jobs` or `/apply` to start._")
                 return
             self.renderer.render_markdown(f"### 📋 Job Applications ({len(apps)} tracked):")
             for a in apps[:10]:
-                st_val = a.application_status.value if hasattr(a.application_status, "value") else str(a.application_status)
+                st_val = (
+                    a.application_status.value if hasattr(a.application_status, "value") else str(a.application_status)
+                )
                 self.renderer.render_markdown(f"• `[{a.application_id}]` **{a.company}** — {a.job_title} │ `{st_val}`")
         except Exception as e:
             self.renderer.render_error("Applications Error", str(e))
@@ -1627,6 +1725,7 @@ class SlashCommandHandler:
         """List scheduled interviews."""
         try:
             from brjarvis.career.crm.database import get_career_crm_db
+
             db = get_career_crm_db()
             interviews = db.list_interviews(limit=15)
             if not interviews:
@@ -1634,7 +1733,9 @@ class SlashCommandHandler:
                 return
             self.renderer.render_markdown(f"### 📅 Upcoming Interviews ({len(interviews)}):")
             for iv in interviews:
-                self.renderer.render_markdown(f"• `[{iv.interview_id}]` **{iv.company}** ({iv.round}) — `{iv.date} {iv.time_str}` │ {iv.meeting_url or 'TBD'}")
+                self.renderer.render_markdown(
+                    f"• `[{iv.interview_id}]` **{iv.company}** ({iv.round}) — `{iv.date} {iv.time_str}` │ {iv.meeting_url or 'TBD'}"
+                )
         except Exception as e:
             self.renderer.render_error("Interviews Error", str(e))
 
@@ -1642,6 +1743,7 @@ class SlashCommandHandler:
         """List detected job offers."""
         try:
             from brjarvis.career.crm.database import get_career_crm_db
+
             db = get_career_crm_db()
             offers = db.list_offers(limit=10)
             if not offers:
@@ -1650,7 +1752,9 @@ class SlashCommandHandler:
             self.renderer.render_markdown(f"### 🏆 Job Offers ({len(offers)}):")
             for off in offers:
                 st_val = off.status.value if hasattr(off.status, "value") else str(off.status)
-                self.renderer.render_markdown(f"• `[{off.offer_id}]` **{off.company}** — {off.role} │ `{st_val}` │ {off.salary}")
+                self.renderer.render_markdown(
+                    f"• `[{off.offer_id}]` **{off.company}** — {off.role} │ `{st_val}` │ {off.salary}"
+                )
         except Exception as e:
             self.renderer.render_error("Offers Error", str(e))
 
@@ -1658,6 +1762,7 @@ class SlashCommandHandler:
         """Career email intelligence."""
         try:
             from brjarvis.career.crm.database import get_career_crm_db
+
             db = get_career_crm_db()
             events = db.list_email_records(limit=10)
             if not events:
@@ -1666,21 +1771,26 @@ class SlashCommandHandler:
             self.renderer.render_markdown(f"### 📧 Career Email Feed ({len(events)} events):")
             for ev in events:
                 cls_val = ev.classification.value if hasattr(ev.classification, "value") else str(ev.classification)
-                self.renderer.render_markdown(f"• `[{ev.email_event_id}]` **{ev.sender}** │ `{cls_val}` ({ev.confidence*100:.0f}%) │ _{ev.subject[:50]}_")
+                self.renderer.render_markdown(
+                    f"• `[{ev.email_event_id}]` **{ev.sender}** │ `{cls_val}` ({ev.confidence * 100:.0f}%) │ _{ev.subject[:50]}_"
+                )
         except Exception as e:
             self.renderer.render_error("Email Intelligence Error", str(e))
 
-    def _cmd_resume(self, args_str: str = "") -> None:
-        """Generate or tailor resume."""
+    def _cmd_career_resume(self, args_str: str = "") -> None:
+        """Generate or tailor a Career OS resume."""
+
         try:
             from brjarvis.career.profile_manager import get_profile_manager
-            from brjarvis.career.resume_engine.renderer import ResumeRenderer
             from brjarvis.career.resume_engine.exporter import ResumeExportPipeline
+            from brjarvis.career.resume_engine.renderer import ResumeRenderer
             from brjarvis.career.resume_engine.version_manager import ResumeVersionManager
 
             mgr = get_profile_manager()
             profile = mgr.get_profile()
-            role = args_str.strip() or (profile.preferences.target_roles[0] if profile.preferences.target_roles else "Systems Architect")
+            role = args_str.strip() or (
+                profile.preferences.target_roles[0] if profile.preferences.target_roles else "Systems Architect"
+            )
             schema = ResumeRenderer.schema_from_profile(profile, target_role=role)
             exporter = ResumeExportPipeline()
             res = exporter.export_all_formats(schema)
@@ -1694,9 +1804,9 @@ class SlashCommandHandler:
             )
             self.renderer.render_markdown(f"""{Glyphs.CHECK} **Resume Generated (v{ver_rec.version_id}):**
 * **Title:** {schema.title}
-* **DOCX:** `{res['docx']['path']}` ({'✓' if res['docx']['verified'] else '✗'})
-* **PDF:** `{res['pdf']['path']}` ({'✓' if res['pdf']['verified'] else '✗'})
-* **HTML:** `{res['html']['path']}` ({'✓' if res['html']['verified'] else '✗'})
+* **DOCX:** `{res["docx"]["path"]}` ({"✓" if res["docx"]["verified"] else "✗"})
+* **PDF:** `{res["pdf"]["path"]}` ({"✓" if res["pdf"]["verified"] else "✗"})
+* **HTML:** `{res["html"]["path"]}` ({"✓" if res["html"]["verified"] else "✗"})
 """)
         except Exception as e:
             self.renderer.render_error("Resume Generation Error", str(e))
@@ -1705,6 +1815,7 @@ class SlashCommandHandler:
         """Search and match live job postings."""
         try:
             from brjarvis.career.job_engine.finder import JobFinder
+
             q = query.strip() or "Autonomous AI Systems Engineer"
             self.renderer.render_markdown(f"🔍 _Searching for:_ `{q}`...")
             finder = JobFinder.get_instance()
@@ -1718,7 +1829,7 @@ class SlashCommandHandler:
                 m = r.match
                 self.renderer.render_markdown(f"""**{idx}. {j.title}** @ **{j.company}** (Fit: `{m.overall_score}%`)
 * **ID:** `{j.job_id}` │ **Platform:** {j.platform} │ **Location:** {j.location}
-* **Salary:** {j.salary or 'Competitive'}
+* **Salary:** {j.salary or "Competitive"}
 """)
         except Exception as e:
             self.renderer.render_error("Job Search Error", str(e))
@@ -1726,8 +1837,9 @@ class SlashCommandHandler:
     def _cmd_apply(self, job_id: str = "") -> None:
         """Prepare application package and open browser."""
         try:
-            from brjarvis.career.job_engine.finder import JobFinder
             from brjarvis.career.application_engine.assistant import ManualApplicationAssistant
+            from brjarvis.career.job_engine.finder import JobFinder
+
             jid = job_id.strip()
             if not jid:
                 self.renderer.render_markdown("Usage: `/apply <job_id>` (Use `/jobs` to discover IDs).")
@@ -1743,10 +1855,10 @@ class SlashCommandHandler:
                 self.renderer.render_error("Application Blocked", res.get("message", "Could not prepare."))
                 return
             self.renderer.render_markdown(f"""{Glyphs.CHECK} **Application Package Ready for {job.company}:**
-* **Application ID:** `{res['application_id']}` │ **Package:** `{res['package_id']}`
-* **Portal URL:** {res['application_url']}
-* **Resume PDF:** `{res['resume_pdf']}`
-* **Cover Letter:** `{res['cover_letter_pdf']}`
+* **Application ID:** `{res["application_id"]}` │ **Package:** `{res["package_id"]}`
+* **Portal URL:** {res["application_url"]}
+* **Resume PDF:** `{res["resume_pdf"]}`
+* **Cover Letter:** `{res["cover_letter_pdf"]}`
 * **Status:** `READY_FOR_REVIEW`
 """)
         except Exception as e:
@@ -1755,9 +1867,10 @@ class SlashCommandHandler:
     def _cmd_ats(self, role_str: str = "") -> None:
         """Run 7-factor ATS audit."""
         try:
+            from brjarvis.career.ats_engine.scorer import ATSEngine
             from brjarvis.career.profile_manager import get_profile_manager
             from brjarvis.career.resume_engine.renderer import ResumeRenderer
-            from brjarvis.career.ats_engine.scorer import ATSEngine
+
             mgr = get_profile_manager()
             profile = mgr.get_profile()
             schema = ResumeRenderer.schema_from_profile(profile, target_role=role_str.strip() or None)
@@ -1770,7 +1883,7 @@ class SlashCommandHandler:
 * **Role Alignment:** `{rep.role_relevance_score}%`
 
 #### 💡 Recommended Changes:
-{chr(10).join(f'* {c}' for c in rep.recommended_changes[:4]) if rep.recommended_changes else '* All ATS metrics optimal.'}
+{chr(10).join(f"* {c}" for c in rep.recommended_changes[:4]) if rep.recommended_changes else "* All ATS metrics optimal."}
 """)
         except Exception as e:
             self.renderer.render_error("ATS Audit Error", str(e))
@@ -1779,6 +1892,7 @@ class SlashCommandHandler:
         """View or switch active AgentSession."""
         try:
             from brjarvis.agent.session import get_or_create_session
+
             sess_id = args_str.strip()
             if not sess_id:
                 sid = getattr(self.session, "session_id", "default")
@@ -1803,9 +1917,12 @@ class SlashCommandHandler:
         """List active and persisted AgentSessions."""
         try:
             from brjarvis.agent.session import list_active_sessions
+
             sessions = list_active_sessions()
             if not sessions:
-                self.renderer.render_markdown(f"_Current active session:_ `{getattr(self.session, 'session_id', 'default')}`")
+                self.renderer.render_markdown(
+                    f"_Current active session:_ `{getattr(self.session, 'session_id', 'default')}`"
+                )
                 return
 
             lines = ["### 📋 Active Agent Sessions:"]
@@ -1820,6 +1937,7 @@ class SlashCommandHandler:
         """Browse registered skills catalog and workflows."""
         try:
             from brjarvis.skills import load_skills
+
             skills = load_skills()
             if not skills:
                 self.renderer.render_markdown("_No external skills discovered in `./skills` or builtin._")
@@ -1840,6 +1958,7 @@ class SlashCommandHandler:
         """Display configuration and runtime environment summary."""
         try:
             from brjarvis.core.config import get_config
+
             cfg = get_config()
             self.renderer.render_markdown(
                 f"### ⚙️ Runtime Configuration\n"
@@ -1865,7 +1984,12 @@ class SlashCommandHandler:
         sub = args_str.strip().lower()
         if sub in ("mouse", "tui", "input", "terminal"):
             from .events import MouseCaptureMode
-            term = os.environ.get("TERM_PROGRAM") or os.environ.get("TERM") or ("Windows Terminal" if os.name == "nt" else "Standard ANSI")
+
+            term = (
+                os.environ.get("TERM_PROGRAM")
+                or os.environ.get("TERM")
+                or ("Windows Terminal" if os.name == "nt" else "Standard ANSI")
+            )
             mode_val = getattr(self.session, "mouse_capture_mode", MouseCaptureMode.MOUSE_OFF)
             mode_str = mode_val.value if hasattr(mode_val, "value") else str(mode_val)
             is_mouse = getattr(self.session, "mouse_support", False)
@@ -1891,6 +2015,7 @@ class SlashCommandHandler:
 
         try:
             from brjarvis.diagnostics.doctor import run_diagnostics_audit
+
             rep = run_diagnostics_audit(auto_repair=False)
             healthy = rep.get("healthy", True)
             checks = rep.get("checks", {})
@@ -1941,4 +2066,3 @@ class SlashCommandHandler:
             "* **Filesystem Provider:** `Native Workspace Sandbox`\n"
             "* **Voice Subsystem:** `Whisper / Edge-TTS`\n"
         )
-

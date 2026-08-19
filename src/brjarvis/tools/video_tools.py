@@ -2,10 +2,11 @@
 """
 Registers AI video generation tools in the JARVIS tool registry.
 """
+
 from __future__ import annotations
 
 import json
-import os
+
 from .registry import register_tool
 
 
@@ -23,10 +24,11 @@ from .registry import register_tool
             "image_path": {"type": "string", "description": "Optional reference image for image-to-video generation"},
         },
         "required": ["prompt"],
-    }
+    },
 )
 def tool_generate_video(args: dict) -> str:
     from brjarvis.actions.video_generator import generate_video
+
     result = generate_video(
         prompt=args["prompt"],
         provider=args.get("provider", "auto"),
@@ -38,13 +40,10 @@ def tool_generate_video(args: dict) -> str:
     return json.dumps(result, indent=2)
 
 
-@register_tool(
-    name="list_generated_videos",
-    description="List all previously generated AI videos.",
-    parameters={}
-)
+@register_tool(name="list_generated_videos", description="List all previously generated AI videos.", parameters={})
 def tool_list_generated_videos(args: dict) -> str:
     from brjarvis.actions.video_generator import list_generated_videos
+
     videos = list_generated_videos()
     if not videos:
         return "No generated videos found."

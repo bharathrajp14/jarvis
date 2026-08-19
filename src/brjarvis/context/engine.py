@@ -3,13 +3,13 @@ from __future__ import annotations
 
 import logging
 import threading
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
+
+from brjarvis.core.runtime import get_runtime
+from brjarvis.events.bus import get_event_bus
 
 from .builder import ContextBuilder
 from .types import AssembledContext, ContextItem, ContextScope, TokenBudget
-from brjarvis.core.runtime import get_runtime
-from brjarvis.events.bus import get_event_bus
-from brjarvis.events.types import BaseEvent
 
 if TYPE_CHECKING:
     from brjarvis.router.core import AgentProfile
@@ -67,21 +67,25 @@ class ContextEngine:
             f"RAM: {report.hardware.memory_used_percent:.1f}% | "
             f"Status: {report.overall_status}"
         )
-        builder.add_item(ContextItem(
-            scope=ContextScope.SYSTEM_STATE,
-            title="System Environment",
-            content=sys_info,
-            priority=10,
-        ))
+        builder.add_item(
+            ContextItem(
+                scope=ContextScope.SYSTEM_STATE,
+                title="System Environment",
+                content=sys_info,
+                priority=10,
+            )
+        )
 
         # 2. Active Goal Context
         if active_goal:
-            builder.add_item(ContextItem(
-                scope=ContextScope.CONVERSATION,
-                title="Active Task Goal",
-                content=active_goal,
-                priority=9,
-            ))
+            builder.add_item(
+                ContextItem(
+                    scope=ContextScope.CONVERSATION,
+                    title="Active Task Goal",
+                    content=active_goal,
+                    priority=9,
+                )
+            )
 
         # 3. Conversation History
         # FIXED: Use dynamic turn count derived from available budget, not hardcoded 6
@@ -91,16 +95,15 @@ class ContextEngine:
             # Rough estimate: ~200 tokens per turn → fit as many as budget allows
             max_turns = max(4, min(20, available // 200))
             recent_turns = conversation_history[-max_turns:]
-            conv_str = "\n".join(
-                f"{msg.get('role', 'user')}: {msg.get('content', '')}"
-                for msg in recent_turns
+            conv_str = "\n".join(f"{msg.get('role', 'user')}: {msg.get('content', '')}" for msg in recent_turns)
+            builder.add_item(
+                ContextItem(
+                    scope=ContextScope.CONVERSATION,
+                    title="Recent Conversation History",
+                    content=conv_str,
+                    priority=8,
+                )
             )
-            builder.add_item(ContextItem(
-                scope=ContextScope.CONVERSATION,
-                title="Recent Conversation History",
-                content=conv_str,
-                priority=8,
-            ))
 
         return builder.assemble()
 

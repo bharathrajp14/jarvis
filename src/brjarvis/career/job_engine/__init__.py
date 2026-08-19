@@ -1,19 +1,20 @@
 # career/job_engine/__init__.py — Job Engine Subsystem Package
 from __future__ import annotations
 
-from .models import SearchFilters, JobMatchResult
-from .deduplicator import JobDeduplicator
-from .matcher import JobMatcher
-from .ranker import JobRanker
-from .finder import JobFinder, get_instance as get_job_finder
 from .adapters import (
+    AshbyAdapter,
     BasePlatformAdapter,
+    CompanySiteAdapter,
+    GenericBrowserAdapter,
     GreenhouseAdapter,
     LeverAdapter,
-    AshbyAdapter,
-    GenericBrowserAdapter,
-    CompanySiteAdapter,
 )
+from .deduplicator import JobDeduplicator
+from .finder import JobFinder
+from .finder import get_instance as get_job_finder
+from .matcher import JobMatcher
+from .models import JobMatchResult, SearchFilters
+from .ranker import JobRanker
 
 __all__ = [
     "SearchFilters",

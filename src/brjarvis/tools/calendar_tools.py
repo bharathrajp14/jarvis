@@ -4,15 +4,16 @@ High-Fidelity Verified Calendar & Task Tools Suite for BR JARVIS MK40.2 / MK41.
 Ensures event scheduling, conflict checks, natural language time parsing,
 and canonical ToolResult evidence contracts.
 """
+
 from __future__ import annotations
 
 import json
-from typing import Any, Dict, List, Optional
 
-from .domain import RiskLevel, SideEffectLevel, ToolCategory, ToolErrorCode, VerificationStrategy
+from brjarvis.actions.calendar_engine import get_calendar_engine
+
+from .domain import ToolErrorCode
 from .registry import register_tool
 from .tool_result import ToolResult
-from brjarvis.actions.calendar_engine import get_calendar_engine
 
 
 @register_tool(
@@ -155,7 +156,9 @@ def tool_delete_calendar_event(args: dict) -> ToolResult:
     """Delete a calendar event."""
     event_id = str(args.get("event_id", "")).strip()
     if not event_id:
-        return ToolResult.failed("delete_calendar_event", ToolErrorCode.INVALID_ARGUMENT, "Parameter 'event_id' is required.")
+        return ToolResult.failed(
+            "delete_calendar_event", ToolErrorCode.INVALID_ARGUMENT, "Parameter 'event_id' is required."
+        )
 
     try:
         engine = get_calendar_engine()

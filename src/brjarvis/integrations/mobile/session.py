@@ -3,16 +3,16 @@
 Manages live WebSocket sessions with paired Android companion devices.
 Handles request/response correlation, command dispatching, and heartbeat monitoring.
 """
+
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
 import time
 import uuid
-from typing import Any, Callable, Dict, Optional, Set, List
+from typing import Any, Dict, List, Optional
 
-from .protocol import MobileMessage, MobileMessageType, DeviceState, AccessibilityNode
+from .protocol import MobileMessage, MobileMessageType
 
 logger = logging.getLogger("JARVIS.MobileSession")
 
@@ -30,15 +30,13 @@ class MobileDeviceSession:
         raw_json = msg.to_json()
         await self.ws.send_text(raw_json)
 
-    async def request(self, msg_type: MobileMessageType, payload: Dict[str, Any], timeout: float = 15.0) -> Dict[str, Any]:
+    async def request(
+        self, msg_type: MobileMessageType, payload: Dict[str, Any], timeout: float = 15.0
+    ) -> Dict[str, Any]:
         """Send a request message and await correlated response by msg_id."""
         msg_id = str(uuid.uuid4())
         msg = MobileMessage(
-            msg_type=msg_type,
-            msg_id=msg_id,
-            device_id=self.device_id,
-            payload=payload,
-            timestamp=time.time()
+            msg_type=msg_type, msg_id=msg_id, device_id=self.device_id, payload=payload, timestamp=time.time()
         )
         fut = asyncio.get_running_loop().create_future()
         self._pending_requests[msg_id] = fut
@@ -122,7 +120,7 @@ class MobileSessionManager:
                                 msg_id=str(uuid.uuid4()),
                                 device_id=did,
                                 payload={},
-                                timestamp=now
+                                timestamp=now,
                             )
                             asyncio.create_task(session.send_message(msg))
                         except Exception:

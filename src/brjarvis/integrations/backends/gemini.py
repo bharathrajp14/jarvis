@@ -4,17 +4,18 @@ Robust Gemini backend — the ONLY required backend for JARVIS MK37.
 Supports: text completion, streaming, vision, grounding (web search).
 Falls back gracefully on any model error.
 """
+
 from __future__ import annotations
 
 import json
 import logging
 import os
 import time
-from pathlib import Path
 from typing import Generator
 
-from .base import BaseBackend
 from brjarvis.core.paths import paths
+
+from .base import BaseBackend
 
 logger = logging.getLogger("JARVIS.GeminiBackend")
 
@@ -26,6 +27,7 @@ def _load_api_key() -> str:
         return key
     try:
         from brjarvis.core.config import get_config
+
         cfg_key = get_config().secrets.gemini_api_key
         if cfg_key and cfg_key.strip():
             return cfg_key.strip()
@@ -67,8 +69,15 @@ class GeminiBackend(BaseBackend):
         if use_proxy:
             try:
                 from openai import OpenAI  # type: ignore
-                base_url = os.environ.get("BRJARVIS_PROXY_BASE_URL") or os.environ.get("OPENAI_BASE_URL", "http://localhost:8045/v1")
-                api_key_val = os.environ.get("BRJARVIS_PROXY_API_KEY") or os.environ.get("OPENAI_API_KEY", "sk-5ec70bf9fa324084b7a7326babf52c45").strip() or "sk-5ec70bf9fa324084b7a7326babf52c45"
+
+                base_url = os.environ.get("BRJARVIS_PROXY_BASE_URL") or os.environ.get(
+                    "OPENAI_BASE_URL", "http://localhost:8045/v1"
+                )
+                api_key_val = (
+                    os.environ.get("BRJARVIS_PROXY_API_KEY")
+                    or os.environ.get("OPENAI_API_KEY", "sk-5ec70bf9fa324084b7a7326babf52c45").strip()
+                    or "sk-5ec70bf9fa324084b7a7326babf52c45"
+                )
                 self._client = OpenAI(base_url=base_url, api_key=api_key_val)
                 self._use_openai_client = True
                 self.model = model or self._pick_model()
@@ -83,6 +92,7 @@ class GeminiBackend(BaseBackend):
         if self.api_key:
             try:
                 from google import genai
+
                 self._client = genai.Client(api_key=self.api_key)
                 logger.info(f"[OK] Using model: {self.model}")
             except Exception as ex:
@@ -91,7 +101,6 @@ class GeminiBackend(BaseBackend):
         else:
             self._client = None
             logger.info("No direct Gemini API key provided; relying on proxy/offline.")
-
 
     @property
     def name(self) -> str:
@@ -109,6 +118,7 @@ class GeminiBackend(BaseBackend):
         """Try to use the best available model."""
         try:
             from brjarvis.config.models import get_model
+
             cfg_model = get_model("gemini")
             if cfg_model and cfg_model != "gemini-3.5-flash":
                 return cfg_model
@@ -121,6 +131,7 @@ class GeminiBackend(BaseBackend):
             return self._explicit_model
         try:
             from brjarvis.config.complexity_router import select_model_for_prompt
+
             chosen = select_model_for_prompt(messages=messages, system=system)
             if chosen == "gemini-3.5-flash":
                 return "gemini-3.6-flash-high"
@@ -140,6 +151,7 @@ class GeminiBackend(BaseBackend):
                 get_recommended_token_limit,
                 prune_messages_to_fit_budget,
             )
+
             complexity = analyze_complexity(messages=messages, system=system)
             max_output_tokens = get_recommended_token_limit(complexity, user_max_tokens=max_tokens)
             messages = prune_messages_to_fit_budget(messages, system=system)
@@ -172,7 +184,9 @@ class GeminiBackend(BaseBackend):
                 return response.choices[0].message.content or ""
             except Exception as e:
                 err_str = str(e).lower()
-                is_conn_error = any(w in err_str for w in ("connect", "refused", "unreachable", "timed out", "timeout", "connection"))
+                is_conn_error = any(
+                    w in err_str for w in ("connect", "refused", "unreachable", "timed out", "timeout", "connection")
+                )
                 if not is_conn_error:
                     logger.warning("Model %s failed: %s — trying fallbacks...", target_model, e)
                     for fallback_mod in self.FALLBACK_MODELS:
@@ -188,20 +202,21 @@ class GeminiBackend(BaseBackend):
                 try:
                     direct_key = _load_api_key()
                     from google import genai
+
                     direct_client = genai.Client(api_key=direct_key)
                     contents = []
                     for msg in messages:
                         role = "user" if msg.get("role") == "user" else "model"
                         c = msg.get("content")
-                        if c: contents.append({"role": role, "parts": [{"text": str(c)}]})
-                    if not contents: contents = [{"role": "user", "parts": [{"text": "Hello"}]}]
+                        if c:
+                            contents.append({"role": role, "parts": [{"text": str(c)}]})
+                    if not contents:
+                        contents = [{"role": "user", "parts": [{"text": "Hello"}]}]
                     cfg_kwargs = {}
                     if system and system.strip():
                         cfg_kwargs["system_instruction"] = system.strip()
                     resp = direct_client.models.generate_content(
-                        model="gemini-2.5-flash",
-                        contents=contents,
-                        config=cfg_kwargs if cfg_kwargs else None
+                        model="gemini-2.5-flash", contents=contents, config=cfg_kwargs if cfg_kwargs else None
                     )
                     return resp.text or ""
                 except Exception as ex_direct:
@@ -260,7 +275,6 @@ class GeminiBackend(BaseBackend):
 
         return "ERROR: Gemini API quota exceeded (429 RESOURCE_EXHAUSTED). Please wait for quota reset or switch model backend."
 
-
     def stream(self, messages: list, system: str = "") -> Generator[str, None, None]:
         """Streaming completion."""
         target_model = self._get_target_model(messages, system)
@@ -281,9 +295,7 @@ class GeminiBackend(BaseBackend):
 
             try:
                 stream_res = self._client.chat.completions.create(
-                    model=target_model,
-                    messages=full_messages,
-                    stream=True
+                    model=target_model, messages=full_messages, stream=True
                 )
                 for chunk in stream_res:
                     if chunk.choices and chunk.choices[0].delta.content:
@@ -346,6 +358,7 @@ class GeminiBackend(BaseBackend):
         """Vision completion — analyze an image."""
         if self._use_openai_client:
             import base64
+
             try:
                 b64 = base64.b64encode(image_bytes).decode("ascii")
                 data_url = f"data:{mime_type};base64,{b64}"
@@ -355,7 +368,7 @@ class GeminiBackend(BaseBackend):
                         "content": [
                             {"type": "text", "text": prompt},
                             {"type": "image_url", "image_url": {"url": data_url}},
-                        ]
+                        ],
                     }
                 ]
                 response = self._client.chat.completions.create(
@@ -368,15 +381,18 @@ class GeminiBackend(BaseBackend):
 
         # Direct path
         import base64
+
         try:
             b64 = base64.b64encode(image_bytes).decode("ascii")
-            contents = [{
-                "role": "user",
-                "parts": [
-                    {"inline_data": {"mime_type": mime_type, "data": b64}},
-                    {"text": prompt},
-                ]
-            }]
+            contents = [
+                {
+                    "role": "user",
+                    "parts": [
+                        {"inline_data": {"mime_type": mime_type, "data": b64}},
+                        {"text": prompt},
+                    ],
+                }
+            ]
             response = self.client.models.generate_content(
                 model=self.model,
                 contents=contents,
@@ -384,14 +400,16 @@ class GeminiBackend(BaseBackend):
             return response.text or ""
         except Exception as e:
             return f"Vision error: {e}"
+
     def transcribe(self, audio_bytes: bytes, mime_type: str = "audio/wav") -> str:
         """Transcribe audio bytes using 100% Offline Local Whisper, falling back to API if offline unavailable."""
         import base64
-        import io
 
         # 0. Prioritize 100% Offline Local Whisper (sub-30ms, no network 503 errors)
         try:
-            from brjarvis.voice.whisper_local import transcribe as whisper_transcribe, is_available
+            from brjarvis.voice.whisper_local import is_available
+            from brjarvis.voice.whisper_local import transcribe as whisper_transcribe
+
             if is_available():
                 res = whisper_transcribe(audio_bytes)
                 if res and res.strip():
@@ -409,19 +427,24 @@ class GeminiBackend(BaseBackend):
                         file=file_payload,
                     )
                     return (response.text or "").strip()
-                except Exception as ex_stt:
+                except Exception:
                     # 2. Multimodal Chat Fallback for proxy gateways returning HTTP 415/503
                     b64 = base64.b64encode(audio_bytes).decode("ascii")
                     try:
                         resp = self._client.chat.completions.create(
                             model=self.model or "gemini-2.5-flash",
-                            messages=[{
-                                "role": "user",
-                                "content": [
-                                    {"type": "text", "text": "Transcribe this audio clip exactly. Return only the transcription, no intro, no comments."},
-                                    {"type": "image_url", "image_url": {"url": f"data:audio/wav;base64,{b64}"}}
-                                ]
-                            }]
+                            messages=[
+                                {
+                                    "role": "user",
+                                    "content": [
+                                        {
+                                            "type": "text",
+                                            "text": "Transcribe this audio clip exactly. Return only the transcription, no intro, no comments.",
+                                        },
+                                        {"type": "image_url", "image_url": {"url": f"data:audio/wav;base64,{b64}"}},
+                                    ],
+                                }
+                            ],
                         )
                         return (resp.choices[0].message.content or "").strip()
                     except Exception:
@@ -433,13 +456,17 @@ class GeminiBackend(BaseBackend):
         # Direct Google Gemini API path
         try:
             b64 = base64.b64encode(audio_bytes).decode("ascii")
-            contents = [{
-                "role": "user",
-                "parts": [
-                    {"inline_data": {"mime_type": mime_type, "data": b64}},
-                    {"text": "Transcribe this audio clip exactly. Output only the transcription, no intro, no comments."},
-                ]
-            }]
+            contents = [
+                {
+                    "role": "user",
+                    "parts": [
+                        {"inline_data": {"mime_type": mime_type, "data": b64}},
+                        {
+                            "text": "Transcribe this audio clip exactly. Output only the transcription, no intro, no comments."
+                        },
+                    ],
+                }
+            ]
 
             target_client = getattr(self, "_client", None) or getattr(self, "client", None)
             if target_client:
@@ -459,6 +486,7 @@ class GeminiBackend(BaseBackend):
             # 3. Direct google.genai Client fallback
             try:
                 from google import genai
+
                 key = getattr(self, "api_key", None) or _load_api_key()
                 g_client = genai.Client(api_key=key)
                 response = g_client.models.generate_content(

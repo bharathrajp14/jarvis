@@ -3,6 +3,7 @@
 Canonical Security, Authorization, and Policy contracts for BR JARVIS operating runtime.
 Defines ActionDecision, IdentityScope, PermissionContext, SecurityDecision, and SecretReference.
 """
+
 from __future__ import annotations
 
 import time
@@ -14,6 +15,7 @@ from pydantic import BaseModel, Field
 
 class ActionDecision(str, Enum):
     """Canonical Security Policy Decisions."""
+
     ALLOW = "allow"
     DENY = "deny"
     REQUIRE_APPROVAL = "require_approval"
@@ -26,6 +28,7 @@ class ActionDecision(str, Enum):
 
 class IdentityScope(BaseModel):
     """Multi-dimensional caller identity and execution boundary."""
+
     user_id: str = "default_user"
     agent_id: str = "jarvis"
     device_id: str = "pc_primary"
@@ -38,6 +41,7 @@ class IdentityScope(BaseModel):
 
 class PermissionContext(BaseModel):
     """Contextual 6-tuple presented for deterministic security policy evaluation."""
+
     identity: IdentityScope = Field(default_factory=IdentityScope)
     resource: str = ""
     action: str = ""
@@ -50,6 +54,7 @@ class PermissionContext(BaseModel):
 
 class SecurityDecision(BaseModel):
     """The authoritative verdict issued by Guardian and PolicyEngine."""
+
     decision: ActionDecision = ActionDecision.ALLOW
     reason: str = ""
     risk_level: str = "low"
@@ -65,6 +70,7 @@ class SecurityDecision(BaseModel):
 
 class SecretReference(BaseModel):
     """Reference pointer for credentials managed through SecretProvider (never raw keys in context)."""
+
     secret_id: str
     provider: str = "local"  # local, env, keyring, infisical
     key_name: str

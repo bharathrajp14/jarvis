@@ -4,21 +4,22 @@ Native Win32 window & process management tool.
 Allows JARVIS to list open windows, bring applications to focus, inspect processes,
 minimize/maximize windows, and manage desktop layout autonomously.
 """
+
 from __future__ import annotations
 
 import logging
-import os
 import sys
-from typing import Dict, List, Any
+from typing import Any, Dict, List
 
 logger = logging.getLogger(__name__)
 
 _HAS_WIN32 = False
 if sys.platform == "win32":
     try:
+        import win32con
         import win32gui
         import win32process
-        import win32con
+
         _HAS_WIN32 = True
     except ImportError:
         _HAS_WIN32 = False
@@ -35,11 +36,13 @@ def list_desktop_windows() -> List[Dict[str, Any]]:
             title = win32gui.GetWindowText(hwnd).strip()
             if title and title not in ("Program Manager", "Settings", "Default IME", "MSCTFIME UI"):
                 _, pid = win32process.GetWindowThreadProcessId(hwnd)
-                windows.append({
-                    "hwnd": hwnd,
-                    "title": title,
-                    "pid": pid,
-                })
+                windows.append(
+                    {
+                        "hwnd": hwnd,
+                        "title": title,
+                        "pid": pid,
+                    }
+                )
 
     try:
         win32gui.EnumWindows(enum_handler, None)
@@ -73,7 +76,7 @@ def focus_window_by_title(title_query: str) -> str:
             try:
                 win32gui.SetForegroundWindow(target_hwnd)
             except Exception as e:
-                logger.debug('Suppressed exception: %s', e)
+                logger.debug("Suppressed exception: %s", e)
             return f"Focused window: '{target_title}' (HWND: {target_hwnd})"
         return f"No visible window matching '{title_query}' was found."
     except Exception as e:

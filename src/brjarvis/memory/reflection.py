@@ -3,10 +3,11 @@
 ReflectionEngine for analyzing user feedback, implicit re-prompts, tool failures,
 and failed steps, automatically writing extracted lessons to LessonStore.
 """
+
 from __future__ import annotations
 
 import re
-import time
+
 from .lessons import LessonStore
 
 
@@ -16,9 +17,7 @@ class ReflectionEngine:
     def __init__(self, lesson_store: LessonStore | None = None):
         self.lesson_store = lesson_store or LessonStore()
 
-    def process_turn(
-        self, user_input: str, previous_output: str, elapsed_since_last_sec: float = 0
-    ) -> dict | None:
+    def process_turn(self, user_input: str, previous_output: str, elapsed_since_last_sec: float = 0) -> dict | None:
         """
         Analyze dialogue turn for explicit or implicit user corrections, or negative feedback.
         """
@@ -55,7 +54,9 @@ class ReflectionEngine:
                 }
 
         # 2. Implicit correction (user re-prompts immediately after turn within 60s)
-        if 0 < elapsed_since_last_sec <= 60 and any(kw in clean_in for kw in ["redo", "try again", "fix this", "do it again", "same result", "it failed"]):
+        if 0 < elapsed_since_last_sec <= 60 and any(
+            kw in clean_in for kw in ["redo", "try again", "fix this", "do it again", "same result", "it failed"]
+        ):
             topic = user_input[:50]
             lesson_id = self.lesson_store.add_lesson(
                 topic=topic,
@@ -70,9 +71,15 @@ class ReflectionEngine:
             }
 
         # 3. Tool Failure Reflection
-        if previous_output and any(err in previous_output for err in ["Traceback", "Exception:", "Error:", "FAILED", "PermissionError"]):
+        if previous_output and any(
+            err in previous_output for err in ["Traceback", "Exception:", "Error:", "FAILED", "PermissionError"]
+        ):
             # Extract error summary
-            error_line = [l.strip() for l in previous_output.splitlines() if any(err in l for err in ["Error", "Exception", "FAILED"])][:1]
+            error_line = [
+                l.strip()
+                for l in previous_output.splitlines()
+                if any(err in l for err in ["Error", "Exception", "FAILED"])
+            ][:1]
             if error_line:
                 topic = f"Tool Failure: {error_line[0][:60]}"
                 lesson_id = self.lesson_store.add_lesson(

@@ -3,6 +3,7 @@
 Memory taxonomy, metadata schemas, and execution status constants for BR JARVIS MK40.2.
 Distinguishes between Working, Episodic, Semantic, User Preference, Project, and Operational memory.
 """
+
 from __future__ import annotations
 
 import re
@@ -12,36 +13,34 @@ from typing import Any, Dict, List, Optional
 
 
 class MemoryTier(str, Enum):
-    WORKING = "working"          # Active task/session scratchpad (ephemeral)
-    EPISODIC = "episodic"        # Past events, session logs, audit outcomes
-    SEMANTIC = "semantic"        # Reusable facts, environment, platform details
-    PREFERENCE = "preference"    # User guidance, confirmation rules, styles
-    PROJECT = "project"          # Project architecture, decisions, open tasks
+    WORKING = "working"  # Active task/session scratchpad (ephemeral)
+    EPISODIC = "episodic"  # Past events, session logs, audit outcomes
+    SEMANTIC = "semantic"  # Reusable facts, environment, platform details
+    PREFERENCE = "preference"  # User guidance, confirmation rules, styles
+    PROJECT = "project"  # Project architecture, decisions, open tasks
     OPERATIONAL = "operational"  # Verified tool sequences, recovery lessons
-    REFERENCE = "reference"      # Pointers to external systems, repositories, docs
+    REFERENCE = "reference"  # Pointers to external systems, repositories, docs
 
 
 class ConfidenceLevel(float, Enum):
-    VERIFIED = 1.0               # Ground-truth verified against system/code/artifacts
-    KNOWN_UNVERIFIED = 0.75      # Stated by user/model but not empirically verified
-    INFERRED = 0.5               # Heuristically derived or synthesized
-    OUTDATED = 0.2               # Marked stale due to newer contradictory facts
-    UNKNOWN = 0.0                # Unconfirmed hypothesis
+    VERIFIED = 1.0  # Ground-truth verified against system/code/artifacts
+    KNOWN_UNVERIFIED = 0.75  # Stated by user/model but not empirically verified
+    INFERRED = 0.5  # Heuristically derived or synthesized
+    OUTDATED = 0.2  # Marked stale due to newer contradictory facts
+    UNKNOWN = 0.0  # Unconfirmed hypothesis
 
 
 class ExecutionStatus(str, Enum):
-    SUCCESS_VERIFIED = "SUCCESS_VERIFIED"      # Action executed and side-effect empirically verified
+    SUCCESS_VERIFIED = "SUCCESS_VERIFIED"  # Action executed and side-effect empirically verified
     SUCCESS_UNVERIFIED = "SUCCESS_UNVERIFIED"  # Action executed but side-effect not fully checked
-    PARTIAL_SUCCESS = "PARTIAL_SUCCESS"        # Some steps succeeded, others failed
-    FAILED = "FAILED"                          # Action threw error or failed verification
-    TIMEOUT = "TIMEOUT"                        # Action exceeded execution time limit
-    CANCELLED = "CANCELLED"                    # Action aborted by user or policy
-    BLOCKED = "BLOCKED"                        # Security guardian or policy blocked execution
+    PARTIAL_SUCCESS = "PARTIAL_SUCCESS"  # Some steps succeeded, others failed
+    FAILED = "FAILED"  # Action threw error or failed verification
+    TIMEOUT = "TIMEOUT"  # Action exceeded execution time limit
+    CANCELLED = "CANCELLED"  # Action aborted by user or policy
+    BLOCKED = "BLOCKED"  # Security guardian or policy blocked execution
 
 
-MEMORY_TYPES = [
-    "user", "preference", "feedback", "project", "semantic", "episodic", "operational", "reference"
-]
+MEMORY_TYPES = ["user", "preference", "feedback", "project", "semantic", "episodic", "operational", "reference"]
 
 MEMORY_TYPE_DESCRIPTIONS: dict[str, str] = {
     "user": "Information about the user's role, goals, and communication preferences.",
@@ -60,7 +59,6 @@ Use remembered facts about the user, project architecture, ongoing tasks, and op
 Maintain consistency with user preferences and ground-truth verified system facts."""
 
 
-
 # ── Secret Redaction Sentinel ──────────────────────────────────────────────────
 
 
@@ -70,7 +68,11 @@ def redact_secrets(text: str) -> str:
         return text
     clean = text
     # 1. Generic key=value or token=value or token sk-...
-    clean = re.sub(r"(?i)(api[_-]?key|token|secret|password|passwd|auth[_-]?key)\s*([:=]|\s+)\s*['\"]?([a-zA-Z0-9_\-\.]{8,})['\"]?", r"\1\2 [REDACTED_SECRET]", clean)
+    clean = re.sub(
+        r"(?i)(api[_-]?key|token|secret|password|passwd|auth[_-]?key)\s*([:=]|\s+)\s*['\"]?([a-zA-Z0-9_\-\.]{8,})['\"]?",
+        r"\1\2 [REDACTED_SECRET]",
+        clean,
+    )
     # 2. Bearer tokens
     clean = re.sub(r"(?i)(bearer\s+)([a-zA-Z0-9_\-\.]{15,})", r"\1[REDACTED_SECRET]", clean)
     # 3. Known vendor token formats
@@ -84,19 +86,21 @@ def redact_secrets(text: str) -> str:
 
 # ── Full Memory Quality Schema ────────────────────────────────────────────────
 
+
 @dataclass
 class QualityMemoryRecord:
     """13-field Production Memory Quality Record with confidence and lifecycle metadata."""
+
     id: str
-    type: str                                  # MemoryTier value or legacy type
+    type: str  # MemoryTier value or legacy type
     content: str
-    source: str = "user"                       # "user" | "tool" | "system" | "document"
+    source: str = "user"  # "user" | "tool" | "system" | "document"
     timestamp: str = ""
-    project_id: str = "global"                 # Scoping: "global" or specific project slug
+    project_id: str = "global"  # Scoping: "global" or specific project slug
     session_id: str = ""
-    confidence: float = 1.0                    # 0.0 to 1.0 (ConfidenceLevel)
-    importance: float = 0.5                    # 0.0 to 1.0
-    recency: float = 1.0                       # 0.0 to 1.0 (decays over time)
+    confidence: float = 1.0  # 0.0 to 1.0 (ConfidenceLevel)
+    importance: float = 0.5  # 0.0 to 1.0
+    recency: float = 1.0  # 0.0 to 1.0 (decays over time)
     verified: bool = True
     expires_at: Optional[str] = None
     references: List[str] = field(default_factory=list)

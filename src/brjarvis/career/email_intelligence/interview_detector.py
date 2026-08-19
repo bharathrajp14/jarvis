@@ -5,8 +5,7 @@ import datetime
 import logging
 import re
 import uuid
-from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Optional
 
 from ..models import InterviewSchedule
 
@@ -14,9 +13,9 @@ logger = logging.getLogger("JARVIS.EmailIntelligence.InterviewDetector")
 
 _DATE_PATTERNS = [
     re.compile(r"(?:on\s+)?([A-Za-z]+(?:\s+\d{1,2}(?:st|nd|rd|th)?,?\s+\d{4}))", re.IGNORECASE),  # August 21, 2026
-    re.compile(r"(?:on\s+)?(\d{4}[-/]\d{1,2}[-/]\d{1,2})", re.IGNORECASE),                         # 2026-08-21
-    re.compile(r"(?:on\s+)?(\d{1,2}[-/]\d{1,2}[-/]\d{2,4})", re.IGNORECASE),                       # 21/08/2026
-    re.compile(r"([A-Za-z]+,\s+[A-Za-z]+\s+\d{1,2})", re.IGNORECASE),                              # Friday, August 21
+    re.compile(r"(?:on\s+)?(\d{4}[-/]\d{1,2}[-/]\d{1,2})", re.IGNORECASE),  # 2026-08-21
+    re.compile(r"(?:on\s+)?(\d{1,2}[-/]\d{1,2}[-/]\d{2,4})", re.IGNORECASE),  # 21/08/2026
+    re.compile(r"([A-Za-z]+,\s+[A-Za-z]+\s+\d{1,2})", re.IGNORECASE),  # Friday, August 21
 ]
 
 _TIME_PATTERNS = [
@@ -132,7 +131,6 @@ class InterviewDetector:
             interviewer = cand_name
             break
 
-
         schedule = InterviewSchedule(
             interview_id=f"INT-{uuid.uuid4().hex[:6].upper()}",
             application_id=application_id or "",
@@ -150,10 +148,17 @@ class InterviewDetector:
             preparation_status="PENDING",
             notes=[
                 f"Extracted from email on {datetime.date.today().strftime('%Y-%m-%d')}",
-                f"Timezone: {extracted_tz or 'Not explicitly specified in email'}"
-            ]
+                f"Timezone: {extracted_tz or 'Not explicitly specified in email'}",
+            ],
         )
 
-        logger.info("📅 Interview Invitation Extracted: [%s] %s with %s on %s at %s %s",
-                    schedule.interview_id, schedule.round, schedule.company, schedule.date, schedule.time_str, schedule.timezone)
+        logger.info(
+            "📅 Interview Invitation Extracted: [%s] %s with %s on %s at %s %s",
+            schedule.interview_id,
+            schedule.round,
+            schedule.company,
+            schedule.date,
+            schedule.time_str,
+            schedule.timezone,
+        )
         return schedule

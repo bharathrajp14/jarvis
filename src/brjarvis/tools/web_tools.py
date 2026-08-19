@@ -3,15 +3,17 @@
 High-Fidelity Web Capability Suite for BR JARVIS MK40.2 / MK41.
 Provides search, headless DOM text extraction, raw retrieval, and structured ToolResults.
 """
+
 from __future__ import annotations
 
 import json
-from typing import Any, Dict, List, Optional
 
-from .domain import RiskLevel, SideEffectLevel, ToolCategory, ToolErrorCode, VerificationStrategy
-from .registry import register_tool, _run_async
+from .domain import ToolErrorCode
+from .registry import _run_async, register_tool
 from .tool_result import ToolResult
-from .web import fetch_page as core_fetch_page, fetch_raw as core_fetch_raw, web_search as core_web_search
+from .web import fetch_page as core_fetch_page
+from .web import fetch_raw as core_fetch_raw
+from .web import web_search as core_web_search
 
 
 @register_tool(

@@ -1,7 +1,9 @@
 """Integration tests for Cross-Device Planner & Mobile Sync."""
+
 from __future__ import annotations
 
 import pytest
+
 from brjarvis.agent.cross_device_planner import CrossDevicePlanner
 
 

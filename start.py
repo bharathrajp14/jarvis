@@ -17,11 +17,12 @@ Commands & Usage:
   python start.py version               Print version metadata & build details
   python start.py "<query>"             Execute natural language task one-shot
 """
+
 from __future__ import annotations
 
+import argparse
 import os
 import sys
-import argparse
 from pathlib import Path
 
 # Ensure UTF-8 output encoding on Windows consoles and subprocesses
@@ -41,27 +42,24 @@ if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
 try:
-    from brjarvis.core.paths import ensure_canonical_python, paths
+    from brjarvis.core.paths import ensure_canonical_python
+
     ensure_canonical_python()
 except Exception as _init_err:
     print(f"[Warning] Environment canonical check note: {_init_err}", file=sys.stderr)
 
 # Import root package & core version
-import brjarvis
-from brjarvis.core.version import VERSION, BUILD, CODENAME
-from brjarvis.apps.bootstrap import (
-    banner,
-    show_status,
-    show_doctor,
-    show_help,
+from brjarvis.apps.bootstrap import (  # noqa: E402
     interactive_menu,
-    launch_cli,
-    launch_web_server,
     launch_career_studio,
     launch_voice,
-    main as bootstrap_main,
+    launch_web_server,
+    show_doctor,
+    show_help,
+    show_status,
 )
-from brjarvis.diagnostics.doctor import run_diagnostics_audit
+from brjarvis.core.version import BUILD, CODENAME, VERSION  # noqa: E402
+from brjarvis.diagnostics.doctor import run_diagnostics_audit  # noqa: E402
 
 
 # ── Backwards-Compatible Public API Re-Exports ──────────────────────────────
@@ -75,6 +73,7 @@ def doctor(auto_confirm: bool = False) -> dict:
 def launch_career_sync() -> dict:
     """Trigger career application and email inbox synchronization."""
     from brjarvis.career.crm.database import get_career_crm_db
+
     db = get_career_crm_db()
     stats = db.get_stats() if hasattr(db, "get_stats") else {"total": len(db.list_applications())}
     print(f"✓ Career CRM synchronized. Total applications: {stats.get('total', len(db.list_applications()))}")
@@ -84,6 +83,7 @@ def launch_career_sync() -> dict:
 def run_tests(extra_args: list[str] | None = None) -> int:
     """Run pytest suite through virtual environment."""
     import subprocess
+
     cmd = [sys.executable, "-m", "pytest"] + (extra_args or [])
     try:
         return subprocess.call(cmd, cwd=str(_ROOT))
@@ -127,21 +127,25 @@ def main(argv: list[str] | None = None) -> int:
     # 6. Interactive CLI REPL
     if first in ("cli", "repl", "terminal", "interactive"):
         from brjarvis.core.cli import main as cli_main
+
         sys.argv = [sys.argv[0]] + raw_args[1:]
         return cli_main()
-
 
     # 7. Web Server & Dashboard
     if first in ("web", "server", "api", "dashboard", "ui"):
         parser = argparse.ArgumentParser(prog="start.py web", add_help=False)
-        parser.add_argument("--port", "-p", type=int, default=int(os.environ.get("PORT", os.environ.get("BR_SERVER_PORT", "8000"))))
+        parser.add_argument(
+            "--port", "-p", type=int, default=int(os.environ.get("PORT", os.environ.get("BR_SERVER_PORT", "8000")))
+        )
         parser.add_argument("--host", "-h", type=str, default="127.0.0.1")
         parser.add_argument("--no-open", action="store_true", default=False)
         parsed, _ = parser.parse_known_args(raw_args[1:])
-        
+
         target_url = f"http://{parsed.host}:{parsed.port}"
+
         open_url = None if parsed.no_open else target_url
-        launch_web_server(open_url=open_url)
+        launch_web_server(open_url=open_url, host=parsed.host, port=parsed.port)
+
         return 0
 
     # 8. Career OS Subsystem
@@ -152,12 +156,15 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         elif sub in ("stats", "summary", "list"):
             from brjarvis.career.crm.database import get_career_crm_db
+
             db = get_career_crm_db()
             apps = db.list_applications()
             print(f"Total Applications: {len(apps)}")
             for a in apps[:10]:
                 comp = getattr(a, "company", getattr(a, "company_name", "Unknown"))
-                st_val = a.application_status.value if hasattr(a, "application_status") else getattr(a, "status", "UNKNOWN")
+                st_val = (
+                    a.application_status.value if hasattr(a, "application_status") else getattr(a, "status", "UNKNOWN")
+                )
                 print(f"  • [{st_val:<12}] {comp} — {a.job_title} ({a.application_id})")
             if len(apps) > 10:
                 print(f"  ... and {len(apps) - 10} more.")
@@ -180,6 +187,7 @@ def main(argv: list[str] | None = None) -> int:
     if first in ("floating", "widget", "float"):
         try:
             from brjarvis.desktop.float_widget import main as float_main
+
             return float_main() or 0
         except Exception as exc:
             print(f"Error launching Floating Widget: {exc}", file=sys.stderr)
@@ -189,6 +197,7 @@ def main(argv: list[str] | None = None) -> int:
     if first in ("smoke", "sanity", "verify"):
         try:
             from scripts.smoke_startup import main as smoke_main
+
             return smoke_main()
         except Exception as exc:
             print(f"Error executing smoke verification: {exc}", file=sys.stderr)
@@ -198,6 +207,7 @@ def main(argv: list[str] | None = None) -> int:
     if first in ("audio", "sound", "mic", "microphone"):
         try:
             from scripts.probe_voice_env import main as probe_main
+
             return probe_main()
         except Exception as exc:
             print(f"Error executing audio probe: {exc}", file=sys.stderr)
@@ -209,6 +219,7 @@ def main(argv: list[str] | None = None) -> int:
 
     # 15. Fallback: Query / Intent Execution
     from brjarvis.core.cli import run_query
+
     query_str = " ".join(raw_args)
     return run_query(query_str)
 

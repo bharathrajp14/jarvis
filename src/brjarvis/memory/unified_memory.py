@@ -10,6 +10,7 @@ Integrates:
 - Non-destructive Session Lifecycle
 - Operational Lessons & Experience Replay
 """
+
 from __future__ import annotations
 
 import logging
@@ -17,17 +18,22 @@ import time
 from typing import Any, Dict, List, Optional, Union
 
 from brjarvis.core.runtime import get_runtime
-from brjarvis.events.bus import get_event_bus
+
 from .archiver import MemoryArchiver
 from .cache import MemoryCache
-from .conflict_engine import ConflictEngine, get_conflict_engine
-from .domain import CanonicalMemory, FeedbackSignal, MemoryFeedback, MemoryStatus, MemoryType, RetentionClass, SourceType
-from .experience_replay import ExperienceReplayStore, ExperienceTrajectory, get_experience_replay
+from .conflict_engine import get_conflict_engine
+from .domain import (
+    CanonicalMemory,
+    MemoryStatus,
+    MemoryType,
+    SourceType,
+)
+from .experience_replay import ExperienceTrajectory, get_experience_replay
 from .lessons import LessonStore
 from .reflection import ReflectionEngine
-from .retrieval import HybridRetrievalEngine, RankedMemoryCandidate, get_retrieval_engine
-from .store import CanonicalMemoryStore, get_canonical_store
-from .temporal import TemporalEngine, get_temporal_engine
+from .retrieval import RankedMemoryCandidate, get_retrieval_engine
+from .store import get_canonical_store
+from .temporal import get_temporal_engine
 from .vector_store import VectorMemory
 from .working import WorkingMemory
 
@@ -186,7 +192,9 @@ class UnifiedMemoryManager:
         except Exception as ve:
             logger.debug("Correction vector sync: %s", ve)
 
-        logger.info(f"✨ User correction applied: {entity}/{attribute} -> {new_value} (Superseded {len(resolution.loser_memories)} older records)")
+        logger.info(
+            f"✨ User correction applied: {entity}/{attribute} -> {new_value} (Superseded {len(resolution.loser_memories)} older records)"
+        )
         return saved
 
     def forget(self, name_or_id: str = "", entity: str = "", scope: Optional[str] = None) -> bool:
@@ -260,35 +268,41 @@ class UnifiedMemoryManager:
             limit=limit,
         )
         for h in ranked_hits:
-            results.append({
-                "source": "canonical_memory",
-                "memory_id": h.memory.memory_id,
-                "entity": h.memory.entity,
-                "attribute": h.memory.attribute,
-                "name": h.memory.entity or h.memory.attribute or "Memory",
-                "content": h.memory.content,
-                "scope": h.memory.scope,
-                "project_id": h.memory.project_id,
-                "confidence": h.confidence,
-                "reliability": h.reliability,
-                "type": h.memory.memory_type.value,
-                "retention_class": h.memory.retention_class.value if hasattr(h.memory, "retention_class") else "NORMAL",
-                "final_score": h.final_score,
-                "selection_reason": h.selection_reason,
-            })
+            results.append(
+                {
+                    "source": "canonical_memory",
+                    "memory_id": h.memory.memory_id,
+                    "entity": h.memory.entity,
+                    "attribute": h.memory.attribute,
+                    "name": h.memory.entity or h.memory.attribute or "Memory",
+                    "content": h.memory.content,
+                    "scope": h.memory.scope,
+                    "project_id": h.memory.project_id,
+                    "confidence": h.confidence,
+                    "reliability": h.reliability,
+                    "type": h.memory.memory_type.value,
+                    "retention_class": h.memory.retention_class.value
+                    if hasattr(h.memory, "retention_class")
+                    else "NORMAL",
+                    "final_score": h.final_score,
+                    "selection_reason": h.selection_reason,
+                }
+            )
 
         # 2. Search Operational Lessons
         try:
             lesson_hits = self.lessons.get_relevant_lessons(query, limit=2)
             for l in lesson_hits:
-                results.append({
-                    "source": "lesson",
-                    "name": f"Lesson: {l.get('topic', '')}",
-                    "content": l.get("correction", ""),
-                    "confidence": float(l.get("confidence", 0.85)),
-                    "final_score": 0.80,
-                    "selection_reason": "Learned lesson from previous operational failure/correction.",
-                })
+                results.append(
+                    {
+                        "source": "lesson",
+                        "name": f"Lesson: {l.get('topic', '')}",
+                        "content": l.get("correction", ""),
+                        "confidence": float(l.get("confidence", 0.85)),
+                        "final_score": 0.80,
+                        "selection_reason": "Learned lesson from previous operational failure/correction.",
+                    }
+                )
         except Exception:
             pass
 
@@ -334,10 +348,12 @@ class UnifiedMemoryManager:
         """Generate human/agent explanation of fact history."""
         return self.temporal.explain_temporal_change(entity, attribute)
 
-    def save(self, category: str = "operational", name: str = "", content: str = "", importance: float = 1.0, **kwargs) -> CanonicalMemory:
+    def save(
+        self, category: str = "operational", name: str = "", content: str = "", importance: float = 1.0, **kwargs
+    ) -> CanonicalMemory:
         """Convenience alias for remember()."""
         return self.remember(
-            name=name or f"mem_{int(time.time()*1000)}",
+            name=name or f"mem_{int(time.time() * 1000)}",
             content=content,
             mem_type=category,
             confidence=importance,
@@ -347,11 +363,10 @@ class UnifiedMemoryManager:
     def store(self, content: str, name: str = "", **kwargs) -> CanonicalMemory:
         """Convenience alias for remember()."""
         return self.remember(
-            name=name or f"mem_{int(time.time()*1000)}",
+            name=name or f"mem_{int(time.time() * 1000)}",
             content=content,
             **kwargs,
         )
-
 
 
 _global_unified_memory: Optional[UnifiedMemoryManager] = None

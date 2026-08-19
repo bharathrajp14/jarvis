@@ -8,20 +8,18 @@ Strawberry-Class Autonomous Browser Agent with:
 - Automatic Recovery for Popups, Modal Dialogs, Cookie Banners
 - CAPTCHA / Human-Verification Challenge Detection with Safe User Pause
 """
+
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
-import re
 import time
 from dataclasses import asdict, dataclass, field
 from enum import Enum
-from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from .registry import register_tool, _run_async
-from .browser_automation import _get_or_create_page, _PLAYWRIGHT_AVAILABLE
+from .browser_automation import _PLAYWRIGHT_AVAILABLE, _get_or_create_page
+from .registry import _run_async, register_tool
 
 logger = logging.getLogger("JARVIS.StrawberryBrowserAgent")
 
@@ -157,7 +155,7 @@ class StrawberryBrowserAgent:
                 text=e["text"],
                 selector=e["selector"],
                 is_visible=e["is_visible"],
-                attributes=e.get("attributes", {})
+                attributes=e.get("attributes", {}),
             )
             for e in raw_elements
         ]
@@ -183,9 +181,10 @@ class StrawberryBrowserAgent:
         screenshot_path = ""
         if capture_screenshot:
             from brjarvis.core.paths import paths
+
             captures_dir = paths.CAPTURE_ROOT
             captures_dir.mkdir(parents=True, exist_ok=True)
-            shot_file = captures_dir / f"browser_{int(time.time()*1000)}.png"
+            shot_file = captures_dir / f"browser_{int(time.time() * 1000)}.png"
             await page.screenshot(path=str(shot_file), full_page=False)
             screenshot_path = str(shot_file)
 
@@ -197,7 +196,7 @@ class StrawberryBrowserAgent:
             dom_text_summary=dom_text_summary,
             captcha_detected=captcha_detected,
             dialog_detected=dialog_detected,
-            screenshot_path=screenshot_path
+            screenshot_path=screenshot_path,
         )
 
     async def execute_action(
@@ -210,7 +209,7 @@ class StrawberryBrowserAgent:
         url: Optional[str] = None,
         direction: str = "down",
         amount: int = 500,
-        observation: Optional[BrowserObservation] = None
+        observation: Optional[BrowserObservation] = None,
     ) -> Dict[str, Any]:
         """Execute a structured browser action with post-verification and error handling."""
         logger.info("Executing Browser Action: %s (target_id=%s, selector=%s)", action.value, target_id, selector)
@@ -242,7 +241,9 @@ class StrawberryBrowserAgent:
                     await page.click(target_selector, timeout=8000)
                 except Exception:
                     # Fallback to JS click if normal click is blocked by floating overlay
-                    await page.evaluate(f"sel => {{ const el = document.querySelector(sel); if(el) el.click(); }}", target_selector)
+                    await page.evaluate(
+                        "sel => { const el = document.querySelector(sel); if(el) el.click(); }", target_selector
+                    )
 
                 await page.wait_for_timeout(1000)
                 return {"success": True, "action": "click", "target": target_selector, "current_url": page.url}
@@ -278,7 +279,7 @@ class StrawberryBrowserAgent:
                     "url": obs.url,
                     "title": obs.title,
                     "content": obs.dom_text_summary,
-                    "elements_count": len(obs.interactive_elements)
+                    "elements_count": len(obs.interactive_elements),
                 }
 
             elif action == BrowserActionType.HANDLE_DIALOG:
@@ -315,7 +316,7 @@ class StrawberryBrowserAgent:
             "action": {
                 "type": "string",
                 "enum": ["navigate", "observe", "click", "type", "scroll", "extract", "handle_dialog"],
-                "description": "The browser operation to perform."
+                "description": "The browser operation to perform.",
             },
             "url": {"type": "string", "description": "Target webpage URL (for navigate)"},
             "target_id": {"type": "integer", "description": "Element ID from prior observation (for click/type)"},
@@ -323,10 +324,10 @@ class StrawberryBrowserAgent:
             "text": {"type": "string", "description": "Text to type into the target field"},
             "direction": {"type": "string", "enum": ["up", "down"], "description": "Scroll direction"},
             "amount": {"type": "integer", "description": "Scroll pixel amount (default 500)"},
-            "headless": {"type": "boolean", "description": "Run in background headless mode (default true)"}
+            "headless": {"type": "boolean", "description": "Run in background headless mode (default true)"},
         },
-        "required": ["action"]
-    }
+        "required": ["action"],
+    },
 )
 def browser_strawberry_agent(args: dict) -> str:
     """Tool entrypoint for Strawberry-Class Browser Agent."""
@@ -343,22 +344,28 @@ def browser_strawberry_agent(args: dict) -> str:
         if action_str == "observe":
             obs = await agent.observe(page, capture_screenshot=True)
             if obs.captcha_detected:
-                return json.dumps({
-                    "status": "WAITING_FOR_USER_AUTHENTICATION",
-                    "captcha_detected": True,
-                    "message": "Human verification or CAPTCHA challenge detected on page. Please complete verification in browser.",
-                    "url": obs.url,
-                    "title": obs.title
-                }, indent=2)
+                return json.dumps(
+                    {
+                        "status": "WAITING_FOR_USER_AUTHENTICATION",
+                        "captcha_detected": True,
+                        "message": "Human verification or CAPTCHA challenge detected on page. Please complete verification in browser.",
+                        "url": obs.url,
+                        "title": obs.title,
+                    },
+                    indent=2,
+                )
 
-            return json.dumps({
-                "status": "success",
-                "url": obs.url,
-                "title": obs.title,
-                "dialog_detected": obs.dialog_detected,
-                "interactive_elements": [asdict(e) for e in obs.interactive_elements[:30]],
-                "content_summary": obs.dom_text_summary[:1000]
-            }, indent=2)
+            return json.dumps(
+                {
+                    "status": "success",
+                    "url": obs.url,
+                    "title": obs.title,
+                    "dialog_detected": obs.dialog_detected,
+                    "interactive_elements": [asdict(e) for e in obs.interactive_elements[:30]],
+                    "content_summary": obs.dom_text_summary[:1000],
+                },
+                indent=2,
+            )
 
         try:
             action_type = BrowserActionType(action_str)
@@ -375,7 +382,7 @@ def browser_strawberry_agent(args: dict) -> str:
             url=args.get("url"),
             direction=args.get("direction", "down"),
             amount=args.get("amount", 500),
-            observation=obs
+            observation=obs,
         )
         return json.dumps(res, indent=2)
 

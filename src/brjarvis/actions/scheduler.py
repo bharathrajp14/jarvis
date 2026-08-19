@@ -3,19 +3,19 @@
 Natural language task scheduler for JARVIS MK37.
 Allows scheduling goals (e.g. "every day at 9:00am") and running them via TaskQueue.
 """
+
 from __future__ import annotations
 
 import logging
-import sqlite3
-import time
-import threading
 import re
+import sqlite3
+import threading
+import time
 from datetime import datetime, timedelta
-from pathlib import Path
 
+from brjarvis.agent.task_queue import TaskPriority, get_queue
 from brjarvis.memory.persistent_store import get_memory_dir
 from brjarvis.tools.registry import register_tool
-from brjarvis.agent.task_queue import get_queue, TaskPriority
 
 logger = logging.getLogger(__name__)
 
@@ -73,7 +73,7 @@ class TaskScheduler:
             cursor.execute("SELECT id, schedule, goal, last_run FROM scheduled_tasks WHERE active = 1")
             rows = cursor.fetchall()
             now = datetime.now()
-            
+
             for row in rows:
                 if self._should_run(row["schedule"], row["last_run"], now):
                     self._trigger_task(row["id"], row["goal"], now)
@@ -110,12 +110,12 @@ class TaskScheduler:
                 hour += 12
             elif ampm == "am" and hour == 12:
                 hour = 0
-            
+
             target_today = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
             # If it's already past target today, and last run was before target today, run it!
             if now >= target_today:
                 return last_run < target_today
-            
+
             # If target today is in future, check if last run was before yesterday's target
             target_yesterday = target_today - timedelta(days=1)
             return last_run < target_yesterday
@@ -127,13 +127,10 @@ class TaskScheduler:
         try:
             q = get_queue()
             q.submit(goal, priority=TaskPriority.NORMAL)
-            
+
             # Update last run
             conn = sqlite3.connect(str(self.db_path), timeout=15.0)
-            conn.execute(
-                "UPDATE scheduled_tasks SET last_run = ? WHERE id = ?",
-                (now.isoformat(), task_id)
-            )
+            conn.execute("UPDATE scheduled_tasks SET last_run = ? WHERE id = ?", (now.isoformat(), task_id))
             conn.commit()
             conn.close()
         except Exception as e:
@@ -143,10 +140,7 @@ class TaskScheduler:
         conn = sqlite3.connect(str(self.db_path), timeout=15.0)
         try:
             cursor = conn.cursor()
-            cursor.execute(
-                "INSERT INTO scheduled_tasks (schedule, goal) VALUES (?, ?)",
-                (schedule, goal)
-            )
+            cursor.execute("INSERT INTO scheduled_tasks (schedule, goal) VALUES (?, ?)", (schedule, goal))
             conn.commit()
             return cursor.lastrowid
         finally:
@@ -174,7 +168,7 @@ class TaskScheduler:
                     "schedule": r["schedule"],
                     "goal": r["goal"],
                     "last_run": r["last_run"],
-                    "active": bool(r["active"])
+                    "active": bool(r["active"]),
                 }
                 for r in cursor.fetchall()
             ]
@@ -194,12 +188,15 @@ _scheduler.start()
         "type": "object",
         "properties": {
             "action": {"type": "string", "description": "add, remove, list"},
-            "schedule": {"type": "string", "description": "Time interval, e.g. 'every 10 minutes', 'every day at 9:30am' (required for action='add')"},
+            "schedule": {
+                "type": "string",
+                "description": "Time interval, e.g. 'every 10 minutes', 'every day at 9:30am' (required for action='add')",
+            },
             "goal": {"type": "string", "description": "Goal to execute (required for action='add')"},
             "task_id": {"type": "integer", "description": "Scheduler task ID to remove (required for action='remove')"},
         },
         "required": ["action"],
-    }
+    },
 )
 def tool_scheduler(args: dict) -> str:
     action = args.get("action", "list").lower()

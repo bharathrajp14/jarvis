@@ -3,13 +3,14 @@
 Protocol specification for secure Android Companion communication over TLS/WebSocket.
 Defines message schemas, accessibility tree models, and device state payloads.
 """
+
 from __future__ import annotations
 
 import json
 import time
 from dataclasses import asdict, dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 
 class MobileMessageType(str, Enum):
@@ -119,5 +120,5 @@ class MobileMessage:
             msg_id=data.get("msg_id", ""),
             device_id=data.get("device_id", ""),
             payload=data.get("payload", {}),
-            timestamp=data.get("timestamp", time.time())
+            timestamp=data.get("timestamp", time.time()),
         )

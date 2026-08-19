@@ -4,6 +4,7 @@ Standard Model Gateway adapter for BR JARVIS.
 Communicates with the local OpenAI-compatible Proxy Brain (default: http://localhost:8045/v1).
 Provides response normalization, model discovery, error handling, and credential safety.
 """
+
 from __future__ import annotations
 
 import json
@@ -13,12 +14,11 @@ import re
 import time
 import uuid
 from dataclasses import dataclass, field
-from pathlib import Path
-from typing import Any, Dict, Generator, List, Optional, Set
+from typing import Any, Generator, Optional
 
 import requests
 
-from .models_registry import ModelRegistry, TaskCapability, get_model_registry
+from .models_registry import ModelRegistry, get_model_registry
 
 logger = logging.getLogger("JARVIS.ModelGateway")
 
@@ -36,14 +36,18 @@ _MODEL_COOLDOWNS: dict[str, float] = {}
 
 # ── Response Schema & Exceptions ─────────────────────────────────────────────
 
+
 @dataclass
 class ModelResponse:
     """Normalized response envelope returned by all model completions."""
+
     text: str
     tool_calls: list[dict] = field(default_factory=list)
     finish_reason: str = "stop"
     model: str = ""
-    usage: dict[str, int] = field(default_factory=lambda: {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0})
+    usage: dict[str, int] = field(
+        default_factory=lambda: {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+    )
     latency_ms: float = 0.0
     provider: str = "proxy_brain"
     request_id: str = field(default_factory=lambda: str(uuid.uuid4()))
@@ -55,6 +59,7 @@ class ModelResponse:
 
 class ModelGatewayError(Exception):
     """Base exception for all gateway errors."""
+
     def __init__(self, message: str, status_code: Optional[int] = None, model: Optional[str] = None):
         sanitized = _sanitize_error_msg(message)
         super().__init__(sanitized)
@@ -64,26 +69,31 @@ class ModelGatewayError(Exception):
 
 class GatewayUnavailableError(ModelGatewayError):
     """Raised when the Proxy Brain gateway cannot be reached."""
+
     pass
 
 
 class ModelNotFoundError(ModelGatewayError):
     """Raised when the requested model is not exposed or supported by the gateway."""
+
     pass
 
 
 class MalformedResponseError(ModelGatewayError):
     """Raised when the model generates invalid or unparseable structured data."""
+
     pass
 
 
 class GatewayTimeoutError(ModelGatewayError):
     """Raised when a gateway completion times out."""
+
     pass
 
 
 class GatewayAuthenticationError(ModelGatewayError):
     """Raised when authentication with the gateway fails."""
+
     pass
 
 
@@ -92,13 +102,16 @@ def _sanitize_error_msg(msg: str) -> str:
     if not msg:
         return ""
     # Redact Bearer tokens, raw hex/alphanumeric keys
-    msg = re.sub(r'Bearer\s+[A-Za-z0-9_\-\.]+', 'Bearer [REDACTED]', msg, flags=re.IGNORECASE)
-    msg = re.sub(r'key=[\'\"]?[A-Za-z0-9_\-\.]{8,}[\'\"]?', 'key=[REDACTED]', msg, flags=re.IGNORECASE)
-    msg = re.sub(r'api[-_]?key[\'\"]?\s*:\s*[\'\"]?[A-Za-z0-9_\-\.]{8,}[\'\"]?', 'api_key: [REDACTED]', msg, flags=re.IGNORECASE)
+    msg = re.sub(r"Bearer\s+[A-Za-z0-9_\-\.]+", "Bearer [REDACTED]", msg, flags=re.IGNORECASE)
+    msg = re.sub(r"key=[\'\"]?[A-Za-z0-9_\-\.]{8,}[\'\"]?", "key=[REDACTED]", msg, flags=re.IGNORECASE)
+    msg = re.sub(
+        r"api[-_]?key[\'\"]?\s*:\s*[\'\"]?[A-Za-z0-9_\-\.]{8,}[\'\"]?", "api_key: [REDACTED]", msg, flags=re.IGNORECASE
+    )
     return msg
 
 
 # ── Gateway Configuration Helper ─────────────────────────────────────────────
+
 
 def _load_gateway_config() -> dict[str, Any]:
     base_url = os.environ.get("BRJARVIS_PROXY_BASE_URL", "").strip() or os.environ.get("OPENAI_BASE_URL", "").strip()
@@ -108,6 +121,7 @@ def _load_gateway_config() -> dict[str, Any]:
     if not api_key or not base_url:
         try:
             from brjarvis.core.paths import paths
+
             key_file = paths.CONFIG_ROOT / "api_keys.json"
             if key_file.exists():
                 data = json.loads(key_file.read_text(encoding="utf-8"))
@@ -136,6 +150,7 @@ def _load_gateway_config() -> dict[str, Any]:
 
 # ── ModelGateway Client Implementation ───────────────────────────────────────
 
+
 class ModelGateway:
     """Central OpenAI-compatible client adapter for the Proxy Brain gateway."""
 
@@ -144,7 +159,7 @@ class ModelGateway:
         base_url: Optional[str] = None,
         api_key: Optional[str] = None,
         timeout_seconds: Optional[float] = None,
-        registry: Optional[ModelRegistry] = None
+        registry: Optional[ModelRegistry] = None,
     ):
         cfg = _load_gateway_config()
         self.base_url = (base_url or cfg["base_url"]).rstrip("/")
@@ -164,7 +179,9 @@ class ModelGateway:
     def _init_client(self):
         """Initialize the underlying client with safety checks."""
         # Privacy Enforcement: verify that the base_url does not point to direct cloud endpoints in proxy_only mode
-        is_direct_cloud = any(cloud in self.base_url.lower() for cloud in ("openai.com", "googleapis.com", "anthropic.com"))
+        is_direct_cloud = any(
+            cloud in self.base_url.lower() for cloud in ("openai.com", "googleapis.com", "anthropic.com")
+        )
         if is_direct_cloud and not self.allow_cloud_fallback and self.privacy_mode in ("proxy_only", "local_only"):
             raise ValueError(
                 f"[Gateway Privacy Violation] Direct cloud endpoint '{self.base_url}' is blocked under active privacy mode '{self.privacy_mode}'."
@@ -173,6 +190,7 @@ class ModelGateway:
         self._openai_client = None
         try:
             from openai import OpenAI
+
             self._openai_client = OpenAI(
                 base_url=self.base_url,
                 api_key=self.api_key,
@@ -185,7 +203,11 @@ class ModelGateway:
     def discover_models(self, force_refresh: bool = False) -> set[str]:
         """Query GET /v1/models from the Proxy Brain to discover active model IDs."""
         now = time.time()
-        if not force_refresh and self._discovered_models is not None and (now - self._discovery_ts) < self._discovery_ttl:
+        if (
+            not force_refresh
+            and self._discovered_models is not None
+            and (now - self._discovery_ts) < self._discovery_ttl
+        ):
             return set(self._discovered_models)
 
         url = f"{self.base_url}/models"
@@ -204,7 +226,9 @@ class ModelGateway:
                 logger.info("Discovered %d models from Proxy Brain gateway: %s", len(models), sorted(models))
                 return set(models)
             elif resp.status_code in (401, 403):
-                raise GatewayAuthenticationError(f"Gateway authentication failed: HTTP {resp.status_code}", status_code=resp.status_code)
+                raise GatewayAuthenticationError(
+                    f"Gateway authentication failed: HTTP {resp.status_code}", status_code=resp.status_code
+                )
             else:
                 logger.debug("Model discovery returned status %d; using static registry catalog", resp.status_code)
         except requests.RequestException as exc:
@@ -250,7 +274,7 @@ class ModelGateway:
         max_tokens: Optional[int] = None,
         temperature: float = 0.7,
         response_format: Optional[dict] = None,
-        request_id: Optional[str] = None
+        request_id: Optional[str] = None,
     ) -> ModelResponse:
         """Synchronous chat completion with silent automatic failover across verified models."""
         start_time = time.monotonic()
@@ -288,16 +312,22 @@ class ModelGateway:
                     tool_calls = []
                     if choice and getattr(choice.message, "tool_calls", None):
                         for tc in choice.message.tool_calls:
-                            tool_calls.append({
-                                "id": getattr(tc, "id", str(uuid.uuid4())),
-                                "name": tc.function.name,
-                                "arguments": json.loads(tc.function.arguments) if isinstance(tc.function.arguments, str) else tc.function.arguments
-                            })
+                            tool_calls.append(
+                                {
+                                    "id": getattr(tc, "id", str(uuid.uuid4())),
+                                    "name": tc.function.name,
+                                    "arguments": json.loads(tc.function.arguments)
+                                    if isinstance(tc.function.arguments, str)
+                                    else tc.function.arguments,
+                                }
+                            )
 
                     # If response is non-empty or has tool calls, succeed immediately
                     if text.strip() or tool_calls:
                         if cand_model != model:
-                            logger.info("[ModelGateway] Silently auto-switched model from '%s' to '%s'", model, cand_model)
+                            logger.info(
+                                "[ModelGateway] Silently auto-switched model from '%s' to '%s'", model, cand_model
+                            )
 
                         usage_dict = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
                         if getattr(resp, "usage", None):
@@ -316,7 +346,7 @@ class ModelGateway:
                             latency_ms=round(elapsed_ms, 2),
                             provider="proxy_brain",
                             request_id=req_id,
-                            raw=resp
+                            raw=resp,
                         )
 
                     # Empty text returned: mark cooldown and try next model
@@ -339,7 +369,7 @@ class ModelGateway:
                 temperature=temperature,
                 response_format=response_format,
                 req_id=req_id,
-                start_time=start_time
+                start_time=start_time,
             )
         except Exception as exc:
             if last_exception is not None:
@@ -355,18 +385,15 @@ class ModelGateway:
         temperature: float,
         response_format: Optional[dict],
         req_id: str,
-        start_time: float
+        start_time: float,
     ) -> ModelResponse:
         url = f"{self.base_url}/chat/completions"
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
-        }
+        headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
         payload: dict[str, Any] = {
             "model": model,
             "messages": full_messages,
             "temperature": temperature,
-            "stream": False
+            "stream": False,
         }
         if max_tokens:
             payload["max_tokens"] = max_tokens
@@ -397,11 +424,9 @@ class ModelGateway:
                             args_val = json.loads(args_val)
                         except Exception:
                             pass
-                    tool_calls.append({
-                        "id": tc.get("id", str(uuid.uuid4())),
-                        "name": fn.get("name", ""),
-                        "arguments": args_val
-                    })
+                    tool_calls.append(
+                        {"id": tc.get("id", str(uuid.uuid4())), "name": fn.get("name", ""), "arguments": args_val}
+                    )
 
                 usage_data = data.get("usage", {})
                 return ModelResponse(
@@ -417,21 +442,33 @@ class ModelGateway:
                     latency_ms=round(elapsed_ms, 2),
                     provider="proxy_brain",
                     request_id=req_id,
-                    raw=data
+                    raw=data,
                 )
             elif r.status_code == 404:
-                raise ModelNotFoundError(f"Model '{model}' not found on Proxy Brain gateway (HTTP 404)", status_code=404, model=model)
+                raise ModelNotFoundError(
+                    f"Model '{model}' not found on Proxy Brain gateway (HTTP 404)", status_code=404, model=model
+                )
             elif r.status_code in (401, 403):
-                raise GatewayAuthenticationError(f"Gateway auth error (HTTP {r.status_code})", status_code=r.status_code, model=model)
+                raise GatewayAuthenticationError(
+                    f"Gateway auth error (HTTP {r.status_code})", status_code=r.status_code, model=model
+                )
             elif r.status_code == 504:
-                raise GatewayTimeoutError(f"Gateway timeout (HTTP 504) for model '{model}'", status_code=504, model=model)
+                raise GatewayTimeoutError(
+                    f"Gateway timeout (HTTP 504) for model '{model}'", status_code=504, model=model
+                )
             else:
-                raise ModelGatewayError(f"Gateway HTTP error {r.status_code}: {r.text}", status_code=r.status_code, model=model)
+                raise ModelGatewayError(
+                    f"Gateway HTTP error {r.status_code}: {r.text}", status_code=r.status_code, model=model
+                )
 
         except requests.Timeout as exc:
-            raise GatewayTimeoutError(f"Request to Proxy Brain timed out after {self.timeout}s: {exc}", model=model) from exc
+            raise GatewayTimeoutError(
+                f"Request to Proxy Brain timed out after {self.timeout}s: {exc}", model=model
+            ) from exc
         except requests.ConnectionError as exc:
-            raise GatewayUnavailableError(f"Failed to connect to Proxy Brain at {self.base_url}: {exc}", model=model) from exc
+            raise GatewayUnavailableError(
+                f"Failed to connect to Proxy Brain at {self.base_url}: {exc}", model=model
+            ) from exc
         except Exception as exc:
             if isinstance(exc, ModelGatewayError):
                 raise
@@ -444,7 +481,7 @@ class ModelGateway:
         system: str = "",
         tools: Optional[list[dict]] = None,
         max_tokens: Optional[int] = None,
-        temperature: float = 0.7
+        temperature: float = 0.7,
     ) -> Generator[str, None, None]:
         """Streaming chat completion with silent automatic failover across verified models."""
         full_messages = []
@@ -485,16 +522,8 @@ class ModelGateway:
 
         # 2. HTTP Server-Sent Events Streaming
         url = f"{self.base_url}/chat/completions"
-        headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json"
-        }
-        payload = {
-            "model": model,
-            "messages": full_messages,
-            "temperature": temperature,
-            "stream": True
-        }
+        headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
+        payload = {"model": model, "messages": full_messages, "temperature": temperature, "stream": True}
         if max_tokens:
             payload["max_tokens"] = max_tokens
 
@@ -527,14 +556,25 @@ class ModelGateway:
         if "timeout" in err_str or "timed out" in err_str:
             raise GatewayTimeoutError(f"Gateway request timed out: {exc}", model=model) from exc
         elif "connect" in err_str or "connection" in err_str or "refused" in err_str:
-            raise GatewayUnavailableError(f"Could not connect to Proxy Brain at {self.base_url}: {exc}", model=model) from exc
-        elif "404" in err_str or "not found" in err_str or "unknown model" in err_str or "quota for model" in err_str or "nonexistent" in err_str:
-            raise ModelNotFoundError(f"Model '{model}' not found or unavailable on Proxy Brain: {exc}", status_code=404, model=model) from exc
+            raise GatewayUnavailableError(
+                f"Could not connect to Proxy Brain at {self.base_url}: {exc}", model=model
+            ) from exc
+        elif (
+            "404" in err_str
+            or "not found" in err_str
+            or "unknown model" in err_str
+            or "quota for model" in err_str
+            or "nonexistent" in err_str
+        ):
+            raise ModelNotFoundError(
+                f"Model '{model}' not found or unavailable on Proxy Brain: {exc}", status_code=404, model=model
+            ) from exc
         elif "401" in err_str or "403" in err_str or "unauthorized" in err_str:
-            raise GatewayAuthenticationError(f"Gateway authentication error: {exc}", status_code=401, model=model) from exc
+            raise GatewayAuthenticationError(
+                f"Gateway authentication error: {exc}", status_code=401, model=model
+            ) from exc
         else:
             raise ModelGatewayError(f"Gateway execution error: {exc}", model=model) from exc
-
 
 
 _global_gateway: Optional[ModelGateway] = None

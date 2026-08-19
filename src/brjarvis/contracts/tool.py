@@ -3,6 +3,7 @@
 Canonical Tool, Capability, and CapabilityLease contracts for BR JARVIS operating runtime.
 Defines ToolRequest, ToolResult, Capability, CapabilityLease, and related Enums.
 """
+
 from __future__ import annotations
 
 import time
@@ -15,6 +16,7 @@ from pydantic import BaseModel, Field
 
 class ToolCategory(str, Enum):
     """Functional categorization for tools and capabilities."""
+
     GENERAL = "general"
     FILESYSTEM = "filesystem"
     BROWSER = "browser"
@@ -31,6 +33,7 @@ class ToolCategory(str, Enum):
 
 class RiskLevel(str, Enum):
     """Risk stratification for capabilities and actions."""
+
     SAFE = "safe"
     LOW = "low"
     MEDIUM = "medium"
@@ -40,6 +43,7 @@ class RiskLevel(str, Enum):
 
 class ToolRequest(BaseModel):
     """Canonical invocation request for a tool or capability."""
+
     request_id: str = Field(default_factory=lambda: f"treq-{uuid.uuid4().hex[:10]}")
     tool_name: str
     parameters: Dict[str, Any] = Field(default_factory=dict)
@@ -57,6 +61,7 @@ class ToolRequest(BaseModel):
 
 class ToolResult(BaseModel):
     """Canonical result envelope returned by tool execution."""
+
     tool_name: str
     status: str = "COMPLETED"  # COMPLETED, FAILED, TIMEOUT, CANCELLED, BLOCKED
     success: bool = True
@@ -78,6 +83,7 @@ class ToolResult(BaseModel):
 
 class Capability(BaseModel):
     """First-class registered capability definition."""
+
     id: str  # e.g., "filesystem.read", "browser.click", "shell.exec"
     version: str = "1.0.0"
     name: str
@@ -96,6 +102,7 @@ class Capability(BaseModel):
 
 class CapabilityLease(BaseModel):
     """Time-bounded and scope-restricted lease for high-risk capabilities."""
+
     lease_id: str = Field(default_factory=lambda: f"lease-{uuid.uuid4().hex[:8]}")
     agent_id: str
     task_id: str

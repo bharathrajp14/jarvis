@@ -8,14 +8,14 @@ Detects:
 - Contradictory constraints
 Resolves using strict provenance hierarchy, user correction precedence, and scope specificity.
 """
+
 from __future__ import annotations
 
 import logging
-import time
 import uuid
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Tuple
+from typing import List, Optional
 
 from .domain import CanonicalMemory, MemoryStatus, MemoryType, SourceType
 from .store import CanonicalMemoryStore, get_canonical_store
@@ -24,16 +24,17 @@ logger = logging.getLogger("JARVIS.ConflictEngine")
 
 
 class ConflictResolutionAction(str, Enum):
-    SUPERSEDE_EXISTING = "SUPERSEDE_EXISTING"      # Candidate is newer/higher authority -> replaces existing
-    REJECT_CANDIDATE = "REJECT_CANDIDATE"          # Existing is higher authority (e.g. user statement vs model inference)
-    SCOPED_OVERRIDE = "SCOPED_OVERRIDE"            # Both valid in different scopes (e.g. project overrides global)
-    MERGE = "MERGE"                                # Both valid complementary items
-    MARK_CONFLICTED = "MARK_CONFLICTED"            # Irreconcilable ambiguity requiring human clarification
+    SUPERSEDE_EXISTING = "SUPERSEDE_EXISTING"  # Candidate is newer/higher authority -> replaces existing
+    REJECT_CANDIDATE = "REJECT_CANDIDATE"  # Existing is higher authority (e.g. user statement vs model inference)
+    SCOPED_OVERRIDE = "SCOPED_OVERRIDE"  # Both valid in different scopes (e.g. project overrides global)
+    MERGE = "MERGE"  # Both valid complementary items
+    MARK_CONFLICTED = "MARK_CONFLICTED"  # Irreconcilable ambiguity requiring human clarification
 
 
 @dataclass
 class ConflictResolutionResult:
     """Outcome of deterministic conflict evaluation."""
+
     action: ConflictResolutionAction
     candidate_memory: CanonicalMemory
     conflicting_memories: List[CanonicalMemory]

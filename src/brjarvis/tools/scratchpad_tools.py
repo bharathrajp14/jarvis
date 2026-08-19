@@ -2,11 +2,12 @@
 """
 Exposes dynamic scratchpad workspace operations as tools.
 """
+
 from __future__ import annotations
 
-import json
-from .registry import register_tool
 from brjarvis.agent.scratchpad import get_scratchpad
+
+from .registry import register_tool
 
 
 @register_tool(
@@ -19,7 +20,7 @@ from brjarvis.agent.scratchpad import get_scratchpad
             "content": {"type": "string", "description": "Content or code to write"},
         },
         "required": ["name", "content"],
-    }
+    },
 )
 def tool_scratchpad_write(args: dict) -> str:
     sp = get_scratchpad()
@@ -35,7 +36,7 @@ def tool_scratchpad_write(args: dict) -> str:
             "name": {"type": "string", "description": "Filename in scratch directory to read"},
         },
         "required": ["name"],
-    }
+    },
 )
 def tool_scratchpad_read(args: dict) -> str:
     sp = get_scratchpad()
@@ -53,7 +54,7 @@ def tool_scratchpad_read(args: dict) -> str:
             "timeout": {"type": "integer", "description": "Execution timeout in seconds (default: 30)"},
         },
         "required": ["script"],
-    }
+    },
 )
 def tool_scratchpad_eval(args: dict) -> str:
     sp = get_scratchpad()
@@ -79,9 +80,7 @@ def tool_scratchpad_eval(args: dict) -> str:
 
 
 @register_tool(
-    name="scratchpad_list",
-    description="List active temporary files in the ./scratch/ workspace.",
-    parameters={}
+    name="scratchpad_list", description="List active temporary files in the ./scratch/ workspace.", parameters={}
 )
 def tool_scratchpad_list(args: dict) -> str:
     sp = get_scratchpad()
@@ -94,11 +93,7 @@ def tool_scratchpad_list(args: dict) -> str:
     return "\n".join(lines)
 
 
-@register_tool(
-    name="scratchpad_clear",
-    description="Clean temporary scratch workspace files and notes.",
-    parameters={}
-)
+@register_tool(name="scratchpad_clear", description="Clean temporary scratch workspace files and notes.", parameters={})
 def tool_scratchpad_clear(args: dict) -> str:
     sp = get_scratchpad()
     return sp.clear()

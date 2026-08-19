@@ -80,6 +80,7 @@ async def get_connectors_list():
         return _CONNECTORS_CACHE
 
     from connectors.hub import get_hub
+
     hub = get_hub()
     raw_connectors = hub.list_connectors()
 
@@ -96,20 +97,22 @@ async def get_connectors_list():
 
         status = "CONNECTED" if is_conf else "NOT_CONFIGURED"
 
-        formatted_connectors.append({
-            "id": cid,
-            "name": name,
-            "desc": desc,
-            "icon": icon,
-            "status": status,
-            "configured": is_conf,
-            "requires_auth": req_auth,
-            "auth_hint": c.get("auth_hint", ""),
-            "category": _categorize_connector(cid),
-            "tools": tool_names,
-            "tool_details": tools,
-            "tool_count": len(tools),
-        })
+        formatted_connectors.append(
+            {
+                "id": cid,
+                "name": name,
+                "desc": desc,
+                "icon": icon,
+                "status": status,
+                "configured": is_conf,
+                "requires_auth": req_auth,
+                "auth_hint": c.get("auth_hint", ""),
+                "category": _categorize_connector(cid),
+                "tools": tool_names,
+                "tool_details": tools,
+                "tool_count": len(tools),
+            }
+        )
 
     payload = {
         "status": "ok",
@@ -135,6 +138,7 @@ async def connector_list():
     """Return all connectors and their available tools dictionary."""
     try:
         from connectors.hub import get_hub
+
         hub = get_hub()
         result = {}
         for c in hub.list_connectors():
@@ -159,6 +163,7 @@ async def connector_call(req: ConnectorCallRequest):
         if not conn_id:
             raise HTTPException(status_code=400, detail="Missing 'connector' or 'connector_id' in request.")
         from connectors.hub import get_hub
+
         hub = get_hub()
         result = await asyncio.to_thread(hub.call, conn_id, req.tool, req.params)
         return {"status": "ok", "result": result}
@@ -177,6 +182,7 @@ async def connector_test(req: ConnectorTestRequest):
     if not conn_id:
         raise HTTPException(status_code=400, detail="Missing 'connector' or 'connector_id' in request.")
     from connectors.hub import get_hub
+
     hub = get_hub()
     conn = hub.get_connector(conn_id)
     if not conn:
@@ -198,7 +204,9 @@ async def connector_test(req: ConnectorTestRequest):
             "display_name": conn.display_name,
             "healthy": is_healthy,
             "latency_ms": latency_ms,
-            "message": f"Connection verified in {latency_ms}ms" if is_healthy else "Health check reported degraded state",
+            "message": f"Connection verified in {latency_ms}ms"
+            if is_healthy
+            else "Health check reported degraded state",
         }
     except Exception as exc:
         latency_ms = round((time.perf_counter() - t0) * 1000, 1)

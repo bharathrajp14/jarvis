@@ -4,15 +4,13 @@ Dedicated Online Speech-to-Text (STT) Engine for BR JARVIS.
 Uses GEMINI_LISTEN_API_KEY strictly for audio transcription via Gemini Flash REST API.
 Operates 100% in-memory with automatic fallback to local CTranslate2 faster-whisper.
 """
+
 from __future__ import annotations
 
 import base64
 import json
 import logging
 import os
-import sys
-from pathlib import Path
-from typing import Optional
 
 logger = logging.getLogger("JARVIS.GeminiSTT")
 
@@ -27,6 +25,7 @@ def get_listen_api_key() -> str:
 
     try:
         from brjarvis.core.paths import paths
+
         config_path = paths.CONFIG_ROOT / "api_keys.json"
         if config_path.exists():
             data = json.loads(config_path.read_text(encoding="utf-8"))

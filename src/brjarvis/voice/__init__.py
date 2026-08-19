@@ -2,11 +2,12 @@
 """
 Voice package re-exporting TTS, STT, and Assistant engines.
 """
+
 from __future__ import annotations
 
-from .tts import NeuralTTS, MCIPlayer
-from .stt import SounddeviceMicrophone
 from .assistant import BRVoiceAssistant
+from .stt import SounddeviceMicrophone
+from .tts import MCIPlayer, NeuralTTS
 
 __all__ = [
     "NeuralTTS",

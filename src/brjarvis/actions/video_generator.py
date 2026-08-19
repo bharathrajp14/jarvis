@@ -4,11 +4,10 @@ AI video generation using multiple providers:
   - Google Veo (primary, via google.genai SDK)
   - Kling (via REST API, if KLING_API_KEY set)
 """
+
 from __future__ import annotations
 
 import logging
-import base64
-import json
 import os
 import time
 import traceback

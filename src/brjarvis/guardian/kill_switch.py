@@ -3,6 +3,7 @@
 Global Emergency Pause Switch for Autonomous Operations.
 Monitors flag files, CLI pause triggers, and hotkeys.
 """
+
 from __future__ import annotations
 
 import os

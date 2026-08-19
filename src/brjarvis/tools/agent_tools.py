@@ -3,15 +3,18 @@
 Sub-agent management tools plugin for JARVIS MK37.
 Allows spawning, message-passing, and monitoring autonomous sub-agents.
 """
+
 from __future__ import annotations
 
-from .registry import register_tool, get_orchestrator_ref
+from .registry import get_orchestrator_ref, register_tool
 
 
 def _get_subagent_manager():
-    from brjarvis.multi_agent.subagent import SubAgentManager
     # Safe singleton access
     import tools.registry
+
+    from brjarvis.multi_agent.subagent import SubAgentManager
+
     mgr = getattr(tools.registry, "_subagent_mgr", None)
     if mgr is None:
         mgr = SubAgentManager()
@@ -35,7 +38,7 @@ def _get_subagent_manager():
             "wait": {"type": "boolean"},
         },
         "required": ["prompt"],
-    }
+    },
 )
 def tool_spawn_agent(args: dict) -> str:
     orch = get_orchestrator_ref()
@@ -54,6 +57,7 @@ def tool_spawn_agent(args: dict) -> str:
     agent_def = None
     if agent_type:
         from brjarvis.multi_agent.subagent import get_agent_definition
+
         agent_def = get_agent_definition(agent_type)
         if agent_def is None:
             return f"Error: unknown agent_type '{agent_type}'. Use list_agent_types."
@@ -91,17 +95,17 @@ def tool_spawn_agent(args: dict) -> str:
             "message": {"type": "string"},
         },
         "required": ["to", "message"],
-    }
+    },
 )
 def tool_send_message(args: dict) -> str:
     mgr = _get_subagent_manager()
     target = args["to"]
     message = args["message"]
-    
+
     ok = mgr.send_message(target, message)
     if ok:
         return f"Message queued for agent '{target}'."
-        
+
     task_id = mgr._by_name.get(target, target)
     task = mgr.tasks.get(task_id)
     if task is None:
@@ -118,34 +122,30 @@ def tool_send_message(args: dict) -> str:
             "task_id": {"type": "string"},
         },
         "required": ["task_id"],
-    }
+    },
 )
 def tool_check_agent(args: dict) -> str:
     mgr = _get_subagent_manager()
     task_id = args["task_id"]
     task = mgr.tasks.get(task_id)
-    
+
     if task is None:
         return f"Error: no task with id '{task_id}'"
-        
+
     lines = [f"Status: {task.status}", f"Name: {task.name}"]
     if task.result:
         lines.append(f"\nResult:\n{task.result}")
     return "\n".join(lines)
 
 
-@register_tool(
-    name="list_agents",
-    description="List all sub-agent tasks and their statuses.",
-    parameters={}
-)
+@register_tool(name="list_agents", description="List all sub-agent tasks and their statuses.", parameters={})
 def tool_list_agents(args: dict) -> str:
     mgr = _get_subagent_manager()
     tasks = mgr.list_tasks()
-    
+
     if not tasks:
         return "No sub-agent tasks."
-        
+
     lines = ["ID           | Name     | Status    | Prompt"]
     lines.append("-------------|----------|-----------|------")
     for t in tasks:
@@ -155,17 +155,16 @@ def tool_list_agents(args: dict) -> str:
 
 
 @register_tool(
-    name="list_agent_types",
-    description="List all available agent types (built-in and custom).",
-    parameters={}
+    name="list_agent_types", description="List all available agent types (built-in and custom).", parameters={}
 )
 def tool_list_agent_types(args: dict) -> str:
     from brjarvis.multi_agent.subagent import load_agent_definitions
+
     defs = load_agent_definitions()
-    
+
     if not defs:
         return "No agent types available."
-        
+
     lines = ["Available agent types:", ""]
     for aname, d in sorted(defs.items()):
         lines.append(f"  {aname:20s}  [{d.source:8s}]  {d.description}")

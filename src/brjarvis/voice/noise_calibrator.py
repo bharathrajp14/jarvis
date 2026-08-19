@@ -20,12 +20,12 @@ Usage:
     snr_db = calibrator.get_snr(rms_value)
     env = calibrator.environment_label  # "QUIET" | "MODERATE" | "NOISY"
 """
+
 from __future__ import annotations
 
 import json
 import logging
 import math
-import os
 import threading
 import time
 from pathlib import Path
@@ -36,15 +36,15 @@ import numpy as np
 logger = logging.getLogger("JARVIS.Voice.NoiseCalibrator")
 
 _CALIBRATION_PATH = Path.home() / ".jarvis" / "audio_calibration.json"
-_CALIBRATION_SAMPLE_SECONDS = 2.0   # how long to sample ambient audio
-_RECALIBRATE_DRIFT_FACTOR = 2.0     # recalibrate if noise floor drifts by 2x
-_SPEECH_MULTIPLIER = 3.5            # speech threshold = noise_floor * multiplier
+_CALIBRATION_SAMPLE_SECONDS = 2.0  # how long to sample ambient audio
+_RECALIBRATE_DRIFT_FACTOR = 2.0  # recalibrate if noise floor drifts by 2x
+_SPEECH_MULTIPLIER = 3.5  # speech threshold = noise_floor * multiplier
 
 
 class EnvironmentClass:
-    QUIET    = "QUIET"     # RMS < 0.008
+    QUIET = "QUIET"  # RMS < 0.008
     MODERATE = "MODERATE"  # 0.008 <= RMS < 0.025
-    NOISY    = "NOISY"     # RMS >= 0.025
+    NOISY = "NOISY"  # RMS >= 0.025
 
 
 class AdaptiveNoiseCalibrator:
@@ -62,7 +62,7 @@ class AdaptiveNoiseCalibrator:
     """
 
     def __init__(self):
-        self._baseline_rms: float = 0.018    # default fallback threshold
+        self._baseline_rms: float = 0.018  # default fallback threshold
         self._baseline_zcr: float = 0.10
         self._is_calibrated: bool = False
         self._lock = threading.RLock()
@@ -137,14 +137,18 @@ class AdaptiveNoiseCalibrator:
             # Check for significant drift (environment changed)
             if len(self._recent_rms_samples) >= 50:
                 recent_mean = sum(self._recent_rms_samples[-30:]) / 30
-                if (recent_mean > self._baseline_rms * _RECALIBRATE_DRIFT_FACTOR or
-                        recent_mean < self._baseline_rms / _RECALIBRATE_DRIFT_FACTOR):
+                if (
+                    recent_mean > self._baseline_rms * _RECALIBRATE_DRIFT_FACTOR
+                    or recent_mean < self._baseline_rms / _RECALIBRATE_DRIFT_FACTOR
+                ):
                     old = self._baseline_rms
                     # Smooth update: blend 70% old + 30% new
                     self._baseline_rms = 0.70 * self._baseline_rms + 0.30 * recent_mean
                     logger.info(
                         "NoiseCalibrator: Noise floor updated %.4f → %.4f (%s)",
-                        old, self._baseline_rms, self.environment_label
+                        old,
+                        self._baseline_rms,
+                        self.environment_label,
                     )
 
     # ── Background Calibration ────────────────────────────────────────────────
@@ -185,6 +189,7 @@ class AdaptiveNoiseCalibrator:
         """
         try:
             import sounddevice as sd
+
             chunks_needed = int(sample_rate * duration / chunk_size)
             rms_values = []
 
@@ -199,7 +204,7 @@ class AdaptiveNoiseCalibrator:
                 for _ in range(chunks_needed):
                     data, _ = stream.read(chunk_size)
                     samples = np.frombuffer(bytes(data), dtype=np.int16).astype(np.float32) / 32768.0
-                    rms = float(np.sqrt(np.mean(samples ** 2)))
+                    rms = float(np.sqrt(np.mean(samples**2)))
                     if rms > 0:
                         rms_values.append(rms)
 
@@ -214,8 +219,7 @@ class AdaptiveNoiseCalibrator:
                 self._persist_calibration()
                 env = self.environment_label
                 logger.info(
-                    "NoiseCalibrator: Baseline RMS=%.4f | Threshold=%.4f | Env=%s",
-                    p20, self.get_vad_threshold(), env
+                    "NoiseCalibrator: Baseline RMS=%.4f | Threshold=%.4f | Env=%s", p20, self.get_vad_threshold(), env
                 )
                 return p20
         except Exception as e:
@@ -232,8 +236,8 @@ class AdaptiveNoiseCalibrator:
         """Sample a single frame of silence and compute its ZCR baseline."""
         try:
             import sounddevice as sd
-            with sd.RawInputStream(samplerate=sample_rate, channels=1, dtype="int16",
-                                    blocksize=chunk_size) as s:
+
+            with sd.RawInputStream(samplerate=sample_rate, channels=1, dtype="int16", blocksize=chunk_size) as s:
                 data, _ = s.read(chunk_size)
                 samples = np.frombuffer(bytes(data), dtype=np.int16).astype(np.float32) / 32768.0
                 return float(np.sum(np.abs(np.diff(np.signbit(samples)))) / len(samples))
@@ -273,7 +277,9 @@ class AdaptiveNoiseCalibrator:
                 self._is_calibrated = True
             logger.info(
                 "NoiseCalibrator: Loaded persisted calibration RMS=%.4f Env=%s (%.1fh old)",
-                self._baseline_rms, data.get("environment", "?"), age_hours
+                self._baseline_rms,
+                data.get("environment", "?"),
+                age_hours,
             )
             return True
         except Exception as e:

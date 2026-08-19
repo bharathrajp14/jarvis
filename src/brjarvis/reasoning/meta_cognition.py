@@ -3,11 +3,13 @@
 Pre-execution meta-cognitive evaluation layer predicting execution risk, CoT depth,
 context completeness, and goal feasibility before dispatching tool calls.
 """
+
 from __future__ import annotations
 
 import logging
 import time
 from typing import Any, Dict, List, Optional
+
 from pydantic import BaseModel, Field
 
 from brjarvis.core.runtime import get_runtime
@@ -49,7 +51,7 @@ class MetaCognitionEngine:
         Evaluate a user goal against context and historical failure trajectory memory.
         """
         logger.info(f"🧠 MetaCognition: Evaluating feasibility for goal: '{goal[:60]}...'")
-        
+
         goal_lower = goal.lower()
         context = context or {}
         historical_failures = historical_failures or []
@@ -63,7 +65,11 @@ class MetaCognitionEngine:
 
         # 2. Check for missing critical context
         if "file" in goal_lower or "read" in goal_lower or "edit" in goal_lower:
-            if not context.get("active_file") and not context.get("target_file") and not any(ext in goal_lower for ext in [".py", ".md", ".json", ".txt", ".js", ".ts", ".html"]):
+            if (
+                not context.get("active_file")
+                and not context.get("target_file")
+                and not any(ext in goal_lower for ext in [".py", ".md", ".json", ".txt", ".js", ".ts", ".html"])
+            ):
                 missing.append("Target file path ambiguous")
                 confidence -= 0.15
 
@@ -103,7 +109,9 @@ class MetaCognitionEngine:
             suggested_action=suggested_action,
         )
 
-        logger.info(f"✨ MetaCognition Assessment: Action={assessment.suggested_action}, Confidence={assessment.confidence_score}, Risk={assessment.perceived_risk}")
+        logger.info(
+            f"✨ MetaCognition Assessment: Action={assessment.suggested_action}, Confidence={assessment.confidence_score}, Risk={assessment.perceived_risk}"
+        )
         return assessment
 
 

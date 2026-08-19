@@ -3,11 +3,10 @@
 Local filesystem connector — read, search, list, and summarize local files.
 Zero-setup. No auth required. Operates within safe allowed directories only.
 """
+
 from __future__ import annotations
 
 import logging
-import os
-import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -24,16 +23,48 @@ _SAFE_ROOTS = [
 
 # File extensions that can be read as text
 _TEXT_EXTENSIONS = {
-    ".txt", ".md", ".py", ".js", ".ts", ".json", ".yaml", ".yml",
-    ".toml", ".cfg", ".ini", ".env", ".sh", ".bat", ".ps1", ".cs",
-    ".java", ".go", ".rs", ".cpp", ".c", ".h", ".html", ".css",
-    ".xml", ".csv", ".log", ".sql", ".r", ".rb", ".php", ".swift",
-    ".kt", ".scala", ".vue", ".jsx", ".tsx", ".graphql",
+    ".txt",
+    ".md",
+    ".py",
+    ".js",
+    ".ts",
+    ".json",
+    ".yaml",
+    ".yml",
+    ".toml",
+    ".cfg",
+    ".ini",
+    ".env",
+    ".sh",
+    ".bat",
+    ".ps1",
+    ".cs",
+    ".java",
+    ".go",
+    ".rs",
+    ".cpp",
+    ".c",
+    ".h",
+    ".html",
+    ".css",
+    ".xml",
+    ".csv",
+    ".log",
+    ".sql",
+    ".r",
+    ".rb",
+    ".php",
+    ".swift",
+    ".kt",
+    ".scala",
+    ".vue",
+    ".jsx",
+    ".tsx",
+    ".graphql",
 }
 
 
 class FilesystemConnector(BaseConnector):
-
     @property
     def connector_id(self) -> str:
         return "filesystem"
@@ -62,7 +93,10 @@ class FilesystemConnector(BaseConnector):
                 parameters={
                     "type": "object",
                     "properties": {
-                        "path": {"type": "string", "description": "Directory path to list (default: current workspace)"},
+                        "path": {
+                            "type": "string",
+                            "description": "Directory path to list (default: current workspace)",
+                        },
                         "pattern": {"type": "string", "description": "Glob filter pattern (e.g. '*.py', '*.md')"},
                         "recursive": {"type": "boolean", "default": False},
                         "limit": {"type": "integer", "default": 30},
@@ -95,7 +129,10 @@ class FilesystemConnector(BaseConnector):
                             "default": "name",
                             "description": "Search by filename, file content, or both",
                         },
-                        "path": {"type": "string", "description": "Directory to search in (default: current workspace)"},
+                        "path": {
+                            "type": "string",
+                            "description": "Directory to search in (default: current workspace)",
+                        },
                         "extensions": {
                             "type": "array",
                             "items": {"type": "string"},
@@ -157,19 +194,22 @@ class FilesystemConnector(BaseConnector):
     def call_tool(self, tool_name: str, args: Dict[str, Any]) -> Any:
         if tool_name == "list_files":
             return self._list_files(
-                args.get("path", ""), args.get("pattern", ""),
-                bool(args.get("recursive", False)), int(args.get("limit", 30))
+                args.get("path", ""),
+                args.get("pattern", ""),
+                bool(args.get("recursive", False)),
+                int(args.get("limit", 30)),
             )
         elif tool_name == "read_file":
             return self._read_file(
-                args.get("path", ""), int(args.get("max_lines", 200)),
-                int(args.get("start_line", 1))
+                args.get("path", ""), int(args.get("max_lines", 200)), int(args.get("start_line", 1))
             )
         elif tool_name == "search_files":
             return self._search_files(
-                args.get("query", ""), args.get("search_type", "name"),
-                args.get("path", ""), args.get("extensions", []),
-                int(args.get("limit", 20))
+                args.get("query", ""),
+                args.get("search_type", "name"),
+                args.get("path", ""),
+                args.get("extensions", []),
+                int(args.get("limit", 20)),
             )
         elif tool_name == "get_file_info":
             return self._get_file_info(args.get("path", ""))
@@ -195,9 +235,11 @@ class FilesystemConnector(BaseConnector):
 
             # Filter hidden/system dirs
             items = [
-                f for f in items
-                if not any(part.startswith(".") or part in ("__pycache__", "node_modules", ".venv", "venv")
-                           for part in f.parts)
+                f
+                for f in items
+                if not any(
+                    part.startswith(".") or part in ("__pycache__", "node_modules", ".venv", "venv") for part in f.parts
+                )
             ]
             items = sorted(items, key=lambda x: (x.is_file(), x.name))[:limit]
 
@@ -240,8 +282,15 @@ class FilesystemConnector(BaseConnector):
             if end < total_lines:
                 truncated = f"\n\n[...{total_lines - end} more lines. Use start_line={end + 1} to continue.]"
 
-            ext_map = {".py": "python", ".js": "javascript", ".ts": "typescript",
-                       ".json": "json", ".md": "markdown", ".sh": "bash", ".sql": "sql"}
+            ext_map = {
+                ".py": "python",
+                ".js": "javascript",
+                ".ts": "typescript",
+                ".json": "json",
+                ".md": "markdown",
+                ".sh": "bash",
+                ".sql": "sql",
+            }
             lang = ext_map.get(ext, "")
             content_block = "\n".join(slice_lines)
             size = _format_size(p.stat().st_size)
@@ -254,8 +303,7 @@ class FilesystemConnector(BaseConnector):
         except Exception as e:
             return f"Read file error: {e}"
 
-    def _search_files(self, query: str, search_type: str, path: str,
-                      extensions: list, limit: int) -> str:
+    def _search_files(self, query: str, search_type: str, path: str, extensions: list, limit: int) -> str:
         search_root = self._resolve_path(path) or Path.cwd()
         if not search_root.exists():
             return f"❌ Search path does not exist: {path}"
@@ -265,10 +313,12 @@ class FilesystemConnector(BaseConnector):
 
         try:
             all_files = [
-                f for f in search_root.rglob("*")
+                f
+                for f in search_root.rglob("*")
                 if f.is_file()
-                and not any(part.startswith(".") or part in ("__pycache__", "node_modules", ".venv", "venv")
-                            for part in f.parts)
+                and not any(
+                    part.startswith(".") or part in ("__pycache__", "node_modules", ".venv", "venv") for part in f.parts
+                )
             ]
 
             if extensions:
@@ -297,7 +347,7 @@ class FilesystemConnector(BaseConnector):
                                         match_context = f"  Line {i}: {line.strip()[:100]}"
                                         break
                         except Exception as e:
-                            logger.debug('Suppressed exception: %s', e)
+                            logger.debug("Suppressed exception: %s", e)
                 if matched:
                     matches.append((f, match_context))
 
@@ -321,6 +371,7 @@ class FilesystemConnector(BaseConnector):
             return f"❌ File not found: {path}"
         try:
             import datetime
+
             stat = p.stat()
             modified = datetime.datetime.fromtimestamp(stat.st_mtime).strftime("%Y-%m-%d %H:%M:%S")
             created = datetime.datetime.fromtimestamp(stat.st_ctime).strftime("%Y-%m-%d %H:%M:%S")
@@ -358,10 +409,15 @@ class FilesystemConnector(BaseConnector):
         def _tree(p: Path, current_depth: int, prefix: str = ""):
             if current_depth > depth:
                 return
-            items = sorted([x for x in p.iterdir()
-                           if not x.name.startswith(".")
-                           and x.name not in ("__pycache__", "node_modules", ".venv", "venv", "dist")],
-                          key=lambda x: (x.is_file(), x.name))
+            items = sorted(
+                [
+                    x
+                    for x in p.iterdir()
+                    if not x.name.startswith(".")
+                    and x.name not in ("__pycache__", "node_modules", ".venv", "venv", "dist")
+                ],
+                key=lambda x: (x.is_file(), x.name),
+            )
             for item in items[:20]:
                 connector = "├── " if item != items[-1] else "└── "
                 size_str = f" ({_format_size(item.stat().st_size)})" if item.is_file() else "/"
@@ -379,8 +435,8 @@ class FilesystemConnector(BaseConnector):
 def _format_size(size_bytes: int) -> str:
     if size_bytes < 1024:
         return f"{size_bytes}B"
-    elif size_bytes < 1024 ** 2:
+    elif size_bytes < 1024**2:
         return f"{size_bytes / 1024:.1f}KB"
-    elif size_bytes < 1024 ** 3:
-        return f"{size_bytes / 1024 ** 2:.1f}MB"
-    return f"{size_bytes / 1024 ** 3:.1f}GB"
+    elif size_bytes < 1024**3:
+        return f"{size_bytes / 1024**2:.1f}MB"
+    return f"{size_bytes / 1024**3:.1f}GB"

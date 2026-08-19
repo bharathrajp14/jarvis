@@ -4,24 +4,21 @@ Retrieval-Augmented Generation (RAG) for chatting with personal documents.
 Supports: PDF, DOCX, TXT, CSV, Markdown, webpages, and screenshots (via OCR).
 Uses ChromaDB for vector storage and semantic search.
 """
+
 from __future__ import annotations
 
-import logging
 import hashlib
-import json
+import logging
 import os
 import re
-import traceback
 from datetime import datetime
 from pathlib import Path
-from typing import Generator
-
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 
 COLLECTION_NAME = "local_library"
-CHUNK_SIZE = 800       # characters per chunk
-CHUNK_OVERLAP = 100    # overlap between chunks
+CHUNK_SIZE = 800  # characters per chunk
+CHUNK_OVERLAP = 100  # overlap between chunks
 MAX_CHUNKS_PER_DOC = 500
 
 import threading
@@ -42,6 +39,7 @@ def _get_collection():
 
         try:
             import chromadb
+
             db_path = os.environ.get("JARVIS_RAG_DB", "memory_db/rag_library")
             Path(db_path).mkdir(parents=True, exist_ok=True)
             _chroma_client = chromadb.PersistentClient(path=db_path)
@@ -57,10 +55,12 @@ def _get_collection():
 
 # ── Text Extraction ───────────────────────────────────────────────────────────
 
+
 def _extract_text_pdf(file_path: str) -> str:
     """Extract text from a PDF file."""
     try:
         import fitz  # PyMuPDF
+
         doc = fitz.open(file_path)
         text_parts = []
         for page in doc:
@@ -71,16 +71,18 @@ def _extract_text_pdf(file_path: str) -> str:
         # Fallback: try pdfplumber
         try:
             import pdfplumber
+
             with pdfplumber.open(file_path) as pdf:
                 return "\n\n".join(page.extract_text() or "" for page in pdf.pages)
         except ImportError:
-            return f"[ERROR: Install PyMuPDF or pdfplumber to read PDFs: pip install PyMuPDF]"
+            return "[ERROR: Install PyMuPDF or pdfplumber to read PDFs: pip install PyMuPDF]"
 
 
 def _extract_text_docx(file_path: str) -> str:
     """Extract text from a DOCX file."""
     try:
         from docx import Document
+
         doc = Document(file_path)
         return "\n\n".join(para.text for para in doc.paragraphs if para.text.strip())
     except ImportError:
@@ -90,6 +92,7 @@ def _extract_text_docx(file_path: str) -> str:
 def _extract_text_csv(file_path: str) -> str:
     """Extract text from a CSV file."""
     import csv
+
     rows = []
     with open(file_path, "r", encoding="utf-8", errors="replace") as f:
         reader = csv.reader(f)
@@ -106,8 +109,9 @@ def _extract_text_plain(file_path: str) -> str:
 def _extract_text_webpage(url: str) -> str:
     """Fetch and extract text from a webpage."""
     try:
-        import requests
         from html.parser import HTMLParser
+
+        import requests
 
         class _TextExtractor(HTMLParser):
             def __init__(self):
@@ -167,10 +171,11 @@ def extract_text(file_path: str) -> str:
 
 # ── Chunking ──────────────────────────────────────────────────────────────────
 
+
 def _chunk_text(text: str, chunk_size: int = CHUNK_SIZE, overlap: int = CHUNK_OVERLAP) -> list[str]:
     """Split text into overlapping chunks for embedding."""
     # Clean up whitespace
-    text = re.sub(r'\n{3,}', '\n\n', text).strip()
+    text = re.sub(r"\n{3,}", "\n\n", text).strip()
     if not text:
         return []
 
@@ -181,7 +186,7 @@ def _chunk_text(text: str, chunk_size: int = CHUNK_SIZE, overlap: int = CHUNK_OV
         # Try to break at a sentence boundary
         if end < len(text):
             # Look for sentence end near the chunk boundary
-            for sep in ['. ', '.\n', '!\n', '?\n', '\n\n']:
+            for sep in [". ", ".\n", "!\n", "?\n", "\n\n"]:
                 last_sep = text.rfind(sep, start + chunk_size // 2, end + 50)
                 if last_sep > 0:
                     end = last_sep + len(sep)
@@ -199,6 +204,7 @@ def _chunk_text(text: str, chunk_size: int = CHUNK_SIZE, overlap: int = CHUNK_OV
 
 
 # ── Core RAG Operations ──────────────────────────────────────────────────────
+
 
 def ingest_file(file_path: str, doc_name: str = None) -> dict:
     """
@@ -312,18 +318,22 @@ def ingest_screenshot(image_bytes: bytes, doc_name: str = None) -> dict:
     """Ingest a screenshot by OCR-ing it with Gemini Vision, then indexing the text."""
     try:
         from google import genai
+
         api_key = os.environ.get("GEMINI_API_KEY", "")
         if not api_key:
             return {"error": "GEMINI_API_KEY not set for OCR."}
 
         client = genai.Client(api_key=api_key)
         import base64
+
         b64 = base64.b64encode(image_bytes).decode()
 
         response = client.models.generate_content(
             model="gemini-2.0-flash",
             contents=[
-                {"text": "Extract ALL text from this screenshot/image. Return only the text content, preserving structure and formatting."},
+                {
+                    "text": "Extract ALL text from this screenshot/image. Return only the text content, preserving structure and formatting."
+                },
                 {"inline_data": {"mime_type": "image/png", "data": b64}},
             ],
         )
@@ -343,8 +353,13 @@ def ingest_screenshot(image_bytes: bytes, doc_name: str = None) -> dict:
         doc_hash = hashlib.md5(name.encode()).hexdigest()[:8]
         ids = [f"{doc_hash}_chunk_{i}" for i in range(len(chunks))]
         metadatas = [
-            {"doc_name": name, "source": "screenshot", "chunk_index": i,
-             "total_chunks": len(chunks), "ingested_at": datetime.now().isoformat()}
+            {
+                "doc_name": name,
+                "source": "screenshot",
+                "chunk_index": i,
+                "total_chunks": len(chunks),
+                "ingested_at": datetime.now().isoformat(),
+            }
             for i in range(len(chunks))
         ]
         collection.add(ids=ids, documents=chunks, metadatas=metadatas)
@@ -385,13 +400,15 @@ def query(question: str, top_k: int = 5, doc_filter: str = None) -> list[dict]:
         for i, doc in enumerate(results["documents"][0]):
             meta = results["metadatas"][0][i] if results["metadatas"] else {}
             distance = results["distances"][0][i] if results["distances"] else 0
-            output.append({
-                "text": doc,
-                "doc_name": meta.get("doc_name", "unknown"),
-                "chunk_index": meta.get("chunk_index", 0),
-                "score": round(1 - distance, 4),  # Convert distance to similarity
-                "source": meta.get("file_path", meta.get("source_url", "")),
-            })
+            output.append(
+                {
+                    "text": doc,
+                    "doc_name": meta.get("doc_name", "unknown"),
+                    "chunk_index": meta.get("chunk_index", 0),
+                    "score": round(1 - distance, 4),  # Convert distance to similarity
+                    "source": meta.get("file_path", meta.get("source_url", "")),
+                }
+            )
 
     return output
 
@@ -455,14 +472,14 @@ def rag_chat(question: str, top_k: int = 5, doc_filter: str = None) -> str:
     context_parts = []
     for r in results:
         context_parts.append(
-            f"[Source: {r['doc_name']}, Chunk {r['chunk_index']}, "
-            f"Relevance: {r['score']:.0%}]\n{r['text']}"
+            f"[Source: {r['doc_name']}, Chunk {r['chunk_index']}, Relevance: {r['score']:.0%}]\n{r['text']}"
         )
     context = "\n\n---\n\n".join(context_parts)
 
     # Generate answer using the default backend
     try:
         from brjarvis.core.bootstrap import build_assistant_runtime
+
         runtime = build_assistant_runtime()
         router = runtime.router
 
@@ -472,17 +489,15 @@ def rag_chat(question: str, top_k: int = 5, doc_filter: str = None) -> str:
             "If the context doesn't contain enough information, say so. "
             "Always cite which document the information comes from."
         )
-        messages = [
-            {"role": "user", "content": f"Context from my documents:\n\n{context}\n\n"
-                                         f"Question: {question}"}
-        ]
+        messages = [{"role": "user", "content": f"Context from my documents:\n\n{context}\n\nQuestion: {question}"}]
         return router.run(router.default, messages, system)
-    except Exception as e:
+    except Exception:
         # Return raw context if LLM fails
         return f"Retrieved context (LLM unavailable):\n\n{context}"
 
 
 # ── 3D Knowledge Galaxy & Markdown Scanner ───────────────────────────────────
+
 
 def ensure_sample_notes(notes_dir: Path):
     """Generate 25 sample markdown notes if notes directory is empty or missing."""
@@ -491,31 +506,131 @@ def ensure_sample_notes(notes_dir: Path):
         return
 
     sample_topics = [
-        ("Quantum Computing Core", "overview", "Quantum computing leverages qubits to process multidimensional data. Linked to [[AI Synergy]] and [[Hardware Roadmap]]."),
-        ("AI Synergy", "ai", "Synergy between neural architectures and symbolic reasoning. Refers to [[Quantum Computing Core]]."),
-        ("Hardware Roadmap", "hardware", "Next-gen GPU and TPU clusters. Dependent on [[Quantum Computing Core]] cooling solutions."),
-        ("Neural TTS Engine", "voice", "Acoustic modeling using Tacotron2 and WaveGlow. Integrates with [[Voice Assistant Protocol]]."),
-        ("Voice Assistant Protocol", "voice", "Low-latency streaming over WebSockets. Drives [[Neural TTS Engine]] and [[JARVIS Cyberpunk HUD]]."),
-        ("JARVIS Cyberpunk HUD", "ui", "PySide6 visual interface with Iron Man reactor pulse. Connects to [[Voice Assistant Protocol]]."),
-        ("ChromaDB Vector Store", "memory", "High-performance embedding storage for document RAG. Used by [[Memory Manager 2.0]]."),
-        ("Memory Manager 2.0", "memory", "Hierarchical episodic and semantic memory. Integrates [[ChromaDB Vector Store]] and [[Long Term Storage]]."),
-        ("Long Term Storage", "memory", "Persistent JSON store for user preferences and history. Managed by [[Memory Manager 2.0]]."),
-        ("Gemini Pro Integration", "models", "Primary reasoning backend for complex agentic workflows. Synergizes with [[Router Strategy]]."),
-        ("Router Strategy", "router", "Adaptive model switching between local and cloud LLMs. Routes tasks to [[Gemini Pro Integration]]."),
-        ("Task Queue Execution", "agent", "Asynchronous priority queue worker system. Dispatches sub-tasks to [[Agent Executor]]."),
-        ("Agent Executor", "agent", "Step planner and tool registry invocation engine. Triggered by [[Task Queue Execution]]."),
-        ("Security Sentinel", "security", "JWT authentication and permission gatekeeper. Secures endpoints for [[FastAPI Gateway]]."),
-        ("FastAPI Gateway", "server", "Async REST and WebSocket server for dashboard and HUD. Protected by [[Security Sentinel]]."),
-        ("Proactive Monitor", "proactive", "Background watcher scanning OS events and system telemetry. Alerts [[JARVIS Cyberpunk HUD]]."),
-        ("QR Mobile Dashboard", "ui", "PWA dashboard accessible via mobile QR code scan. Connects to [[FastAPI Gateway]]."),
-        ("Universal File Processor", "tools", "Extracts text from PDF, DOCX, CSV, and OCR images. Feeds [[ChromaDB Vector Store]]."),
-        ("Live OS Control", "actions", "Controls native Windows applications and window management. Utilized by [[Agent Executor]]."),
-        ("Web Research RAG", "actions", "Scrapes web pages and synthesizes live search cards. Feeds data into [[ChromaDB Vector Store]]."),
-        ("Deep Audit Test Suite", "testing", "Self-healing test runner ensuring 100% code coverage. Tests [[FastAPI Gateway]]."),
-        ("British Butler Persona", "personality", "Witty, dry, impeccably polite persona addressing user as sir. Customizes [[Gemini Pro Integration]]."),
-        ("Total Recall Protocol", "voice", "Voice capture starting with 'remember that'. Appends notes to [[Captures Vault]]."),
-        ("Captures Vault", "notes", "Dynamic storage folder for voice and chat captures. Managed by [[Total Recall Protocol]]."),
-        ("Fly-To-Source Dive", "ui", "3D camera dive animation pinpointing reference nodes. Rendered in [[JARVIS Cyberpunk HUD]]."),
+        (
+            "Quantum Computing Core",
+            "overview",
+            "Quantum computing leverages qubits to process multidimensional data. Linked to [[AI Synergy]] and [[Hardware Roadmap]].",
+        ),
+        (
+            "AI Synergy",
+            "ai",
+            "Synergy between neural architectures and symbolic reasoning. Refers to [[Quantum Computing Core]].",
+        ),
+        (
+            "Hardware Roadmap",
+            "hardware",
+            "Next-gen GPU and TPU clusters. Dependent on [[Quantum Computing Core]] cooling solutions.",
+        ),
+        (
+            "Neural TTS Engine",
+            "voice",
+            "Acoustic modeling using Tacotron2 and WaveGlow. Integrates with [[Voice Assistant Protocol]].",
+        ),
+        (
+            "Voice Assistant Protocol",
+            "voice",
+            "Low-latency streaming over WebSockets. Drives [[Neural TTS Engine]] and [[JARVIS Cyberpunk HUD]].",
+        ),
+        (
+            "JARVIS Cyberpunk HUD",
+            "ui",
+            "PySide6 visual interface with Iron Man reactor pulse. Connects to [[Voice Assistant Protocol]].",
+        ),
+        (
+            "ChromaDB Vector Store",
+            "memory",
+            "High-performance embedding storage for document RAG. Used by [[Memory Manager 2.0]].",
+        ),
+        (
+            "Memory Manager 2.0",
+            "memory",
+            "Hierarchical episodic and semantic memory. Integrates [[ChromaDB Vector Store]] and [[Long Term Storage]].",
+        ),
+        (
+            "Long Term Storage",
+            "memory",
+            "Persistent JSON store for user preferences and history. Managed by [[Memory Manager 2.0]].",
+        ),
+        (
+            "Gemini Pro Integration",
+            "models",
+            "Primary reasoning backend for complex agentic workflows. Synergizes with [[Router Strategy]].",
+        ),
+        (
+            "Router Strategy",
+            "router",
+            "Adaptive model switching between local and cloud LLMs. Routes tasks to [[Gemini Pro Integration]].",
+        ),
+        (
+            "Task Queue Execution",
+            "agent",
+            "Asynchronous priority queue worker system. Dispatches sub-tasks to [[Agent Executor]].",
+        ),
+        (
+            "Agent Executor",
+            "agent",
+            "Step planner and tool registry invocation engine. Triggered by [[Task Queue Execution]].",
+        ),
+        (
+            "Security Sentinel",
+            "security",
+            "JWT authentication and permission gatekeeper. Secures endpoints for [[FastAPI Gateway]].",
+        ),
+        (
+            "FastAPI Gateway",
+            "server",
+            "Async REST and WebSocket server for dashboard and HUD. Protected by [[Security Sentinel]].",
+        ),
+        (
+            "Proactive Monitor",
+            "proactive",
+            "Background watcher scanning OS events and system telemetry. Alerts [[JARVIS Cyberpunk HUD]].",
+        ),
+        (
+            "QR Mobile Dashboard",
+            "ui",
+            "PWA dashboard accessible via mobile QR code scan. Connects to [[FastAPI Gateway]].",
+        ),
+        (
+            "Universal File Processor",
+            "tools",
+            "Extracts text from PDF, DOCX, CSV, and OCR images. Feeds [[ChromaDB Vector Store]].",
+        ),
+        (
+            "Live OS Control",
+            "actions",
+            "Controls native Windows applications and window management. Utilized by [[Agent Executor]].",
+        ),
+        (
+            "Web Research RAG",
+            "actions",
+            "Scrapes web pages and synthesizes live search cards. Feeds data into [[ChromaDB Vector Store]].",
+        ),
+        (
+            "Deep Audit Test Suite",
+            "testing",
+            "Self-healing test runner ensuring 100% code coverage. Tests [[FastAPI Gateway]].",
+        ),
+        (
+            "British Butler Persona",
+            "personality",
+            "Witty, dry, impeccably polite persona addressing user as sir. Customizes [[Gemini Pro Integration]].",
+        ),
+        (
+            "Total Recall Protocol",
+            "voice",
+            "Voice capture starting with 'remember that'. Appends notes to [[Captures Vault]].",
+        ),
+        (
+            "Captures Vault",
+            "notes",
+            "Dynamic storage folder for voice and chat captures. Managed by [[Total Recall Protocol]].",
+        ),
+        (
+            "Fly-To-Source Dive",
+            "ui",
+            "3D camera dive animation pinpointing reference nodes. Rendered in [[JARVIS Cyberpunk HUD]].",
+        ),
     ]
 
     for title, group, body in sample_topics:
@@ -549,18 +664,20 @@ def scan_markdown_notes(base_dir: str = ".") -> dict:
         lines = [line.strip() for line in content.splitlines() if line.strip() and not line.startswith("#")]
         excerpt = " ".join(lines)[:700] if lines else content[:700]
 
-        nodes.append({
-            "id": idx,
-            "label": title,
-            "group": group,
-            "excerpt": excerpt,
-            "path": str(filepath.relative_to(root)),
-        })
+        nodes.append(
+            {
+                "id": idx,
+                "label": title,
+                "group": group,
+                "excerpt": excerpt,
+                "path": str(filepath.relative_to(root)),
+            }
+        )
         title_to_index[title.lower()] = idx
         title_to_index[filepath.stem.lower()] = idx
 
     links = []
-    wikilink_re = re.compile(r'\[\[(.*?)\]\]')
+    wikilink_re = re.compile(r"\[\[(.*?)\]\]")
 
     for idx, filepath in enumerate(md_files):
         content = filepath.read_text(encoding="utf-8", errors="replace")
@@ -570,20 +687,14 @@ def scan_markdown_notes(base_dir: str = ".") -> dict:
         for match in matches:
             target_clean = match.strip().lower()
             if target_clean in title_to_index and title_to_index[target_clean] != idx:
-                links.append({
-                    "source": idx,
-                    "target": title_to_index[target_clean]
-                })
+                links.append({"source": idx, "target": title_to_index[target_clean]})
 
         # Connect via title mentions (with word boundary checking)
         for other_title, other_idx in title_to_index.items():
             if other_idx != idx and len(other_title) > 4:
-                pattern = r'\b' + re.escape(other_title) + r'\b'
+                pattern = r"\b" + re.escape(other_title) + r"\b"
                 if re.search(pattern, content, re.IGNORECASE):
-                    links.append({
-                        "source": idx,
-                        "target": other_idx
-                    })
+                    links.append({"source": idx, "target": other_idx})
 
     # Deduplicate links
     unique_links = []
@@ -607,7 +718,7 @@ def galaxy_chat(question: str, base_dir: str = ".") -> dict:
     if not nodes:
         return {"answer": "No notes indexed in the galaxy, sir.", "nodes": []}
 
-    words = re.findall(r'\w+', question.lower())
+    words = re.findall(r"\w+", question.lower())
     scored_nodes = []
 
     for node in nodes:
@@ -642,6 +753,7 @@ def galaxy_chat(question: str, base_dir: str = ".") -> dict:
 
     try:
         from brjarvis.core.bootstrap import build_assistant_runtime
+
         runtime = build_assistant_runtime()
         router = runtime.router
         messages = [{"role": "user", "content": f"Notes Context:\n{context}\n\nQuestion: {question}"}]
@@ -650,4 +762,3 @@ def galaxy_chat(question: str, base_dir: str = ".") -> dict:
         answer = f"Good evening, sir. Based on {len(top_sources)} notes: " + top_sources[0]["excerpt"][:200] + "..."
 
     return {"answer": answer, "nodes": source_indices}
-

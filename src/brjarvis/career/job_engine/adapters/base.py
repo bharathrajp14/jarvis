@@ -5,8 +5,8 @@ import abc
 import time
 from typing import Any, Dict, List, Optional
 
-from ..models import SearchFilters
 from ...models import ApplicationPackage, ApplicationQuestion, JobPosting, PlatformPolicy, PlatformPolicyState
+from ..models import SearchFilters
 
 
 class BasePlatformAdapter(abc.ABC):
@@ -42,7 +42,9 @@ class BasePlatformAdapter(abc.ABC):
         """Extract application form questions and field constraints."""
         pass
 
-    def prepare_application_data(self, job: JobPosting, answers: Dict[str, Any], package: ApplicationPackage) -> Dict[str, Any]:
+    def prepare_application_data(
+        self, job: JobPosting, answers: Dict[str, Any], package: ApplicationPackage
+    ) -> Dict[str, Any]:
         """Format application payload suitable for submission or form-filling."""
         return {
             "job_id": job.job_id,
@@ -58,7 +60,10 @@ class BasePlatformAdapter(abc.ABC):
         Attempt submission if explicitly permitted by policy and authorized by user.
         Default implementation fails closed to manual review.
         """
-        if self.policy.policy_state != PlatformPolicyState.AUTOMATION_ALLOWED and self.policy.policy_state != PlatformPolicyState.API_ALLOWED:
+        if (
+            self.policy.policy_state != PlatformPolicyState.AUTOMATION_ALLOWED
+            and self.policy.policy_state != PlatformPolicyState.API_ALLOWED
+        ):
             return {
                 "success": False,
                 "status": "MANUAL_REQUIRED",

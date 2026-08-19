@@ -3,11 +3,12 @@
 Canonical Memory and Knowledge contracts for BR JARVIS operating runtime.
 Defines MemoryRecord, MemoryQuery, and MemoryFeedbackRecord.
 """
+
 from __future__ import annotations
 
 import time
 import uuid
-from typing import Any, Dict, List, Optional
+from typing import Any, List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -16,6 +17,7 @@ from brjarvis.memory.domain import MemoryStatus, MemoryType, RetentionClass, Sou
 
 class MemoryRecord(BaseModel):
     """Canonical serializable Memory Entity contract."""
+
     memory_id: str = Field(default_factory=lambda: f"mem_{uuid.uuid4().hex[:12]}")
     user_id: str = "default_user"
     project_id: str = "global"
@@ -55,6 +57,7 @@ class MemoryRecord(BaseModel):
 
 class MemoryQuery(BaseModel):
     """Specification for hybrid retrieval search over the memory plane."""
+
     query: str
     memory_type: Optional[MemoryType] = None
     scope: Optional[str] = None
@@ -68,6 +71,7 @@ class MemoryQuery(BaseModel):
 
 class MemoryFeedbackRecord(BaseModel):
     """Feedback signal recording retrieval relevance or accuracy."""
+
     feedback_id: str = Field(default_factory=lambda: f"mfb-{uuid.uuid4().hex[:8]}")
     memory_id: str
     session_id: str = ""

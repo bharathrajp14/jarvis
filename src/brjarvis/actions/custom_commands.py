@@ -4,10 +4,11 @@ User-defined custom commands, aliases, replies, and variables.
 Allows users to automate chains of actions (speak, open url, open app, run shell command, etc.)
 using voice or CLI text.
 """
+
 from __future__ import annotations
 
-import logging
 import json
+import logging
 import os
 import re
 import subprocess
@@ -59,7 +60,8 @@ class CustomCommandEngine:
             }
             _CONFIG_PATH.write_text(json.dumps(data, indent=2), encoding="utf-8")
         except Exception as e:
-            logger.debug('Suppressed exception: %s', e)
+            logger.debug("Suppressed exception: %s", e)
+
     def match(self, text: str) -> tuple[dict, dict] | None:
         """
         Match user input text against triggers and aliases.
@@ -127,32 +129,42 @@ class CustomCommandEngine:
 
                 elif action_type == "open_app":
                     from brjarvis.actions.open_app import open_app
+
                     open_app(parameters={"app_name": content})
                     results.append(f"Opened App: {content}")
 
                 elif action_type == "run_command":
                     # Raw shell execution is intentionally opt-in.
                     allow_unsafe_shell = os.environ.get("JARVIS_ALLOW_UNSAFE_SHELL", "false").strip().lower() in {
-                        "1", "true", "yes", "on"
+                        "1",
+                        "true",
+                        "yes",
+                        "on",
                     }
                     if not allow_unsafe_shell:
-                        results.append("Action 'run_command' blocked by policy. Set JARVIS_ALLOW_UNSAFE_SHELL=true to allow.")
+                        results.append(
+                            "Action 'run_command' blocked by policy. Set JARVIS_ALLOW_UNSAFE_SHELL=true to allow."
+                        )
                         continue
 
                     if os.name == "nt":
                         cmd = ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", content]
                     else:
-                        cmd = ["/bin/bash", "-lc", content] if Path("/bin/bash").exists() else ["/bin/sh", "-lc", content]
+                        cmd = (
+                            ["/bin/bash", "-lc", content] if Path("/bin/bash").exists() else ["/bin/sh", "-lc", content]
+                        )
                     subprocess.Popen(cmd)
                     results.append(f"Ran command: {content}")
 
                 elif action_type == "press_keys":
                     import pyautogui
+
                     pyautogui.write(content)
                     results.append(f"Typed keys: {content}")
 
                 elif action_type == "hotkey":
                     import pyautogui
+
                     pyautogui.hotkey(*[k.strip() for k in content.split("+")])
                     results.append(f"Pressed hotkey: {content}")
 
@@ -172,12 +184,14 @@ class CustomCommandEngine:
                 self.save_commands()
                 return f"Updated custom command: '{trigger}'"
 
-        self.commands.append({
-            "trigger": trigger,
-            "aliases": aliases or [],
-            "actions": actions,
-            "variables": {},
-        })
+        self.commands.append(
+            {
+                "trigger": trigger,
+                "aliases": aliases or [],
+                "actions": actions,
+                "variables": {},
+            }
+        )
         self.save_commands()
         return f"Added custom command: '{trigger}'"
 

@@ -3,6 +3,7 @@
 Skill execution: inline (current conversation) or forked (sub-agent).
 Adapted from the Claude Code collection for JARVIS MK37.
 """
+
 from __future__ import annotations
 
 from .loader import SkillDef, substitute_arguments
@@ -49,9 +50,9 @@ def _execute_forked(
 ) -> str:
     """Run skill as an isolated sub-agent (separate conversation context) with fallback to inline."""
     try:
-        from brjarvis.multi_agent.subagent import SubAgentManager, AgentDefinition
+        from brjarvis.multi_agent.subagent import AgentDefinition, SubAgentManager
 
-        mgr = getattr(orchestrator, '_subagent_mgr', None)
+        mgr = getattr(orchestrator, "_subagent_mgr", None)
         if mgr is None:
             mgr = SubAgentManager()
             orchestrator._subagent_mgr = mgr

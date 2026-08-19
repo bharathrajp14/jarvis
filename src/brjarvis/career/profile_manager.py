@@ -3,28 +3,27 @@ from __future__ import annotations
 
 import json
 import logging
-import os
-import sqlite3
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
+
+from brjarvis.core.paths import paths
+from brjarvis.memory.canonical_db import get_canonical_db
 
 from .models import (
+    AchievementEntry,
     CareerProfile,
+    CertificationEntry,
     ContactInfo,
     EducationEntry,
     ExperienceEntry,
-    ProjectEntry,
-    SkillCategory,
-    CertificationEntry,
-    AchievementEntry,
-    WorkPreferences,
-    SalaryPreferences,
-    ProfileFact,
     FactSource,
+    ProfileFact,
+    ProjectEntry,
+    SalaryPreferences,
+    SkillCategory,
+    WorkPreferences,
 )
-from brjarvis.memory.canonical_db import get_canonical_db
-from brjarvis.core.paths import paths
 
 logger = logging.getLogger("JARVIS.CareerProfileManager")
 
@@ -131,7 +130,7 @@ class CareerProfileManager:
                         json.dumps(profile_dict),
                         profile.created_at,
                         profile.updated_at,
-                    )
+                    ),
                 )
                 conn.commit()
         except Exception as e:
@@ -140,6 +139,7 @@ class CareerProfileManager:
         # 3. Synchronize key facts to UnifiedMemory
         try:
             from brjarvis.career.memory_integration import sync_profile_to_memory
+
             sync_profile_to_memory(profile)
         except Exception as mem_err:
             logger.debug(f"Memory sync notice: {mem_err}")
@@ -158,78 +158,98 @@ class CareerProfileManager:
         questions = []
 
         if not p.contact.full_name:
-            questions.append({
-                "field": "contact.full_name",
-                "question": "What is your full legal name for job applications?",
-                "type": "text",
-                "required": True,
-            })
+            questions.append(
+                {
+                    "field": "contact.full_name",
+                    "question": "What is your full legal name for job applications?",
+                    "type": "text",
+                    "required": True,
+                }
+            )
         if not p.contact.email:
-            questions.append({
-                "field": "contact.email",
-                "question": "What is your primary professional contact email?",
-                "type": "email",
-                "required": True,
-            })
+            questions.append(
+                {
+                    "field": "contact.email",
+                    "question": "What is your primary professional contact email?",
+                    "type": "email",
+                    "required": True,
+                }
+            )
         if not p.contact.phone:
-            questions.append({
-                "field": "contact.phone",
-                "question": "What phone number should be listed on your applications?",
-                "type": "tel",
-                "required": True,
-            })
+            questions.append(
+                {
+                    "field": "contact.phone",
+                    "question": "What phone number should be listed on your applications?",
+                    "type": "tel",
+                    "required": True,
+                }
+            )
         if not p.contact.location:
-            questions.append({
-                "field": "contact.location",
-                "question": "What is your current location (City, State / Country)?",
-                "type": "text",
-                "required": True,
-            })
+            questions.append(
+                {
+                    "field": "contact.location",
+                    "question": "What is your current location (City, State / Country)?",
+                    "type": "text",
+                    "required": True,
+                }
+            )
         if not p.preferences.target_roles:
-            questions.append({
-                "field": "preferences.target_roles",
-                "question": "What primary job titles/roles are you targeting? (e.g. AI Engineer, Systems Engineer)",
-                "type": "list",
-                "required": True,
-            })
+            questions.append(
+                {
+                    "field": "preferences.target_roles",
+                    "question": "What primary job titles/roles are you targeting? (e.g. AI Engineer, Systems Engineer)",
+                    "type": "list",
+                    "required": True,
+                }
+            )
         if not p.preferences.work_authorization:
-            questions.append({
-                "field": "preferences.work_authorization",
-                "question": "What is your current work authorization status?",
-                "type": "select",
-                "options": [
-                    "Authorized to work without sponsorship",
-                    "Requires visa sponsorship (H1-B, etc.)",
-                    "Citizen / Permanent Resident",
-                    "Student / OPT / CPT",
-                ],
-                "required": True,
-            })
+            questions.append(
+                {
+                    "field": "preferences.work_authorization",
+                    "question": "What is your current work authorization status?",
+                    "type": "select",
+                    "options": [
+                        "Authorized to work without sponsorship",
+                        "Requires visa sponsorship (H1-B, etc.)",
+                        "Citizen / Permanent Resident",
+                        "Student / OPT / CPT",
+                    ],
+                    "required": True,
+                }
+            )
         if p.salary.target_annual_salary <= 0:
-            questions.append({
-                "field": "salary.target_annual_salary",
-                "question": "What is your target annual compensation range (or minimum acceptable base)?",
-                "type": "text",
-                "required": False,
-            })
+            questions.append(
+                {
+                    "field": "salary.target_annual_salary",
+                    "question": "What is your target annual compensation range (or minimum acceptable base)?",
+                    "type": "text",
+                    "required": False,
+                }
+            )
         if not p.skills:
-            questions.append({
-                "field": "skills",
-                "question": "What are your core programming languages, frameworks, and technical tools?",
-                "type": "list",
-                "required": True,
-            })
+            questions.append(
+                {
+                    "field": "skills",
+                    "question": "What are your core programming languages, frameworks, and technical tools?",
+                    "type": "list",
+                    "required": True,
+                }
+            )
         if not p.summary:
-            questions.append({
-                "field": "summary",
-                "question": "Provide a brief 2-3 sentence executive pitch summarizing your background and strengths.",
-                "type": "textarea",
-                "required": False,
-            })
+            questions.append(
+                {
+                    "field": "summary",
+                    "question": "Provide a brief 2-3 sentence executive pitch summarizing your background and strengths.",
+                    "type": "textarea",
+                    "required": False,
+                }
+            )
 
         return questions
 
-    def apply_onboarding_answers(self, answers: Dict[str, Any], profile: Optional[CareerProfile] = None) -> CareerProfile:
+    def apply_onboarding_answers(
+        self, answers: Dict[str, Any], profile: Optional[CareerProfile] = None
+    ) -> CareerProfile:
         """Apply user answers to profile with provenance tagging."""
         p = profile or self.get_profile()
 
@@ -352,10 +372,12 @@ class CareerProfileManager:
         for exp in p.experience:
             if exp.start_date and exp.end_date and exp.end_date.lower() != "present":
                 if exp.start_date > exp.end_date:
-                    conflicts.append({
-                        "field": f"experience.{exp.company}.dates",
-                        "description": f"Start date ({exp.start_date}) is after end date ({exp.end_date}) for {exp.company}."
-                    })
+                    conflicts.append(
+                        {
+                            "field": f"experience.{exp.company}.dates",
+                            "description": f"Start date ({exp.start_date}) is after end date ({exp.end_date}) for {exp.company}.",
+                        }
+                    )
 
         return {
             "score": score,
@@ -418,8 +440,22 @@ class CareerProfileManager:
                         "Reduced end-to-end task false-success reports to 0.0% through physical verification gates.",
                         "Achieved sub-150ms voice wake-to-response latency with dual-channel Silero VAD and AudioBus architecture.",
                     ],
-                    technologies=["Python", "FastAPI", "Playwright", "ChromaDB", "PyTorch", "PyQt6", "Win32 APIs", "WebSockets"],
-                    metrics=["260+ Tools Orchestrated", "0% False-Success Rate", "150ms Voice Latency", "99.9% Task State Durability"],
+                    technologies=[
+                        "Python",
+                        "FastAPI",
+                        "Playwright",
+                        "ChromaDB",
+                        "PyTorch",
+                        "PyQt6",
+                        "Win32 APIs",
+                        "WebSockets",
+                    ],
+                    metrics=[
+                        "260+ Tools Orchestrated",
+                        "0% False-Success Rate",
+                        "150ms Voice Latency",
+                        "99.9% Task State Durability",
+                    ],
                 ),
                 ExperienceEntry(
                     company="Cognitive Edge Technologies",
@@ -474,19 +510,51 @@ class CareerProfileManager:
                 ),
                 SkillCategory(
                     category="AI, Agent Architectures & LLMs",
-                    skills=["Agentic DAG Workflows", "ReAct Loops", "LangChain", "PyTorch", "HuggingFace", "RAG & Vector Search", "ChromaDB", "Function Calling"],
+                    skills=[
+                        "Agentic DAG Workflows",
+                        "ReAct Loops",
+                        "LangChain",
+                        "PyTorch",
+                        "HuggingFace",
+                        "RAG & Vector Search",
+                        "ChromaDB",
+                        "Function Calling",
+                    ],
                 ),
                 SkillCategory(
                     category="System Architecture & Backend",
-                    skills=["FastAPI", "AsyncIO", "REST APIs", "WebSockets", "Docker", "Process Containment", "SQLite WAL", "Redis", "PostgreSQL"],
+                    skills=[
+                        "FastAPI",
+                        "AsyncIO",
+                        "REST APIs",
+                        "WebSockets",
+                        "Docker",
+                        "Process Containment",
+                        "SQLite WAL",
+                        "Redis",
+                        "PostgreSQL",
+                    ],
                 ),
                 SkillCategory(
                     category="Browser & Desktop Automation",
-                    skills=["Playwright", "Selenium", "Accessibility Tree Grounding", "Win32 API", "PyQt / PySide", "HTML5 / CSS3"],
+                    skills=[
+                        "Playwright",
+                        "Selenium",
+                        "Accessibility Tree Grounding",
+                        "Win32 API",
+                        "PyQt / PySide",
+                        "HTML5 / CSS3",
+                    ],
                 ),
                 SkillCategory(
                     category="Testing & Verification",
-                    skills=["PyTest", "Deterministic Verification", "Static Analysis", "Security Threat Modeling", "CI/CD"],
+                    skills=[
+                        "PyTest",
+                        "Deterministic Verification",
+                        "Static Analysis",
+                        "Security Threat Modeling",
+                        "CI/CD",
+                    ],
                 ),
             ],
             certifications=[
@@ -512,8 +580,18 @@ class CareerProfileManager:
                 )
             ],
             preferences=WorkPreferences(
-                target_roles=["AI Systems Architect", "Senior AI Engineer", "Autonomous Agent Engineer", "Senior Backend Engineer"],
-                target_industries=["Artificial Intelligence", "Autonomous Systems", "Cloud & Developer Tooling", "Robotics & Automation"],
+                target_roles=[
+                    "AI Systems Architect",
+                    "Senior AI Engineer",
+                    "Autonomous Agent Engineer",
+                    "Senior Backend Engineer",
+                ],
+                target_industries=[
+                    "Artificial Intelligence",
+                    "Autonomous Systems",
+                    "Cloud & Developer Tooling",
+                    "Robotics & Automation",
+                ],
                 target_locations=["Remote", "Madurai", "Bengaluru", "Chennai", "Hyderabad"],
                 remote_preference="remote_only",
                 employment_types=["Full-time", "Contract"],

@@ -1,10 +1,8 @@
 # tests/unit/test_terminal_mouse_events.py — Unit Tests for Terminal Mouse Event Decoders
 from __future__ import annotations
 
-import pytest
 from brjarvis.core.terminal.events import (
     MouseButton,
-    MouseCaptureMode,
     MouseEvent,
     MouseEventType,
     TerminalInputDecoder,

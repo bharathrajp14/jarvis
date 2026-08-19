@@ -4,11 +4,8 @@ Offline audio and video file transcription using local Whisper.
 Supports: MP3, WAV, M4A, OGG, FLAC, MP4, MKV, AVI, WEBM.
 Output formats: TXT, SRT, VTT, JSON.
 """
-from __future__ import annotations
 
-import json
-import os
-from pathlib import Path
+from __future__ import annotations
 
 
 def transcribe_file(
@@ -29,6 +26,7 @@ def transcribe_file(
     """
     try:
         from brjarvis.voice.whisper_local import transcribe_file as whisper_transcribe
+
         return whisper_transcribe(file_path, language, output_format)
     except ImportError:
         return {"error": "Local Whisper is not installed. Install faster-whisper or openai-whisper."}

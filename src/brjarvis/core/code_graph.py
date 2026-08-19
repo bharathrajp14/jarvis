@@ -6,6 +6,7 @@ Builds a lightweight code graph of definitions (classes, functions, methods) and
 their references so the agent can answer "where is X defined?" and "who calls X?"
 without shelling out to an external language server.
 """
+
 from __future__ import annotations
 
 import ast
@@ -18,10 +19,21 @@ from pydantic import BaseModel, Field
 logger = logging.getLogger("JARVIS.CodeGraph")
 
 # Directories that never contain first-party source worth indexing.
-SKIP_DIRS = frozenset({
-    ".git", ".venv", "venv", "env", "__pycache__", "node_modules",
-    "build", "dist", ".mypy_cache", ".pytest_cache", ".ruff_cache",
-})
+SKIP_DIRS = frozenset(
+    {
+        ".git",
+        ".venv",
+        "venv",
+        "env",
+        "__pycache__",
+        "node_modules",
+        "build",
+        "dist",
+        ".mypy_cache",
+        ".pytest_cache",
+        ".ruff_cache",
+    }
+)
 
 
 class SymbolDefinition(BaseModel):
@@ -85,12 +97,14 @@ class _SymbolVisitor(ast.NodeVisitor):
     visit_AsyncFunctionDef = _visit_func  # type: ignore[assignment]
 
     def _add_ref(self, name: str, node: ast.AST) -> None:
-        self.references.append({
-            "name": name,
-            "file_path": self.file_path,
-            "line_number": node.lineno,
-            "column": node.col_offset,
-        })
+        self.references.append(
+            {
+                "name": name,
+                "file_path": self.file_path,
+                "line_number": node.lineno,
+                "column": node.col_offset,
+            }
+        )
 
     def visit_Name(self, node: ast.Name) -> None:
         if isinstance(node.ctx, ast.Load):

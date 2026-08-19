@@ -3,8 +3,6 @@ from __future__ import annotations
 
 import logging
 import os
-import shutil
-import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -19,6 +17,7 @@ logger = logging.getLogger("JARVIS.CapabilityChecker")
 @dataclass
 class CapabilityStatus:
     """Diagnostic status of an individual system capability."""
+
     capability_name: str
     is_available: bool = True
     reason: str = ""
@@ -47,17 +46,19 @@ class CapabilityChecker:
         self.env_resolver = env_resolver or get_environment_resolver()
         self.dep_resolver = dep_resolver or get_dependency_resolver()
 
-    def check_python_code_execution(self, code_snippet: str, project_root: Optional[Path | str] = None) -> CapabilityStatus:
+    def check_python_code_execution(
+        self, code_snippet: str, project_root: Optional[Path | str] = None
+    ) -> CapabilityStatus:
         """Preflight check for executing a Python code snippet."""
         env = self.env_resolver.resolve_python(project_root=project_root)
         imports = self.dep_resolver.extract_python_imports(code_snippet)
-        
+
         declaration = DependencyDeclaration(
             runtime=RuntimeType.PYTHON,
             import_names=list(imports),
         )
         report = self.dep_resolver.verify_dependencies(declaration, env=env, project_root=project_root)
-        
+
         if report.satisfied:
             return CapabilityStatus(
                 capability_name="python_code_execution",
@@ -65,7 +66,7 @@ class CapabilityChecker:
                 reason="All required Python modules are installed in target runtime.",
                 target_environment=env,
             )
-        
+
         fix_cmd = f"{env.executable} -m pip install {' '.join(report.missing_packages)}"
         return CapabilityStatus(
             capability_name="python_code_execution",
@@ -76,11 +77,13 @@ class CapabilityChecker:
             suggested_fix=fix_cmd,
         )
 
-    def check_document_generation(self, fmt: str = "docx", project_root: Optional[Path | str] = None) -> CapabilityStatus:
+    def check_document_generation(
+        self, fmt: str = "docx", project_root: Optional[Path | str] = None
+    ) -> CapabilityStatus:
         """Preflight check for document creation (docx, pdf, xlsx, pptx)."""
         fmt = fmt.lower().strip()
         env = self.env_resolver.resolve_python(project_root=project_root)
-        
+
         req_map = {
             "docx": (["docx"], []),
             "pdf": (["pypdf"], []),

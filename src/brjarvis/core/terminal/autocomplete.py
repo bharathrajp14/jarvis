@@ -5,22 +5,23 @@ and persistent command history for the BR JARVIS CLI terminal.
 
 Falls back to readline (or no completion) if prompt_toolkit is unavailable.
 """
+
 from __future__ import annotations
 
 import os
-import sys
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Iterable, List, Optional
+from typing import Any, List, Optional
 
 # ── prompt_toolkit availability ───────────────────────────────────────────────
 try:
     from prompt_toolkit import PromptSession
-    from prompt_toolkit.completion import Completer, Completion, WordCompleter
-    from prompt_toolkit.history import FileHistory, InMemoryHistory
-    from prompt_toolkit.styles import Style as PTStyle
-    from prompt_toolkit.formatted_text import HTML
-    from prompt_toolkit.key_binding import KeyBindings
     from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
+    from prompt_toolkit.completion import Completer, Completion, WordCompleter
+    from prompt_toolkit.formatted_text import HTML
+    from prompt_toolkit.history import FileHistory, InMemoryHistory
+    from prompt_toolkit.key_binding import KeyBindings
+    from prompt_toolkit.styles import Style as PTStyle
+
     HAS_PROMPT_TOOLKIT = True
 except ImportError:
     HAS_PROMPT_TOOLKIT = False
@@ -30,60 +31,60 @@ except ImportError:
 
 SLASH_COMMANDS: List[dict] = [
     # Core interaction
-    {"cmd": "/help",        "desc": "Show full command reference"},
-    {"cmd": "/status",      "desc": "Subsystem health & telemetry"},
-    {"cmd": "/clear",       "desc": "Clear terminal screen"},
-    {"cmd": "/quit",        "desc": "Exit with memory consolidation"},
-    {"cmd": "/version",     "desc": "Show build & version info"},
+    {"cmd": "/help", "desc": "Show full command reference"},
+    {"cmd": "/status", "desc": "Subsystem health & telemetry"},
+    {"cmd": "/clear", "desc": "Clear terminal screen"},
+    {"cmd": "/quit", "desc": "Exit with memory consolidation"},
+    {"cmd": "/version", "desc": "Show build & version info"},
     # Planning & execution
-    {"cmd": "/plan",        "desc": "Decompose goal into a step plan before executing"},
-    {"cmd": "/approve",     "desc": "Approve a pending task: /approve <task_id>"},
-    {"cmd": "/verify",      "desc": "Run verification on a file or task"},
-    {"cmd": "/diff",        "desc": "Show file diff: /diff <filepath>"},
+    {"cmd": "/plan", "desc": "Decompose goal into a step plan before executing"},
+    {"cmd": "/approve", "desc": "Approve a pending task: /approve <task_id>"},
+    {"cmd": "/verify", "desc": "Run verification on a file or task"},
+    {"cmd": "/diff", "desc": "Show file diff: /diff <filepath>"},
     # Task lifecycle
-    {"cmd": "/tasks",       "desc": "Task dashboard: /tasks or /tasks <id>"},
-    {"cmd": "/pause",       "desc": "Pause a running task: /pause <task_id>"},
-    {"cmd": "/resume",      "desc": "Resume a paused task: /resume <task_id>"},
-    {"cmd": "/cancel",      "desc": "Cancel a task: /cancel <task_id>"},
-    {"cmd": "/retry",       "desc": "Retry a failed task: /retry <task_id>"},
-    {"cmd": "/continue",    "desc": "Resume latest incomplete session or task"},
+    {"cmd": "/tasks", "desc": "Task dashboard: /tasks or /tasks <id>"},
+    {"cmd": "/pause", "desc": "Pause a running task: /pause <task_id>"},
+    {"cmd": "/resume", "desc": "Resume a paused task: /resume <task_id>"},
+    {"cmd": "/cancel", "desc": "Cancel a task: /cancel <task_id>"},
+    {"cmd": "/retry", "desc": "Retry a failed task: /retry <task_id>"},
+    {"cmd": "/continue", "desc": "Resume latest incomplete session or task"},
     # Agent & model
-    {"cmd": "/mode",        "desc": "Switch persona: /mode <general|coder|analyst|researcher|planner|automation|recon>"},
-    {"cmd": "/model",       "desc": "View or switch AI backend: /model [gemini|claude|gpt|ollama]"},
-    {"cmd": "/permission",  "desc": "View or set permission mode: /permission [mode]"},
+    {"cmd": "/mode", "desc": "Switch persona: /mode <general|coder|analyst|researcher|planner|automation|recon>"},
+    {"cmd": "/model", "desc": "View or switch AI backend: /model [gemini|claude|gpt|ollama]"},
+    {"cmd": "/permission", "desc": "View or set permission mode: /permission [mode]"},
     # Memory & context
-    {"cmd": "/memory",      "desc": "Memory commands: search <q> | recent | project | stats | forget <id>"},
-    {"cmd": "/compact",     "desc": "Consolidate working memory into long-term store"},
-    {"cmd": "/context",     "desc": "Show current task context, memory, model, services"},
+    {"cmd": "/memory", "desc": "Memory commands: search <q> | recent | project | stats | forget <id>"},
+    {"cmd": "/compact", "desc": "Consolidate working memory into long-term store"},
+    {"cmd": "/context", "desc": "Show current task context, memory, model, services"},
     # Session
-    {"cmd": "/session",     "desc": "View active session context or switch: /session [id]"},
-    {"cmd": "/sessions",    "desc": "List all active and persisted agent sessions"},
-    {"cmd": "/history",     "desc": "View session turns: /history [n] or /history task <id>"},
-    {"cmd": "/rename",      "desc": "Name current session: /rename <name>"},
-    {"cmd": "/export",      "desc": "Export session transcript: /export [markdown|json]"},
+    {"cmd": "/session", "desc": "View active session context or switch: /session [id]"},
+    {"cmd": "/sessions", "desc": "List all active and persisted agent sessions"},
+    {"cmd": "/history", "desc": "View session turns: /history [n] or /history task <id>"},
+    {"cmd": "/rename", "desc": "Name current session: /rename <name>"},
+    {"cmd": "/export", "desc": "Export session transcript: /export [markdown|json]"},
     # Tools, skills & infrastructure
-    {"cmd": "/tools",       "desc": "Browse tools: /tools [search <q>] [health] [failed]"},
-    {"cmd": "/skills",      "desc": "Browse extensible skills and workflows: /skills [query]"},
-    {"cmd": "/connectors",  "desc": "Connector status: /connectors or /connectors <name>"},
-    {"cmd": "/config",      "desc": "Show runtime environment & provider configuration"},
-    {"cmd": "/doctor",      "desc": "Run interactive system diagnostics"},
-    {"cmd": "/usage",       "desc": "Show token & request usage stats"},
-    {"cmd": "/interrupt",   "desc": "Safely interrupt and preserve active agent task"},
+    {"cmd": "/tools", "desc": "Browse tools: /tools [search <q>] [health] [failed]"},
+    {"cmd": "/skills", "desc": "Browse extensible skills and workflows: /skills [query]"},
+    {"cmd": "/connectors", "desc": "Connector status: /connectors or /connectors <name>"},
+    {"cmd": "/config", "desc": "Show runtime environment & provider configuration"},
+    {"cmd": "/doctor", "desc": "Run interactive system diagnostics"},
+    {"cmd": "/usage", "desc": "Show token & request usage stats"},
+    {"cmd": "/interrupt", "desc": "Safely interrupt and preserve active agent task"},
     # Output style & interactions
-    {"cmd": "/style",       "desc": "Set output style: /style [compact|detailed|minimal|verbose]"},
-    {"cmd": "/verbose",     "desc": "Toggle verbose debug output: /verbose [on|off]"},
-    {"cmd": "/mouse",       "desc": "Configure mouse modes: /mouse [on|off|scroll|interactive|full|status]"},
-    {"cmd": "/tui",         "desc": "Toggle fullscreen TUI mode: /tui [fullscreen|default]"},
+    {"cmd": "/style", "desc": "Set output style: /style [compact|detailed|minimal|verbose]"},
+    {"cmd": "/verbose", "desc": "Toggle verbose debug output: /verbose [on|off]"},
+    {"cmd": "/mouse", "desc": "Configure mouse modes: /mouse [on|off|scroll|interactive|full|status]"},
+    {"cmd": "/tui", "desc": "Toggle fullscreen TUI mode: /tui [fullscreen|default]"},
     # Career OS
-    {"cmd": "/career",      "desc": "Career profile & funnel analytics"},
-    {"cmd": "/applications","desc": "List tracked job applications"},
-    {"cmd": "/interviews",  "desc": "List upcoming interviews"},
-    {"cmd": "/offers",      "desc": "List job offers"},
-    {"cmd": "/emails",      "desc": "Career email intelligence feed"},
-    {"cmd": "/resume",      "desc": "Generate or tailor resume"},
-    {"cmd": "/jobs",        "desc": "Search and match job postings"},
-    {"cmd": "/apply",       "desc": "Prepare application package: /apply <job_id>"},
-    {"cmd": "/ats",         "desc": "Run ATS audit: /ats [role]"},
+    {"cmd": "/career", "desc": "Career profile & funnel analytics"},
+    {"cmd": "/applications", "desc": "List tracked job applications"},
+    {"cmd": "/interviews", "desc": "List upcoming interviews"},
+    {"cmd": "/offers", "desc": "List job offers"},
+    {"cmd": "/emails", "desc": "Career email intelligence feed"},
+    {"cmd": "/resume", "desc": "Generate or tailor resume"},
+    {"cmd": "/jobs", "desc": "Search and match job postings"},
+    {"cmd": "/apply", "desc": "Prepare application package: /apply <job_id>"},
+    {"cmd": "/ats", "desc": "Run ATS audit: /ats [role]"},
 ]
 
 # Mode choices
@@ -153,6 +154,7 @@ class JarvisCompleter:
 # ── prompt_toolkit Completer bridge ──────────────────────────────────────────
 
 if HAS_PROMPT_TOOLKIT:
+
     class PTJarvisCompleter(Completer):  # type: ignore
         """prompt_toolkit Completer for BR JARVIS slash commands."""
 
@@ -174,6 +176,7 @@ def get_history_path() -> Path:
     """Locate CLI command history file."""
     try:
         from brjarvis.core.paths import paths
+
         history_dir = paths.STATE_ROOT / "cli"
         history_dir.mkdir(parents=True, exist_ok=True)
         return history_dir / "command_history.txt"
@@ -185,26 +188,28 @@ def get_prompt_toolkit_style() -> Any:
     """Return a prompt_toolkit Style matching the BR JARVIS color palette."""
     if not HAS_PROMPT_TOOLKIT:
         return None
-    return PTStyle.from_dict({
-        "prompt.you":                                 "#00e5ff bold",
-        "prompt.bracket":                             "#48586c",
-        "prompt.mode":                                "#1de9b6 bold",
-        "prompt.arrow":                               "#00e5ff bold",
-        "prompt.task":                                "#1de9b6 bold",
-        "prompt.approval":                            "#ffab00 bold",
-        "prompt.needs":                               "#d500f9 bold",
-        # Auto-completion menu
-        "completion-menu":                            "bg:#10141d #f0f6fc",
-        "completion-menu.completion":                 "bg:#151b26 #00e5ff",
-        "completion-menu.completion.current":         "bg:#253346 #ffffff bold",
-        "completion-menu.meta.completion":            "bg:#151b26 #6b7d96",
-        "completion-menu.meta.completion.current":    "bg:#253346 #1de9b6",
-        "completion-menu.multi-column-meta":          "bg:#151b26 #6b7d96",
-        "scrollbar.background":                       "bg:#151b26",
-        "scrollbar.button":                           "bg:#00e5ff",
-        # Auto-suggestions
-        "auto-suggest":                               "#48586c italic",
-    })
+    return PTStyle.from_dict(
+        {
+            "prompt.you": "#00e5ff bold",
+            "prompt.bracket": "#48586c",
+            "prompt.mode": "#1de9b6 bold",
+            "prompt.arrow": "#00e5ff bold",
+            "prompt.task": "#1de9b6 bold",
+            "prompt.approval": "#ffab00 bold",
+            "prompt.needs": "#d500f9 bold",
+            # Auto-completion menu
+            "completion-menu": "bg:#10141d #f0f6fc",
+            "completion-menu.completion": "bg:#151b26 #00e5ff",
+            "completion-menu.completion.current": "bg:#253346 #ffffff bold",
+            "completion-menu.meta.completion": "bg:#151b26 #6b7d96",
+            "completion-menu.meta.completion.current": "bg:#253346 #1de9b6",
+            "completion-menu.multi-column-meta": "bg:#151b26 #6b7d96",
+            "scrollbar.background": "bg:#151b26",
+            "scrollbar.button": "bg:#00e5ff",
+            # Auto-suggestions
+            "auto-suggest": "#48586c italic",
+        }
+    )
 
 
 def build_prompt_session(

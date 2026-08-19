@@ -7,13 +7,12 @@ Enforces critical Lock State Security:
 - Never attempts bypass or fakes unlocking
 - Transitions to WAITING_FOR_USER_AUTHENTICATION when required
 """
+
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
-from dataclasses import asdict
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from .gateway import get_device_gateway
 from .protocol import AccessibilityNode, DeviceState, MobileMessageType
@@ -41,7 +40,9 @@ class AndroidDeviceController:
             devices = self.gateway.list_devices(trust_state="trusted")
             if devices:
                 return devices[0].device_id
-            raise RuntimeError("No paired or active Android device found. Please pair your Android phone via Control Center.")
+            raise RuntimeError(
+                "No paired or active Android device found. Please pair your Android phone via Control Center."
+            )
         return active_id
 
     async def get_state(self) -> DeviceState:
@@ -70,7 +71,7 @@ class AndroidDeviceController:
                 "status": "WAITING_FOR_USER_AUTHENTICATION",
                 "is_locked": True,
                 "requires_biometric_or_pin": True,
-                "message": "Android device is currently locked. Please unlock using PIN or fingerprint to proceed."
+                "message": "Android device is currently locked. Please unlock using PIN or fingerprint to proceed.",
             }
 
         tree_res = await session.request(MobileMessageType.GET_ACCESSIBILITY_TREE, {})
@@ -82,7 +83,7 @@ class AndroidDeviceController:
             "foreground_app": state.foreground_app,
             "is_locked": False,
             "screen_summary": summary,
-            "root_node": root_node.to_dict()
+            "root_node": root_node.to_dict(),
         }
 
     async def open_app(self, app_name: str) -> Dict[str, Any]:
@@ -97,13 +98,10 @@ class AndroidDeviceController:
             return {
                 "success": False,
                 "status": "WAITING_FOR_USER_AUTHENTICATION",
-                "message": "Device is locked. Unlock to open app."
+                "message": "Device is locked. Unlock to open app.",
             }
 
-        res = await session.request(MobileMessageType.EXECUTE_ACTION, {
-            "action": "open_app",
-            "app_name": app_name
-        })
+        res = await session.request(MobileMessageType.EXECUTE_ACTION, {"action": "open_app", "app_name": app_name})
         return res
 
     async def click(self, target: str) -> Dict[str, Any]:
@@ -121,12 +119,10 @@ class AndroidDeviceController:
         if not match:
             return {"success": False, "error": f"Element '{target}' not found on mobile screen."}
 
-        res = await session.request(MobileMessageType.EXECUTE_ACTION, {
-            "action": "click_coords",
-            "x": match.center[0],
-            "y": match.center[1],
-            "node_id": match.node_id
-        })
+        res = await session.request(
+            MobileMessageType.EXECUTE_ACTION,
+            {"action": "click_coords", "x": match.center[0], "y": match.center[1], "node_id": match.node_id},
+        )
         return res
 
     async def type_text(self, target: Optional[str], text: str) -> Dict[str, Any]:
@@ -141,10 +137,7 @@ class AndroidDeviceController:
             await self.click(target)
             await asyncio.sleep(0.3)
 
-        res = await session.request(MobileMessageType.EXECUTE_ACTION, {
-            "action": "type_text",
-            "text": text
-        })
+        res = await session.request(MobileMessageType.EXECUTE_ACTION, {"action": "type_text", "text": text})
         return res
 
     async def navigate(self, action: str) -> Dict[str, Any]:
@@ -154,11 +147,7 @@ class AndroidDeviceController:
         if not session:
             return {"success": False, "error": "Device is offline"}
 
-        act_map = {
-            "home": "press_home",
-            "back": "press_back",
-            "recents": "press_recents"
-        }
+        act_map = {"home": "press_home", "back": "press_back", "recents": "press_recents"}
         target_act = act_map.get(action.lower(), action)
         res = await session.request(MobileMessageType.EXECUTE_ACTION, {"action": target_act})
         return res

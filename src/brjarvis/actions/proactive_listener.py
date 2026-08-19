@@ -4,20 +4,18 @@ Continuous background listening engine for BR JARVIS MK38.
 Monitors incoming Emails (IMAP/Gmail) and WhatsApp messages, extracts intent/entities,
 and queues interactive user actions (Reply, Add to Calendar, Dismiss).
 """
+
 from __future__ import annotations
 
-import asyncio
 import datetime
 import hashlib
-
 import json
 import logging
-import os
 import sqlite3
 import threading
 import time
 from pathlib import Path
-from typing import Dict, List, Optional, Any
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger("JARVIS.ProactiveListener")
 
@@ -120,7 +118,7 @@ class ProactiveMultiChannelListener:
                     INSERT OR REPLACE INTO processed_messages (msg_id, channel, sender, snippet, intent, extracted_entities, status)
                     VALUES (?, ?, ?, ?, ?, ?, 'PENDING_USER_APPROVAL')
                     """,
-                    (msg_id, channel, sender, snippet, intent, json.dumps(entities))
+                    (msg_id, channel, sender, snippet, intent, json.dumps(entities)),
                 )
                 conn.commit()
         except Exception as e:
@@ -144,6 +142,7 @@ class ProactiveMultiChannelListener:
         """Poll unread emails and classify intent."""
         try:
             from brjarvis.actions.smart_email_sender import get_smart_email_sender
+
             sender_engine = get_smart_email_sender()
             # Mock or actual check
             # For demonstration & resilience, check IMAP or environment state
@@ -170,7 +169,7 @@ class ProactiveMultiChannelListener:
                     "intent": intent,
                     "entities": entities,
                     "timestamp": datetime.datetime.now().isoformat(),
-                    "suggested_actions": self._build_suggested_actions(intent, entities, sender, snippet)
+                    "suggested_actions": self._build_suggested_actions(intent, entities, sender, snippet),
                 }
                 self.pending_actions.append(action_item)
                 self._notify_user(action_item)
@@ -181,6 +180,7 @@ class ProactiveMultiChannelListener:
         """Poll incoming WhatsApp messages."""
         try:
             from brjarvis.actions.whatsapp_automation import get_whatsapp_automation
+
             wa = get_whatsapp_automation()
             unread_msgs = wa.fetch_unread_messages() if hasattr(wa, "fetch_unread_messages") else []
             for msg in unread_msgs:
@@ -202,7 +202,7 @@ class ProactiveMultiChannelListener:
                     "intent": intent,
                     "entities": entities,
                     "timestamp": datetime.datetime.now().isoformat(),
-                    "suggested_actions": self._build_suggested_actions(intent, entities, sender, text)
+                    "suggested_actions": self._build_suggested_actions(intent, entities, sender, text),
                 }
                 self.pending_actions.append(action_item)
                 self._notify_user(action_item)
@@ -215,12 +215,19 @@ class ProactiveMultiChannelListener:
         entities = {}
 
         # Basic meeting detection logic
-        if any(k in text_lower for k in ["meet", "meeting", "call", "schedule", "appointment", "zoom", "tomorrow at", "pm", "am"]):
+        if any(
+            k in text_lower
+            for k in ["meet", "meeting", "call", "schedule", "appointment", "zoom", "tomorrow at", "pm", "am"]
+        ):
             intent = "MEETING_REQUEST"
             # Basic date/time entity extraction
             import re
+
             time_match = re.search(r"(\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM))", text)
-            date_match = re.search(r"\b(today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday|\d{1,2}/\d{1,2})\b", text_lower)
+            date_match = re.search(
+                r"\b(today|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday|\d{1,2}/\d{1,2})\b",
+                text_lower,
+            )
             if time_match:
                 entities["time"] = time_match.group(1)
             if date_match:
@@ -256,6 +263,7 @@ class ProactiveMultiChannelListener:
         # Voice notification fallback
         try:
             from brjarvis.voice.tts import TextToSpeechEngine
+
             tts = TextToSpeechEngine()
             tts.speak(msg)
         except Exception:

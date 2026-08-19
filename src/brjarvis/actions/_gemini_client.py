@@ -14,47 +14,29 @@ Usage in any action file:
     # Option B: One-shot generation (recommended — handles proxy automatically)
     text = gemini_generate(prompt, model="gemini-3.5-flash")
 """
+
 from __future__ import annotations
 
-import json
 import logging
 import os
-from pathlib import Path
 from typing import Any
 
-from brjarvis.core.paths import paths
+from ._credentials import get_gemini_key, get_openai_key
 
 logger = logging.getLogger("JARVIS.Actions.GeminiClient")
 
-_BASE_DIR = paths.PROJECT_ROOT
-_API_CONFIG = paths.CONFIG_ROOT / "api_keys.json"
-
 
 def _load_gemini_key() -> str:
-    """Load Gemini API key: env first, then api_keys.json."""
-    key = os.environ.get("GEMINI_API_KEY", "").strip()
-    if key:
-        return key
-    try:
-        data = json.loads(_API_CONFIG.read_text(encoding="utf-8"))
-        return data.get("gemini_api_key", data.get("GEMINI_API_KEY", "")).strip()
-    except Exception:
-        return ""
+    """Load the Gemini API key from environment or the OS credential vault."""
+    return get_gemini_key()
 
 
 def _load_proxy_config() -> tuple[str, str]:
     """Return (base_url, api_key) for the local OpenAI-compatible proxy."""
-    base_url = os.environ.get("OPENAI_BASE_URL", "").strip()
-    api_key = os.environ.get("OPENAI_API_KEY", "").strip()
-    if not base_url or not api_key:
-        try:
-            data = json.loads(_API_CONFIG.read_text(encoding="utf-8"))
-            base_url = base_url or data.get("openai_base_url", "http://localhost:8045/v1")
-            api_key = api_key or data.get("openai_api_key", "none")
-        except Exception:
-            base_url = base_url or "http://localhost:8045/v1"
-            api_key = api_key or "none"
-    return base_url, api_key
+    base_url = os.environ.get("OPENAI_BASE_URL", "http://localhost:8045/v1").strip()
+    api_key = get_openai_key()
+
+    return base_url, api_key or "none"
 
 
 def _use_proxy() -> bool:
@@ -63,6 +45,7 @@ def _use_proxy() -> bool:
 
 
 # ── Proxy-aware OpenAI client wrapper that mimics google.genai API surface ──
+
 
 class _ProxyGeminiClient:
     """Wraps OpenAI client to expose a google.genai-compatible interface."""
@@ -139,6 +122,7 @@ class _ProxyPart:
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
+
 def get_gemini_client():
     """
     Return a Gemini-compatible client, routing through proxy when enabled.
@@ -152,6 +136,7 @@ def get_gemini_client():
         base_url, api_key = _load_proxy_config()
         try:
             from openai import OpenAI
+
             oa_client = OpenAI(base_url=base_url, api_key=api_key)
             return _ProxyGeminiClient(oa_client)
         except Exception as e:
@@ -159,6 +144,7 @@ def get_gemini_client():
 
     # Direct Google API fallback
     from google import genai
+
     return genai.Client(api_key=_load_gemini_key())
 
 

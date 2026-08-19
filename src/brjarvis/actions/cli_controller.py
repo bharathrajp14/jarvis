@@ -2,14 +2,13 @@
 BR Voice Assistant — CLI Controller (actions/cli_controller.py)
 Windows-specialized terminal command execution. Optimized for PowerShell/CMD.
 """
+
 from __future__ import annotations
 
 import logging
-import json
 import os
 import platform
 import queue
-import re
 import shutil
 import subprocess
 import sys
@@ -23,6 +22,7 @@ logger = logging.getLogger(__name__)
 _OS = platform.system()
 
 # ── Shell detection ───────────────────────────────────────────────────────────
+
 
 def _detect_shell() -> str:
     """Return the best available shell for the host operating system."""
@@ -40,30 +40,31 @@ def _detect_shell() -> str:
                 return sh
         return "/bin/sh"
 
-SHELL     = _detect_shell()
-TIMEOUT_S = 30          # default command timeout
-MAX_OUT   = 32_000      # max output bytes kept per session
+
+SHELL = _detect_shell()
+TIMEOUT_S = 30  # default command timeout
+MAX_OUT = 32_000  # max output bytes kept per session
 
 
 class ShellSession:
     """A persistent, interactive command shell session."""
 
     def __init__(self, shell: str = SHELL, cwd: str = None):
-        self.shell     = shell
-        self.cwd       = cwd or str(Path.home())
-        self._proc:    Optional[subprocess.Popen]  = None
-        self._outbuf   = bytearray()
-        self._lock     = threading.Lock()
-        self._out_q: queue.Queue[str]              = queue.Queue(maxsize=500)
-        self._alive    = False
-        self._reader:  Optional[threading.Thread]  = None
+        self.shell = shell
+        self.cwd = cwd or str(Path.home())
+        self._proc: Optional[subprocess.Popen] = None
+        self._outbuf = bytearray()
+        self._lock = threading.Lock()
+        self._out_q: queue.Queue[str] = queue.Queue(maxsize=500)
+        self._alive = False
+        self._reader: Optional[threading.Thread] = None
 
     # ── Lifecycle ─────────────────────────────────────────────────────────
 
     def start(self) -> str:
         if self._alive:
             return "Session already running."
-        
+
         env = dict(os.environ)
         env["PYTHONUNBUFFERED"] = "1"
         popen_kwargs = {
@@ -77,13 +78,10 @@ class ShellSession:
         }
         if sys.platform == "win32":
             popen_kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW
-            
+
         self._proc = subprocess.Popen([self.shell], **popen_kwargs)
         self._alive = True
-        self._reader = threading.Thread(
-            target=self._read_pipe_win, daemon=True,
-            name="ShellPipeReader"
-        )
+        self._reader = threading.Thread(target=self._read_pipe_win, daemon=True, name="ShellPipeReader")
         self._reader.start()
         return f"Shell session started ({_OS}): {self.shell}"
 
@@ -97,7 +95,7 @@ class ShellSession:
                 try:
                     self._proc.kill()
                 except Exception as e:
-                    logger.debug('Suppressed exception: %s', e)
+                    logger.debug("Suppressed exception: %s", e)
         self._proc = None
         return "Shell session stopped."
 
@@ -128,7 +126,7 @@ class ShellSession:
         # Sentinel to detect command completion
         sentinel = f"__BR_DONE_{int(time.time() * 1000)}__"
         full_cmd = f"{cmd}\r\necho {sentinel}\r\n"
-        
+
         try:
             self._proc.stdin.write(full_cmd)
             self._proc.stdin.flush()
@@ -137,14 +135,14 @@ class ShellSession:
 
         # Collect output until sentinel or timeout
         collected = []
-        deadline  = time.time() + timeout
+        deadline = time.time() + timeout
         found_sent = False
 
         while time.time() < deadline and not found_sent:
             try:
                 chunk = self._out_q.get(timeout=0.15)
                 if sentinel in chunk:
-                    part = chunk[:chunk.index(sentinel)]
+                    part = chunk[: chunk.index(sentinel)]
                     if part:
                         collected.append(part)
                     found_sent = True
@@ -199,9 +197,9 @@ class ShellSession:
 
 # ── Session registry ──────────────────────────────────────────────────────────
 
-_sessions:  dict[str, ShellSession] = {}
-_main_sess: Optional[ShellSession]  = None
-_sess_lock  = threading.Lock()
+_sessions: dict[str, ShellSession] = {}
+_main_sess: Optional[ShellSession] = None
+_sess_lock = threading.Lock()
 
 
 def _get_main_session() -> ShellSession:
@@ -223,6 +221,7 @@ def _get_named_session(name: str) -> ShellSession:
 
 
 # ── Subprocess (one-shot) ──────────────────────────────────────────────────────
+
 
 def _run_oneshot(
     cmd: str,
@@ -247,27 +246,27 @@ def _run_oneshot(
             exec_cmd,
             shell=False,
             capture_output=True,
-            text=True, encoding="utf-8", errors="replace",
+            text=True,
+            encoding="utf-8",
+            errors="replace",
             cwd=cwd or str(Path.home()),
-            env=env, timeout=timeout,
+            env=env,
+            timeout=timeout,
         )
         stdout = result.stdout.strip()
         stderr = result.stderr.strip()
         return {
-            "stdout":     stdout,
-            "stderr":     stderr,
+            "stdout": stdout,
+            "stderr": stderr,
             "returncode": result.returncode,
-            "success":    result.returncode == 0,
+            "success": result.returncode == 0,
         }
     except subprocess.TimeoutExpired:
-        return {"stdout": "", "stderr": f"Timed out after {timeout}s.",
-                "returncode": -1, "success": False}
+        return {"stdout": "", "stderr": f"Timed out after {timeout}s.", "returncode": -1, "success": False}
     except FileNotFoundError as e:
-        return {"stdout": "", "stderr": f"Command not found: {e}",
-                "returncode": -1, "success": False}
+        return {"stdout": "", "stderr": f"Command not found: {e}", "returncode": -1, "success": False}
     except Exception as e:
-        return {"stdout": "", "stderr": str(e),
-                "returncode": -1, "success": False}
+        return {"stdout": "", "stderr": str(e), "returncode": -1, "success": False}
 
 
 def _fmt_result(r: dict) -> str:
@@ -286,17 +285,18 @@ def _fmt_result(r: dict) -> str:
 
 # ── Main entry point ──────────────────────────────────────────────────────────
 
+
 def cli_controller(
     parameters: dict = None,
     response=None,
     player=None,
     session_memory=None,
 ) -> str:
-    params  = parameters or {}
-    action  = params.get("action", "run").lower().strip()
-    cmd     = params.get("cmd",     "").strip()
-    name    = params.get("name",    "main").strip()
-    cwd     = params.get("cwd",     "").strip() or None
+    params = parameters or {}
+    action = params.get("action", "run").lower().strip()
+    cmd = params.get("cmd", "").strip()
+    name = params.get("name", "main").strip()
+    cwd = params.get("cwd", "").strip() or None
     timeout = int(params.get("timeout", TIMEOUT_S))
 
     if player:
@@ -326,8 +326,8 @@ def cli_controller(
         if not cmd:
             return "No directory specified."
         target = cmd.strip()
-        sess   = _get_main_session()
-        result = sess.run_cmd(f"cd \"{target}\" && cd", timeout=8)
+        sess = _get_main_session()
+        result = sess.run_cmd(f'cd "{target}" && cd', timeout=8)
         return result
 
     if action == "pwd":
@@ -338,13 +338,10 @@ def cli_controller(
         code = cmd or params.get("code", "")
         if not code:
             return "No Python code specified."
-        
+
         # On Windows wrap code safely for python -c
         safe_code = code.replace('"', '\\"')
-        r = _run_oneshot(
-            f'"{sys.executable}" -c "{safe_code}"',
-            cwd=cwd, timeout=timeout
-        )
+        r = _run_oneshot(f'"{sys.executable}" -c "{safe_code}"', cwd=cwd, timeout=timeout)
         return _fmt_result(r)
 
     if action == "pipe":
@@ -378,7 +375,7 @@ def cli_controller(
         return path if path else f"'{target}' not found in PATH"
 
     if action == "env":
-        key   = params.get("key",   "").strip()
+        key = params.get("key", "").strip()
         value = params.get("value", "").strip()
         if key and value:
             os.environ[key] = value
@@ -391,7 +388,7 @@ def cli_controller(
     if action == "session_new":
         with _sess_lock:
             sess = ShellSession(cwd=cwd)
-            msg  = sess.start()
+            msg = sess.start()
             _sessions[name] = sess
         return f"Session '{name}' created. {msg}"
 
@@ -419,31 +416,31 @@ def _auto_dispatch(cmd: str, cwd: str, timeout: int) -> str:
 
     if _OS == "Windows":
         mappings = {
-            "list files":        "dir",
-            "show directory":    "cd",
+            "list files": "dir",
+            "show directory": "cd",
             "current directory": "cd",
-            "show processes":    "tasklist",
-            "disk usage":        "wmic logicaldisk get size,freespace,caption",
-            "network interfaces":"ipconfig",
-            "memory usage":      "systeminfo | findstr Memory",
-            "cpu info":          "wmic cpu get Name",
-            "show path":         "echo %PATH%",
-            "clear screen":      "cls",
-            "running services":  "Get-Service | Where Status -eq Running",
+            "show processes": "tasklist",
+            "disk usage": "wmic logicaldisk get size,freespace,caption",
+            "network interfaces": "ipconfig",
+            "memory usage": "systeminfo | findstr Memory",
+            "cpu info": "wmic cpu get Name",
+            "show path": "echo %PATH%",
+            "clear screen": "cls",
+            "running services": "Get-Service | Where Status -eq Running",
         }
     else:
         mappings = {
-            "list files":        "ls -la",
-            "show directory":    "pwd",
+            "list files": "ls -la",
+            "show directory": "pwd",
             "current directory": "pwd",
-            "show processes":    "ps aux",
-            "disk usage":        "df -h",
-            "network interfaces":"ip a || ifconfig",
-            "memory usage":      "free -h",
-            "cpu info":          "lscpu || uname -a",
-            "show path":         "echo $PATH",
-            "clear screen":      "clear",
-            "running services":  "systemctl list-units --type=service --state=running || ps aux",
+            "show processes": "ps aux",
+            "disk usage": "df -h",
+            "network interfaces": "ip a || ifconfig",
+            "memory usage": "free -h",
+            "cpu info": "lscpu || uname -a",
+            "show path": "echo $PATH",
+            "clear screen": "clear",
+            "running services": "systemctl list-units --type=service --state=running || ps aux",
         }
 
     for phrase, shell_cmd in mappings.items():

@@ -5,16 +5,15 @@ AI image generation using multiple providers:
   - OpenAI DALL-E 3 (via openai SDK)
   - Stability AI (via REST API)
 """
+
 from __future__ import annotations
 
 import base64
-import json
+import logging
 import os
-import time
 import traceback
 from datetime import datetime
 from pathlib import Path
-import logging
 
 logger = logging.getLogger("JARVIS.ImageGen")
 

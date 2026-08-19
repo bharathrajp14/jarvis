@@ -12,6 +12,7 @@ Orchestrates:
 8. Respond (Evidence-backed Synthesis)
 9. Complete (Memory Consolidation & Event Emission)
 """
+
 from __future__ import annotations
 
 import json
@@ -52,14 +53,14 @@ MAX_AGENT_STEPS = 20
 
 # Per-tool cyclic loop thresholds
 CYCLIC_LIMITS: Dict[str, int] = {
-    "run_code":        6,
+    "run_code": 6,
     "scratchpad_eval": 6,
     "scratchpad_write": 6,
-    "file_read":       6,
-    "file_write":      6,
-    "web_search":      5,
-    "fetch_page":      5,
-    "fetch_raw":       5,
+    "file_read": 6,
+    "file_write": 6,
+    "web_search": 5,
+    "fetch_page": 5,
+    "fetch_raw": 5,
 }
 DEFAULT_CYCLIC_LIMIT = 3
 
@@ -88,12 +89,12 @@ class AgentTurnResult:
 
 def _clean_model_response(text: str) -> str:
     """Strip tool_call blocks and formatting markers from model response."""
-    cleaned = re.sub(r'```tool_call\s*\n\s*\{.*?\}\s*\n\s*```', '', text, flags=re.DOTALL)
-    cleaned = re.sub(r'\{\s*"tool"\s*:\s*"[^"]+"\s*,\s*"args"\s*:\s*\{.*?\}\s*\}', '', cleaned, flags=re.DOTALL)
-    cleaned = re.sub(r'<\|start\|>.*?<\|call\|>', '', cleaned, flags=re.DOTALL)
-    cleaned = re.sub(r'<\|channel\|>.*?<\|call\|>', '', cleaned, flags=re.DOTALL)
-    cleaned = re.sub(r'<\|message\|>.*?<\|call\|>', '', cleaned, flags=re.DOTALL)
-    cleaned = re.sub(r'<\|.*?\|>', '', cleaned)
+    cleaned = re.sub(r"```tool_call\s*\n\s*\{.*?\}\s*\n\s*```", "", text, flags=re.DOTALL)
+    cleaned = re.sub(r'\{\s*"tool"\s*:\s*"[^"]+"\s*,\s*"args"\s*:\s*\{.*?\}\s*\}', "", cleaned, flags=re.DOTALL)
+    cleaned = re.sub(r"<\|start\|>.*?<\|call\|>", "", cleaned, flags=re.DOTALL)
+    cleaned = re.sub(r"<\|channel\|>.*?<\|call\|>", "", cleaned, flags=re.DOTALL)
+    cleaned = re.sub(r"<\|message\|>.*?<\|call\|>", "", cleaned, flags=re.DOTALL)
+    cleaned = re.sub(r"<\|.*?\|>", "", cleaned)
     return cleaned.strip()
 
 
@@ -140,6 +141,7 @@ class AgentLoop:
 
         try:
             from brjarvis.memory.unified_memory import get_unified_memory
+
             um = get_unified_memory()
             memories = um.recall(user_prompt, limit=5)
             if memories:
@@ -158,7 +160,9 @@ class AgentLoop:
                 exp = um.get_relevant_experiences(user_prompt, limit=2)
                 exp_lines = []
                 for succ in exp.get("successes", []):
-                    exp_lines.append(f"- Pattern for '{succ.get('goal_query', '')[:50]}': tools={succ.get('tool_sequence', [])}")
+                    exp_lines.append(
+                        f"- Pattern for '{succ.get('goal_query', '')[:50]}': tools={succ.get('tool_sequence', [])}"
+                    )
                 for fail in exp.get("failures", []):
                     if fail.get("failure_reason"):
                         exp_lines.append(f"- Pitfall to avoid: {fail.get('failure_reason')[:120]}")
@@ -269,14 +273,16 @@ class AgentLoop:
         self.session.add_user_turn(user_input)
 
         # Emit agent.started
-        self.event_bus.publish(AgentLifecycleEvent(
-            topic="agent.started",
-            session_id=self.session.session_id,
-            task_id=task_id,
-            phase="started",
-            message=f"Received user request: {user_input[:80]}",
-            correlation_id=corr_id,
-        ))
+        self.event_bus.publish(
+            AgentLifecycleEvent(
+                topic="agent.started",
+                session_id=self.session.session_id,
+                task_id=task_id,
+                phase="started",
+                message=f"Received user request: {user_input[:80]}",
+                correlation_id=corr_id,
+            )
+        )
 
         # ── Step 1: Fast Path Check ──
         try:
@@ -284,14 +290,16 @@ class AgentLoop:
             if fast_res and fast_res.get("executed"):
                 result_text = fast_res.get("result", "Action executed successfully.")
                 self.session.add_assistant_turn(result_text, latency_ms=int((time.monotonic() - t_start) * 1000))
-                self.event_bus.publish(AgentLifecycleEvent(
-                    topic="agent.completed",
-                    session_id=self.session.session_id,
-                    task_id=task_id,
-                    phase="completed",
-                    message="Fast-path executed.",
-                    correlation_id=corr_id,
-                ))
+                self.event_bus.publish(
+                    AgentLifecycleEvent(
+                        topic="agent.completed",
+                        session_id=self.session.session_id,
+                        task_id=task_id,
+                        phase="completed",
+                        message="Fast-path executed.",
+                        correlation_id=corr_id,
+                    )
+                )
                 self.last_result = AgentTurnResult(
                     response=result_text,
                     status=AgentTurnStatus.SUCCESS_VERIFIED,
@@ -304,27 +312,32 @@ class AgentLoop:
             logger.debug("[AgentLoop] Fast-path notice: %s", fast_err)
 
         # ── Step 2: Context Discovery ──
-        self.event_bus.publish(AgentLifecycleEvent(
-            topic="agent.context_started",
-            session_id=self.session.session_id,
-            task_id=task_id,
-            phase="context_started",
-            correlation_id=corr_id,
-        ))
+        self.event_bus.publish(
+            AgentLifecycleEvent(
+                topic="agent.context_started",
+                session_id=self.session.session_id,
+                task_id=task_id,
+                phase="context_started",
+                correlation_id=corr_id,
+            )
+        )
         discovered_context = self.discover_context(user_input)
         if discovered_context:
             self.session.discovered_context.append(discovered_context)
-        self.event_bus.publish(AgentLifecycleEvent(
-            topic="agent.context_completed",
-            session_id=self.session.session_id,
-            task_id=task_id,
-            phase="context_completed",
-            correlation_id=corr_id,
-        ))
+        self.event_bus.publish(
+            AgentLifecycleEvent(
+                topic="agent.context_completed",
+                session_id=self.session.session_id,
+                task_id=task_id,
+                phase="context_completed",
+                correlation_id=corr_id,
+            )
+        )
 
         # ── Step 3: Resolve Router & Backends ──
         if router is None:
             from brjarvis.router import AgentRouter
+
             router = AgentRouter()
 
         # Build system prompt
@@ -355,6 +368,7 @@ class AgentLoop:
         # Adaptive Profile Selection based on active persona mode & task keywords
         try:
             from brjarvis.router import AgentProfile
+
             mode_lower = (self.session.current_mode or "general").lower()
             mode_kw = [mode_lower]
             if mode_lower in ("coder", "code", "dev"):
@@ -372,14 +386,16 @@ class AgentLoop:
 
         while step < MAX_AGENT_STEPS:
             # Emit agent.thinking
-            self.event_bus.publish(AgentLifecycleEvent(
-                topic="agent.thinking",
-                session_id=self.session.session_id,
-                task_id=task_id,
-                phase="thinking",
-                message=f"Planning step {step + 1}...",
-                correlation_id=corr_id,
-            ))
+            self.event_bus.publish(
+                AgentLifecycleEvent(
+                    topic="agent.thinking",
+                    session_id=self.session.session_id,
+                    task_id=task_id,
+                    phase="thinking",
+                    message=f"Planning step {step + 1}...",
+                    correlation_id=corr_id,
+                )
+            )
 
             try:
                 raw_response = router.run(mode_profile, history_msgs, system_prompt)
@@ -401,7 +417,9 @@ class AgentLoop:
                 # Loop prevention
                 cyclic_limit = CYCLIC_LIMITS.get(tool_name, DEFAULT_CYCLIC_LIMIT)
                 if call_counts[call_sig] >= cyclic_limit:
-                    logger.warning(f"[AgentLoop] Cyclic loop detected for '{tool_name}' ({call_counts[call_sig]}/{cyclic_limit})")
+                    logger.warning(
+                        f"[AgentLoop] Cyclic loop detected for '{tool_name}' ({call_counts[call_sig]}/{cyclic_limit})"
+                    )
                     final_response = _synthesize_evidence(tool_history, user_input)
                     terminal_status = AgentTurnStatus.PARTIAL
                     break
@@ -429,7 +447,10 @@ class AgentLoop:
                     not is_pre_approved
                     and self.session.permission_mode != "allow_all"
                     and (
-                        (self.session.permission_mode == "confirm_destructive" and risk in (RiskLevel.HIGH, RiskLevel.CRITICAL))
+                        (
+                            self.session.permission_mode == "confirm_destructive"
+                            and risk in (RiskLevel.HIGH, RiskLevel.CRITICAL)
+                        )
                         or (self.session.permission_mode == "confirm_all" and risk != RiskLevel.SAFE)
                     )
                 )
@@ -455,24 +476,30 @@ class AgentLoop:
                         tool_res = f"[Permission Denied: User did not authorize '{tool_name}']"
                         terminal_status = AgentTurnStatus.PARTIAL
                         tool_failures += 1
-                        tool_history.append({"tool_name": tool_name, "args": tool_args, "result": tool_res, "verified": False})
+                        tool_history.append(
+                            {"tool_name": tool_name, "args": tool_args, "result": tool_res, "verified": False}
+                        )
                         history_msgs.append({"role": "assistant", "content": raw_response})
-                        history_msgs.append({"role": "user", "content": f"[Tool Result for '{tool_name}']:\n{tool_res}"})
+                        history_msgs.append(
+                            {"role": "user", "content": f"[Tool Result for '{tool_name}']:\n{tool_res}"}
+                        )
                         step += 1
                         continue
 
                 # ── Physical Tool Execution ──
                 step_id = f"step-{step + 1}"
-                self.event_bus.publish(ToolLifecycleEvent(
-                    topic="tool.started",
-                    tool_name=tool_name,
-                    session_id=self.session.session_id,
-                    task_id=task_id,
-                    step_id=step_id,
-                    status="started",
-                    args=tool_args or {},
-                    correlation_id=corr_id,
-                ))
+                self.event_bus.publish(
+                    ToolLifecycleEvent(
+                        topic="tool.started",
+                        tool_name=tool_name,
+                        session_id=self.session.session_id,
+                        task_id=task_id,
+                        step_id=step_id,
+                        status="started",
+                        args=tool_args or {},
+                        correlation_id=corr_id,
+                    )
+                )
 
                 t_t0 = time.monotonic()
                 try:
@@ -483,14 +510,16 @@ class AgentLoop:
                 t_duration = (time.monotonic() - t_t0) * 1000.0
 
                 # ── Physical Verification ──
-                self.event_bus.publish(VerificationEvent(
-                    topic="verification.started",
-                    session_id=self.session.session_id,
-                    task_id=task_id,
-                    tool_name=tool_name,
-                    status="started",
-                    correlation_id=corr_id,
-                ))
+                self.event_bus.publish(
+                    VerificationEvent(
+                        topic="verification.started",
+                        session_id=self.session.session_id,
+                        task_id=task_id,
+                        tool_name=tool_name,
+                        status="started",
+                        correlation_id=corr_id,
+                    )
+                )
 
                 verified, ver_evidence = self.verify_action(tool_name, tool_args or {}, tool_raw_out)
                 if not verified:
@@ -498,42 +527,50 @@ class AgentLoop:
                     tool_failures += 1
                 self.session.record_verification(tool_name, str(tool_args.get("path") or ""), verified, ver_evidence)
 
-                self.event_bus.publish(VerificationEvent(
-                    topic="verification.completed" if verified else "verification.failed",
-                    session_id=self.session.session_id,
-                    task_id=task_id,
-                    tool_name=tool_name,
-                    verified=verified,
-                    status="completed" if verified else "failed",
-                    evidence=ver_evidence,
-                    correlation_id=corr_id,
-                ))
+                self.event_bus.publish(
+                    VerificationEvent(
+                        topic="verification.completed" if verified else "verification.failed",
+                        session_id=self.session.session_id,
+                        task_id=task_id,
+                        tool_name=tool_name,
+                        verified=verified,
+                        status="completed" if verified else "failed",
+                        evidence=ver_evidence,
+                        correlation_id=corr_id,
+                    )
+                )
 
                 # Emit tool completion
-                self.event_bus.publish(ToolLifecycleEvent(
-                    topic="tool.completed" if verified else "tool.failed",
-                    tool_name=tool_name,
-                    session_id=self.session.session_id,
-                    task_id=task_id,
-                    step_id=step_id,
-                    status="completed" if verified else "failed",
-                    args=tool_args or {},
-                    result=str(tool_raw_out)[:500],
-                    duration_ms=t_duration,
-                    verified=verified,
-                    verification_notes=ver_evidence,
-                    correlation_id=corr_id,
-                ))
+                self.event_bus.publish(
+                    ToolLifecycleEvent(
+                        topic="tool.completed" if verified else "tool.failed",
+                        tool_name=tool_name,
+                        session_id=self.session.session_id,
+                        task_id=task_id,
+                        step_id=step_id,
+                        status="completed" if verified else "failed",
+                        args=tool_args or {},
+                        result=str(tool_raw_out)[:500],
+                        duration_ms=t_duration,
+                        verified=verified,
+                        verification_notes=ver_evidence,
+                        correlation_id=corr_id,
+                    )
+                )
 
-                tool_history.append({
-                    "step": step,
-                    "tool_name": tool_name,
-                    "args": tool_args,
-                    "result": tool_raw_out,
-                    "duration_ms": t_duration,
-                    "verified": verified,
-                })
-                self.session.record_tool_call(tool_name, tool_args or {}, tool_raw_out, t_duration, verified, step_id=step_id)
+                tool_history.append(
+                    {
+                        "step": step,
+                        "tool_name": tool_name,
+                        "args": tool_args,
+                        "result": tool_raw_out,
+                        "duration_ms": t_duration,
+                        "verified": verified,
+                    }
+                )
+                self.session.record_tool_call(
+                    tool_name, tool_args or {}, tool_raw_out, t_duration, verified, step_id=step_id
+                )
                 clean_assistant_entry = _clean_model_response(raw_response) or f"[Executing tool {tool_name}]"
                 history_msgs.append({"role": "assistant", "content": clean_assistant_entry})
                 str_res = str(tool_raw_out)
@@ -582,18 +619,20 @@ class AgentLoop:
             AgentTurnStatus.CANCELLED: "agent.cancelled",
             AgentTurnStatus.TIMED_OUT: "agent.timed_out",
         }[terminal_status]
-        self.event_bus.publish(AgentLifecycleEvent(
-            topic=terminal_topic,
-            session_id=self.session.session_id,
-            task_id=task_id,
-            phase=terminal_status.value,
-            message=(
-                "Turn completed with verified success."
-                if verified_turn
-                else f"Turn ended with status {terminal_status.value}."
-            ),
-            correlation_id=corr_id,
-        ))
+        self.event_bus.publish(
+            AgentLifecycleEvent(
+                topic=terminal_topic,
+                session_id=self.session.session_id,
+                task_id=task_id,
+                phase=terminal_status.value,
+                message=(
+                    "Turn completed with verified success."
+                    if verified_turn
+                    else f"Turn ended with status {terminal_status.value}."
+                ),
+                correlation_id=corr_id,
+            )
+        )
 
         self.session.clear_active_task()
         return final_response

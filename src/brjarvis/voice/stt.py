@@ -9,6 +9,7 @@ v2: Optimized for low-latency wake-word detection.
     - Shorter queue read timeout (0.1s) for snappier recognition.
     - Drain helper for instant queue flush.
 """
+
 from __future__ import annotations
 
 import logging
@@ -22,6 +23,7 @@ logger = logging.getLogger("JARVIS.Voice.STT")
 _HAS_SR = False
 try:
     import speech_recognition as sr  # type: ignore[import-not-found]
+
     _HAS_SR = True
     _BaseAudioSource = sr.AudioSource
 except ImportError:
@@ -31,27 +33,31 @@ except ImportError:
 _HAS_SD = False
 try:
     import sounddevice as sd  # type: ignore[import-not-found]
+
     _HAS_SD = True
 except ImportError:
     pass
 
 import enum
-from .audio_bus import AudioBus, AudioBusMicrophoneSource
+
 
 class STTConfidence(str, enum.Enum):
     """Transcription confidence classification."""
+
     HIGH_CONFIDENCE = "HIGH_CONFIDENCE"
     MEDIUM_CONFIDENCE = "MEDIUM_CONFIDENCE"
     LOW_CONFIDENCE = "LOW_CONFIDENCE"
     UNKNOWN = "UNKNOWN"
 
+
 class SounddeviceMicrophone(_BaseAudioSource):
     """Zero-dependency SpeechRecognition-compatible Microphone class using sounddevice.
     Bypasses PyAudio entirely, making voice input work seamlessly on modern Python versions (e.g. 3.14).
     """
+
     def __init__(self, device=None, sample_rate=16000, chunk_size=512):
         self.device_index = device
-        
+
         # Validate explicit device index if provided
         if self.device_index is not None and _HAS_SD:
             try:
@@ -65,7 +71,6 @@ class SounddeviceMicrophone(_BaseAudioSource):
             except Exception:
                 self.device_index = None
 
-
         # 1. Environment override for audio input device
         env_device = os.environ.get("JARVIS_AUDIO_INPUT_DEVICE")
         if self.device_index is None and env_device:
@@ -77,7 +82,10 @@ class SounddeviceMicrophone(_BaseAudioSource):
                     elif _HAS_SD:
                         devices = sd.query_devices()
                         for idx, dev in enumerate(devices):
-                            if dev.get("max_input_channels", 0) > 0 and env_device_str.lower() in dev.get('name', '').lower():
+                            if (
+                                dev.get("max_input_channels", 0) > 0
+                                and env_device_str.lower() in dev.get("name", "").lower()
+                            ):
                                 self.device_index = idx
                                 break
                 except Exception:
@@ -139,8 +147,8 @@ class SounddeviceMicrophone(_BaseAudioSource):
 
         if _HAS_SD and self.device_index is not None:
             try:
-                device_info = sd.query_devices(self.device_index, 'input')
-                self.device_sample_rate = int(device_info.get('default_samplerate', self.SAMPLE_RATE))
+                device_info = sd.query_devices(self.device_index, "input")
+                self.device_sample_rate = int(device_info.get("default_samplerate", self.SAMPLE_RATE))
             except Exception:
                 pass
 
@@ -152,10 +160,8 @@ class SounddeviceMicrophone(_BaseAudioSource):
                 "speech_recognition is not installed. Run 'pip install SpeechRecognition' to use voice features."
             )
         if not _HAS_SD:
-            raise ImportError(
-                "sounddevice is not installed. Run 'pip install sounddevice' to use voice features."
-            )
-            
+            raise ImportError("sounddevice is not installed. Run 'pip install sounddevice' to use voice features.")
+
         # Try opening raw input stream with dynamic fallback samplerates and device fallback
         devices_to_try = [self.device_index]
         if self.device_index is not None:
@@ -173,8 +179,8 @@ class SounddeviceMicrophone(_BaseAudioSource):
                         blocksize=self.CHUNK,
                         device=dev,
                         channels=1,
-                        dtype='int16',
-                        callback=self._callback
+                        dtype="int16",
+                        callback=self._callback,
                     )
                     self.device_sample_rate = rate
                     self.device_index = dev
@@ -208,6 +214,7 @@ class SounddeviceMicrophone(_BaseAudioSource):
             return b""
         try:
             import numpy as np  # type: ignore[import-not-found]
+
             samples = np.frombuffer(data_bytes, dtype=np.int16)
             if len(samples) == 0:
                 return b""
@@ -219,12 +226,15 @@ class SounddeviceMicrophone(_BaseAudioSource):
             return resampled.tobytes()
         except Exception:
             import struct
+
             num_samples = len(data_bytes) // 2
             if num_samples == 0:
                 return b""
             samples = struct.unpack(f"<{num_samples}h", data_bytes)
             step = self.device_sample_rate / self.SAMPLE_RATE
-            out_samples = [samples[int(i * step)] for i in range(int(num_samples / step)) if int(i * step) < num_samples]
+            out_samples = [
+                samples[int(i * step)] for i in range(int(num_samples / step)) if int(i * step) < num_samples
+            ]
             if not out_samples:
                 return b""
             return struct.pack(f"<{len(out_samples)}h", *out_samples)
@@ -244,8 +254,9 @@ class SounddeviceMicrophone(_BaseAudioSource):
         if self._energy_filter_enabled and self._noise_floor_rms > 0:
             try:
                 import numpy as _np
+
                 samples = _np.frombuffer(raw_bytes, dtype=_np.int16).astype(_np.float32) / 32768.0
-                rms = float(_np.sqrt(_np.mean(samples ** 2)))
+                rms = float(_np.sqrt(_np.mean(samples**2)))
                 # Drop frame if RMS is below half the noise floor
                 if rms < self._noise_floor_rms * 0.5:
                     return
@@ -265,7 +276,6 @@ class SounddeviceMicrophone(_BaseAudioSource):
                 break
         return bytes(data[:bytes_to_read])
 
-
     def drain(self):
         """Instantly flush all queued audio data. Call before listen() for fresh input."""
         dropped = 0
@@ -279,7 +289,7 @@ class SounddeviceMicrophone(_BaseAudioSource):
 
     def is_alive(self) -> bool:
         """Return True if the mic stream is actively delivering audio."""
-        if self.sd_stream is None or not getattr(self.sd_stream, 'active', False):
+        if self.sd_stream is None or not getattr(self.sd_stream, "active", False):
             return False
         elapsed = time.monotonic() - self._last_audio_time
         return elapsed < self._stale_threshold
@@ -328,16 +338,13 @@ class SounddeviceMicrophone(_BaseAudioSource):
                         blocksize=self.CHUNK,
                         device=self.device_index,
                         channels=1,
-                        dtype='int16',
+                        dtype="int16",
                         callback=self._callback,
                     )
                     self.device_sample_rate = rate
                     self.sd_stream.start()
                     self._last_audio_time = time.monotonic()
-                    logger.info(
-                        "[STT] Hot-plug recovery OK — device=%s rate=%d",
-                        self.device_index, rate
-                    )
+                    logger.info("[STT] Hot-plug recovery OK — device=%s rate=%d", self.device_index, rate)
                     return True
                 except Exception as e:
                     logger.debug("[STT] Recovery attempt at %dHz failed: %s", rate, e)
@@ -358,6 +365,7 @@ class SpeechToTextEngine:
         """Transcribe audio file to text."""
         try:
             from brjarvis.voice.whisper_local import transcribe_file
+
             res = transcribe_file(audio_path)
             if res:
                 return res
@@ -373,4 +381,3 @@ class SpeechToTextEngine:
             except Exception as e:
                 return f"[STT Error: {e}]"
         return "[STT Error: No speech recognition engine available]"
-

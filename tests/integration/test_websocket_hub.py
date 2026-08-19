@@ -1,4 +1,5 @@
 """Integration tests for WebSocket Connection Ticket & Event Broadcasting."""
+
 from __future__ import annotations
 
 import pytest

@@ -7,6 +7,7 @@ High-performance task queue with parallel execution support.
 - Cooperative cancellation tokens
 - Thread-safe lifecycle tracking
 """
+
 from __future__ import annotations
 
 import logging
@@ -25,41 +26,41 @@ logger = logging.getLogger("JARVIS.TaskQueue")
 
 
 class TaskStatus(str, Enum):
-    PENDING    = "pending"
-    QUEUED     = "queued"
-    RUNNING    = "running"
+    PENDING = "pending"
+    QUEUED = "queued"
+    RUNNING = "running"
     CANCELLING = "cancelling"
-    COMPLETED  = "completed"
-    SUCCEEDED  = "succeeded"
-    FAILED     = "failed"
-    CANCELLED  = "cancelled"
-    TIMED_OUT  = "timed_out"
-    PAUSED     = "paused"
+    COMPLETED = "completed"
+    SUCCEEDED = "succeeded"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+    TIMED_OUT = "timed_out"
+    PAUSED = "paused"
 
 
 class TaskPriority(int, Enum):
-    LOW    = 3
+    LOW = 3
     NORMAL = 2
-    HIGH   = 1
+    HIGH = 1
 
 
 @dataclass(order=True)
 class Task:
-    priority:    int
-    created_at:  float              = field(compare=False)
-    task_id:     str                = field(compare=False)
-    goal:        str                = field(compare=False)
-    status:      TaskStatus         = field(compare=False, default=TaskStatus.PENDING)
-    result:      Any                = field(compare=False, default=None)
-    error:       str                = field(compare=False, default="")
-    speak:       Any                = field(compare=False, default=None)
-    on_complete: Any                = field(compare=False, default=None)
-    cancel_flag: threading.Event    = field(compare=False, default_factory=threading.Event)
-    started_at:  float              = field(compare=False, default=0.0)
-    finished_at: float              = field(compare=False, default=0.0)
-    timeout_s:   float              = field(compare=False, default=300.0)
-    timeout_requested: bool         = field(compare=False, default=False)
-    _is_terminal: bool              = field(compare=False, default=False)
+    priority: int
+    created_at: float = field(compare=False)
+    task_id: str = field(compare=False)
+    goal: str = field(compare=False)
+    status: TaskStatus = field(compare=False, default=TaskStatus.PENDING)
+    result: Any = field(compare=False, default=None)
+    error: str = field(compare=False, default="")
+    speak: Any = field(compare=False, default=None)
+    on_complete: Any = field(compare=False, default=None)
+    cancel_flag: threading.Event = field(compare=False, default_factory=threading.Event)
+    started_at: float = field(compare=False, default=0.0)
+    finished_at: float = field(compare=False, default=0.0)
+    timeout_s: float = field(compare=False, default=300.0)
+    timeout_requested: bool = field(compare=False, default=False)
+    _is_terminal: bool = field(compare=False, default=False)
 
 
 class TaskQueue:
@@ -72,14 +73,14 @@ class TaskQueue:
         self._max = max_concurrent or min(max(3, cpus), 8)
         self._max_history = max_history
 
-        self._queue:    List[Task]          = []
-        self._lock:     threading.Lock      = threading.Lock()
-        self._cond:     threading.Condition = threading.Condition(self._lock)
-        self._tasks:    Dict[str, Task]     = {}
-        self._running:  bool                = False
-        self._paused:   bool                = False
-        self._workers:  List[threading.Thread] = []
-        self._active:   int                 = 0
+        self._queue: List[Task] = []
+        self._lock: threading.Lock = threading.Lock()
+        self._cond: threading.Condition = threading.Condition(self._lock)
+        self._tasks: Dict[str, Task] = {}
+        self._running: bool = False
+        self._paused: bool = False
+        self._workers: List[threading.Thread] = []
+        self._active: int = 0
 
     def start(self) -> None:
         if self._running:
@@ -87,11 +88,7 @@ class TaskQueue:
         self._running = True
         self._paused = False
         for i in range(self._max):
-            t = threading.Thread(
-                target=self._worker_loop,
-                daemon=True,
-                name=f"AgentWorker-{i+1}"
-            )
+            t = threading.Thread(target=self._worker_loop, daemon=True, name=f"AgentWorker-{i + 1}")
             t.start()
             self._workers.append(t)
         logger.info("✅ TaskQueue started with %d workers", self._max)
@@ -137,23 +134,23 @@ class TaskQueue:
 
     def submit(
         self,
-        goal:        str,
-        priority:    TaskPriority = TaskPriority.NORMAL,
-        speak:       Callable | None = None,
+        goal: str,
+        priority: TaskPriority = TaskPriority.NORMAL,
+        speak: Callable | None = None,
         on_complete: Callable | None = None,
-        timeout_s:   float = 300.0,
+        timeout_s: float = 300.0,
     ) -> str:
         """Submit a goal for execution. Returns task ID immediately."""
         task_id = uuid.uuid4().hex[:8]
         task = Task(
-            priority    = priority.value if hasattr(priority, "value") else int(priority),
-            created_at  = time.time(),
-            task_id     = task_id,
-            goal        = goal,
-            speak       = speak,
-            on_complete = on_complete,
-            status      = TaskStatus.PENDING,
-            timeout_s   = timeout_s,
+            priority=priority.value if hasattr(priority, "value") else int(priority),
+            created_at=time.time(),
+            task_id=task_id,
+            goal=goal,
+            speak=speak,
+            on_complete=on_complete,
+            status=TaskStatus.PENDING,
+            timeout_s=timeout_s,
         )
 
         with self._cond:
@@ -168,9 +165,9 @@ class TaskQueue:
 
     def submit_many(
         self,
-        goals:       List[str],
-        priority:    TaskPriority = TaskPriority.NORMAL,
-        speak:       Callable | None = None,
+        goals: List[str],
+        priority: TaskPriority = TaskPriority.NORMAL,
+        speak: Callable | None = None,
     ) -> List[str]:
         return [self.submit(goal, priority, speak) for goal in goals]
 
@@ -180,7 +177,13 @@ class TaskQueue:
             task = self._tasks.get(task_id)
             if not task:
                 return False
-            if task._is_terminal or task.status in (TaskStatus.COMPLETED, TaskStatus.SUCCEEDED, TaskStatus.FAILED, TaskStatus.CANCELLED, TaskStatus.TIMED_OUT):
+            if task._is_terminal or task.status in (
+                TaskStatus.COMPLETED,
+                TaskStatus.SUCCEEDED,
+                TaskStatus.FAILED,
+                TaskStatus.CANCELLED,
+                TaskStatus.TIMED_OUT,
+            ):
                 return False
 
             # Pending work terminates immediately; running work remains
@@ -199,7 +202,6 @@ class TaskQueue:
 
         return True
 
-
     def get_status(self, task_id: str) -> Optional[Dict[str, Any]]:
         with self._lock:
             task = self._tasks.get(task_id)
@@ -210,11 +212,11 @@ class TaskQueue:
                 end = task.finished_at or time.time()
                 duration = f"{end - task.started_at:.1f}s"
             return {
-                "task_id":  task.task_id,
-                "goal":     task.goal,
-                "status":   task.status.value,
-                "result":   task.result,
-                "error":    task.error,
+                "task_id": task.task_id,
+                "goal": task.goal,
+                "status": task.status.value,
+                "result": task.result,
+                "error": task.error,
                 "duration": duration,
             }
 
@@ -222,12 +224,14 @@ class TaskQueue:
         with self._lock:
             statuses = []
             for task in self._tasks.values():
-                statuses.append({
-                    "task_id": task.task_id,
-                    "goal":    task.goal[:50],
-                    "status":  task.status.value,
-                    "result":  (str(task.result) or "")[:80] if task.result else "",
-                })
+                statuses.append(
+                    {
+                        "task_id": task.task_id,
+                        "goal": task.goal[:50],
+                        "status": task.status.value,
+                        "result": (str(task.result) or "")[:80] if task.result else "",
+                    }
+                )
             return statuses
 
     def _prune_history(self) -> None:
@@ -235,8 +239,17 @@ class TaskQueue:
             return
 
         finished_ids = [
-            tid for tid, t in self._tasks.items()
-            if t._is_terminal or t.status in (TaskStatus.COMPLETED, TaskStatus.SUCCEEDED, TaskStatus.FAILED, TaskStatus.CANCELLED, TaskStatus.TIMED_OUT)
+            tid
+            for tid, t in self._tasks.items()
+            if t._is_terminal
+            or t.status
+            in (
+                TaskStatus.COMPLETED,
+                TaskStatus.SUCCEEDED,
+                TaskStatus.FAILED,
+                TaskStatus.CANCELLED,
+                TaskStatus.TIMED_OUT,
+            )
         ]
 
         overflow = len(self._tasks) - self._max_history
@@ -281,10 +294,8 @@ class TaskQueue:
                 self._run_task(task)
 
     def _can_pick(self) -> bool:
-        return (
-            self._active < self._max and
-            any(t.status in (TaskStatus.PENDING, TaskStatus.QUEUED) and not t.cancel_flag.is_set()
-                for t in self._queue)
+        return self._active < self._max and any(
+            t.status in (TaskStatus.PENDING, TaskStatus.QUEUED) and not t.cancel_flag.is_set() for t in self._queue
         )
 
     def _next_task(self) -> Optional[Task]:
@@ -298,6 +309,7 @@ class TaskQueue:
         deadline_timer: Optional[threading.Timer] = None
         try:
             from brjarvis.agent.executor import AgentExecutor
+
             if not hasattr(_executor_thread_local, "executor"):
                 _executor_thread_local.executor = AgentExecutor()
             executor = _executor_thread_local.executor
@@ -308,9 +320,9 @@ class TaskQueue:
                 deadline_timer.start()
 
             result = executor.execute(
-                goal        = task.goal,
-                speak       = task.speak,
-                cancel_flag = task.cancel_flag,
+                goal=task.goal,
+                speak=task.speak,
+                cancel_flag=task.cancel_flag,
             )
 
             with self._lock:
@@ -369,8 +381,8 @@ class TaskQueue:
         logger.warning("⏱️ [%s] Deadline exceeded; cancellation requested", task.task_id)
 
 
-_queue      = TaskQueue()
-_started    = False
+_queue = TaskQueue()
+_started = False
 _start_lock = threading.Lock()
 
 

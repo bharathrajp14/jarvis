@@ -10,12 +10,12 @@ CRITICAL FIX (Phase 3):
   All three tools now route through UnifiedMemoryManager -> CanonicalMemoryStore.
   This closes the canonical store bypass and ensures LLM-saved memories are retrievable.
 """
+
 from __future__ import annotations
 
 import json
-from typing import Any, Dict, List, Optional
 
-from .domain import RiskLevel, SideEffectLevel, ToolCategory, ToolErrorCode, VerificationStrategy
+from .domain import ToolErrorCode
 from .registry import register_tool
 from .tool_result import ToolResult
 
@@ -27,7 +27,10 @@ from .tool_result import ToolResult
         "type": "object",
         "properties": {
             "name": {"type": "string", "description": "Unique key or slug for the memory"},
-            "type": {"type": "string", "description": "Memory type: user, preference, feedback, project, semantic, operational, reference"},
+            "type": {
+                "type": "string",
+                "description": "Memory type: user, preference, feedback, project, semantic, operational, reference",
+            },
             "description": {"type": "string", "description": "One-line summary for relevance scoring"},
             "content": {"type": "string", "description": "Detailed memory facts or guidance"},
             "scope": {"type": "string", "description": "Scope: 'user' (global) or 'project' (repo-local)"},
@@ -49,8 +52,8 @@ def tool_memory_save(args: dict) -> ToolResult:
     Previously wrote to persistent_store (memory.db) which was invisible to recall().
     Secret redaction is applied before persistence.
     """
-    from brjarvis.memory.unified_memory import get_unified_memory
     from brjarvis.memory.domain import CanonicalMemory, MemoryType, SourceType, redact_secrets
+    from brjarvis.memory.unified_memory import get_unified_memory
 
     name = str(args.get("name", "")).strip()
     mem_type_str = str(args.get("type", "semantic")).strip().upper()
@@ -60,7 +63,9 @@ def tool_memory_save(args: dict) -> ToolResult:
     conf = float(args.get("confidence", 1.0))
 
     if not name or not content:
-        return ToolResult.failed("memory_save", ToolErrorCode.INVALID_ARGUMENT, "Parameters 'name' and 'content' are required.")
+        return ToolResult.failed(
+            "memory_save", ToolErrorCode.INVALID_ARGUMENT, "Parameters 'name' and 'content' are required."
+        )
 
     # Apply secret redaction before persistence
     content = redact_secrets(content)

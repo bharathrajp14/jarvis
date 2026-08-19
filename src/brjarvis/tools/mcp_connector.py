@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import logging
+from typing import Any, Dict
+
 import httpx
-from typing import Dict, Any
+
 from .registry import register_tool
 
 logger = logging.getLogger(__name__)
@@ -48,10 +50,10 @@ class MCPConnector:
         "properties": {
             "server_url": {"type": "string", "description": "MCP server base URL"},
             "tool_name": {"type": "string", "description": "Target tool name on MCP server"},
-            "args": {"type": "object", "description": "Tool parameters payload"}
+            "args": {"type": "object", "description": "Tool parameters payload"},
         },
-        "required": ["server_url", "tool_name"]
-    }
+        "required": ["server_url", "tool_name"],
+    },
 )
 def mcp_call_tool_action(args: Dict[str, Any]) -> str:
     """Execute tool on external MCP server."""
@@ -66,4 +68,5 @@ def mcp_call_tool_action(args: Dict[str, Any]) -> str:
     connector = MCPConnector(server_url=url, api_key=api_key)
     res = connector.call_tool(name, payload if isinstance(payload, dict) else {})
     import json
+
     return json.dumps(res, indent=2)

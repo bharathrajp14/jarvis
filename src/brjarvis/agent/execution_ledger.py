@@ -11,6 +11,7 @@ Architecture:
 
 The ledger is keyed by (task_id, step_id). Entries are immutable once written.
 """
+
 from __future__ import annotations
 
 import json
@@ -19,7 +20,6 @@ import time
 import uuid
 from dataclasses import asdict, dataclass, field
 from enum import Enum
-from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger("JARVIS.ExecutionLedger")
@@ -27,19 +27,22 @@ logger = logging.getLogger("JARVIS.ExecutionLedger")
 
 # ── Tool execution status vocabulary ──────────────────────────────────────────
 
+
 class LedgerStatus(str, Enum):
     """Canonical status codes for each ledger entry. Never inferred — always observed."""
-    SUCCESS          = "SUCCESS"          # tool ran, returncode 0, output verified
-    FAILED           = "FAILED"           # tool ran, returncode != 0 or output error
-    PARTIAL          = "PARTIAL"          # tool ran, some outputs verified, some not
-    BLOCKED          = "BLOCKED"          # tool could not run — permission/policy blocked
-    TIMEOUT          = "TIMEOUT"          # tool did not return within step timeout
-    UNAVAILABLE      = "UNAVAILABLE"      # tool is not registered / dependency missing
-    REQUIRES_USER    = "REQUIRES_USER"    # needs human input to continue
-    UNVERIFIED       = "UNVERIFIED"       # ran but verification could not confirm result
+
+    SUCCESS = "SUCCESS"  # tool ran, returncode 0, output verified
+    FAILED = "FAILED"  # tool ran, returncode != 0 or output error
+    PARTIAL = "PARTIAL"  # tool ran, some outputs verified, some not
+    BLOCKED = "BLOCKED"  # tool could not run — permission/policy blocked
+    TIMEOUT = "TIMEOUT"  # tool did not return within step timeout
+    UNAVAILABLE = "UNAVAILABLE"  # tool is not registered / dependency missing
+    REQUIRES_USER = "REQUIRES_USER"  # needs human input to continue
+    UNVERIFIED = "UNVERIFIED"  # ran but verification could not confirm result
 
 
 # ── Ledger entry data contract ─────────────────────────────────────────────────
+
 
 @dataclass
 class LedgerEntry:
@@ -50,21 +53,22 @@ class LedgerEntry:
         tool_name, task_id, step_id, execution_id, status, stdout, stderr,
         duration, side_effects, evidence, verification_status
     """
-    tool_name:           str
-    task_id:             str
-    step_id:             str                          # plan step identifier, e.g. "step_3"
-    execution_id:        str = field(default_factory=lambda: uuid.uuid4().hex[:12])
-    status:              LedgerStatus = LedgerStatus.UNVERIFIED
-    stdout:              str = ""
-    stderr:              str = ""
-    return_code:         int = 0
-    duration_seconds:    float = 0.0
-    side_effects:        List[str] = field(default_factory=list)   # e.g. ["file:created:/path"]
-    evidence:            str = ""                                   # human-readable proof string
+
+    tool_name: str
+    task_id: str
+    step_id: str  # plan step identifier, e.g. "step_3"
+    execution_id: str = field(default_factory=lambda: uuid.uuid4().hex[:12])
+    status: LedgerStatus = LedgerStatus.UNVERIFIED
+    stdout: str = ""
+    stderr: str = ""
+    return_code: int = 0
+    duration_seconds: float = 0.0
+    side_effects: List[str] = field(default_factory=list)  # e.g. ["file:created:/path"]
+    evidence: str = ""  # human-readable proof string
     verification_status: LedgerStatus = LedgerStatus.UNVERIFIED
-    parameters:          Dict[str, Any] = field(default_factory=dict)
-    error:               Optional[str] = None
-    timestamp:           float = field(default_factory=time.time)
+    parameters: Dict[str, Any] = field(default_factory=dict)
+    error: Optional[str] = None
+    timestamp: float = field(default_factory=time.time)
 
     # Immutability guard — set to True after first write
     _sealed: bool = field(default=False, repr=False, compare=False)
@@ -95,6 +99,7 @@ class LedgerEntry:
 
 
 # ── Execution Ledger ───────────────────────────────────────────────────────────
+
 
 class ExecutionLedger:
     """
@@ -132,6 +137,7 @@ class ExecutionLedger:
 
     def __init__(self, db_manager=None):
         from brjarvis.memory.canonical_db import get_canonical_db
+
         self._db = db_manager or get_canonical_db()
         self._ensure_table()
 
@@ -182,7 +188,7 @@ class ExecutionLedger:
                         json.dumps(entry.parameters, default=str),
                         entry.error,
                         entry.timestamp,
-                    )
+                    ),
                 )
                 conn.commit()
             logger.debug("[Ledger] Appended entry %s (%s → %s)", entry_id, entry.tool_name, entry.status.value)
@@ -195,8 +201,7 @@ class ExecutionLedger:
         try:
             with self._db.get_connection() as conn:
                 cursor = conn.execute(
-                    "SELECT * FROM execution_ledger WHERE task_id = ? ORDER BY timestamp ASC",
-                    (task_id,)
+                    "SELECT * FROM execution_ledger WHERE task_id = ? ORDER BY timestamp ASC", (task_id,)
                 )
                 rows = cursor.fetchall()
                 return [self._row_to_entry(r) for r in rows]
@@ -210,7 +215,7 @@ class ExecutionLedger:
             with self._db.get_connection() as conn:
                 cursor = conn.execute(
                     "SELECT * FROM execution_ledger WHERE task_id = ? AND step_id = ? ORDER BY timestamp DESC LIMIT 1",
-                    (task_id, step_id)
+                    (task_id, step_id),
                 )
                 row = cursor.fetchone()
                 return self._row_to_entry(row) if row else None
@@ -246,14 +251,14 @@ class ExecutionLedger:
         lines = [f"Execution Evidence Report — Task {task_id}", "=" * 60]
         for e in entries:
             status_icon = {
-                LedgerStatus.SUCCESS:       "✅",
-                LedgerStatus.FAILED:        "❌",
-                LedgerStatus.PARTIAL:       "⚠️",
-                LedgerStatus.BLOCKED:       "🚫",
-                LedgerStatus.TIMEOUT:       "⏱️",
-                LedgerStatus.UNAVAILABLE:   "🔕",
+                LedgerStatus.SUCCESS: "✅",
+                LedgerStatus.FAILED: "❌",
+                LedgerStatus.PARTIAL: "⚠️",
+                LedgerStatus.BLOCKED: "🚫",
+                LedgerStatus.TIMEOUT: "⏱️",
+                LedgerStatus.UNAVAILABLE: "🔕",
                 LedgerStatus.REQUIRES_USER: "👤",
-                LedgerStatus.UNVERIFIED:    "❓",
+                LedgerStatus.UNVERIFIED: "❓",
             }.get(e.status, "?")
             lines.append(f"\nStep {e.step_id} [{e.tool_name}] {status_icon} {e.status.value}")
             if e.evidence:
@@ -271,13 +276,29 @@ class ExecutionLedger:
         if hasattr(row, "keys"):
             data = dict(row)
         else:
-            data = dict(zip(
-                ["entry_id", "task_id", "step_id", "execution_id", "tool_name",
-                 "status", "stdout", "stderr", "return_code", "duration_seconds",
-                 "side_effects", "evidence", "verification_status", "parameters",
-                 "error", "timestamp"],
-                row
-            ))
+            data = dict(
+                zip(
+                    [
+                        "entry_id",
+                        "task_id",
+                        "step_id",
+                        "execution_id",
+                        "tool_name",
+                        "status",
+                        "stdout",
+                        "stderr",
+                        "return_code",
+                        "duration_seconds",
+                        "side_effects",
+                        "evidence",
+                        "verification_status",
+                        "parameters",
+                        "error",
+                        "timestamp",
+                    ],
+                    row,
+                )
+            )
         data["side_effects"] = json.loads(data.get("side_effects", "[]") or "[]")
         data["parameters"] = json.loads(data.get("parameters", "{}") or "{}")
         # Remove DB-only field entry_id before creating dataclass

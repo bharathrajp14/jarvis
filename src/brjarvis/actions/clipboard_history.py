@@ -3,16 +3,17 @@
 Background clipboard history monitor for JARVIS MK37.
 Logs clipboard copies to a SQLite database and provides search tools.
 """
+
 from __future__ import annotations
 
 import logging
 import sqlite3
-import time
 import threading
-import pyperclip
-from pathlib import Path
+import time
+
 from brjarvis.memory.persistent_store import get_memory_dir
 from brjarvis.tools.registry import register_tool
+
 from .clipboard_utils import get_clipboard_text
 
 logger = logging.getLogger(__name__)
@@ -64,7 +65,7 @@ class ClipboardTracker:
                     last_val = val
                     self._save_entry(val)
             except Exception as e:
-                logger.debug('Suppressed exception: %s', e)
+                logger.debug("Suppressed exception: %s", e)
             time.sleep(1.0)
 
     def _save_entry(self, content: str):
@@ -72,11 +73,11 @@ class ClipboardTracker:
         try:
             conn.execute(
                 "INSERT OR REPLACE INTO clipboard (timestamp, content, char_count) VALUES (datetime('now', 'localtime'), ?, ?)",
-                (content, len(content))
+                (content, len(content)),
             )
             conn.commit()
         except Exception as e:
-            logger.debug('Suppressed exception: %s', e)
+            logger.debug("Suppressed exception: %s", e)
         finally:
             conn.close()
 
@@ -87,7 +88,7 @@ class ClipboardTracker:
             cursor = conn.cursor()
             cursor.execute(
                 "SELECT timestamp, content FROM clipboard WHERE content LIKE ? ORDER BY id DESC LIMIT ?",
-                (f"%{query}%", limit)
+                (f"%{query}%", limit),
             )
             return [{"timestamp": r["timestamp"], "content": r["content"]} for r in cursor.fetchall()]
         finally:
@@ -120,7 +121,7 @@ _tracker.start()
             "limit": {"type": "integer", "description": "Max entries to return (default 10)"},
         },
         "required": ["action"],
-    }
+    },
 )
 def tool_clipboard_history(args: dict) -> str:
     action = args.get("action", "list").lower()

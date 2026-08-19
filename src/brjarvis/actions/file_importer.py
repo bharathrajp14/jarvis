@@ -6,12 +6,10 @@ Ingests files (.txt, .pdf, .docx, .md, .csv, .xlsx, .vcf, .json) into:
 2. ChromaDB / Vector Store for RAG similarity search
 3. Contact Store (if .vcf or .csv contact list)
 """
+
 from __future__ import annotations
 
 import logging
-import json
-import os
-import sys
 from pathlib import Path
 from typing import Any, Dict
 
@@ -20,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 def get_base_dir() -> Path:
     from brjarvis.core.paths import paths
+
     return paths.PROJECT_ROOT
 
 
@@ -34,9 +33,13 @@ def import_file_to_knowledge(file_path: str | Path) -> Dict[str, Any]:
     text_content = ""
 
     try:
-        if ext == ".vcf" or (ext == ".csv" and any(k in p.name.lower() for k in ["contact", "people", "phone", "address", "vcard", "export"])):
+        if ext == ".vcf" or (
+            ext == ".csv"
+            and any(k in p.name.lower() for k in ["contact", "people", "phone", "address", "vcard", "export"])
+        ):
             # Trigger contact store import
             from brjarvis.memory.contact_manager import get_contact_store
+
             store = get_contact_store()
             if ext == ".vcf":
                 res = store.import_vcf(p)
@@ -57,6 +60,7 @@ def import_file_to_knowledge(file_path: str | Path) -> Dict[str, Any]:
         elif ext == ".pdf":
             try:
                 import pypdf
+
                 reader = pypdf.PdfReader(str(p))
                 pages = [page.extract_text() for page in reader.pages if page.extract_text()]
                 text_content = "\n\n".join(pages)
@@ -66,6 +70,7 @@ def import_file_to_knowledge(file_path: str | Path) -> Dict[str, Any]:
         elif ext == ".docx":
             try:
                 import docx
+
                 doc = docx.Document(str(p))
                 text_content = "\n".join([para.text for para in doc.paragraphs if para.text])
             except Exception as docx_err:
@@ -83,6 +88,7 @@ def import_file_to_knowledge(file_path: str | Path) -> Dict[str, Any]:
     # 1. Save to Persistent Memory
     try:
         from brjarvis.memory.persistent_store import MemoryEntry, save_memory
+
         entry = MemoryEntry(
             name=f"file_{p.stem}",
             description=f"Imported document: {file_name}",
@@ -97,6 +103,7 @@ def import_file_to_knowledge(file_path: str | Path) -> Dict[str, Any]:
     # 2. Save to Vector Store
     try:
         from brjarvis.memory.vector_store import TextSimilarityMemory
+
         mem_db = get_base_dir() / "memory_db" / "tf_idf_memory.json"
         vector_mem = TextSimilarityMemory(mem_db)
         vector_mem.store(

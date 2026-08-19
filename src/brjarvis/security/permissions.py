@@ -9,6 +9,7 @@ Preserves historical top-level permissions interface for backwards compatibility
 - CONFIRM_ALL only permits safe read-only tools in ALWAYS_ALLOWED.
 - DENY_ALL blocks everything except explicit allow-list entries.
 """
+
 from __future__ import annotations
 
 import logging
@@ -40,10 +41,10 @@ logger = logging.getLogger("JARVIS.Permissions")
 
 
 class PermissionMode(str, Enum):
-    ALLOW_ALL           = "allow_all"
+    ALLOW_ALL = "allow_all"
     CONFIRM_DESTRUCTIVE = "confirm_destructive"
-    CONFIRM_ALL         = "confirm_all"
-    DENY_ALL            = "deny_all"
+    CONFIRM_ALL = "confirm_all"
+    DENY_ALL = "deny_all"
 
 
 def _normalize_mode(mode: Any) -> PermissionMode:
@@ -78,7 +79,6 @@ def _normalize_mode(mode: Any) -> PermissionMode:
         return PermissionMode.CONFIRM_DESTRUCTIVE
 
 
-
 DESTRUCTIVE_TOOLS: Set[str] = {
     "run_code",
     "file_delete",
@@ -92,61 +92,65 @@ DESTRUCTIVE_TOOLS: Set[str] = {
 
 
 class ActionDecision(str, Enum):
-    ALLOW                 = "allow"
-    DENY                  = "deny"
-    CONFIRM               = "confirm"
-    ALLOW_FOR_SESSION     = "allow_for_session"
-    ALLOW_FOR_DEVICE      = "allow_for_device"
+    ALLOW = "allow"
+    DENY = "deny"
+    CONFIRM = "confirm"
+    ALLOW_FOR_SESSION = "allow_for_session"
+    ALLOW_FOR_DEVICE = "allow_for_device"
     ALLOW_FOR_APPLICATION = "allow_for_application"
 
 
 class RiskLevel(str, Enum):
-    LOW      = "low"
-    MEDIUM   = "medium"
-    HIGH     = "high"
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
     CRITICAL = "critical"
 
 
 PolicyContext = SecPolicyContext
 
-ALWAYS_ALLOWED: FrozenSet[str] = frozenset({
-    "get_system_status",
-    "get_workspace_tree",
-    "list_directory",
-    "read_file",
-    "grep_search",
-    "find_by_name",
-    "fetch_url",
-    "web_search",
-    "take_screenshot",
-    "get_cursor_position",
-    "list_windows",
-    "get_active_window",
-    "get_window_bounds",
-    "get_accessibility_tree",
-    "ocr_screen",
-    "locate_on_screen",
-    "query_memory",
-    "get_recent_context",
-    "list_tools",
-    "doctor",
-    "system_health",
-})
+ALWAYS_ALLOWED: FrozenSet[str] = frozenset(
+    {
+        "get_system_status",
+        "get_workspace_tree",
+        "list_directory",
+        "read_file",
+        "grep_search",
+        "find_by_name",
+        "fetch_url",
+        "web_search",
+        "take_screenshot",
+        "get_cursor_position",
+        "list_windows",
+        "get_active_window",
+        "get_window_bounds",
+        "get_accessibility_tree",
+        "ocr_screen",
+        "locate_on_screen",
+        "query_memory",
+        "get_recent_context",
+        "list_tools",
+        "doctor",
+        "system_health",
+    }
+)
 
-ALWAYS_CONFIRM: FrozenSet[str] = frozenset({
-    "delete_file",
-    "force_kill_process",
-    "kill_process",
-    "run_powershell",
-    "run_bash",
-    "write_file",
-    "modify_file",
-    "system_shutdown",
-    "system_restart",
-    "press_key_combination",
-    "mouse_click",
-    "mouse_drag",
-})
+ALWAYS_CONFIRM: FrozenSet[str] = frozenset(
+    {
+        "delete_file",
+        "force_kill_process",
+        "kill_process",
+        "run_powershell",
+        "run_bash",
+        "write_file",
+        "modify_file",
+        "system_shutdown",
+        "system_restart",
+        "press_key_combination",
+        "mouse_click",
+        "mouse_drag",
+    }
+)
 
 CRITICAL_RESOURCE_DENYLIST: FrozenSet[str] = SEC_CRITICAL_DENYLIST
 
@@ -185,7 +189,16 @@ class PermissionPolicy:
         return ActionDecision(dec.value)
 
     def check(self, tool_name: str, args: Optional[Dict[str, Any]] = None) -> bool:
-        if tool_name in ("DEFAULT", "READ_ONLY", "none", "", "file_read", "file_list", "read_file", "get_window_bounds"):
+        if tool_name in (
+            "DEFAULT",
+            "READ_ONLY",
+            "none",
+            "",
+            "file_read",
+            "file_list",
+            "read_file",
+            "get_window_bounds",
+        ):
             return True
         return self._engine.check(tool_name, args)
 
@@ -215,7 +228,7 @@ def evaluate_action_policy(
     application: str = "system",
     user: str = "default_user",
     risk: RiskLevel = RiskLevel.LOW,
-    args: Optional[Dict[str, Any]] = None
+    args: Optional[Dict[str, Any]] = None,
 ) -> ActionDecision:
     """Public helper to evaluate a full 6-tuple policy decision."""
     try:
@@ -226,7 +239,7 @@ def evaluate_action_policy(
             resource=resource,
             action=action,
             risk=risk,
-            metadata=args or {}
+            metadata=args or {},
         )
         return PERMISSIONS.evaluate(ctx)
     except Exception as exc:
@@ -235,8 +248,8 @@ def evaluate_action_policy(
 
 
 class PathTier(Enum):
-    TIER_0_WORKSPACE        = 0
-    TIER_1_USER_PROFILE     = 1
+    TIER_0_WORKSPACE = 0
+    TIER_1_USER_PROFILE = 1
     TIER_2_CRITICAL_SECRETS = 2
 
 

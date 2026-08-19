@@ -3,12 +3,13 @@
 Deterministic Tool Resolver and Capability Router for BR JARVIS.
 Resolves tool identifiers, namespaces, versions, deprecations, and semantic aliases without lossy transformations.
 """
+
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple
 
-from .domain import ToolCategory, ToolDefinition, ToolErrorCode
+from .domain import ToolDefinition, ToolErrorCode
 
 logger = logging.getLogger("JARVIS.Tools.Resolver")
 

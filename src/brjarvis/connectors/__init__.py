@@ -12,6 +12,7 @@ Usage:
     hub = get_hub()
     result = hub.call("wikipedia", "search", {"query": "quantum computing"})
 """
+
 from __future__ import annotations
 
 from .hub import ConnectorHub, get_hub

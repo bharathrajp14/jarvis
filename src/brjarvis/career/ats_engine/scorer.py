@@ -2,10 +2,9 @@
 from __future__ import annotations
 
 import logging
-import math
 import re
 from dataclasses import asdict, dataclass, field
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
 from ..resume_engine.models import ResumeSchema
 
@@ -14,19 +13,19 @@ logger = logging.getLogger("JARVIS.ATSEngine")
 
 @dataclass
 class ATSScoreReport:
-    overall_score: float                     # 0 - 100%
-    keyword_coverage_score: float            # 0 - 100%
-    section_recognition_score: float         # 0 - 100%
-    parsing_risk_score: float                # 0 - 100% (100 = zero risk, 0 = high risk)
-    readability_score: float                 # 0 - 100%
-    consistency_score: float                 # 0 - 100%
-    role_relevance_score: float              # 0 - 100%
+    overall_score: float  # 0 - 100%
+    keyword_coverage_score: float  # 0 - 100%
+    section_recognition_score: float  # 0 - 100%
+    parsing_risk_score: float  # 0 - 100% (100 = zero risk, 0 = high risk)
+    readability_score: float  # 0 - 100%
+    consistency_score: float  # 0 - 100%
+    role_relevance_score: float  # 0 - 100%
     matched_keywords: List[str] = field(default_factory=list)
     missing_keywords: List[str] = field(default_factory=list)
     critical_risks: List[str] = field(default_factory=list)
     warnings: List[str] = field(default_factory=list)
     recommended_changes: List[str] = field(default_factory=list)
-    grade: str = "A"                         # "A+" (95+), "A" (85-94), "B" (70-84), "C" (50-69), "D" (<50)
+    grade: str = "A"  # "A+" (95+), "A" (85-94), "B" (70-84), "C" (50-69), "D" (<50)
 
     @property
     def total_score(self) -> float:
@@ -46,45 +45,79 @@ class ATSEngine:
 
     STANDARD_SECTIONS = {
         "summary": ["summary", "professional summary", "executive summary", "profile", "about me"],
-        "experience": ["experience", "work experience", "professional experience", "employment history", "career history"],
+        "experience": [
+            "experience",
+            "work experience",
+            "professional experience",
+            "employment history",
+            "career history",
+        ],
         "education": ["education", "academic background", "academic qualifications", "education and training"],
         "skills": ["skills", "technical skills", "core competencies", "technical proficiencies", "technologies"],
         "projects": ["projects", "engineering projects", "technical projects", "key projects"],
     }
 
     ACTION_VERBS = {
-        "architected", "engineered", "developed", "designed", "constructed", "built", "implemented",
-        "optimized", "deployed", "spearheaded", "orchestrated", "automated", "scaled", "reduced",
-        "accelerated", "resolved", "delivered", "mentored", "led", "constructed", "pioneered"
+        "architected",
+        "engineered",
+        "developed",
+        "designed",
+        "constructed",
+        "built",
+        "implemented",
+        "optimized",
+        "deployed",
+        "spearheaded",
+        "orchestrated",
+        "automated",
+        "scaled",
+        "reduced",
+        "accelerated",
+        "resolved",
+        "delivered",
+        "mentored",
+        "led",
+        "constructed",
+        "pioneered",
     }
 
     @classmethod
-    def evaluate_resume(cls, resume: Union[ResumeSchema, str, Any], job_description: Optional[str] = None) -> ATSScoreReport:
+    def evaluate_resume(
+        cls, resume: Union[ResumeSchema, str, Any], job_description: Optional[str] = None
+    ) -> ATSScoreReport:
         """Evaluate resume structure, syntax, and keyword alignment against job description."""
         if isinstance(resume, str):
             full_text = resume
             tokens = cls._extract_tokens(full_text)
             if job_description:
-                kw_score, matched_kws, missing_kws, rel_score = cls._score_keywords_and_relevance(resume, tokens, job_description)
+                kw_score, matched_kws, missing_kws, rel_score = cls._score_keywords_and_relevance(
+                    resume, tokens, job_description
+                )
             else:
                 kw_score, matched_kws, missing_kws, rel_score = 90.0, list(tokens)[:15], [], 90.0
 
-            found_sections = sum(1 for aliases in cls.STANDARD_SECTIONS.values() if any(a in full_text.lower() for a in aliases))
+            found_sections = sum(
+                1 for aliases in cls.STANDARD_SECTIONS.values() if any(a in full_text.lower() for a in aliases)
+            )
             sec_score = (found_sections / max(1, len(cls.STANDARD_SECTIONS))) * 100.0
             parse_score = 95.0 if ("@" in full_text and any(c.isdigit() for c in full_text)) else 75.0
             read_score, read_recs = cls._score_readability(full_text, tokens)
             cons_score = 90.0
 
             overall = (
-                (kw_score * 0.25) +
-                (sec_score * 0.20) +
-                (parse_score * 0.15) +
-                (read_score * 0.15) +
-                (cons_score * 0.10) +
-                (rel_score * 0.15)
+                (kw_score * 0.25)
+                + (sec_score * 0.20)
+                + (parse_score * 0.15)
+                + (read_score * 0.15)
+                + (cons_score * 0.10)
+                + (rel_score * 0.15)
             )
             overall = round(max(0.0, min(100.0, overall)), 1)
-            grade = "A+" if overall >= 95.0 else ("A" if overall >= 85.0 else ("B" if overall >= 72.0 else ("C" if overall >= 55.0 else "D")))
+            grade = (
+                "A+"
+                if overall >= 95.0
+                else ("A" if overall >= 85.0 else ("B" if overall >= 72.0 else ("C" if overall >= 55.0 else "D")))
+            )
 
             return ATSScoreReport(
                 overall_score=overall,
@@ -119,7 +152,9 @@ class ATSEngine:
 
         # 5. Keyword Coverage & Role Relevance (35% Weight)
         if job_description:
-            kw_score, matched_kws, missing_kws, rel_score = cls._score_keywords_and_relevance(resume, tokens, job_description)
+            kw_score, matched_kws, missing_kws, rel_score = cls._score_keywords_and_relevance(
+                resume, tokens, job_description
+            )
         else:
             # Baseline domain scoring if no JD provided
             kw_score = 90.0
@@ -129,12 +164,12 @@ class ATSEngine:
 
         # Weighted Overall Score
         overall = (
-            (kw_score * 0.25) +
-            (sec_score * 0.20) +
-            (parse_score * 0.15) +
-            (read_score * 0.15) +
-            (cons_score * 0.10) +
-            (rel_score * 0.15)
+            (kw_score * 0.25)
+            + (sec_score * 0.20)
+            + (parse_score * 0.15)
+            + (read_score * 0.15)
+            + (cons_score * 0.10)
+            + (rel_score * 0.15)
         )
         overall = round(max(0.0, min(100.0, overall)), 1)
 
@@ -215,7 +250,7 @@ class ATSEngine:
             pass
         elif tmpl in ("developer", "cybersecurity"):
             deductions += 5.0  # Monospace / custom styling minor deduction in strict parsers
-        
+
         # Check contact presence
         if not resume.contact_email or "@" not in resume.contact_email:
             risks.append("Email address is missing or invalid; ATS parsers will fail candidate contact creation.")
@@ -231,7 +266,7 @@ class ATSEngine:
     @classmethod
     def _score_readability(cls, full_text: str, tokens: Set[str]) -> Tuple[float, List[str]]:
         recs = []
-        sentences = [s.strip() for s in re.split(r'[\.\n]', full_text) if len(s.strip()) > 10]
+        sentences = [s.strip() for s in re.split(r"[\.\n]", full_text) if len(s.strip()) > 10]
         words = full_text.split()
 
         if not words:
@@ -246,7 +281,9 @@ class ATSEngine:
             score += 15.0
         elif action_verb_count < 2:
             score -= 15.0
-            recs.append("Begin bullet points with strong active verbs (e.g., 'Engineered', 'Optimized', 'Architected').")
+            recs.append(
+                "Begin bullet points with strong active verbs (e.g., 'Engineered', 'Optimized', 'Architected')."
+            )
 
         # Sentence length penalty (run-on bullets)
         if avg_sentence_len > 30:
@@ -279,6 +316,7 @@ class ATSEngine:
         job_description: str,
     ) -> Tuple[float, List[str], List[str], float]:
         from brjarvis.career.resume_engine.tailoring import ResumeTailoringEngine
+
         jd_tokens = ResumeTailoringEngine.extract_keywords(job_description)
 
         if not jd_tokens:
@@ -308,31 +346,37 @@ class ATSEngine:
             resume.summary,
         ]
         for exp in resume.experience:
-            parts.extend([
-                exp.get("title", ""),
-                exp.get("company", ""),
-                " ".join(exp.get("responsibilities", [])),
-                " ".join(exp.get("achievements", [])),
-                " ".join(exp.get("technologies", [])),
-            ])
+            parts.extend(
+                [
+                    exp.get("title", ""),
+                    exp.get("company", ""),
+                    " ".join(exp.get("responsibilities", [])),
+                    " ".join(exp.get("achievements", [])),
+                    " ".join(exp.get("technologies", [])),
+                ]
+            )
         for sc in resume.skills:
             parts.append(" ".join(sc.get("skills", [])))
         for p in resume.projects:
-            parts.extend([
-                p.get("name", ""),
-                p.get("description", ""),
-                " ".join(p.get("technologies", [])),
-                " ".join(p.get("highlights", [])),
-            ])
+            parts.extend(
+                [
+                    p.get("name", ""),
+                    p.get("description", ""),
+                    " ".join(p.get("technologies", [])),
+                    " ".join(p.get("highlights", [])),
+                ]
+            )
         for edu in resume.education:
-            parts.extend([
-                edu.get("institution", ""),
-                edu.get("degree", ""),
-                edu.get("field_of_study", ""),
-            ])
+            parts.extend(
+                [
+                    edu.get("institution", ""),
+                    edu.get("degree", ""),
+                    edu.get("field_of_study", ""),
+                ]
+            )
         return " ".join(parts)
 
     @classmethod
     def _extract_tokens(cls, text: str) -> Set[str]:
-        clean = re.sub(r'[^a-zA-Z0-9\+\#\-\.\s]', ' ', text.lower())
+        clean = re.sub(r"[^a-zA-Z0-9\+\#\-\.\s]", " ", text.lower())
         return {t.strip() for t in clean.split() if len(t.strip()) >= 2}

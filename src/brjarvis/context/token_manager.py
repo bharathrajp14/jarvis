@@ -4,6 +4,7 @@ Token Budget Manager & Sliding Window History Trimmer.
 Monitors token usage, enforces context window caps (default 12,000 tokens),
 and tracks real-time token savings from Antigravity optimizations.
 """
+
 from __future__ import annotations
 
 import threading
@@ -47,10 +48,7 @@ class TokenBudgetManager:
         with self.__class__._instance_lock:
             elapsed = max(1.0, time.time() - self.start_time)
             total_attempted = self.tokens_consumed + self.tokens_saved
-            efficiency_pct = (
-                round((self.tokens_saved / total_attempted * 100), 1)
-                if total_attempted > 0 else 0.0
-            )
+            efficiency_pct = round((self.tokens_saved / total_attempted * 100), 1) if total_attempted > 0 else 0.0
             return {
                 "consumed": self.tokens_consumed,
                 "saved": self.tokens_saved,

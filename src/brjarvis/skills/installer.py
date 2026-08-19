@@ -10,7 +10,7 @@ Supports:
 
 Usage:
     from brjarvis.skills.installer import install_skill_pack, list_installed, remove_skill
-    
+
 CLI:
     python -m skills.installer install claude-skills
     python -m skills.installer install openclaw-master
@@ -18,17 +18,17 @@ CLI:
     python -m skills.installer remove <skill_name>
     python -m skills.installer update
 """
+
 from __future__ import annotations
 
 import json
 import logging
-import os
 import re
 import shutil
 import subprocess
 import sys
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 
 logger = logging.getLogger("JARVIS.Skills.Installer")
 
@@ -111,18 +111,25 @@ def _convert_skill_md(source_path: Path, skill_name: str) -> str | None:
                     description = val.strip('"').strip("'")
                 elif key in ("tools", "allowed-tools"):
                     tools_str = val.strip("[]")
-                    tools = [t.strip().strip('"').strip("'")
-                             for t in tools_str.split(",") if t.strip()]
+                    tools = [t.strip().strip('"').strip("'") for t in tools_str.split(",") if t.strip()]
 
     # Map external tool names to JARVIS tool names
     tool_map = {
-        "Bash": "run_code", "bash": "run_code", "shell": "run_code",
-        "Read": "file_read", "read": "file_read",
-        "Write": "file_write", "write": "file_write",
-        "Edit": "file_write", "edit": "file_write",
-        "WebSearch": "web_search", "web_search": "web_search",
-        "WebFetch": "fetch_page", "web_fetch": "fetch_page",
-        "Browser": "fetch_page", "browser": "fetch_page",
+        "Bash": "run_code",
+        "bash": "run_code",
+        "shell": "run_code",
+        "Read": "file_read",
+        "read": "file_read",
+        "Write": "file_write",
+        "write": "file_write",
+        "Edit": "file_write",
+        "edit": "file_write",
+        "WebSearch": "web_search",
+        "web_search": "web_search",
+        "WebFetch": "fetch_page",
+        "web_fetch": "fetch_page",
+        "Browser": "fetch_page",
+        "browser": "fetch_page",
         "Screenshot": "take_screenshot",
     }
     mapped_tools = []
@@ -138,9 +145,9 @@ def _convert_skill_md(source_path: Path, skill_name: str) -> str | None:
     # Build JARVIS .md file
     jarvis_md = f"""---
 name: {name}
-description: {description or name.replace('-', ' ').replace('_', ' ').title()}
-triggers: [{', '.join(triggers)}]
-tools: [{', '.join(mapped_tools)}]
+description: {description or name.replace("-", " ").replace("_", " ").title()}
+triggers: [{", ".join(triggers)}]
+tools: [{", ".join(mapped_tools)}]
 user-invocable: true
 context: inline
 ---
@@ -177,19 +184,13 @@ def install_skill_pack(pack_name: str) -> str:
     if pack_dir.exists():
         logger.info("Updating %s...", pack_name)
         try:
-            subprocess.run(
-                ["git", "pull"], cwd=str(pack_dir),
-                capture_output=True, timeout=60
-            )
+            subprocess.run(["git", "pull"], cwd=str(pack_dir), capture_output=True, timeout=60)
         except Exception as e:
             return f"Git pull failed: {e}"
     else:
         logger.info("Cloning %s...", pack_name)
         try:
-            subprocess.run(
-                ["git", "clone", "--depth=1", repo_url, str(pack_dir)],
-                capture_output=True, timeout=120
-            )
+            subprocess.run(["git", "clone", "--depth=1", repo_url, str(pack_dir)], capture_output=True, timeout=120)
         except Exception as e:
             return f"Git clone failed: {e}"
 
@@ -328,14 +329,14 @@ if __name__ == "__main__":
 
     if not args:
         logger.info("JARVIS MK37 Skill Installer")
-        logger.info('')
+        logger.info("")
         logger.info("Commands:")
         logger.info("  install <pack_name|git_url>  Install a skill pack")
         logger.info("  list                         List installed skills")
         logger.info("  remove <skill_name>          Remove a skill")
         logger.info("  remove-pack <pack_name>      Remove entire pack")
         logger.info("  update                       Update all packs")
-        logger.info('')
+        logger.info("")
         logger.info(f"Known packs: {', '.join(KNOWN_PACKS.keys())}")
         sys.exit(0)
 

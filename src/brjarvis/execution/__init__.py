@@ -13,11 +13,10 @@ from brjarvis.core.execution import (
     universal_runtime,
     verifier,
 )
-
+from brjarvis.core.execution.dependency_resolver import DependencyResolver
+from brjarvis.core.execution.process_runner import ProcessRunner
 from brjarvis.core.execution.universal_runtime import UniversalExecutionRuntime
 from brjarvis.core.execution.verifier import UniversalVerifier
-from brjarvis.core.execution.process_runner import ProcessRunner
-from brjarvis.core.execution.dependency_resolver import DependencyResolver
 
 # Backward-compatibility aliases (old names that may be referenced externally)
 UniversalRuntimeEngine = UniversalExecutionRuntime

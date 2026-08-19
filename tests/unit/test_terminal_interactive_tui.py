@@ -1,9 +1,7 @@
 # tests/unit/test_terminal_interactive_tui.py — Unit Tests for Interactive TUI Controller
 from __future__ import annotations
 
-import pytest
 from unittest.mock import MagicMock
-from rich.console import Console
 
 from brjarvis.core.terminal.events import (
     MouseButton,

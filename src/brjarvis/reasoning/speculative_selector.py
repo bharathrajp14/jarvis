@@ -4,9 +4,10 @@ Speculative Model Speed-Quality Selector for JARVIS.
 Evaluates query complexity, latency targets, and token budget to dynamically select
 between fast local models (Ollama/CTranslate2) and deep reasoning cloud models (Gemini/Claude).
 """
+
 from __future__ import annotations
 
-from typing import Dict, Any, Tuple
+from typing import Tuple
 
 
 class SpeculativeModelSelector:
@@ -24,10 +25,25 @@ class SpeculativeModelSelector:
         word_count = len(user_query.split())
 
         # Deep reasoning indicators
-        is_complex = any(k in query_low for k in [
-            "refactor", "architect", "why", "explain", "debug", "compare",
-            "implement", "build", "design", "security", "audit"
-        ]) or word_count > 30
+        is_complex = (
+            any(
+                k in query_low
+                for k in [
+                    "refactor",
+                    "architect",
+                    "why",
+                    "explain",
+                    "debug",
+                    "compare",
+                    "implement",
+                    "build",
+                    "design",
+                    "security",
+                    "audit",
+                ]
+            )
+            or word_count > 30
+        )
 
         if is_complex:
             return "deep_reasoning", "Query requires high reasoning capacity"

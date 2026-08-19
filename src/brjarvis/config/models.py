@@ -1,12 +1,13 @@
 # src/brjarvis/config/models.py — BR JARVIS Central Model Configuration (Proxy-Brain & Gemini-First)
 """Central model configuration. Loads from config/models.yaml, models.json, and environment variables."""
+
 from __future__ import annotations
 
 import json
 import logging
 import os
-from pathlib import Path
-from typing import Any, Optional
+from typing import Any
+
 from brjarvis.core.paths import paths
 
 logger = logging.getLogger(__name__)
@@ -17,51 +18,51 @@ _MODELS_JSON = _CONFIG_DIR / "models.json"
 
 # ── Defaults (Calibrated from Live Proxy Benchmark on http://localhost:8045/v1) ───
 _DEFAULTS = {
-    "voice_live":       "gemini-3.6-flash-tiered",
-    "voice_name":       "Charon",
-    "gemini":           "gemini-3.6-flash-high",
-    "gemini_code":      "claude-sonnet-4-6-thinking",
+    "voice_live": "gemini-3.6-flash-tiered",
+    "voice_name": "Charon",
+    "gemini": "gemini-3.6-flash-high",
+    "gemini_code": "claude-sonnet-4-6-thinking",
     "gemini_reasoning": "claude-sonnet-4-6-thinking",
-    "gemini_general":   "gemini-3.6-flash-high",
-    "gemini_agent":     "gemini-3-flash-agent",
+    "gemini_general": "gemini-3.6-flash-high",
+    "gemini_agent": "gemini-3-flash-agent",
     "gemini_pro_agent": "gemini-3.7-flash-high",
-    "gemini_fast":      "gemini-3.6-flash-low",
-    "gemini_vision":    "gemini-3.1-flash-image",
-    "gemini_lite":      "gemini-3.5-flash-extra-low",
-    "claude":           "claude-sonnet-4-6-thinking",
-    "claude_opus":      "claude-opus-4-6-thinking",
-    "gpt":              "gemini-3.6-flash-high",
-    "gpt_mini":         "gemini-3.6-flash-low",
-    "gpt_4o":           "gemini-3.6-flash-high",
-    "ollama":           "llama3.3",
-    "nvidia":           "meta/llama-3.1-70b-instruct",
-    "mistral":          "mistral-large-latest",
-    "default_backend":  "gpt",
-    "disable_gemini":   True,
-    "planner_model":    "gemini-3-flash-agent",
-    "fast_model":       "gemini-3.6-flash-low",
-    "proxy_base_url":   "http://localhost:8045/v1",
-    "proxy_api_key":    "",
-    "openai_base_url":  "http://localhost:8045/v1",
-    "openai_api_key":   "",
-    "openai_model":     "gemini-3.6-flash-high",
+    "gemini_fast": "gemini-3.6-flash-low",
+    "gemini_vision": "gemini-3.1-flash-image",
+    "gemini_lite": "gemini-3.5-flash-extra-low",
+    "claude": "claude-sonnet-4-6-thinking",
+    "claude_opus": "claude-opus-4-6-thinking",
+    "gpt": "gemini-3.6-flash-high",
+    "gpt_mini": "gemini-3.6-flash-low",
+    "gpt_4o": "gemini-3.6-flash-high",
+    "ollama": "llama3.3",
+    "nvidia": "meta/llama-3.1-70b-instruct",
+    "mistral": "mistral-large-latest",
+    "default_backend": "gpt",
+    "disable_gemini": True,
+    "planner_model": "gemini-3-flash-agent",
+    "fast_model": "gemini-3.6-flash-low",
+    "proxy_base_url": "http://localhost:8045/v1",
+    "proxy_api_key": "",
+    "openai_base_url": "http://localhost:8045/v1",
+    "openai_api_key": "",
+    "openai_model": "gemini-3.6-flash-high",
 }
 
 _ENV_MAP = {
     "BRJARVIS_PROXY_BASE_URL": "proxy_base_url",
-    "OPENAI_BASE_URL":         "openai_base_url",
-    "BRJARVIS_PROXY_API_KEY":  "proxy_api_key",
-    "BRJARVIS_DEFAULT_MODEL":   "gemini_general",
-    "JARVIS_MODEL_GEMINI":     "gemini",
-    "JARVIS_MODEL_CLAUDE":     "claude",
-    "JARVIS_MODEL_GPT":        "gpt",
-    "JARVIS_MODEL_OLLAMA":     "ollama",
-    "JARVIS_MODEL_NVIDIA":     "nvidia",
-    "JARVIS_MODEL_MISTRAL":    "mistral",
-    "JARVIS_MODEL_VOICE":      "voice_live",
-    "JARVIS_VOICE_NAME":       "voice_name",
-    "JARVIS_DEFAULT_BACKEND":  "default_backend",
-    "OPENAI_MODEL":            "openai_model",
+    "OPENAI_BASE_URL": "openai_base_url",
+    "BRJARVIS_PROXY_API_KEY": "proxy_api_key",
+    "BRJARVIS_DEFAULT_MODEL": "gemini_general",
+    "JARVIS_MODEL_GEMINI": "gemini",
+    "JARVIS_MODEL_CLAUDE": "claude",
+    "JARVIS_MODEL_GPT": "gpt",
+    "JARVIS_MODEL_OLLAMA": "ollama",
+    "JARVIS_MODEL_NVIDIA": "nvidia",
+    "JARVIS_MODEL_MISTRAL": "mistral",
+    "JARVIS_MODEL_VOICE": "voice_live",
+    "JARVIS_VOICE_NAME": "voice_name",
+    "JARVIS_DEFAULT_BACKEND": "default_backend",
+    "OPENAI_MODEL": "openai_model",
 }
 
 _cache: dict | None = None
@@ -89,6 +90,7 @@ def get_model_config(force_reload: bool = False) -> dict[str, Any]:
     if _MODELS_YAML.exists():
         try:
             import yaml
+
             ydata = yaml.safe_load(_MODELS_YAML.read_text(encoding="utf-8"))
             if isinstance(ydata, dict):
                 proxy_cfg = ydata.get("proxy", {})
@@ -139,11 +141,7 @@ def get_model(backend: str) -> str:
     return get_model_config().get(backend, _DEFAULTS.get(backend, ""))
 
 
-def get_model_for_task(
-    task_type: str | None = None,
-    messages: list[dict] | None = None,
-    system: str = ""
-) -> str:
+def get_model_for_task(task_type: str | None = None, messages: list[dict] | None = None, system: str = "") -> str:
     """Intelligently select the best model ID for a given task type."""
     cfg = get_model_config()
     task = (task_type or "general").lower()

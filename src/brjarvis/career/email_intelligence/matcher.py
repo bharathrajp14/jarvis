@@ -2,9 +2,8 @@
 from __future__ import annotations
 
 import logging
-import re
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 from ..crm.database import get_career_crm_db
 from ..models import Application
@@ -59,9 +58,7 @@ class EmailApplicationMatcher:
 
         if not apps:
             return ApplicationMatchResult(
-                confidence=0.0,
-                needs_review=True,
-                review_reason="No tracked applications found in database."
+                confidence=0.0, needs_review=True, review_reason="No tracked applications found in database."
             )
 
         text_to_search = f"{subject}\n{body}\n{sender}".lower()
@@ -117,7 +114,11 @@ class EmailApplicationMatcher:
                 factors.append(f"job_title_hint_match:{role_hint}")
             else:
                 # Key role tokens match (e.g. "Software Engineer", "AI Engineer")
-                role_words = [w for w in title_lower.split() if len(w) > 3 and w not in ("senior", "junior", "lead", "staff", "the", "and")]
+                role_words = [
+                    w
+                    for w in title_lower.split()
+                    if len(w) > 3 and w not in ("senior", "junior", "lead", "staff", "the", "and")
+                ]
                 matched_words = [w for w in role_words if w in text_to_search]
                 if matched_words:
                     token_score = min(0.25, len(matched_words) * 0.10)
@@ -154,7 +155,7 @@ class EmailApplicationMatcher:
                 confidence=round(best_score, 2),
                 match_factors=best_factors,
                 needs_review=True,
-                review_reason=f"Confidence {round(best_score*100)}% below automatic threshold ({int(cls.CONFIDENCE_AUTO_MATCH_THRESHOLD*100)}%). Requires human verification.",
+                review_reason=f"Confidence {round(best_score * 100)}% below automatic threshold ({int(cls.CONFIDENCE_AUTO_MATCH_THRESHOLD * 100)}%). Requires human verification.",
             )
 
         return ApplicationMatchResult(

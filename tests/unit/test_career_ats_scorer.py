@@ -1,8 +1,10 @@
 """Unit tests for 7-Factor ATS Compatibility Scorer."""
+
 from __future__ import annotations
 
 import pytest
-from brjarvis.career.ats_engine.scorer import ATSEngine, ATSScoreReport
+
+from brjarvis.career.ats_engine.scorer import ATSEngine
 from brjarvis.career.resume_engine.models import ResumeSchema, SectionConfig
 from tests.fixtures.sample_job_descriptions import JOB_DESCRIPTION_SENIOR_AI_BACKEND
 
@@ -20,8 +22,20 @@ def test_ats_scorer_strong_match():
             SectionConfig(section_id="experience", title="Experience"),
             SectionConfig(section_id="projects", title="Projects"),
         ],
-        skills=[{"name": "Python"}, {"name": "FastAPI"}, {"name": "Docker"}, {"name": "Kubernetes"}, {"name": "PyTorch"}],
-        experience=[{"title": "Lead AI Engineer", "company": "Antigravity", "bullets": ["Architected distributed agent workflows."]}],
+        skills=[
+            {"name": "Python"},
+            {"name": "FastAPI"},
+            {"name": "Docker"},
+            {"name": "Kubernetes"},
+            {"name": "PyTorch"},
+        ],
+        experience=[
+            {
+                "title": "Lead AI Engineer",
+                "company": "Antigravity",
+                "bullets": ["Architected distributed agent workflows."],
+            }
+        ],
     )
     score_report = ATSEngine.evaluate_resume(resume, JOB_DESCRIPTION_SENIOR_AI_BACKEND)
     assert score_report.overall_score >= 40.0

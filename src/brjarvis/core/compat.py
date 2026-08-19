@@ -9,6 +9,7 @@ even after internal refactors.
 Usage:
     from core.compat import *
 """
+
 from __future__ import annotations
 
 # ── Re-export core orchestration symbols ──────────────────────────────────
@@ -21,10 +22,10 @@ except ImportError:
         JarvisOrchestrator = None  # type: ignore[assignment,misc]
 
 try:
-    from brjarvis.router.core import AgentRouter, AgentProfile, ROUTING_RULES
+    from brjarvis.router.core import ROUTING_RULES, AgentProfile, AgentRouter
 except ImportError:
     try:
-        from router import AgentRouter, AgentProfile, ROUTING_RULES
+        from router import ROUTING_RULES, AgentProfile, AgentRouter
     except ImportError:
         AgentRouter = None  # type: ignore[assignment,misc]
         AgentProfile = None  # type: ignore[assignment,misc]
@@ -42,20 +43,20 @@ except ImportError:
 try:
     from brjarvis.memory.persistent_store import (
         MemoryEntry,
-        save_memory,
         delete_memory,
         load_entries,
         load_index,
+        save_memory,
         search_memory,
     )
 except ImportError:
     try:
         from memory.persistent_store import (
             MemoryEntry,
-            save_memory,
             delete_memory,
             load_entries,
             load_index,
+            save_memory,
             search_memory,
         )
     except ImportError:
@@ -83,10 +84,10 @@ except ImportError:
         consolidate_session = None  # type: ignore[assignment]
 
 try:
-    from brjarvis.memory.memory_context import get_memory_context, find_relevant_memories
+    from brjarvis.memory.memory_context import find_relevant_memories, get_memory_context
 except ImportError:
     try:
-        from memory.memory_context import get_memory_context, find_relevant_memories
+        from memory.memory_context import find_relevant_memories, get_memory_context
     except ImportError:
         get_memory_context = None  # type: ignore[assignment]
         find_relevant_memories = None  # type: ignore[assignment]
@@ -95,17 +96,17 @@ except ImportError:
 try:
     from brjarvis.tools.registry import (
         TOOL_SCHEMAS,
+        execute_tool,
         get_tool_prompt_block,
         parse_tool_call,
-        execute_tool,
     )
 except ImportError:
     try:
         from tools.registry import (
             TOOL_SCHEMAS,
+            execute_tool,
             get_tool_prompt_block,
             parse_tool_call,
-            execute_tool,
         )
     except ImportError:
         TOOL_SCHEMAS = []
@@ -131,10 +132,10 @@ except ImportError:
 
 # ── Re-export skills symbols ─────────────────────────────────────────────
 try:
-    from brjarvis.skills.loader import SkillDef, load_skills, find_skill, substitute_arguments
+    from brjarvis.skills.loader import SkillDef, find_skill, load_skills, substitute_arguments
 except ImportError:
     try:
-        from skills.loader import SkillDef, load_skills, find_skill, substitute_arguments
+        from skills.loader import SkillDef, find_skill, load_skills, substitute_arguments
     except ImportError:
         SkillDef = None  # type: ignore[assignment,misc]
         load_skills = None  # type: ignore[assignment]
@@ -153,19 +154,19 @@ except ImportError:
 try:
     from brjarvis.multi_agent.subagent import (
         AgentDefinition,
-        SubAgentTask,
         SubAgentManager,
-        load_agent_definitions,
+        SubAgentTask,
         get_agent_definition,
+        load_agent_definitions,
     )
 except ImportError:
     try:
         from multi_agent.subagent import (
             AgentDefinition,
-            SubAgentTask,
             SubAgentManager,
-            load_agent_definitions,
+            SubAgentTask,
             get_agent_definition,
+            load_agent_definitions,
         )
     except ImportError:
         AgentDefinition = None  # type: ignore[assignment,misc]
@@ -176,10 +177,10 @@ except ImportError:
 
 # ── Re-export permissions ────────────────────────────────────────────────
 try:
-    from brjarvis.security.permissions import PERMISSIONS, PermissionPolicy, PermissionMode
+    from brjarvis.security.permissions import PERMISSIONS, PermissionMode, PermissionPolicy
 except ImportError:
     try:
-        from permissions import PERMISSIONS, PermissionPolicy, PermissionMode
+        from permissions import PERMISSIONS, PermissionMode, PermissionPolicy
     except ImportError:
         PERMISSIONS = None  # type: ignore[assignment]
         PermissionPolicy = None  # type: ignore[assignment,misc]
@@ -246,26 +247,56 @@ except ImportError:
 
 __all__ = [
     # Core
-    "JarvisOrchestrator", "AgentRouter", "AgentProfile", "ROUTING_RULES",
+    "JarvisOrchestrator",
+    "AgentRouter",
+    "AgentProfile",
+    "ROUTING_RULES",
     # Memory
-    "WorkingMemory", "VectorMemory", "MemoryEntry",
-    "save_memory", "delete_memory", "load_entries", "load_index", "search_memory",
-    "consolidate_session", "get_memory_context", "find_relevant_memories",
+    "WorkingMemory",
+    "VectorMemory",
+    "MemoryEntry",
+    "save_memory",
+    "delete_memory",
+    "load_entries",
+    "load_index",
+    "search_memory",
+    "consolidate_session",
+    "get_memory_context",
+    "find_relevant_memories",
     # Tools
-    "TOOL_SCHEMAS", "get_tool_prompt_block", "parse_tool_call", "execute_tool",
-    "CodeSandbox", "FileManager",
+    "TOOL_SCHEMAS",
+    "get_tool_prompt_block",
+    "parse_tool_call",
+    "execute_tool",
+    "CodeSandbox",
+    "FileManager",
     # Skills
-    "SkillDef", "load_skills", "find_skill", "substitute_arguments", "execute_skill",
+    "SkillDef",
+    "load_skills",
+    "find_skill",
+    "substitute_arguments",
+    "execute_skill",
     # Agents
-    "AgentDefinition", "SubAgentTask", "SubAgentManager",
-    "load_agent_definitions", "get_agent_definition",
+    "AgentDefinition",
+    "SubAgentTask",
+    "SubAgentManager",
+    "load_agent_definitions",
+    "get_agent_definition",
     # Permissions
-    "PERMISSIONS", "PermissionPolicy", "PermissionMode",
+    "PERMISSIONS",
+    "PermissionPolicy",
+    "PermissionMode",
     # History
-    "SessionStore", "write_audit",
+    "SessionStore",
+    "write_audit",
     # Backends
-    "GeminiBackend", "ClaudeBackend", "OpenAIBackend",
-    "OllamaBackend", "NvidiaBackend", "MistralBackend",
+    "GeminiBackend",
+    "ClaudeBackend",
+    "OpenAIBackend",
+    "OllamaBackend",
+    "NvidiaBackend",
+    "MistralBackend",
     # Config
-    "get_model", "get_model_config",
+    "get_model",
+    "get_model_config",
 ]

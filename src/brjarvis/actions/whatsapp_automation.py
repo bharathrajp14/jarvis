@@ -4,19 +4,19 @@ WhatsApp Automation Engine for BR-Jarvis.
 Supports direct messaging to any contact or phone number via WhatsApp URI & Web protocols,
 contact name resolution, attachment sharing, and scheduled message queues.
 """
+
 from __future__ import annotations
 
+import json
+import logging
 import os
 import re
-import json
+import threading
 import time
 import urllib.parse
 import webbrowser
-import subprocess
-import threading
-import logging
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger("JARVIS.WhatsAppAutomation")
@@ -88,6 +88,7 @@ class WhatsAppAutomation:
         # 1. Primary UnifiedContactStore lookup (vCard contacts, relationship synonyms "Appa", "Amma", "Dad", "Mom")
         try:
             from brjarvis.memory.contact_manager import get_contact_store
+
             store = get_contact_store()
             match = store.resolve_name(rec_clean)
             if match and match.get("phone_number"):
@@ -148,7 +149,7 @@ class WhatsAppAutomation:
                     webbrowser.open(whatsapp_url)
                     return (
                         f"✅ Opened WhatsApp Web to message {display_name} ({clean_num}).\n"
-                        f"Message text pre-filled: \"{message_text}\"\n"
+                        f'Message text pre-filled: "{message_text}"\n'
                         f"Press ENTER in WhatsApp Web to send."
                     )
                 except Exception as e:
@@ -158,11 +159,8 @@ class WhatsAppAutomation:
         # 2. Desktop GUI Fallback to search contact name in WhatsApp app
         try:
             from brjarvis.actions.send_message import send_message as gui_send_message
-            res = gui_send_message({
-                "platform": "whatsapp",
-                "receiver": display_name,
-                "message_text": message_text
-            })
+
+            res = gui_send_message({"platform": "whatsapp", "receiver": display_name, "message_text": message_text})
             return res
         except Exception as e:
             return f"Failed to send WhatsApp message to {recipient}: {e}"
@@ -180,7 +178,7 @@ class WhatsAppAutomation:
             "send_time": send_time_str,
             "target_ts": ts,
             "created_at": datetime.now().isoformat(),
-            "status": "pending"
+            "status": "pending",
         }
         self._scheduled_queue.append(item)
         self._save_scheduled()

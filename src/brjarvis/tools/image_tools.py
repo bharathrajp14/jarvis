@@ -2,9 +2,11 @@
 """
 Registers AI image generation and editing tools in the JARVIS tool registry.
 """
+
 from __future__ import annotations
 
 import json
+
 from .registry import register_tool
 
 
@@ -15,17 +17,24 @@ from .registry import register_tool
         "type": "object",
         "properties": {
             "prompt": {"type": "string", "description": "Detailed description of the image to generate"},
-            "provider": {"type": "string", "description": "Provider: 'auto', 'gemini', 'openai', 'stability' (default: auto)"},
-            "size": {"type": "string", "description": "Image size: '1024x1024', '1792x1024', '1024x1792' (default: 1024x1024)"},
+            "provider": {
+                "type": "string",
+                "description": "Provider: 'auto', 'gemini', 'openai', 'stability' (default: auto)",
+            },
+            "size": {
+                "type": "string",
+                "description": "Image size: '1024x1024', '1792x1024', '1024x1792' (default: 1024x1024)",
+            },
             "style": {"type": "string", "description": "Style: 'vivid' or 'natural' (default: vivid)"},
             "negative_prompt": {"type": "string", "description": "What to avoid in the image"},
             "num_images": {"type": "integer", "description": "Number of images (1-4, default: 1)"},
         },
         "required": ["prompt"],
-    }
+    },
 )
 def tool_generate_image(args: dict) -> str:
     from brjarvis.actions.image_generator import generate_image
+
     result = generate_image(
         prompt=args["prompt"],
         provider=args.get("provider", "auto"),
@@ -49,10 +58,11 @@ def tool_generate_image(args: dict) -> str:
             "provider": {"type": "string", "description": "Provider: 'openai' (default)"},
         },
         "required": ["image_path", "prompt"],
-    }
+    },
 )
 def tool_edit_image(args: dict) -> str:
     from brjarvis.actions.image_generator import edit_image
+
     result = edit_image(
         image_path=args["image_path"],
         prompt=args["prompt"],

@@ -4,21 +4,22 @@ Scratchpad Engine for BR JARVIS.
 Provides temporary workspace script execution, scratch memory context,
 and transient data storage in ./scratch/.
 """
+
 from __future__ import annotations
 
 import logging
-import os
+import subprocess
 import sys
 import time
-import subprocess
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
 
 def _get_scratch_dir() -> Path:
     from brjarvis.core.paths import paths
+
     scratch_dir = paths.PROJECT_ROOT / "scratch"
     scratch_dir.mkdir(parents=True, exist_ok=True)
     return scratch_dir
@@ -72,12 +73,14 @@ class ScratchpadManager:
         for p in self.dir.glob("*"):
             if p.is_file():
                 stat = p.stat()
-                files.append({
-                    "name": p.name,
-                    "path": str(p.resolve()),
-                    "size_bytes": stat.st_size,
-                    "modified": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(stat.st_mtime))
-                })
+                files.append(
+                    {
+                        "name": p.name,
+                        "path": str(p.resolve()),
+                        "size_bytes": stat.st_size,
+                        "modified": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(stat.st_mtime)),
+                    }
+                )
         return files
 
     def clear(self) -> str:
@@ -90,7 +93,7 @@ class ScratchpadManager:
                     p.unlink()
                     count += 1
                 except Exception as e:
-                    logger.debug('Suppressed exception: %s', e)
+                    logger.debug("Suppressed exception: %s", e)
         return f"Scratchpad cleared: {count} files removed, notes reset."
 
     def eval_script(self, target: str, language: str = "python", timeout: int = 30) -> Dict[str, Any]:

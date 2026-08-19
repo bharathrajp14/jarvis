@@ -8,11 +8,10 @@ import os
 import re
 import sys
 import zipfile
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, Optional
 
-from .types import ExecutionResult, ExecutionStatus, VerificationOutcome
+from .types import ExecutionStatus, VerificationOutcome
 
 logger = logging.getLogger("JARVIS.UniversalVerifier")
 
@@ -124,6 +123,7 @@ class DocumentVerifier:
         try:
             if ext == ".docx":
                 import docx
+
                 doc = docx.Document(str(p))
                 p_count = len(doc.paragraphs)
                 t_count = len(doc.tables)
@@ -160,6 +160,7 @@ class DocumentVerifier:
                 page_count = 0
                 try:
                     import pypdf
+
                     reader = pypdf.PdfReader(str(p))
                     page_count = len(reader.pages)
                 except Exception:
@@ -215,7 +216,11 @@ class DocumentVerifier:
 
             elif ext in (".html", ".htm"):
                 content = p.read_text(encoding="utf-8", errors="replace").strip()
-                if len(content) < 10 or ("<html" not in content.lower() and "<div" not in content.lower() and "<!doctype" not in content.lower()):
+                if len(content) < 10 or (
+                    "<html" not in content.lower()
+                    and "<div" not in content.lower()
+                    and "<!doctype" not in content.lower()
+                ):
                     return VerificationOutcome(
                         verified=False,
                         verifier_name="DocumentVerifier",
@@ -274,7 +279,7 @@ class CareerVerifier:
                     evidence=f"Application package '{pkg.get('package_id')}' validated for {pkg.get('company')}.",
                     observed_state=pkg,
                 )
-            
+
             p = Path(package_dir_or_json).resolve()
             if p.is_file() and p.suffix.lower() == ".json":
                 data = json.loads(p.read_text(encoding="utf-8"))
@@ -318,11 +323,11 @@ class CareerVerifier:
         """Verifies physical proof of job submission (confirmation ID, URL, email, API response)."""
         if isinstance(evidence, str):
             evidence = {"raw_text": evidence}
-        
+
         conf_id = evidence.get("confirmation_id") or evidence.get("application_id")
         conf_url = evidence.get("confirmation_url") or evidence.get("response_url")
         api_ok = evidence.get("api_verified") is True
-        
+
         if conf_id or conf_url or api_ok:
             return VerificationOutcome(
                 verified=True,
@@ -332,7 +337,7 @@ class CareerVerifier:
                 details="Verified job application submission evidence.",
                 observed_state=evidence,
             )
-        
+
         return VerificationOutcome(
             verified=False,
             verifier_name="CareerVerifier",
@@ -344,8 +349,16 @@ class CareerVerifier:
     @staticmethod
     def verify_email_classification(classification_res: Dict[str, Any] | Any) -> VerificationOutcome:
         """Verifies that an email was genuinely retrieved, parsed, and classified."""
-        cls_val = classification_res.get("classification") if isinstance(classification_res, dict) else getattr(classification_res, "classification", None)
-        conf = classification_res.get("confidence", 0.0) if isinstance(classification_res, dict) else getattr(classification_res, "confidence", 0.0)
+        cls_val = (
+            classification_res.get("classification")
+            if isinstance(classification_res, dict)
+            else getattr(classification_res, "classification", None)
+        )
+        conf = (
+            classification_res.get("confidence", 0.0)
+            if isinstance(classification_res, dict)
+            else getattr(classification_res, "confidence", 0.0)
+        )
 
         if cls_val and conf > 0.0:
             return VerificationOutcome(
@@ -367,16 +380,26 @@ class CareerVerifier:
     @staticmethod
     def verify_application_match(match_res: Dict[str, Any] | Any) -> VerificationOutcome:
         """Verifies that an email or event was matched with high confidence to an application."""
-        app_id = match_res.get("application_id") if isinstance(match_res, dict) else getattr(match_res, "application_id", None)
-        conf = match_res.get("confidence", 0.0) if isinstance(match_res, dict) else getattr(match_res, "confidence", 0.0)
-        needs_rev = match_res.get("needs_review", False) if isinstance(match_res, dict) else getattr(match_res, "needs_review", False)
+        app_id = (
+            match_res.get("application_id")
+            if isinstance(match_res, dict)
+            else getattr(match_res, "application_id", None)
+        )
+        conf = (
+            match_res.get("confidence", 0.0) if isinstance(match_res, dict) else getattr(match_res, "confidence", 0.0)
+        )
+        needs_rev = (
+            match_res.get("needs_review", False)
+            if isinstance(match_res, dict)
+            else getattr(match_res, "needs_review", False)
+        )
 
         if app_id and conf >= 0.70 and not needs_rev:
             return VerificationOutcome(
                 verified=True,
                 verifier_name="CareerVerifier",
                 status=ExecutionStatus.SUCCESS_VERIFIED,
-                evidence=f"Matched to application '{app_id}' with {conf*100:.0f}% confidence.",
+                evidence=f"Matched to application '{app_id}' with {conf * 100:.0f}% confidence.",
                 details="Authoritative application match verified.",
                 observed_state=match_res if isinstance(match_res, dict) else {},
             )
@@ -426,6 +449,7 @@ class CareerVerifier:
                 )
 
             import openpyxl
+
             wb = openpyxl.load_workbook(p, read_only=True)
             sheet_names = wb.sheetnames
             wb.close()
@@ -459,8 +483,6 @@ class CareerVerifier:
             )
 
 
-
-
 class ApplicationVerifier:
     """Verifies OS application launches, active processes, and visible windows."""
 
@@ -468,13 +490,14 @@ class ApplicationVerifier:
     def verify_process_running(proc_name: str) -> VerificationOutcome:
         try:
             import psutil
+
             low = proc_name.lower().strip()
             base = os.path.splitext(low)[0]
 
             matched = []
-            for proc in psutil.process_iter(['name', 'pid']):
+            for proc in psutil.process_iter(["name", "pid"]):
                 try:
-                    pname = (proc.info.get('name') or '').lower()
+                    pname = (proc.info.get("name") or "").lower()
                     if base in pname or low in pname:
                         matched.append(proc.info)
                 except (psutil.NoSuchProcess, psutil.AccessDenied):
@@ -488,7 +511,7 @@ class ApplicationVerifier:
                     status=ExecutionStatus.SUCCESS_VERIFIED,
                     evidence=f"Process '{best['name']}' (PID: {best['pid']}) confirmed active in OS process table.",
                     details=f"Verified process '{best['name']}' active (PID: {best['pid']}).",
-                    observed_state={"process_name": best['name'], "pid": best['pid']},
+                    observed_state={"process_name": best["name"], "pid": best["pid"]},
                 )
 
             return VerificationOutcome(
@@ -507,7 +530,9 @@ class ApplicationVerifier:
             )
 
     @staticmethod
-    def verify_window_open(window_title_keyword: Optional[str] = None, app_name: Optional[str] = None) -> VerificationOutcome:
+    def verify_window_open(
+        window_title_keyword: Optional[str] = None, app_name: Optional[str] = None
+    ) -> VerificationOutcome:
         """Inspect visible GUI window handles on Windows OS."""
         if sys.platform != "win32":
             return ApplicationVerifier.verify_process_running(app_name or "")
@@ -564,7 +589,15 @@ class ApplicationVerifier:
             # Check candidate viewer processes if target is a document
             doc_ext = Path(target_raw).suffix.lower()
             viewer_map = {
-                ".pdf": ["msedge.exe", "chrome.exe", "acrobat.exe", "acrord32.exe", "foxitpdfreader.exe", "brave.exe", "firefox.exe"],
+                ".pdf": [
+                    "msedge.exe",
+                    "chrome.exe",
+                    "acrobat.exe",
+                    "acrord32.exe",
+                    "foxitpdfreader.exe",
+                    "brave.exe",
+                    "firefox.exe",
+                ],
                 ".docx": ["winword.exe", "soffice.bin", "wordpad.exe", "wps.exe"],
                 ".doc": ["winword.exe", "soffice.bin", "wordpad.exe", "wps.exe"],
                 ".xlsx": ["excel.exe", "soffice.bin", "et.exe"],
@@ -598,7 +631,7 @@ class ApplicationVerifier:
                 details=f"No visible window detected matching '{search_desc}'.",
                 error="WINDOW_NOT_FOUND",
             )
-        except Exception as e:
+        except Exception:
             return ApplicationVerifier.verify_process_running(app_name or window_title_keyword or "")
 
 
@@ -627,7 +660,7 @@ class BrowserVerifier:
                 clean_path = clean_path[8:] if sys.platform == "win32" else clean_path[7:]
             elif clean_path.startswith("file://"):
                 clean_path = clean_path[7:]
-            
+
             p = Path(clean_path).resolve()
             if not p.exists():
                 return VerificationOutcome(
@@ -680,10 +713,12 @@ class OutputContractValidator:
     @staticmethod
     def validate_output(output_str: str, return_code: int = 0) -> VerificationOutcome:
         if not isinstance(output_str, str):
-            return VerificationOutcome(verified=True, verifier_name="OutputContractValidator", status=ExecutionStatus.SUCCESS_VERIFIED)
+            return VerificationOutcome(
+                verified=True, verifier_name="OutputContractValidator", status=ExecutionStatus.SUCCESS_VERIFIED
+            )
 
         low = output_str.lower().strip()
-        
+
         # Critical failure indicators that indicate actual execution errors even if return code is 0
         # Specific errors first, followed by generic traceback fallback
         fatal_indicators = [
@@ -704,7 +739,9 @@ class OutputContractValidator:
 
         for pattern, err_code in fatal_indicators:
             if pattern in low:
-                status = ExecutionStatus.MISSING_DEPENDENCY if err_code == "MISSING_DEPENDENCY" else ExecutionStatus.FAILED
+                status = (
+                    ExecutionStatus.MISSING_DEPENDENCY if err_code == "MISSING_DEPENDENCY" else ExecutionStatus.FAILED
+                )
                 return VerificationOutcome(
                     verified=False,
                     verifier_name="OutputContractValidator",
@@ -745,7 +782,9 @@ class UniversalVerifier:
     validate_output = staticmethod(OutputContractValidator.validate_output)
 
     @classmethod
-    def verify_execution(cls, tool_or_command: str, args: Dict[str, Any], raw_output: str, return_code: int = 0) -> VerificationOutcome:
+    def verify_execution(
+        cls, tool_or_command: str, args: Dict[str, Any], raw_output: str, return_code: int = 0
+    ) -> VerificationOutcome:
         """Evaluate return code + output contract + real-world side effects."""
         # 1. Output contract check
         out_res = cls.validate_output(raw_output, return_code=return_code)
@@ -766,7 +805,7 @@ class UniversalVerifier:
             if not filename:
                 title = args.get("title", "Document")
                 fmt = args.get("format", "docx" if "word" in name else "pdf" if "pdf" in name else "docx")
-                clean_title = re.sub(r'[^\w\-]', '_', title)
+                clean_title = re.sub(r"[^\w\-]", "_", title)
                 filename = f"workspace/Documents/{clean_title}.{fmt}"
             return cls.verify_document(filename)
 

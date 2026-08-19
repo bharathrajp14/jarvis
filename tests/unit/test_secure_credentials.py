@@ -33,9 +33,7 @@ def test_credential_vault_keeps_secret_out_of_metadata_file(tmp_path):
     assert vault.get_credential(reference) == "super-secret-value"
     serialized = vault_path.read_text(encoding="utf-8")
     assert "super-secret-value" not in serialized
-    assert json.loads(serialized) == {
-        "github-token": {"metadata": {"provider": "github"}}
-    }
+    assert json.loads(serialized) == {"github-token": {"metadata": {"provider": "github"}}}
     assert vault.list_references() == [
         {
             "credential_ref": "github-token",

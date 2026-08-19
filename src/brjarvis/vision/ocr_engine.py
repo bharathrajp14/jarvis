@@ -2,10 +2,8 @@
 from __future__ import annotations
 
 import hashlib
-import io
 import logging
 import re
-from functools import lru_cache
 from typing import List, Optional, Tuple
 
 from .types import DetectedUIElement, ElementType, ScreenBoundingBox
@@ -43,20 +41,18 @@ class OCREngine:
         self._cache[frame_hash] = (extracted_text, elements)
         return extracted_text, elements
 
-    def _perform_ocr(
-        self, raw_bytes: bytes, width: int, height: int
-    ) -> Tuple[str, List[DetectedUIElement]]:
+    def _perform_ocr(self, raw_bytes: bytes, width: int, height: int) -> Tuple[str, List[DetectedUIElement]]:
         """Perform OCR using pytesseract if available, falling back to heuristic element extraction."""
         extracted_text = ""
         elements: List[DetectedUIElement] = []
 
         try:
-            from PIL import Image
             import pytesseract
+            from PIL import Image
 
             img = Image.frombytes("RGB", (width, height), raw_bytes)
             extracted_text = pytesseract.image_to_string(img)
-            
+
             # Get bounding boxes if data available
             data = pytesseract.image_to_data(img, output_type=pytesseract.Output.DICT)
             n_boxes = len(data.get("text", []))
@@ -96,9 +92,7 @@ class OCREngine:
 
         return extracted_text, elements
 
-    def find_element_by_label(
-        self, label: str, elements: List[DetectedUIElement]
-    ) -> Optional[DetectedUIElement]:
+    def find_element_by_label(self, label: str, elements: List[DetectedUIElement]) -> Optional[DetectedUIElement]:
         """Locate a UI element matching label substring."""
         pattern = re.compile(re.escape(label), re.IGNORECASE)
         for elem in elements:

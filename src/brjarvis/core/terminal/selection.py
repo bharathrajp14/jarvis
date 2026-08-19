@@ -5,6 +5,7 @@ Handles character, word (with path/URL boundary awareness), line, and block sele
 along with safe clipboard access across Windows (Win32), Linux (wl-copy/xclip), macOS (pbcopy),
 and OSC 52 fallback for remote SSH/tmux sessions.
 """
+
 from __future__ import annotations
 
 import base64
@@ -15,7 +16,7 @@ import re
 import shutil
 import subprocess
 import sys
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from typing import Optional, Tuple
 
@@ -33,6 +34,7 @@ class SelectionMode(str, Enum):
 @dataclass
 class SelectionRange:
     """Text selection coordinates (0-indexed line and col)."""
+
     start_row: int = 0
     start_col: int = 0
     end_row: int = 0
@@ -41,9 +43,7 @@ class SelectionRange:
 
     @property
     def is_active(self) -> bool:
-        return self.mode != SelectionMode.NONE and (
-            self.start_row != self.end_row or self.start_col != self.end_col
-        )
+        return self.mode != SelectionMode.NONE and (self.start_row != self.end_row or self.start_col != self.end_col)
 
     def normalized(self) -> Tuple[Tuple[int, int], Tuple[int, int]]:
         """Return ((top_row, left_col), (bottom_row, right_col)) regardless of drag direction."""
@@ -53,6 +53,7 @@ class SelectionRange:
 
 
 # ── Cross-Platform Clipboard Provider ────────────────────────────────────────
+
 
 class ClipboardProvider:
     """
@@ -98,7 +99,6 @@ class ClipboardProvider:
         """Direct Win32 Clipboard via ctypes."""
         try:
             import ctypes
-            from ctypes import wintypes
 
             user32 = ctypes.windll.user32
             kernel32 = ctypes.windll.kernel32
@@ -162,6 +162,7 @@ class ClipboardProvider:
 
 # ── Selection Manager ────────────────────────────────────────────────────────
 
+
 class SelectionManager:
     """
     Manages interactive text selections, word boundary detection (including path/URL awareness),
@@ -215,7 +216,9 @@ class SelectionManager:
         Preserves complete file paths (e.g. src/brjarvis/core/guard.py:12) and URLs as a single unit.
         """
         if not line or col < 0 or col >= len(line):
-            self.selection = SelectionRange(start_row=row, start_col=col, end_row=row, end_col=col, mode=SelectionMode.WORD)
+            self.selection = SelectionRange(
+                start_row=row, start_col=col, end_row=row, end_col=col, mode=SelectionMode.WORD
+            )
             return col, col
 
         # Search left
@@ -259,15 +262,15 @@ class SelectionManager:
 
         if r1 == r2:
             line = lines[r1]
-            return line[max(0, c1):min(len(line), c2)]
+            return line[max(0, c1) : min(len(line), c2)]
 
         selected_parts = []
         for r in range(r1, r2 + 1):
             line = lines[r] if r < len(lines) else ""
             if r == r1:
-                selected_parts.append(line[max(0, c1):])
+                selected_parts.append(line[max(0, c1) :])
             elif r == r2:
-                selected_parts.append(line[:min(len(line), c2)])
+                selected_parts.append(line[: min(len(line), c2)])
             else:
                 selected_parts.append(line)
 

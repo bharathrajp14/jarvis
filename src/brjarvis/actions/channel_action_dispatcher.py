@@ -3,12 +3,11 @@
 Dispatches user-approved actions (Reply via Email/WhatsApp, Add to Calendar)
 from proactive channel listener.
 """
+
 from __future__ import annotations
 
-import datetime
-import json
 import logging
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 
 logger = logging.getLogger("JARVIS.ChannelActionDispatcher")
 
@@ -41,6 +40,7 @@ class ChannelActionDispatcher:
         listener = self._listener
         if listener is None:
             from brjarvis.actions.proactive_listener import get_proactive_listener
+
             listener = get_proactive_listener()
 
         # Find target pending item
@@ -71,20 +71,29 @@ class ChannelActionDispatcher:
             return result
 
         else:
-            return {"success": False, "error": f"Invalid decision '{decision}'. Use 'reply', 'add_to_calendar', or 'dismiss'."}
+            return {
+                "success": False,
+                "error": f"Invalid decision '{decision}'. Use 'reply', 'add_to_calendar', or 'dismiss'.",
+            }
 
     def _execute_reply(self, item: Dict[str, Any], custom_reply: Optional[str]) -> Dict[str, Any]:
         channel = item["channel"]
         sender = item["sender"]
         snippet = item["snippet"]
 
-        reply_text = custom_reply or f"Hello {sender}, thank you for your message regarding '{snippet[:40]}...'. I have received it and will follow up shortly."
+        reply_text = (
+            custom_reply
+            or f"Hello {sender}, thank you for your message regarding '{snippet[:40]}...'. I have received it and will follow up shortly."
+        )
 
         if channel == "EMAIL":
             try:
                 from brjarvis.actions.smart_email_sender import get_smart_email_sender
+
                 sender_engine = get_smart_email_sender()
-                res = sender_engine.send_email(to_address=sender, subject=f"Re: {item.get('subject', 'Message')}", body=reply_text)
+                res = sender_engine.send_email(
+                    to_address=sender, subject=f"Re: {item.get('subject', 'Message')}", body=reply_text
+                )
                 return {"success": True, "action": "reply_email", "result": res}
             except Exception as e:
                 logger.error("Email reply error: %s", e)
@@ -93,6 +102,7 @@ class ChannelActionDispatcher:
         elif channel == "WHATSAPP":
             try:
                 from brjarvis.actions.whatsapp_automation import get_whatsapp_automation
+
                 wa = get_whatsapp_automation()
                 res = wa.send_message(recipient=sender, message=reply_text)
                 return {"success": True, "action": "reply_whatsapp", "result": res}
@@ -102,7 +112,9 @@ class ChannelActionDispatcher:
 
         return {"success": False, "error": f"Unsupported channel '{channel}' for reply."}
 
-    def _execute_add_to_calendar(self, item: Dict[str, Any], custom_details: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    def _execute_add_to_calendar(
+        self, item: Dict[str, Any], custom_details: Optional[Dict[str, Any]]
+    ) -> Dict[str, Any]:
         entities = item.get("entities", {})
         title = (custom_details or {}).get("title") or entities.get("title") or f"Meeting with {item['sender']}"
         date_str = (custom_details or {}).get("date") or entities.get("date") or "tomorrow"
@@ -110,6 +122,7 @@ class ChannelActionDispatcher:
 
         try:
             from brjarvis.actions.calendar_engine import get_calendar_engine
+
             cal = get_calendar_engine()
             res = cal.create_event(title=title, date_str=date_str, time_str=time_str)
             return {"success": True, "action": "add_to_calendar", "result": res}

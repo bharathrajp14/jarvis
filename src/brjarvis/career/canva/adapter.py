@@ -1,17 +1,14 @@
 # career/canva/adapter.py — Canva Connect API Adapter with Graceful Native Fallback
 from __future__ import annotations
 
-import json
 import logging
 import time
-import urllib.request
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional
 
-from .auth import CanvaCredentialStore
-from .capability import CanvaCapabilityProbe
 from ..resume_engine.exporter import ResumeExportPipeline
 from ..resume_engine.models import ResumeSchema
-from ..resume_engine.renderer import ResumeRenderer
+from .auth import CanvaCredentialStore
+from .capability import CanvaCapabilityProbe
 
 logger = logging.getLogger("JARVIS.CanvaAdapter")
 
@@ -29,7 +26,7 @@ class CanvaAdapter:
     def build_autofill_dataset(self, resume: ResumeSchema) -> Dict[str, Any]:
         """Convert ResumeSchema into structured Canva Autofill dataset format."""
         contact_line = f"{resume.contact_email} | {resume.contact_phone} | {resume.location}"
-        
+
         # Skills list
         all_skills = []
         for sc in resume.skills:
@@ -39,7 +36,9 @@ class CanvaAdapter:
         # Experience summary block
         exp_lines = []
         for exp in resume.experience[:3]:
-            exp_lines.append(f"{exp.get('title')} at {exp.get('company')} ({exp.get('start_date')} - {exp.get('end_date')})")
+            exp_lines.append(
+                f"{exp.get('title')} at {exp.get('company')} ({exp.get('start_date')} - {exp.get('end_date')})"
+            )
             for resp in exp.get("responsibilities", [])[:2]:
                 exp_lines.append(f"• {resp}")
         exp_block = "\n".join(exp_lines)
@@ -53,7 +52,7 @@ class CanvaAdapter:
                 "summary": {"type": "text", "text": resume.summary},
                 "skills": {"type": "text", "text": skills_text},
                 "experience": {"type": "text", "text": exp_block},
-            }
+            },
         }
 
     def generate_resume(
@@ -89,7 +88,7 @@ class CanvaAdapter:
 
             # In production, POST to Canva Connect Autofill API
             logger.info(f"🎨 Submitting Autofill job to Canva Connect for template '{tmpl_id}'...")
-            
+
             # Simulated verified response structure matching official Canva Connect OpenAPI schema
             design_id = f"DA{int(time.time())}xyz"
             edit_url = f"https://www.canva.com/design/{design_id}/edit"

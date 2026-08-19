@@ -10,10 +10,13 @@ Unit tests validating:
 7. Vector store outage fallback
 8. Provenance and trust hierarchy verification
 """
+
 from __future__ import annotations
 
 import time
+
 import pytest
+
 from brjarvis.memory.canonical_db import CanonicalDatabaseManager
 from brjarvis.memory.conflict_engine import ConflictEngine, ConflictResolutionAction
 from brjarvis.memory.domain import CanonicalMemory, MemoryStatus, MemoryType, SourceType
@@ -21,7 +24,6 @@ from brjarvis.memory.retrieval import HybridRetrievalEngine
 from brjarvis.memory.store import CanonicalMemoryStore
 from brjarvis.memory.task_memory_router import MemoryMode, TaskMemoryRouter
 from brjarvis.memory.temporal import TemporalEngine
-from brjarvis.memory.unified_memory import UnifiedMemoryManager
 
 
 @pytest.fixture

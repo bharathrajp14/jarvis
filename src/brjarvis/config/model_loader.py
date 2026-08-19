@@ -2,11 +2,12 @@
 """Central model configuration loader for BR JARVIS.
 Reads config/models.json and provides defaults if it doesn't exist.
 """
+
 from __future__ import annotations
 
 import json
 import logging
-from pathlib import Path
+
 from brjarvis.core.paths import paths
 
 logger = logging.getLogger(__name__)

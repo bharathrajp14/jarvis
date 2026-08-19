@@ -3,6 +3,7 @@
 Re-exports the canonical speculative execution classes from ``reasoning.speculative``.
 Import directly from there when writing new code.
 """
+
 from __future__ import annotations
 
 from brjarvis.reasoning.speculative import (

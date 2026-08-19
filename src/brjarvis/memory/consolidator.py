@@ -17,6 +17,7 @@ CRITICAL FIX (Phase 3):
   UnifiedMemoryManager.recall(). Now routes through UnifiedMemoryManager so
   session-extracted knowledge is immediately retrievable in the canonical store.
 """
+
 from __future__ import annotations
 
 import json
@@ -68,8 +69,8 @@ def consolidate_session(messages: list, router=None) -> list[str]:
         return []
 
     try:
-        from brjarvis.memory.unified_memory import get_unified_memory
         from brjarvis.memory.domain import CanonicalMemory, MemoryType, SourceType, redact_secrets
+        from brjarvis.memory.unified_memory import get_unified_memory
 
         # Build condensed transcript from the last 40 messages
         recent = messages[-40:]
@@ -87,9 +88,7 @@ def consolidate_session(messages: list, router=None) -> list[str]:
 
         transcript = "\n".join(parts)
 
-        consolidation_messages = [
-            {"role": "user", "content": f"Conversation:\n\n{transcript}"}
-        ]
+        consolidation_messages = [{"role": "user", "content": f"Conversation:\n\n{transcript}"}]
 
         try:
             result_text = router.run(

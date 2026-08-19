@@ -4,26 +4,24 @@ Autonomous Web QA & Software Testing Engine.
 Allows JARVIS to run background browser tests, validate DOM assertions, record JS console/network traces,
 and generate structured markdown test reports.
 """
+
 from __future__ import annotations
 
-import logging
 import asyncio
 import json
-import os
+import logging
 import time
 from datetime import datetime
-from pathlib import Path
-from typing import Any, Dict, List, Optional
-
-from .registry import register_tool, _run_async
-from .browser_automation import (
-    _get_or_create_page,
-    get_browser_trace_logs,
-    clear_browser_trace_logs,
-    _PLAYWRIGHT_AVAILABLE,
-)
 
 from brjarvis.core.paths import paths
+
+from .browser_automation import (
+    _PLAYWRIGHT_AVAILABLE,
+    _get_or_create_page,
+    clear_browser_trace_logs,
+    get_browser_trace_logs,
+)
+from .registry import _run_async, register_tool
 
 logger = logging.getLogger("JARVIS.Tools.QATesting")
 
@@ -40,13 +38,16 @@ REPORTS_DIR = paths.REPORT_ROOT
             "steps": {
                 "type": "array",
                 "description": "List of test step objects e.g. [{'action': 'click', 'selector': '#login'}, {'action': 'type', 'selector': '#user', 'value': 'admin'}, {'action': 'assert_text', 'text': 'Dashboard'}]",
-                "items": {"type": "object"}
+                "items": {"type": "object"},
             },
             "headless": {"type": "boolean", "description": "Run in background without opening window (default true)"},
-            "screenshot_name": {"type": "string", "description": "Filename for final test screenshot (default test_result.png)"}
+            "screenshot_name": {
+                "type": "string",
+                "description": "Filename for final test screenshot (default test_result.png)",
+            },
         },
-        "required": ["url"]
-    }
+        "required": ["url"],
+    },
 )
 def qa_run_browser_test(args: dict) -> str:
     """Execute an autonomous browser test flow."""
@@ -66,30 +67,28 @@ def qa_run_browser_test(args: dict) -> str:
         "passed": True,
         "screenshot_path": None,
         "console_logs": [],
-        "page_errors": []
+        "page_errors": [],
     }
 
     async def _execute():
         page = await _get_or_create_page(headless=headless)
         start_t = time.time()
-        
+
         try:
             await page.goto(url, wait_until="domcontentloaded", timeout=30000)
-            results["step_results"].append({
-                "step": 0,
-                "action": "navigate",
-                "target": url,
-                "status": "PASS",
-                "duration_ms": round((time.time() - start_t) * 1000, 2)
-            })
+            results["step_results"].append(
+                {
+                    "step": 0,
+                    "action": "navigate",
+                    "target": url,
+                    "status": "PASS",
+                    "duration_ms": round((time.time() - start_t) * 1000, 2),
+                }
+            )
         except Exception as e:
-            results["step_results"].append({
-                "step": 0,
-                "action": "navigate",
-                "target": url,
-                "status": "FAIL",
-                "error": str(e)
-            })
+            results["step_results"].append(
+                {"step": 0, "action": "navigate", "target": url, "status": "FAIL", "error": str(e)}
+            )
             results["passed"] = False
             return json.dumps(results, indent=2)
 
@@ -144,7 +143,7 @@ def qa_run_browser_test(args: dict) -> str:
             await page.screenshot(path=str(ss_path), full_page=True)
             results["screenshot_path"] = str(ss_path)
         except Exception as e:
-            logger.debug('Suppressed exception: %s', e)
+            logger.debug("Suppressed exception: %s", e)
         trace = get_browser_trace_logs()
         results["console_logs"] = trace["console_logs"]
         results["page_errors"] = trace["page_errors"]
@@ -168,10 +167,13 @@ def qa_run_browser_test(args: dict) -> str:
             "text_visible": {"type": "string", "description": "Expected visible text on page"},
             "selector_exists": {"type": "string", "description": "Expected CSS selector on page"},
             "timeout_ms": {"type": "integer", "description": "Navigation timeout in ms (default 15000)"},
-            "fail_on_console_error": {"type": "boolean", "description": "Fail test if JS console errors detected (default false)"}
+            "fail_on_console_error": {
+                "type": "boolean",
+                "description": "Fail test if JS console errors detected (default false)",
+            },
         },
-        "required": ["url"]
-    }
+        "required": ["url"],
+    },
 )
 def qa_assert_page_state(args: dict) -> str:
     """Validate DOM assertions on a web page."""
@@ -192,44 +194,53 @@ def qa_assert_page_state(args: dict) -> str:
         try:
             await page.goto(url, wait_until="domcontentloaded", timeout=timeout_ms)
         except Exception as net_err:
-            return json.dumps({
-                "url": url,
-                "overall_pass": False,
-                "error": f"Navigation failed or timed out ({timeout_ms}ms): {net_err}"
-            }, indent=2)
+            return json.dumps(
+                {
+                    "url": url,
+                    "overall_pass": False,
+                    "error": f"Navigation failed or timed out ({timeout_ms}ms): {net_err}",
+                },
+                indent=2,
+            )
 
         current_url = page.url
         if url_contains:
             passed = url_contains in current_url
             assertions.append({"assertion": f"url_contains('{url_contains}')", "passed": passed, "actual": current_url})
-            if not passed: overall_pass = False
+            if not passed:
+                overall_pass = False
 
         if text_visible:
             content = await page.content()
             passed = text_visible in content
             assertions.append({"assertion": f"text_visible('{text_visible}')", "passed": passed})
-            if not passed: overall_pass = False
+            if not passed:
+                overall_pass = False
 
         if selector_exists:
             elem = await page.query_selector(selector_exists)
             passed = elem is not None
             assertions.append({"assertion": f"selector_exists('{selector_exists}')", "passed": passed})
-            if not passed: overall_pass = False
+            if not passed:
+                overall_pass = False
 
         trace = get_browser_trace_logs()
         if fail_on_console_error and trace["page_errors"]:
             assertions.append({"assertion": "no_console_errors", "passed": False, "errors": trace["page_errors"]})
             overall_pass = False
 
-        return json.dumps({
-            "url": current_url,
-            "overall_pass": overall_pass,
-            "assertions": assertions,
-            "trace_summary": {
-                "console_log_count": len(trace["console_logs"]),
-                "page_error_count": len(trace["page_errors"])
-            }
-        }, indent=2)
+        return json.dumps(
+            {
+                "url": current_url,
+                "overall_pass": overall_pass,
+                "assertions": assertions,
+                "trace_summary": {
+                    "console_log_count": len(trace["console_logs"]),
+                    "page_error_count": len(trace["page_errors"]),
+                },
+            },
+            indent=2,
+        )
 
     try:
         return _run_async(_assert())
@@ -245,10 +256,10 @@ def qa_assert_page_state(args: dict) -> str:
         "properties": {
             "test_name": {"type": "string", "description": "Title of the test suite or application"},
             "results_json": {"type": "string", "description": "JSON string or payload of test results"},
-            "report_filename": {"type": "string", "description": "Filename for markdown report (default qa_report.md)"}
+            "report_filename": {"type": "string", "description": "Filename for markdown report (default qa_report.md)"},
         },
-        "required": ["test_name", "results_json"]
-    }
+        "required": ["test_name", "results_json"],
+    },
 )
 def qa_generate_report(args: dict) -> str:
     """Generate Markdown QA report file."""
@@ -265,32 +276,32 @@ def qa_generate_report(args: dict) -> str:
     report_file = REPORTS_DIR / filename
 
     status_badge = "✅ PASSED" if data.get("passed", data.get("overall_pass", True)) else "❌ FAILED"
-    
+
     md_content = f"""# 🧪 QA Audit Report: {test_name}
 
 **Status**: {status_badge}  
 **Timestamp**: {datetime.now().strftime("%Y-%m-%d %H:%M:%S")}  
-**Target URL**: `{data.get('url', 'N/A')}`
+**Target URL**: `{data.get("url", "N/A")}`
 
 ---
 
 ## 📊 Summary
-* **Passed**: `{data.get('passed', data.get('overall_pass', True))}`
-* **Console Errors**: `{len(data.get('page_errors', []))}`
-* **Console Logs**: `{len(data.get('console_logs', []))}`
+* **Passed**: `{data.get("passed", data.get("overall_pass", True))}`
+* **Console Errors**: `{len(data.get("page_errors", []))}`
+* **Console Logs**: `{len(data.get("console_logs", []))}`
 
 ---
 
 ## 📝 Step Execution Details
 ```json
-{json.dumps(data.get('step_results', data.get('assertions', [])), indent=2)}
+{json.dumps(data.get("step_results", data.get("assertions", [])), indent=2)}
 ```
 
 ---
 
 ## 🐞 Console Logs & Page Errors
 ```text
-{chr(10).join(data.get('page_errors', [])) or 'No uncaught page errors detected.'}
+{chr(10).join(data.get("page_errors", [])) or "No uncaught page errors detected."}
 ```
 
 ---

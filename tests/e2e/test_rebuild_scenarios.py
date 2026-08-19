@@ -3,30 +3,27 @@
 Master End-to-End Test Suite implementing all 25 Real-World Scenarios
 specified in Master Prompt Section 67.
 """
+
 from __future__ import annotations
 
-import time
 import pytest
-from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 from brjarvis.agent.execution_ledger import ExecutionLedger, LedgerEntry, LedgerStatus
 from brjarvis.agent.planner import _validate_and_sanitize_plan
-from brjarvis.agent.task_state import TaskState, TaskStatus, get_task_state_manager
+from brjarvis.agent.task_state import TaskState, TaskStatus
 from brjarvis.agent.verifier import VerificationResult, VerificationStatus
 from brjarvis.context.builder import ContextBuilder
 from brjarvis.context.types import TokenBudget
 from brjarvis.memory.canonical_db import CanonicalDatabaseManager
-from brjarvis.memory.conflict_engine import ConflictEngine, ConflictResolutionAction
+from brjarvis.memory.conflict_engine import ConflictEngine
 from brjarvis.memory.domain import CanonicalMemory, MemoryStatus, MemoryType, SourceType
 from brjarvis.memory.experience_replay import ExperienceReplayStore, ExperienceTrajectory
 from brjarvis.memory.lessons import LessonStore
 from brjarvis.memory.retrieval import HybridRetrievalEngine
 from brjarvis.memory.session_lifecycle import SessionLifecycleManager, SessionRecord
 from brjarvis.memory.store import CanonicalMemoryStore
-from brjarvis.memory.task_memory_router import MemoryMode, TaskMemoryRouter
+from brjarvis.memory.task_memory_router import TaskMemoryRouter
 from brjarvis.memory.temporal import TemporalEngine
-from brjarvis.memory.unified_memory import UnifiedMemoryManager
 from brjarvis.reasoning.decision_engine import DecisionEngine
 
 
@@ -76,7 +73,9 @@ def test_scenario_01_continue_coding_project_after_restart(test_env):
 
     # Simulate fresh process restart
     fresh_store = CanonicalMemoryStore(db_manager=test_env["db"])
-    recovered = fresh_store.get_by_entity_attribute("project_jarvis_rebuild", "current_milestone", project_id="brjarvis")
+    recovered = fresh_store.get_by_entity_attribute(
+        "project_jarvis_rebuild", "current_milestone", project_id="brjarvis"
+    )
     assert recovered is not None
     assert recovered.value == "Phase 4 Completed"
 
@@ -157,14 +156,16 @@ def test_scenario_04_ask_what_decision_was_previously_made(test_env):
 def test_scenario_05_recover_incomplete_task_after_crash(test_env):
     ledger = test_env["ledger"]
     # Step 1 verified, step 2 pending
-    ledger.append(LedgerEntry(
-        task_id="task_recover_5",
-        step_id="step_1",
-        tool_name="git_clone",
-        status=LedgerStatus.SUCCESS,
-        evidence="Repository cloned to /workspace",
-        verification_status=LedgerStatus.SUCCESS,
-    ))
+    ledger.append(
+        LedgerEntry(
+            task_id="task_recover_5",
+            step_id="step_1",
+            tool_name="git_clone",
+            status=LedgerStatus.SUCCESS,
+            evidence="Repository cloned to /workspace",
+            verification_status=LedgerStatus.SUCCESS,
+        )
+    )
 
     # Restart check
     assert ledger.step_is_verified("task_recover_5", "step_1") is True
@@ -174,13 +175,15 @@ def test_scenario_05_recover_incomplete_task_after_crash(test_env):
 # ── Scenario 6: Avoid a previously failed approach ───────────────────────────
 def test_scenario_06_avoid_previously_failed_approach(test_env):
     exp_store = test_env["exp_store"]
-    exp_store.record_trajectory(ExperienceTrajectory(
-        goal_query="Download PDF report from protected URL",
-        success_status=False,
-        step_count=1,
-        tool_sequence=["requests_get"],
-        failure_reason="HTTP 403 Cloudflare Bot Detection",
-    ))
+    exp_store.record_trajectory(
+        ExperienceTrajectory(
+            goal_query="Download PDF report from protected URL",
+            success_status=False,
+            step_count=1,
+            tool_sequence=["requests_get"],
+            failure_reason="HTTP 403 Cloudflare Bot Detection",
+        )
+    )
 
     failures = exp_store.get_similar_failures("Download PDF report", limit=1)
     assert len(failures) > 0
@@ -190,12 +193,14 @@ def test_scenario_06_avoid_previously_failed_approach(test_env):
 # ── Scenario 7: Reuse a previously successful approach ────────────────────────
 def test_scenario_07_reuse_previously_successful_approach(test_env):
     exp_store = test_env["exp_store"]
-    exp_store.record_trajectory(ExperienceTrajectory(
-        goal_query="Extract text from PDF document",
-        success_status=True,
-        step_count=2,
-        tool_sequence=["pdf_reader", "text_extractor"],
-    ))
+    exp_store.record_trajectory(
+        ExperienceTrajectory(
+            goal_query="Extract text from PDF document",
+            success_status=True,
+            step_count=2,
+            tool_sequence=["pdf_reader", "text_extractor"],
+        )
+    )
 
     successes = exp_store.get_successful_patterns("Extract text from PDF", limit=1)
     assert len(successes) > 0
@@ -207,20 +212,24 @@ def test_scenario_08_project_specific_preference_overrides_global(test_env):
     store = test_env["store"]
     temporal = test_env["temporal"]
 
-    store.save(CanonicalMemory(
-        entity="linter",
-        attribute="tool",
-        value="flake8",
-        project_id="global",
-        status=MemoryStatus.ACTIVE,
-    ))
-    store.save(CanonicalMemory(
-        entity="linter",
-        attribute="tool",
-        value="ruff",
-        project_id="brjarvis",
-        status=MemoryStatus.ACTIVE,
-    ))
+    store.save(
+        CanonicalMemory(
+            entity="linter",
+            attribute="tool",
+            value="flake8",
+            project_id="global",
+            status=MemoryStatus.ACTIVE,
+        )
+    )
+    store.save(
+        CanonicalMemory(
+            entity="linter",
+            attribute="tool",
+            value="ruff",
+            project_id="brjarvis",
+            status=MemoryStatus.ACTIVE,
+        )
+    )
 
     project_linter = temporal.get_current_truth("linter", "tool", project_id="brjarvis")
     assert project_linter.value == "ruff"
@@ -232,13 +241,15 @@ def test_scenario_08_project_specific_preference_overrides_global(test_env):
 # ── Scenario 9: Work when vector storage is unavailable ───────────────────────
 def test_scenario_09_work_when_vector_storage_unavailable(test_env):
     store = test_env["store"]
-    store.save(CanonicalMemory(
-        entity="framework_choice",
-        attribute="backend",
-        value="FastAPI",
-        content="Backend framework choice is FastAPI for REST API",
-        status=MemoryStatus.ACTIVE,
-    ))
+    store.save(
+        CanonicalMemory(
+            entity="framework_choice",
+            attribute="backend",
+            value="FastAPI",
+            content="Backend framework choice is FastAPI for REST API",
+            status=MemoryStatus.ACTIVE,
+        )
+    )
 
     # Retrieval without vector store (None)
     engine = HybridRetrievalEngine(store=store, vector_store=None)
@@ -308,13 +319,21 @@ def test_scenario_14_replan_after_verification_failure():
     completed = [{"step": 1, "tool": "file_reader", "description": "Read input.txt"}]
     failed = {"step": 2, "tool": "fast_parser", "description": "Parse malformed syntax"}
     # Verify plan sanitization preserves remaining step bounds
-    plan = _validate_and_sanitize_plan({
-        "goal": "Process data",
-        "can_parallelize": False,
-        "steps": [
-            {"step": 3, "tool": "robust_regex_parser", "description": "Parse using robust fallback parser", "parameters": {}},
-        ],
-    }, "Process data")
+    plan = _validate_and_sanitize_plan(
+        {
+            "goal": "Process data",
+            "can_parallelize": False,
+            "steps": [
+                {
+                    "step": 3,
+                    "tool": "robust_regex_parser",
+                    "description": "Parse using robust fallback parser",
+                    "parameters": {},
+                },
+            ],
+        },
+        "Process data",
+    )
     assert len(plan["steps"]) == 1
     assert plan["steps"][0]["tool"] == "robust_regex_parser"
 
@@ -354,7 +373,7 @@ def test_scenario_17_recover_from_malformed_llm_plan():
     malformed = {"invalid_key": 123}
     fallback = _validate_and_sanitize_plan(
         {"goal": "Search documentation", "steps": [{"step": 1, "tool": "web_search", "description": "Search docs"}]},
-        "Search documentation"
+        "Search documentation",
     )
     assert len(fallback["steps"]) == 1
     assert fallback["steps"][0]["tool"] == "web_search"
@@ -426,10 +445,14 @@ def test_scenario_21_resolve_conflicting_memories(test_env):
     store = test_env["store"]
     conflict = test_env["conflict"]
 
-    m1 = CanonicalMemory(entity="db_driver", attribute="name", value="psycopg2", source_type=SourceType.STRONG_INFERENCE)
+    m1 = CanonicalMemory(
+        entity="db_driver", attribute="name", value="psycopg2", source_type=SourceType.STRONG_INFERENCE
+    )
     store.save(m1)
 
-    m2 = CanonicalMemory(entity="db_driver", attribute="name", value="asyncpg", source_type=SourceType.EXPLICIT_USER_STATEMENT)
+    m2 = CanonicalMemory(
+        entity="db_driver", attribute="name", value="asyncpg", source_type=SourceType.EXPLICIT_USER_STATEMENT
+    )
     conflicts = conflict.detect_conflicts(m2)
     resolution = conflict.resolve(m2, conflicts)
     assert resolution.winner_memory.value == "asyncpg"
@@ -455,14 +478,16 @@ def test_scenario_22_restore_task_state_after_restart(test_env):
 # ── Scenario 23: Avoid duplicate external side effect ────────────────────────
 def test_scenario_23_avoid_duplicate_external_side_effect(test_env):
     ledger = test_env["ledger"]
-    ledger.append(LedgerEntry(
-        task_id="task_email_23",
-        step_id="step_send_email",
-        tool_name="send_email",
-        status=LedgerStatus.SUCCESS,
-        evidence="Email sent message_id=msg_12345",
-        verification_status=LedgerStatus.SUCCESS,
-    ))
+    ledger.append(
+        LedgerEntry(
+            task_id="task_email_23",
+            step_id="step_send_email",
+            tool_name="send_email",
+            status=LedgerStatus.SUCCESS,
+            evidence="Email sent message_id=msg_12345",
+            verification_status=LedgerStatus.SUCCESS,
+        )
+    )
 
     # Verification gate prevents re-execution
     assert ledger.step_is_verified("task_email_23", "step_send_email") is True
@@ -471,12 +496,14 @@ def test_scenario_23_avoid_duplicate_external_side_effect(test_env):
 # ── Scenario 24: Use experience replay in planning ───────────────────────────
 def test_scenario_24_use_experience_replay_in_planning(test_env):
     exp_store = test_env["exp_store"]
-    exp_store.record_trajectory(ExperienceTrajectory(
-        goal_query="Scrape job postings from Greenhouse portal",
-        success_status=True,
-        step_count=2,
-        tool_sequence=["greenhouse_api_fetcher", "json_parser"],
-    ))
+    exp_store.record_trajectory(
+        ExperienceTrajectory(
+            goal_query="Scrape job postings from Greenhouse portal",
+            success_status=True,
+            step_count=2,
+            tool_sequence=["greenhouse_api_fetcher", "json_parser"],
+        )
+    )
 
     patterns = exp_store.get_successful_patterns("Greenhouse portal scrape")
     assert len(patterns) > 0

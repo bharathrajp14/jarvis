@@ -1,9 +1,8 @@
 # career/email_intelligence/injection_guard.py — Prompt Injection Defense & Untrusted Data Wrapper
 from __future__ import annotations
 
-import re
 import logging
-from typing import Any, Dict
+import re
 
 logger = logging.getLogger("JARVIS.EmailIntelligence.InjectionGuard")
 

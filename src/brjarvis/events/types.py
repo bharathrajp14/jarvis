@@ -34,11 +34,13 @@ class SystemEvent(BaseEvent):
     FIXED: topic is no longer defaulted to a misleading value — callers must
     pass the specific topic (e.g., topic='system.startup').
     """
+
     state: Optional[str] = None
 
 
 class TaskEvent(BaseEvent):
     """Task lifecycle event (created, running, completed, failed)."""
+
     task_id: str
     goal: str
     status: str = "pending"
@@ -46,6 +48,7 @@ class TaskEvent(BaseEvent):
 
 class AuditEvent(BaseEvent):
     """Security audit event for permission-controlled actions."""
+
     action_type: str
     target: str
     user_confirmed: bool = True
@@ -53,6 +56,7 @@ class AuditEvent(BaseEvent):
 
 class ErrorEvent(BaseEvent):
     """System or tool error event."""
+
     error_message: str
     exception_type: Optional[str] = None
     stack_trace: Optional[str] = None
@@ -60,6 +64,7 @@ class ErrorEvent(BaseEvent):
 
 class VoiceEvent(BaseEvent):
     """Voice recognition event."""
+
     transcript: str
     confidence: float = 1.0
     speaker: str = "user"
@@ -67,6 +72,7 @@ class VoiceEvent(BaseEvent):
 
 class ToolExecutionEvent(BaseEvent):
     """Tool execution lifecycle event."""
+
     tool_name: str
     args: Dict[str, Any] = Field(default_factory=dict)
     success: Optional[bool] = None
@@ -76,6 +82,7 @@ class ToolExecutionEvent(BaseEvent):
 
 class VisionEvent(BaseEvent):
     """Screen understanding / vision event."""
+
     active_window: Optional[str] = None
     nodes_count: int = 0
     verification_success: Optional[bool] = None
@@ -83,6 +90,7 @@ class VisionEvent(BaseEvent):
 
 class AgentLifecycleEvent(BaseEvent):
     """Agent thinking and loop lifecycle event."""
+
     session_id: str = ""
     task_id: str = ""
     phase: str = "thinking"  # started, thinking, context_started, context_completed, plan_created, plan_updated, interrupted, cancelled, completed
@@ -92,6 +100,7 @@ class AgentLifecycleEvent(BaseEvent):
 
 class PermissionEvent(BaseEvent):
     """Permission request and resolution lifecycle event."""
+
     request_id: str = ""
     session_id: str = ""
     task_id: str = ""
@@ -105,6 +114,7 @@ class PermissionEvent(BaseEvent):
 
 class ToolLifecycleEvent(BaseEvent):
     """Detailed tool execution lifecycle event."""
+
     tool_name: str
     session_id: str = ""
     task_id: str = ""
@@ -120,6 +130,7 @@ class ToolLifecycleEvent(BaseEvent):
 
 class VerificationEvent(BaseEvent):
     """Physical state verification lifecycle event."""
+
     session_id: str = ""
     task_id: str = ""
     tool_name: str = ""
@@ -132,6 +143,7 @@ class VerificationEvent(BaseEvent):
 
 class ArtifactLifecycleEvent(BaseEvent):
     """User-facing artifact lifecycle event."""
+
     artifact_id: str
     session_id: str = ""
     task_id: str = ""
@@ -145,9 +157,9 @@ class ArtifactLifecycleEvent(BaseEvent):
 
 class SessionLifecycleEvent(BaseEvent):
     """Agent session lifecycle event."""
+
     session_id: str
     action: str = "started"  # started, resumed, updated, closed
     mode: str = "general"
     active_model: str = "gemini"
     turns_count: int = 0
-

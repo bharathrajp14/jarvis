@@ -14,71 +14,70 @@ Key Features:
 8. Multi-Stage Action & Workflow Verification (SUCCESS_VERIFIED, PARTIAL_SUCCESS, FAILED).
 9. Memory & Lessons extraction for successful multi-tool workflow topologies.
 """
+
 from __future__ import annotations
 
 import concurrent.futures
-import copy
 import json
 import logging
-import os
 import re
 import sqlite3
 import sys
 import threading
 import time
-import uuid
 from collections import deque
 from dataclasses import asdict, dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Sequence, Set, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
 logger = logging.getLogger("JARVIS.ToolOrchestrator")
 
 
 # ── 1. Enums and Data Models ──────────────────────────────────────────────────
 
+
 class ToolHealthStatus(str, Enum):
-    READY       = "READY"
-    DEGRADED    = "DEGRADED"
-    DISABLED    = "DISABLED"
-    BLOCKED     = "BLOCKED"
+    READY = "READY"
+    DEGRADED = "DEGRADED"
+    DISABLED = "DISABLED"
+    BLOCKED = "BLOCKED"
     UNAVAILABLE = "UNAVAILABLE"
 
 
 class StepExecutionStatus(str, Enum):
-    PENDING              = "PENDING"
-    READY                = "READY"
-    RUNNING              = "RUNNING"
-    SUCCESS_VERIFIED     = "SUCCESS_VERIFIED"
-    SUCCESS_UNVERIFIED   = "SUCCESS_UNVERIFIED"
-    PARTIAL_SUCCESS      = "PARTIAL_SUCCESS"
-    FAILED               = "FAILED"
-    CANCELLED            = "CANCELLED"
-    SKIPPED              = "SKIPPED"
-    WAITING_APPROVAL     = "WAITING_APPROVAL"
+    PENDING = "PENDING"
+    READY = "READY"
+    RUNNING = "RUNNING"
+    SUCCESS_VERIFIED = "SUCCESS_VERIFIED"
+    SUCCESS_UNVERIFIED = "SUCCESS_UNVERIFIED"
+    PARTIAL_SUCCESS = "PARTIAL_SUCCESS"
+    FAILED = "FAILED"
+    CANCELLED = "CANCELLED"
+    SKIPPED = "SKIPPED"
+    WAITING_APPROVAL = "WAITING_APPROVAL"
 
 
 class TaskExecutionStatus(str, Enum):
-    CREATED          = "CREATED"
-    RUNNING          = "RUNNING"
+    CREATED = "CREATED"
+    RUNNING = "RUNNING"
     SUCCESS_VERIFIED = "SUCCESS_VERIFIED"
-    PARTIAL_SUCCESS  = "PARTIAL_SUCCESS"
-    FAILED           = "FAILED"
-    CANCELLED        = "CANCELLED"
+    PARTIAL_SUCCESS = "PARTIAL_SUCCESS"
+    FAILED = "FAILED"
+    CANCELLED = "CANCELLED"
 
 
 class ToolCategory(str, Enum):
-    WEB_SEARCH     = "WEB_SEARCH"
-    FILE_SYSTEM    = "FILE_SYSTEM"
-    REPO_ANALYSIS  = "REPO_ANALYSIS"
-    BROWSER        = "BROWSER"
-    OFFICE_DOC     = "OFFICE_DOC"
-    SYSTEM_DIAG    = "SYSTEM_DIAG"
-    CODE_EXEC      = "CODE_EXEC"
-    COMMUNICATION  = "COMMUNICATION"
-    MEMORY         = "MEMORY"
-    GENERAL        = "GENERAL"
+    WEB_SEARCH = "WEB_SEARCH"
+    FILE_SYSTEM = "FILE_SYSTEM"
+    REPO_ANALYSIS = "REPO_ANALYSIS"
+    BROWSER = "BROWSER"
+    OFFICE_DOC = "OFFICE_DOC"
+    SYSTEM_DIAG = "SYSTEM_DIAG"
+    CODE_EXEC = "CODE_EXEC"
+    COMMUNICATION = "COMMUNICATION"
+    MEMORY = "MEMORY"
+    GENERAL = "GENERAL"
 
 
 @dataclass
@@ -177,6 +176,7 @@ class ToolPlan:
 
 
 # ── 2. Step Result & Reference Store ──────────────────────────────────────────
+
 
 class StepResultStore:
     """
@@ -298,6 +298,7 @@ def get_step_result_store() -> StepResultStore:
 
 # ── 3. Tool Input Mapper & Dependency Resolver ────────────────────────────────
 
+
 class ToolInputMapper:
     """
     Dynamically maps parameters for a step using upstream execution outputs,
@@ -404,6 +405,7 @@ class ToolInputMapper:
 
 # ── 4. Tool Health & Fallback Manager ─────────────────────────────────────────
 
+
 class ToolHealthManager:
     """
     Maintains health status and prioritized fallback tool chains across tool categories.
@@ -413,30 +415,14 @@ class ToolHealthManager:
     def __init__(self):
         self._health: Dict[str, ToolHealthStatus] = {}
         self._category_tools: Dict[ToolCategory, List[str]] = {
-            ToolCategory.WEB_SEARCH: [
-                "web_search", "fetch_page", "browser_control"
-            ],
-            ToolCategory.OFFICE_DOC: [
-                "document_creator", "create_word_document", "create_pdf_document"
-            ],
-            ToolCategory.BROWSER: [
-                "browser_control", "open_app", "browser_open_url"
-            ],
-            ToolCategory.FILE_SYSTEM: [
-                "file_controller", "file_read", "file_write"
-            ],
-            ToolCategory.REPO_ANALYSIS: [
-                "file_read", "git_repo_mgr", "code_helper"
-            ],
-            ToolCategory.SYSTEM_DIAG: [
-                "system_diagnostic", "system_monitor", "computer_settings"
-            ],
-            ToolCategory.CODE_EXEC: [
-                "code_helper", "dev_agent", "scratchpad_eval"
-            ],
-            ToolCategory.COMMUNICATION: [
-                "send_message", "smart_email_sender", "email_assistant"
-            ],
+            ToolCategory.WEB_SEARCH: ["web_search", "fetch_page", "browser_control"],
+            ToolCategory.OFFICE_DOC: ["document_creator", "create_word_document", "create_pdf_document"],
+            ToolCategory.BROWSER: ["browser_control", "open_app", "browser_open_url"],
+            ToolCategory.FILE_SYSTEM: ["file_controller", "file_read", "file_write"],
+            ToolCategory.REPO_ANALYSIS: ["file_read", "git_repo_mgr", "code_helper"],
+            ToolCategory.SYSTEM_DIAG: ["system_diagnostic", "system_monitor", "computer_settings"],
+            ToolCategory.CODE_EXEC: ["code_helper", "dev_agent", "scratchpad_eval"],
+            ToolCategory.COMMUNICATION: ["send_message", "smart_email_sender", "email_assistant"],
         }
         self._fallback_records: List[Dict[str, Any]] = []
         self._lock = threading.RLock()
@@ -483,7 +469,10 @@ class ToolHealthManager:
             self._fallback_records.append(rec)
             logger.warning(
                 "🔄 [ToolFallback] Primary '%s' failed (%s) -> Selected fallback '%s' (Success: %s)",
-                primary, reason, fallback, success
+                primary,
+                reason,
+                fallback,
+                success,
             )
 
 
@@ -498,6 +487,7 @@ def get_tool_health_manager() -> ToolHealthManager:
 
 
 # ── 5. Graph Topology & Cycle Detection ───────────────────────────────────────
+
 
 class ExecutionGraph:
     """
@@ -539,7 +529,9 @@ class ExecutionGraph:
 
         if processed < len(all_ids):
             cycle_nodes = [sid for sid, deg in in_degree.items() if deg > 0]
-            raise ValueError(f"[ExecutionGraph] Cycle detected in task '{self.plan.task_id}'! Cycle nodes: {cycle_nodes}")
+            raise ValueError(
+                f"[ExecutionGraph] Cycle detected in task '{self.plan.task_id}'! Cycle nodes: {cycle_nodes}"
+            )
 
     def get_ready_steps(self, completed_ids: Set[str], failed_ids: Set[str]) -> List[ToolStep]:
         """Find pending steps whose non-optional dependencies and condition prerequisites are met."""
@@ -569,7 +561,6 @@ class ExecutionGraph:
 
         return ready
 
-
     def form_conflict_free_wave(self, candidate_steps: List[ToolStep], max_wave_size: int) -> List[ToolStep]:
         """Form a wave of steps respecting Reader-Writer exclusion locks on resource keys."""
         wave: List[ToolStep] = []
@@ -598,6 +589,7 @@ class ExecutionGraph:
 
 
 # ── 6. Persistent Task Checkpointer (SQLite WAL) ──────────────────────────────
+
 
 class TaskCheckpointer:
     """
@@ -658,7 +650,7 @@ class TaskCheckpointer:
             plan_json = json.dumps(plan.to_dict(), ensure_ascii=False)
             conn.execute(
                 "INSERT OR REPLACE INTO tool_plans (task_id, goal, status, plan_data, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
-                (plan.task_id, plan.goal, plan.status.value, plan_json, plan.created_at, plan.updated_at)
+                (plan.task_id, plan.goal, plan.status.value, plan_json, plan.created_at, plan.updated_at),
             )
 
             for step in plan.steps:
@@ -670,10 +662,16 @@ class TaskCheckpointer:
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
-                        plan.task_id, step.step_id, step.tool,
+                        plan.task_id,
+                        step.step_id,
+                        step.tool,
                         step.status.value if isinstance(step.status, StepExecutionStatus) else str(step.status),
-                        res_str, step.evidence, step.error, step.duration_sec, time.time()
-                    )
+                        res_str,
+                        step.evidence,
+                        step.error,
+                        step.duration_sec,
+                        time.time(),
+                    ),
                 )
             conn.commit()
         finally:
@@ -706,6 +704,7 @@ def get_task_checkpointer() -> TaskCheckpointer:
 
 
 # ── 7. Conditional Branching & Evaluation ─────────────────────────────────────
+
 
 class ConditionalEvaluator:
     """Evaluates predicate conditions for dynamic branching and supplemental execution."""
@@ -756,6 +755,7 @@ class ConditionalEvaluator:
 
 
 # ── 8. Parallel Multi-Tool Execution Engine ───────────────────────────────────
+
 
 @dataclass
 class WorkflowExecutionReport:
@@ -844,12 +844,20 @@ class ParallelToolExecutor:
                 partial_ids.add(step.step_id)
                 if step.result is not None:
                     step_outputs[step.step_id] = step.result
-            elif step.status in (StepExecutionStatus.FAILED, StepExecutionStatus.SKIPPED, StepExecutionStatus.CANCELLED):
+            elif step.status in (
+                StepExecutionStatus.FAILED,
+                StepExecutionStatus.SKIPPED,
+                StepExecutionStatus.CANCELLED,
+            ):
                 failed_ids.add(step.step_id)
 
         total_steps_count = len(plan.steps)
-        logger.info("🚀 [ParallelToolExecutor] Starting execution for task '%s' (%d steps, %d already completed)", plan.task_id, total_steps_count, len(completed_ids))
-
+        logger.info(
+            "🚀 [ParallelToolExecutor] Starting execution for task '%s' (%d steps, %d already completed)",
+            plan.task_id,
+            total_steps_count,
+            len(completed_ids),
+        )
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=min(self.max_concurrency, plan.max_concurrency)) as pool:
             while len(completed_ids) + len(failed_ids) < total_steps_count:
@@ -890,7 +898,11 @@ class ParallelToolExecutor:
                         for sid, s in graph.step_map.items()
                     }
                     if not ConditionalEvaluator.evaluate(step.condition, eval_ctx):
-                        logger.info("[ParallelToolExecutor] Step '%s' condition '%s' evaluated to False -> Skipping", step.step_id, step.condition)
+                        logger.info(
+                            "[ParallelToolExecutor] Step '%s' condition '%s' evaluated to False -> Skipping",
+                            step.step_id,
+                            step.condition,
+                        )
                         step.status = StepExecutionStatus.SKIPPED
                         step.result = "Condition evaluated to False"
                         completed_ids.add(step.step_id)
@@ -910,10 +922,7 @@ class ParallelToolExecutor:
                     step.parameters = ToolInputMapper.resolve_inputs(step, plan, self.result_store, step_outputs)
 
                 # 5. Dispatch wave to ThreadPoolExecutor
-                futures = {
-                    pool.submit(self._execute_single_step, step, plan): step
-                    for step in wave
-                }
+                futures = {pool.submit(self._execute_single_step, step, plan): step for step in wave}
 
                 for future in concurrent.futures.as_completed(futures):
                     step = futures[future]
@@ -956,10 +965,10 @@ class ParallelToolExecutor:
         try:
             from brjarvis.core.execution.completion_gate import get_task_completion_gate
             from brjarvis.core.execution.types import ExecutionStatus
-            
+
             step_dicts = [s.to_dict() for s in plan.steps]
             gate_res = get_task_completion_gate().evaluate_task(plan.goal, step_dicts, step_outputs)
-            
+
             if gate_res.final_status == ExecutionStatus.SUCCESS_VERIFIED:
                 plan.status = TaskExecutionStatus.SUCCESS_VERIFIED
             elif gate_res.final_status == ExecutionStatus.PARTIAL_SUCCESS:
@@ -967,10 +976,7 @@ class ParallelToolExecutor:
             else:
                 plan.status = TaskExecutionStatus.FAILED
         except Exception:
-            critical_failed = any(
-                s.status == StepExecutionStatus.FAILED and s.is_critical
-                for s in plan.steps
-            )
+            critical_failed = any(s.status == StepExecutionStatus.FAILED and s.is_critical for s in plan.steps)
             if not critical_failed and len(failed_ids) == 0:
                 plan.status = TaskExecutionStatus.SUCCESS_VERIFIED
             elif len(completed_ids) > 0:
@@ -1002,23 +1008,35 @@ class ParallelToolExecutor:
 
     def _execute_single_step(self, step: ToolStep, plan: ToolPlan) -> Tuple[Any, StepExecutionStatus, str]:
         """Execute a single step with retries, fallback tool switching, and ActionVerifier verification."""
-        from brjarvis.agent.verifier import get_action_verifier, VerificationStatus
+        from brjarvis.agent.verifier import VerificationStatus, get_action_verifier
+
         verifier = get_action_verifier()
 
         active_tool = step.tool
-        fallback_candidates = list(step.fallback_tools) or self.health_manager.get_fallback_chain(step.tool, step.category)
+        fallback_candidates = list(step.fallback_tools) or self.health_manager.get_fallback_chain(
+            step.tool, step.category
+        )
         all_attempts = [active_tool] + fallback_candidates
 
         last_error = None
         for candidate_tool in all_attempts:
             # Skip disabled/blocked tools
             if not self.health_manager.is_available(candidate_tool):
-                logger.warning("[StepExec] Skipping tool '%s' (Health: %s)", candidate_tool, self.health_manager.get_health(candidate_tool))
+                logger.warning(
+                    "[StepExec] Skipping tool '%s' (Health: %s)",
+                    candidate_tool,
+                    self.health_manager.get_health(candidate_tool),
+                )
                 continue
 
             for attempt in range(step.max_retries + 1):
                 try:
-                    logger.info("▶ [StepExec] Step '%s' invoking tool '%s' (Attempt %d)", step.step_id, candidate_tool, attempt + 1)
+                    logger.info(
+                        "▶ [StepExec] Step '%s' invoking tool '%s' (Attempt %d)",
+                        step.step_id,
+                        candidate_tool,
+                        attempt + 1,
+                    )
                     raw_result = self.tool_runner(candidate_tool, step.parameters)
 
                     # Verify tool execution outcome
@@ -1027,13 +1045,20 @@ class ParallelToolExecutor:
                     if v_res.verified and v_res.status == VerificationStatus.SUCCESS_VERIFIED:
                         if candidate_tool != step.tool:
                             step.fallback_used = candidate_tool
-                            self.health_manager.record_fallback(step.tool, candidate_tool, str(last_error or "primary failed"), True)
+                            self.health_manager.record_fallback(
+                                step.tool, candidate_tool, str(last_error or "primary failed"), True
+                            )
                         return raw_result, StepExecutionStatus.SUCCESS_VERIFIED, v_res.evidence or v_res.details
                     elif v_res.status == VerificationStatus.PARTIAL_SUCCESS:
                         return raw_result, StepExecutionStatus.PARTIAL_SUCCESS, v_res.evidence or v_res.details
                     else:
                         last_error = v_res.error or v_res.details or "Verification failed"
-                        logger.warning("[StepExec] Step '%s' tool '%s' verification rejected: %s", step.step_id, candidate_tool, last_error)
+                        logger.warning(
+                            "[StepExec] Step '%s' tool '%s' verification rejected: %s",
+                            step.step_id,
+                            candidate_tool,
+                            last_error,
+                        )
 
                 except Exception as err:
                     last_error = err
@@ -1047,12 +1072,22 @@ class ParallelToolExecutor:
             f"### Multi-Tool Execution Report for Task: {plan.goal}",
             f"**Status**: {plan.status.value}",
             "",
-            "#### Step Execution Details:"
+            "#### Step Execution Details:",
         ]
         for idx, step in enumerate(plan.steps, start=1):
-            icon = "✅" if step.status == StepExecutionStatus.SUCCESS_VERIFIED else "⚠️" if step.status == StepExecutionStatus.PARTIAL_SUCCESS else "❌" if step.status == StepExecutionStatus.FAILED else "⏭️"
+            icon = (
+                "✅"
+                if step.status == StepExecutionStatus.SUCCESS_VERIFIED
+                else "⚠️"
+                if step.status == StepExecutionStatus.PARTIAL_SUCCESS
+                else "❌"
+                if step.status == StepExecutionStatus.FAILED
+                else "⏭️"
+            )
             fallback_note = f" (fallback: {step.fallback_used})" if step.fallback_used else ""
-            lines.append(f"{idx}. {icon} **{step.title or step.tool}** (`{step.tool}`{fallback_note}): {step.status.value}")
+            lines.append(
+                f"{idx}. {icon} **{step.title or step.tool}** (`{step.tool}`{fallback_note}): {step.status.value}"
+            )
             if step.evidence:
                 lines.append(f"   - Evidence: {step.evidence}")
             if step.error:
@@ -1063,12 +1098,17 @@ class ParallelToolExecutor:
     def _save_workflow_learning(self, plan: ToolPlan) -> None:
         """Record successful workflow sequence and tool substitutions to memory and lessons store."""
         try:
-            tools_used = [s.tool for s in plan.steps if s.status in (StepExecutionStatus.SUCCESS_VERIFIED, StepExecutionStatus.PARTIAL_SUCCESS)]
+            tools_used = [
+                s.tool
+                for s in plan.steps
+                if s.status in (StepExecutionStatus.SUCCESS_VERIFIED, StepExecutionStatus.PARTIAL_SUCCESS)
+            ]
             seq_desc = " -> ".join(tools_used)
 
             # 1. Record in LessonStore
             try:
                 from brjarvis.memory.lessons import LessonStore
+
                 ls = LessonStore()
                 ls.record_workflow_lesson(workflow_name=plan.goal[:40], sequence_desc=seq_desc, success=True)
             except Exception as ls_err:
@@ -1076,12 +1116,12 @@ class ParallelToolExecutor:
 
             # 2. Record in UnifiedMemory
             from brjarvis.memory.unified_memory import get_unified_memory
+
             um = get_unified_memory()
             content = f"Workflow sequence for '{plan.goal}': {seq_desc}"
             um.save(category="operational", name=f"workflow_{plan.task_id[:8]}", content=content, importance=0.8)
         except Exception as exc:
             logger.debug("[ParallelToolExecutor] Learning record skipped: %s", exc)
-
 
 
 _global_parallel_executor: Optional[ParallelToolExecutor] = None

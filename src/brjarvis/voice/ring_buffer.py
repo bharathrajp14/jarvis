@@ -4,23 +4,25 @@ High-performance thread-safe rolling PCM audio ring buffer.
 Maintains a 500ms pre-roll audio queue (16kHz 16-bit mono PCM = 16,000 bytes/sec).
 Ensures zero audio truncation during wake word and push-to-talk transitions.
 """
+
 from __future__ import annotations
 
 import collections
 import threading
-from typing import Optional
 
 
 class AudioRingBuffer:
     """Thread-safe rolling PCM audio pre-roll ring buffer."""
 
-    def __init__(self, sample_rate: int = 16000, sample_width: int = 2, channels: int = 1, buffer_duration_ms: int = 500):
+    def __init__(
+        self, sample_rate: int = 16000, sample_width: int = 2, channels: int = 1, buffer_duration_ms: int = 500
+    ):
         self.sample_rate = sample_rate
         self.sample_width = sample_width
         self.channels = channels
         self.bytes_per_second = sample_rate * sample_width * channels
         self.max_bytes = int(self.bytes_per_second * (buffer_duration_ms / 1000.0))
-        
+
         self._lock = threading.Lock()
         self._buffer = collections.deque()
         self._current_size = 0
@@ -29,7 +31,7 @@ class AudioRingBuffer:
         """Append raw PCM audio bytes to rolling buffer, dropping oldest frames when limit exceeded."""
         if not chunk:
             return
-            
+
         with self._lock:
             self._buffer.append(chunk)
             self._current_size += len(chunk)

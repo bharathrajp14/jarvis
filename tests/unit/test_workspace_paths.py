@@ -7,10 +7,12 @@ Verifies:
   - PathContainmentError raised on path traversal attempts
   - Absolute paths within workspace pass through
 """
+
 from __future__ import annotations
 
-import pytest
 from pathlib import Path
+
+import pytest
 
 
 @pytest.fixture
@@ -20,15 +22,14 @@ def wm(tmp_path):
 
     # Build a minimal PathManager pointing to tmp_path
     pm = PathManager.__new__(PathManager)
-    pm.PROJECT_ROOT  = tmp_path / "project"
+    pm.PROJECT_ROOT = tmp_path / "project"
     pm.WORKSPACE_ROOT = tmp_path / "workspace"
-    pm.DOCUMENTS_DIR  = pm.WORKSPACE_ROOT / "Documents"
-    pm.ARTIFACT_ROOT  = pm.WORKSPACE_ROOT / "artifacts"
-    pm.CAREER_DIR     = pm.WORKSPACE_ROOT / "Career"
-    pm.TEMP_ROOT      = pm.WORKSPACE_ROOT / "Temporary"
+    pm.DOCUMENTS_DIR = pm.WORKSPACE_ROOT / "Documents"
+    pm.ARTIFACT_ROOT = pm.WORKSPACE_ROOT / "artifacts"
+    pm.CAREER_DIR = pm.WORKSPACE_ROOT / "Career"
+    pm.TEMP_ROOT = pm.WORKSPACE_ROOT / "Temporary"
     # Create the directories
-    for d in [pm.PROJECT_ROOT, pm.WORKSPACE_ROOT, pm.DOCUMENTS_DIR,
-              pm.ARTIFACT_ROOT, pm.CAREER_DIR, pm.TEMP_ROOT]:
+    for d in [pm.PROJECT_ROOT, pm.WORKSPACE_ROOT, pm.DOCUMENTS_DIR, pm.ARTIFACT_ROOT, pm.CAREER_DIR, pm.TEMP_ROOT]:
         d.mkdir(parents=True, exist_ok=True)
 
     return WorkspaceManager(pm=pm)

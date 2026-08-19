@@ -4,16 +4,16 @@ High-Fidelity Verified Smart Email Suite for BR JARVIS MK40.2 / MK41.
 Guarantees recipient address resolution, explicit delivery status (SENT vs DRAFTED),
 attachment validation, idempotency, and canonical ToolResult evidence contracts.
 """
+
 from __future__ import annotations
 
 import json
-from pathlib import Path
-from typing import Any, Dict, List, Optional
 
-from .domain import RiskLevel, SideEffectLevel, ToolCategory, ToolErrorCode, VerificationStrategy
+from brjarvis.actions.smart_email_sender import get_smart_email_sender
+
+from .domain import ToolErrorCode
 from .registry import register_tool
 from .tool_result import ToolResult
-from brjarvis.actions.smart_email_sender import get_smart_email_sender
 
 
 @register_tool(
@@ -22,7 +22,10 @@ from brjarvis.actions.smart_email_sender import get_smart_email_sender
     parameters={
         "type": "object",
         "properties": {
-            "recipient": {"type": "string", "description": "Recipient email address (e.g. user@example.com) or contact name"},
+            "recipient": {
+                "type": "string",
+                "description": "Recipient email address (e.g. user@example.com) or contact name",
+            },
             "subject": {"type": "string", "description": "Email subject line"},
             "body": {"type": "string", "description": "Email message body"},
             "attachment_paths": {
@@ -98,7 +101,10 @@ def tool_send_email(args: dict) -> ToolResult:
             "recipient": {"type": "string", "description": "Recipient email address or contact name"},
             "subject": {"type": "string", "description": "Email subject line"},
             "body": {"type": "string", "description": "Email message body"},
-            "send_at": {"type": "string", "description": "Future date/time string (e.g. '2026-08-20 09:00:00' or '14:30')"},
+            "send_at": {
+                "type": "string",
+                "description": "Future date/time string (e.g. '2026-08-20 09:00:00' or '14:30')",
+            },
         },
         "required": ["recipient", "subject", "body", "send_at"],
     },

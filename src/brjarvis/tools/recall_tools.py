@@ -3,9 +3,10 @@ from __future__ import annotations
 
 import re
 from datetime import datetime
-from pathlib import Path
+
+from brjarvis.actions.galaxy import CAPTURES_DIR, build_galaxy_graph
+
 from .registry import register_tool
-from brjarvis.actions.galaxy import build_galaxy_graph, CAPTURES_DIR
 
 
 @register_tool(
@@ -14,10 +15,13 @@ from brjarvis.actions.galaxy import build_galaxy_graph, CAPTURES_DIR
     parameters={
         "type": "object",
         "properties": {
-            "text": {"type": "string", "description": "Information or memory note to save and index into knowledge brain."}
+            "text": {
+                "type": "string",
+                "description": "Information or memory note to save and index into knowledge brain.",
+            }
         },
-        "required": ["text"]
-    }
+        "required": ["text"],
+    },
 )
 def tool_remember_that(text: str) -> str:
     text = text.strip()

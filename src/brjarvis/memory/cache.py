@@ -1,10 +1,10 @@
 # memory/cache.py — High-Performance TTL Cache Engine for JARVIS MK37
 from __future__ import annotations
 
-import json
 import logging
 import time
 from typing import Any, Dict, Optional
+
 from brjarvis.core.native_bridge import fast_hash
 
 logger = logging.getLogger("JARVIS.Cache")

@@ -12,9 +12,9 @@ Libraries used:
   - Pillow      : jpg_to_pdf, image watermarks
   - fpdf2       : html_to_pdf, word_to_pdf, excel_to_pdf
 """
+
 from __future__ import annotations
 
-import io
 import json
 import logging
 import os
@@ -38,6 +38,7 @@ except ImportError:
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def _ensure_output(output_path: str | None, input_path: str, suffix: str) -> Path:
     """Derive output path from input if not supplied."""
@@ -74,10 +75,11 @@ def _parse_pages(pages_arg: Any) -> list[int] | None:
 # Action Implementations
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def _merge(args: dict) -> str:
     """Merge multiple PDFs into one."""
     try:
-        from pypdf import PdfWriter, PdfReader  # type: ignore[import-not-found]
+        from pypdf import PdfReader, PdfWriter  # type: ignore[import-not-found]
     except ImportError:
         return "ERROR: pypdf not installed. Run: pip install pypdf"
 
@@ -110,7 +112,7 @@ def _merge(args: dict) -> str:
 def _split(args: dict) -> str:
     """Split PDF into individual pages or specified page ranges."""
     try:
-        from pypdf import PdfWriter, PdfReader  # type: ignore[import-not-found]
+        from pypdf import PdfReader, PdfWriter  # type: ignore[import-not-found]
     except ImportError:
         return "ERROR: pypdf not installed."
 
@@ -165,7 +167,9 @@ def _compress(args: dict) -> str:
     doc.close()
     new_size = out.stat().st_size
     reduction = (1 - new_size / original_size) * 100 if original_size > 0 else 0
-    return f"Compressed: {original_size // 1024}KB -> {new_size // 1024}KB ({reduction:.1f}% reduction) -> {out.resolve()}"
+    return (
+        f"Compressed: {original_size // 1024}KB -> {new_size // 1024}KB ({reduction:.1f}% reduction) -> {out.resolve()}"
+    )
 
 
 def _pdf_to_word(args: dict) -> str:
@@ -312,9 +316,9 @@ def _word_to_pdf(args: dict) -> str:
 def _powerpoint_to_pdf(args: dict) -> str:
     """Convert PPTX to PDF."""
     try:
-        from pptx import Presentation  # type: ignore[import-not-found]
-        from PIL import Image  # type: ignore[import-not-found]
         from fpdf import FPDF  # type: ignore[import-not-found]
+        from PIL import Image  # type: ignore[import-not-found]
+        from pptx import Presentation  # type: ignore[import-not-found]
     except ImportError as e:
         return f"ERROR: Missing dependency: {e}. Run: pip install python-pptx Pillow fpdf2"
 
@@ -346,8 +350,8 @@ def _powerpoint_to_pdf(args: dict) -> str:
 def _excel_to_pdf(args: dict) -> str:
     """Convert XLSX to PDF using fpdf2."""
     try:
-        from openpyxl import load_workbook  # type: ignore[import-not-found]
         from fpdf import FPDF  # type: ignore[import-not-found]
+        from openpyxl import load_workbook  # type: ignore[import-not-found]
     except ImportError as e:
         return f"ERROR: Missing dependency: {e}. Run: pip install openpyxl fpdf2"
 
@@ -517,7 +521,7 @@ def _watermark(args: dict) -> str:
 def _rotate(args: dict) -> str:
     """Rotate PDF pages by specified degrees."""
     try:
-        from pypdf import PdfWriter, PdfReader  # type: ignore[import-not-found]
+        from pypdf import PdfReader, PdfWriter  # type: ignore[import-not-found]
     except ImportError:
         return "ERROR: pypdf not installed."
 
@@ -570,6 +574,7 @@ def _html_to_pdf(args: dict) -> str:
         pdf.write_html(html_content)
     except Exception:
         import re
+
         plain = re.sub(r"<[^>]+>", "", html_content)
         pdf.multi_cell(0, 6, plain)
 
@@ -922,12 +927,14 @@ def _pdf_forms(args: dict) -> str:
         fields = []
         for page in doc:
             for widget in page.widgets() if hasattr(page, "widgets") else []:
-                fields.append({
-                    "name": widget.field_name,
-                    "type": widget.field_type_string,
-                    "value": widget.field_value,
-                    "page": page.number + 1,
-                })
+                fields.append(
+                    {
+                        "name": widget.field_name,
+                        "type": widget.field_type_string,
+                        "value": widget.field_value,
+                        "page": page.number + 1,
+                    }
+                )
         doc.close()
         return json.dumps(fields, indent=2)
 
@@ -957,6 +964,7 @@ def _summarize(args: dict) -> str:
 
     try:
         import fitz  # type: ignore[import-not-found]
+
         doc = fitz.open(str(input_path))
         full_text = ""
         for page in doc:
@@ -968,6 +976,7 @@ def _summarize(args: dict) -> str:
     text_chunk = full_text[:8000]
     try:
         from brjarvis.integrations.backends.gemini import GeminiBackend
+
         gemini = GeminiBackend()
         prompt = f"Please provide a concise, structured summary of the following PDF document content:\n\n{text_chunk}"
         return gemini.quick(prompt)
@@ -984,6 +993,7 @@ def _translate(args: dict) -> str:
 
     try:
         import fitz  # type: ignore[import-not-found]
+
         doc = fitz.open(str(input_path))
         full_text = ""
         for page in doc:
@@ -995,6 +1005,7 @@ def _translate(args: dict) -> str:
     text_chunk = full_text[:6000]
     try:
         from brjarvis.integrations.backends.gemini import GeminiBackend
+
         gemini = GeminiBackend()
         prompt = f"Translate the following text to {target_lang}. Output only the translated text:\n\n{text_chunk}"
         translation = gemini.quick(prompt)
@@ -1156,6 +1167,7 @@ _ACTION_MAP = {
 # ─────────────────────────────────────────────────────────────────────────────
 # Registered Tool
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 @register_tool(
     name="pdf_tool",

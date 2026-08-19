@@ -7,13 +7,10 @@ Features:
 - Real-time VAD voice barge-in (speech interruption)
 - Conversational Gemini voice prompt persona
 """
+
 from __future__ import annotations
 
-import asyncio
 import logging
-import os
-import re
-import sys
 import threading
 import time
 
@@ -22,16 +19,15 @@ logger = logging.getLogger("JARVIS.GeminiLive")
 _HAS_SR = False
 try:
     import speech_recognition as sr
+
     _HAS_SR = True
 except ImportError:
     sr = None
 
-from .tts import NeuralTTS
 from .audio_bus import AudioBusMicrophoneSource
 from .audio_processor import AudioProcessor
 from .shortcuts import match_voice_shortcut
-
-
+from .tts import NeuralTTS
 
 GEMINI_VOICE_PERSONA_PROMPT = """
 You are speaking in Gemini Live Voice Mode.
@@ -50,8 +46,12 @@ class GeminiLiveVoiceLoop:
         self.assistant = assistant_ref
         self.ui = ui_ref
         self.processor = AudioProcessor(sample_rate=16000)
-        self.tts = self.assistant.tts if (self.assistant and hasattr(self.assistant, 'tts') and self.assistant.tts) else NeuralTTS(voice_key="default", rate="+0%")
-        
+        self.tts = (
+            self.assistant.tts
+            if (self.assistant and hasattr(self.assistant, "tts") and self.assistant.tts)
+            else NeuralTTS(voice_key="default", rate="+0%")
+        )
+
         self.recognizer = sr.Recognizer() if _HAS_SR else None
         if self.recognizer:
             # Low-latency STT tuning (tuned for clear speech without premature truncation)
@@ -59,7 +59,6 @@ class GeminiLiveVoiceLoop:
             self.recognizer.non_speaking_duration = 0.20
             self.recognizer.phrase_threshold = 0.08
             self.recognizer.dynamic_energy_threshold = True
-
 
         self.is_active = False
         self.is_listening = False
@@ -105,11 +104,7 @@ class GeminiLiveVoiceLoop:
 
                         self.is_listening = True
                         try:
-                            audio = self.recognizer.listen(
-                                source,
-                                timeout=5.0,
-                                phrase_time_limit=8.0
-                            )
+                            audio = self.recognizer.listen(source, timeout=5.0, phrase_time_limit=8.0)
                         except sr.WaitTimeoutError:
                             continue
                         finally:
@@ -126,6 +121,7 @@ class GeminiLiveVoiceLoop:
                         text = ""
                         try:
                             from brjarvis.voice.multilingual import get_google_stt_code
+
                             stt_lang = get_google_stt_code()
                             text = self.recognizer.recognize_google(audio, language=stt_lang)
                         except (sr.UnknownValueError, sr.RequestError):
@@ -152,7 +148,7 @@ class GeminiLiveVoiceLoop:
                         # Pass to Orchestrator with Gemini Voice Persona
                         if self.assistant and self.assistant.orchestrator:
                             augmented_input = f"{GEMINI_VOICE_PERSONA_PROMPT}\nUser input: {text}"
-                            
+
                             if self.ui:
                                 self.ui.set_state("SPEAKING")
 
@@ -170,6 +166,7 @@ class GeminiLiveVoiceLoop:
     def _speak_conversational(self, response_text: str):
         """Speak response using fast sentence-level TTS."""
         from brjarvis.voice.tts import clean_for_speech, split_sentences
+
         clean = clean_for_speech(response_text)
 
         if not clean:

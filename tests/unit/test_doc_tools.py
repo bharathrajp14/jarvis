@@ -1,21 +1,22 @@
 """
 Unit tests for BR JARVIS Executive Document Generator Engine (doc_tools.py).
 """
+
 from __future__ import annotations
 
 import tempfile
 from pathlib import Path
+
 import pytest
 
-from brjarvis.tools.doc_tools import (
-    document_creator,
-    create_word_document,
-    create_pdf_document,
-    generate_walkthrough,
-    generate_project_product_analysis,
-    _resolve_doc_path,
-)
 from brjarvis.agent.verifier import ActionVerifier
+from brjarvis.tools.doc_tools import (
+    _resolve_doc_path,
+    create_pdf_document,
+    create_word_document,
+    document_creator,
+    generate_walkthrough,
+)
 
 
 @pytest.mark.unit
@@ -34,7 +35,9 @@ def test_resolve_doc_path_rules():
 
     # 3. Bare filename placed under documents dir
     p_bare = _resolve_doc_path("financial_summary.pdf", "Financial Summary", "pdf")
-    assert str(p_bare).replace("\\", "/").endswith("workspace/documents/financial_summary.pdf") or str(p_bare).replace("\\", "/").endswith("workspace/Documents/financial_summary.pdf")
+    assert str(p_bare).replace("\\", "/").endswith("workspace/documents/financial_summary.pdf") or str(p_bare).replace(
+        "\\", "/"
+    ).endswith("workspace/Documents/financial_summary.pdf")
 
     # 4. Absolute path preserved
     with tempfile.TemporaryDirectory() as tmp:
@@ -72,16 +75,18 @@ def verify_kernel():
 1. Step one initialization
 2. Step two audit execution
 """
-        res = document_creator({
-            "title": "System Architecture Report",
-            "subtitle": "Q3 Technical Briefing",
-            "author": "BR JARVIS Core",
-            "content": content,
-            "filename": str(out_file),
-            "format": "docx",
-            "cover_page": True,
-            "auto_open": False
-        })
+        res = document_creator(
+            {
+                "title": "System Architecture Report",
+                "subtitle": "Q3 Technical Briefing",
+                "author": "BR JARVIS Core",
+                "content": content,
+                "filename": str(out_file),
+                "format": "docx",
+                "cover_page": True,
+                "auto_open": False,
+            }
+        )
 
         assert "SUCCESS_VERIFIED" in res or "Created Executive Document" in res
         assert out_file.exists()
@@ -111,15 +116,17 @@ def test_document_creator_pdf():
 | Memory | < 500MB | 240MB |
 | Latency | < 50ms | 12ms |
 """
-        res = document_creator({
-            "title": "PDF Diagnostic Report",
-            "subtitle": "System Audit",
-            "author": "BR JARVIS AI",
-            "content": content,
-            "filename": str(out_file),
-            "format": "pdf",
-            "auto_open": False
-        })
+        res = document_creator(
+            {
+                "title": "PDF Diagnostic Report",
+                "subtitle": "System Audit",
+                "author": "BR JARVIS AI",
+                "content": content,
+                "filename": str(out_file),
+                "format": "pdf",
+                "auto_open": False,
+            }
+        )
 
         assert "SUCCESS_VERIFIED" in res or "Created Executive Document" in res
         assert out_file.exists()
@@ -156,15 +163,17 @@ HTML generation provides **responsive web layouts** and *clean styles*.
 - Clean typography
 - Print-ready CSS
 """
-        res = document_creator({
-            "title": "Glassmorphism HTML Report",
-            "subtitle": "Web Interface Specification",
-            "author": "BR JARVIS Web Core",
-            "content": content,
-            "filename": str(out_file),
-            "format": "html",
-            "auto_open": False
-        })
+        res = document_creator(
+            {
+                "title": "Glassmorphism HTML Report",
+                "subtitle": "Web Interface Specification",
+                "author": "BR JARVIS Web Core",
+                "content": content,
+                "filename": str(out_file),
+                "format": "html",
+                "auto_open": False,
+            }
+        )
 
         assert "SUCCESS_VERIFIED" in res
         assert out_file.exists()
@@ -181,15 +190,17 @@ def test_document_creator_md():
     """Verify creating a clean Markdown document."""
     with tempfile.TemporaryDirectory() as tmp:
         out_file = Path(tmp) / "test_report.md"
-        res = document_creator({
-            "title": "Markdown Technical Note",
-            "subtitle": "Dev Spec",
-            "author": "BR JARVIS",
-            "content": "This is markdown content.",
-            "filename": str(out_file),
-            "format": "md",
-            "auto_open": False
-        })
+        res = document_creator(
+            {
+                "title": "Markdown Technical Note",
+                "subtitle": "Dev Spec",
+                "author": "BR JARVIS",
+                "content": "This is markdown content.",
+                "filename": str(out_file),
+                "format": "md",
+                "auto_open": False,
+            }
+        )
         assert "SUCCESS_VERIFIED" in res
         assert out_file.exists()
         content = out_file.read_text(encoding="utf-8")
@@ -202,33 +213,39 @@ def test_convenience_tool_wrappers():
     """Verify create_word_document, create_pdf_document, and generate_walkthrough wrappers."""
     with tempfile.TemporaryDirectory() as tmp:
         docx_file = Path(tmp) / "wrapper_test.docx"
-        res_word = create_word_document({
-            "title": "Word Wrapper Test",
-            "content": "# Header\n\nWord wrapper content.",
-            "filename": str(docx_file),
-            "auto_open": False
-        })
+        res_word = create_word_document(
+            {
+                "title": "Word Wrapper Test",
+                "content": "# Header\n\nWord wrapper content.",
+                "filename": str(docx_file),
+                "auto_open": False,
+            }
+        )
         assert "SUCCESS_VERIFIED" in res_word
         assert docx_file.exists()
 
         pdf_file = Path(tmp) / "wrapper_test.pdf"
-        res_pdf = create_pdf_document({
-            "title": "PDF Wrapper Test",
-            "content": "# Header\n\nPDF wrapper content.",
-            "filename": str(pdf_file),
-            "auto_open": False
-        })
+        res_pdf = create_pdf_document(
+            {
+                "title": "PDF Wrapper Test",
+                "content": "# Header\n\nPDF wrapper content.",
+                "filename": str(pdf_file),
+                "auto_open": False,
+            }
+        )
         assert "SUCCESS_VERIFIED" in res_pdf
         assert pdf_file.exists()
 
         wt_file = Path(tmp) / "walkthrough_test.md"
-        res_wt = generate_walkthrough({
-            "title": "Document Creator Fix",
-            "summary": "Repaired and modernized document creator engine.",
-            "changes": "- Fixed path duplication\n- Enhanced DOCX/PDF/HTML formatting",
-            "verification": "All unit tests passing.",
-            "filename": str(wt_file),
-            "auto_open": False
-        })
+        res_wt = generate_walkthrough(
+            {
+                "title": "Document Creator Fix",
+                "summary": "Repaired and modernized document creator engine.",
+                "changes": "- Fixed path duplication\n- Enhanced DOCX/PDF/HTML formatting",
+                "verification": "All unit tests passing.",
+                "filename": str(wt_file),
+                "auto_open": False,
+            }
+        )
         assert "Generated Walkthrough" in res_wt
         assert wt_file.exists()

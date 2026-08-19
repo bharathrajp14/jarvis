@@ -4,6 +4,7 @@ Universal Application Capability Registry for BR JARVIS MK37.
 Unifies all communication, productivity, engineering, research, business, local,
 and mobile devices behind standard capability models.
 """
+
 from __future__ import annotations
 
 import logging
@@ -76,9 +77,7 @@ class CapabilityRegistry:
         return self._capabilities.get(name.lower().strip())
 
     def list_capabilities(
-        self,
-        category: Optional[CapabilityCategory] = None,
-        authenticated_only: bool = False
+        self, category: Optional[CapabilityCategory] = None, authenticated_only: bool = False
     ) -> List[ApplicationCapability]:
         caps = list(self._capabilities.values())
         if category:
@@ -97,98 +96,116 @@ class CapabilityRegistry:
 
     def _register_default_capabilities(self) -> None:
         # Communication
-        self.register(ApplicationCapability(
-            name="gmail",
-            display_name="Gmail / Google Workspace",
-            category=CapabilityCategory.COMMUNICATION,
-            actions=["read_email", "search_email", "draft_email", "send_email"],
-            sensitivity=SensitivityLevel.HIGH,
-            requires_approval=True,
-            icon="✉️",
-            description="Manage inbox, search emails, compose drafts and send messages."
-        ))
-        self.register(ApplicationCapability(
-            name="whatsapp",
-            display_name="WhatsApp Automation",
-            category=CapabilityCategory.COMMUNICATION,
-            actions=["send_message", "search_contact", "send_document", "read_recent"],
-            sensitivity=SensitivityLevel.HIGH,
-            requires_approval=True,
-            icon="💬",
-            description="Send direct WhatsApp messages and media files to contacts."
-        ))
-        self.register(ApplicationCapability(
-            name="slack",
-            display_name="Slack Workspace",
-            category=CapabilityCategory.COMMUNICATION,
-            actions=["send_message", "list_channels", "search_messages"],
-            sensitivity=SensitivityLevel.MEDIUM,
-            requires_approval=True,
-            icon="👥",
-            description="Collaborate in Slack channels and direct messages."
-        ))
+        self.register(
+            ApplicationCapability(
+                name="gmail",
+                display_name="Gmail / Google Workspace",
+                category=CapabilityCategory.COMMUNICATION,
+                actions=["read_email", "search_email", "draft_email", "send_email"],
+                sensitivity=SensitivityLevel.HIGH,
+                requires_approval=True,
+                icon="✉️",
+                description="Manage inbox, search emails, compose drafts and send messages.",
+            )
+        )
+        self.register(
+            ApplicationCapability(
+                name="whatsapp",
+                display_name="WhatsApp Automation",
+                category=CapabilityCategory.COMMUNICATION,
+                actions=["send_message", "search_contact", "send_document", "read_recent"],
+                sensitivity=SensitivityLevel.HIGH,
+                requires_approval=True,
+                icon="💬",
+                description="Send direct WhatsApp messages and media files to contacts.",
+            )
+        )
+        self.register(
+            ApplicationCapability(
+                name="slack",
+                display_name="Slack Workspace",
+                category=CapabilityCategory.COMMUNICATION,
+                actions=["send_message", "list_channels", "search_messages"],
+                sensitivity=SensitivityLevel.MEDIUM,
+                requires_approval=True,
+                icon="👥",
+                description="Collaborate in Slack channels and direct messages.",
+            )
+        )
 
         # Productivity
-        self.register(ApplicationCapability(
-            name="google_calendar",
-            display_name="Google Calendar",
-            category=CapabilityCategory.PRODUCTIVITY,
-            actions=["list_events", "create_event", "delete_event", "check_conflicts"],
-            sensitivity=SensitivityLevel.MEDIUM,
-            icon="📅",
-            description="Manage schedule, calendar agenda and meeting invites."
-        ))
-        self.register(ApplicationCapability(
-            name="notion",
-            display_name="Notion Workspace",
-            category=CapabilityCategory.PRODUCTIVITY,
-            actions=["search_pages", "create_page", "append_block", "query_database"],
-            sensitivity=SensitivityLevel.MEDIUM,
-            icon="📝",
-            description="Search notes, databases, and author pages."
-        ))
+        self.register(
+            ApplicationCapability(
+                name="google_calendar",
+                display_name="Google Calendar",
+                category=CapabilityCategory.PRODUCTIVITY,
+                actions=["list_events", "create_event", "delete_event", "check_conflicts"],
+                sensitivity=SensitivityLevel.MEDIUM,
+                icon="📅",
+                description="Manage schedule, calendar agenda and meeting invites.",
+            )
+        )
+        self.register(
+            ApplicationCapability(
+                name="notion",
+                display_name="Notion Workspace",
+                category=CapabilityCategory.PRODUCTIVITY,
+                actions=["search_pages", "create_page", "append_block", "query_database"],
+                sensitivity=SensitivityLevel.MEDIUM,
+                icon="📝",
+                description="Search notes, databases, and author pages.",
+            )
+        )
 
         # Engineering
-        self.register(ApplicationCapability(
-            name="github",
-            display_name="GitHub Developer",
-            category=CapabilityCategory.ENGINEERING,
-            actions=["list_repos", "list_prs", "create_issue", "get_commit_history"],
-            sensitivity=SensitivityLevel.MEDIUM,
-            icon="🐙",
-            description="Inspect pull requests, repositories, and issue trackers."
-        ))
+        self.register(
+            ApplicationCapability(
+                name="github",
+                display_name="GitHub Developer",
+                category=CapabilityCategory.ENGINEERING,
+                actions=["list_repos", "list_prs", "create_issue", "get_commit_history"],
+                sensitivity=SensitivityLevel.MEDIUM,
+                icon="🐙",
+                description="Inspect pull requests, repositories, and issue trackers.",
+            )
+        )
 
         # Research
-        self.register(ApplicationCapability(
-            name="browser",
-            display_name="Strawberry Browser Engine",
-            category=CapabilityCategory.RESEARCH,
-            actions=["navigate", "search", "extract", "click", "type", "fill_form"],
-            sensitivity=SensitivityLevel.LOW,
-            icon="🌐",
-            description="Autonomous web research, extraction and DOM interaction."
-        ))
-        self.register(ApplicationCapability(
-            name="youtube",
-            display_name="YouTube Intelligence",
-            category=CapabilityCategory.RESEARCH,
-            actions=["search_videos", "get_transcript", "get_metadata"],
-            sensitivity=SensitivityLevel.LOW,
-            icon="🎥",
-            description="Fetch video metadata and transcripts for research."
-        ))
+        self.register(
+            ApplicationCapability(
+                name="browser",
+                display_name="Strawberry Browser Engine",
+                category=CapabilityCategory.RESEARCH,
+                actions=["navigate", "search", "extract", "click", "type", "fill_form"],
+                sensitivity=SensitivityLevel.LOW,
+                icon="🌐",
+                description="Autonomous web research, extraction and DOM interaction.",
+            )
+        )
+        self.register(
+            ApplicationCapability(
+                name="youtube",
+                display_name="YouTube Intelligence",
+                category=CapabilityCategory.RESEARCH,
+                actions=["search_videos", "get_transcript", "get_metadata"],
+                sensitivity=SensitivityLevel.LOW,
+                icon="🎥",
+                description="Fetch video metadata and transcripts for research.",
+            )
+        )
 
         # Local Desktop
-        self.register(ApplicationCapability(
-            name="desktop_pc",
-            display_name="Windows / Desktop OS Controller",
-            category=CapabilityCategory.LOCAL,
-            actions=["launch_app", "close_app", "window_focus", "keyboard_type", "mouse_click", "file_ops"],
-            sensitivity=SensitivityLevel.MEDIUM,
-            icon="💻",
-            description="Control desktop applications, filesystem, and system controls."
-        ))
+        self.register(
+            ApplicationCapability(
+                name="desktop_pc",
+                display_name="Windows / Desktop OS Controller",
+                category=CapabilityCategory.LOCAL,
+                actions=["launch_app", "close_app", "window_focus", "keyboard_type", "mouse_click", "file_ops"],
+                sensitivity=SensitivityLevel.MEDIUM,
+                icon="💻",
+                description="Control desktop applications, filesystem, and system controls.",
+            )
+        )
 
 
 _capability_registry_instance: Optional[CapabilityRegistry] = None

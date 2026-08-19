@@ -49,7 +49,9 @@ async def async_run_sqlite_write(func: Callable[..., Any], *args: Any, **kwargs:
                 return await loop.run_in_executor(_WRITE_EXECUTOR, lambda: func(*args, **kwargs))
             except Exception as e:
                 if "database is locked" in str(e).lower() and attempt < max_retries - 1:
-                    logger.warning("SQLite database is locked, retrying in %.2fs (attempt %d/%d)", delay, attempt + 1, max_retries)
+                    logger.warning(
+                        "SQLite database is locked, retrying in %.2fs (attempt %d/%d)", delay, attempt + 1, max_retries
+                    )
                     await asyncio.sleep(delay)
                     delay *= 2
                 else:

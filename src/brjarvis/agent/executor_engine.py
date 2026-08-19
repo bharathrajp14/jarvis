@@ -4,14 +4,17 @@ from __future__ import annotations
 import asyncio
 import inspect
 import logging
+import os
 import time
-from typing import Any, Callable, Dict, List, Optional
-from .types import ExecutionReport, GoalGraph, StepStatus, TaskStepNode
-from .task_state import get_task_state_manager, TaskStatus
+from typing import Any, Callable, Dict, Optional
+
 from brjarvis.core.runtime import get_runtime
 from brjarvis.events.bus import get_event_bus
 from brjarvis.events.types import TaskEvent
-from brjarvis.security.permissions import evaluate_action_policy, ActionDecision, RiskLevel
+from brjarvis.security.permissions import ActionDecision, RiskLevel, evaluate_action_policy
+
+from .task_state import get_task_state_manager
+from .types import ExecutionReport, GoalGraph, StepStatus, TaskStepNode
 
 logger = logging.getLogger("JARVIS.ExecutorEngine")
 
@@ -53,29 +56,32 @@ class ParallelExecutionEngine:
             "low": RiskLevel.LOW,
             "medium": RiskLevel.MEDIUM,
             "high": RiskLevel.HIGH,
-            "critical": RiskLevel.CRITICAL
+            "critical": RiskLevel.CRITICAL,
         }
         step_risk = risk_map.get(getattr(step.risk_level, "value", "low").lower(), RiskLevel.LOW)
         policy_decision = evaluate_action_policy(
             action=step.tool,
             resource=str(step.parameters.get("path") or step.parameters.get("TargetFile") or ""),
             risk=step_risk,
-            args=step.parameters
+            args=step.parameters,
         )
 
         # 2. Human-in-the-Loop Approval Interlock
         from brjarvis.security.permissions import PERMISSIONS, PermissionMode
-        is_allow_all = (
-            policy_decision in (ActionDecision.ALLOW, ActionDecision.ALLOW_FOR_SESSION)
-            and (
-                PERMISSIONS.mode == PermissionMode.ALLOW_ALL
-                or os.environ.get("JARVIS_PERMISSION_MODE", "").strip().lower() in ("auto", "allow_all")
-            )
-        )
-        if (not is_allow_all) and (step.requires_approval or policy_decision == ActionDecision.CONFIRM) and step.status != StepStatus.SUCCESS:
 
+        is_allow_all = policy_decision in (ActionDecision.ALLOW, ActionDecision.ALLOW_FOR_SESSION) and (
+            PERMISSIONS.mode == PermissionMode.ALLOW_ALL
+            or os.environ.get("JARVIS_PERMISSION_MODE", "").strip().lower() in ("auto", "allow_all")
+        )
+        if (
+            (not is_allow_all)
+            and (step.requires_approval or policy_decision == ActionDecision.CONFIRM)
+            and step.status != StepStatus.SUCCESS
+        ):
             step.status = StepStatus.WAITING_FOR_APPROVAL
-            logger.warning("⚠️ Human Approval Interlock: Step #%s [%s] requires confirmation!", step.step_id, step.description)
+            logger.warning(
+                "⚠️ Human Approval Interlock: Step #%s [%s] requires confirmation!", step.step_id, step.description
+            )
 
             # Record approval gate in TaskStateManager
             self.task_state_mgr.request_approval(
@@ -83,16 +89,18 @@ class ParallelExecutionEngine:
                 action_id=str(step.step_id),
                 description=step.description,
                 risk_level=step_risk.value,
-                details={"tool": step.tool, "parameters": step.parameters}
+                details={"tool": step.tool, "parameters": step.parameters},
             )
 
-            self.event_bus.publish(TaskEvent(
-                topic="task.step.approval_required",
-                task_id=str(step.step_id),
-                goal=step.description,
-                status="WAITING_FOR_APPROVAL",
-                payload={"tool": step.tool, "risk_level": step_risk.value}
-            ))
+            self.event_bus.publish(
+                TaskEvent(
+                    topic="task.step.approval_required",
+                    task_id=str(step.step_id),
+                    goal=step.description,
+                    status="WAITING_FOR_APPROVAL",
+                    payload={"tool": step.tool, "risk_level": step_risk.value},
+                )
+            )
             return step
 
         if policy_decision == ActionDecision.DENY:
@@ -103,22 +111,15 @@ class ParallelExecutionEngine:
 
         # 3. WAL Log: Step Start
         self.task_state_mgr.record_step_wal(
-            task_id=tid,
-            step_index=step.step_id,
-            capability=step.tool,
-            parameters=step.parameters,
-            status="in_progress"
+            task_id=tid, step_index=step.step_id, capability=step.tool, parameters=step.parameters, status="in_progress"
         )
 
         step.status = StepStatus.IN_PROGRESS
         step.start_time = time.time()
 
-        self.event_bus.publish(TaskEvent(
-            topic="task.step.start",
-            task_id=str(step.step_id),
-            goal=step.description,
-            status="IN_PROGRESS"
-        ))
+        self.event_bus.publish(
+            TaskEvent(topic="task.step.start", task_id=str(step.step_id), goal=step.description, status="IN_PROGRESS")
+        )
 
         # 4. Step Execution Loop with Exponential Backoff Retries
         max_retries = 2 if not step.critical else 1
@@ -127,7 +128,13 @@ class ParallelExecutionEngine:
 
         while attempt <= max_retries:
             try:
-                logger.info("▶ Executing Step #%s (Attempt %d): %s (Tool: %s)", step.step_id, attempt + 1, step.description, step.tool)
+                logger.info(
+                    "▶ Executing Step #%s (Attempt %d): %s (Tool: %s)",
+                    step.step_id,
+                    attempt + 1,
+                    step.description,
+                    step.tool,
+                )
 
                 # Execute tool via provided resolver or fallback to canonical ToolRuntime
                 if tool_resolver_fn:
@@ -138,6 +145,7 @@ class ParallelExecutionEngine:
                     step.result = res.data if hasattr(res, "data") and res.data is not None else res
                 else:
                     from brjarvis.tools.runtime import get_canonical_tool_runtime
+
                     tool_res = await get_canonical_tool_runtime().execute_tool_async(
                         name=step.tool,
                         args=step.parameters,
@@ -161,16 +169,18 @@ class ParallelExecutionEngine:
                     status="completed",
                     result=step.result,
                     duration=step_duration,
-                    verified=True
+                    verified=True,
                 )
 
-                self.event_bus.publish(TaskEvent(
-                    topic="task.step.completed",
-                    task_id=str(step.step_id),
-                    goal=step.description,
-                    status="SUCCESS",
-                    payload={"result": str(step.result)}
-                ))
+                self.event_bus.publish(
+                    TaskEvent(
+                        topic="task.step.completed",
+                        task_id=str(step.step_id),
+                        goal=step.description,
+                        status="SUCCESS",
+                        payload={"result": str(step.result)},
+                    )
+                )
                 return step
 
             except Exception as e:
@@ -196,16 +206,18 @@ class ParallelExecutionEngine:
             parameters=step.parameters,
             status="failed",
             error=str(last_error),
-            duration=step_duration
+            duration=step_duration,
         )
 
-        self.event_bus.publish(TaskEvent(
-            topic="task.step.failed",
-            task_id=str(step.step_id),
-            goal=step.description,
-            status="FAILED",
-            payload={"error": str(last_error)}
-        ))
+        self.event_bus.publish(
+            TaskEvent(
+                topic="task.step.failed",
+                task_id=str(step.step_id),
+                goal=step.description,
+                status="FAILED",
+                payload={"error": str(last_error)},
+            )
+        )
 
         return step
 
@@ -227,9 +239,10 @@ class ParallelExecutionEngine:
         # DAG resolution loop
         while completed_count < total_steps and not self._cancelled:
             ready_steps = [
-                s for s in graph.steps
-                if s.status == StepStatus.PENDING and
-                all(graph.steps[dep - 1].status == StepStatus.SUCCESS for dep in s.depends_on)
+                s
+                for s in graph.steps
+                if s.status == StepStatus.PENDING
+                and all(graph.steps[dep - 1].status == StepStatus.SUCCESS for dep in s.depends_on)
             ]
 
             if not ready_steps:
@@ -243,7 +256,7 @@ class ParallelExecutionEngine:
                 break
 
             # Execute ready steps (parallel workers up to max_workers)
-            batch = ready_steps[:self.max_workers]
+            batch = ready_steps[: self.max_workers]
             tasks = [self.execute_step(step, tool_resolver_fn, task_id=tid) for step in batch]
             results = await asyncio.gather(*tasks)
 

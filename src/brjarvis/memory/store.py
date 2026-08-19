@@ -4,6 +4,7 @@ Canonical Memory Store for BR JARVIS.
 Direct repository providing transactional CRUD operations, version control,
 temporal state inspection, and consistency guarantees over SQLite WAL storage.
 """
+
 from __future__ import annotations
 
 import json
@@ -11,7 +12,7 @@ import logging
 import sqlite3
 import threading
 import time
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, List, Optional
 
 from .canonical_db import CanonicalDatabaseManager, get_canonical_db
 from .domain import CanonicalMemory, MemoryStatus, MemoryType, RetentionClass, SourceType
@@ -98,18 +99,43 @@ class CanonicalMemoryStore:
                         retention_class = excluded.retention_class
                     """,
                     (
-                        memory.memory_id, memory.user_id, memory.project_id, memory.scope,
-                        memory.namespace, memory.memory_type.value, memory.entity,
-                        memory.attribute, str(memory.value) if memory.value is not None else "",
-                        memory.content, memory.source_type.value, memory.source_id,
-                        memory.evidence, memory.confidence, memory.reliability,
-                        memory.importance, memory.created_at, memory.observed_at,
-                        memory.effective_from, memory.effective_until, memory.updated_at,
-                        memory.last_accessed_at, memory.last_validated_at, memory.status.value,
-                        memory.version, memory.supersedes_memory_id, memory.superseded_by_memory_id,
-                        memory.conflict_group_id, memory.session_id, memory.task_id,
-                        memory.decision_id, tags_str, memory.content_hash, memory.embedding_id,
-                        memory.retention_class.value if hasattr(memory.retention_class, "value") else str(memory.retention_class)
+                        memory.memory_id,
+                        memory.user_id,
+                        memory.project_id,
+                        memory.scope,
+                        memory.namespace,
+                        memory.memory_type.value,
+                        memory.entity,
+                        memory.attribute,
+                        str(memory.value) if memory.value is not None else "",
+                        memory.content,
+                        memory.source_type.value,
+                        memory.source_id,
+                        memory.evidence,
+                        memory.confidence,
+                        memory.reliability,
+                        memory.importance,
+                        memory.created_at,
+                        memory.observed_at,
+                        memory.effective_from,
+                        memory.effective_until,
+                        memory.updated_at,
+                        memory.last_accessed_at,
+                        memory.last_validated_at,
+                        memory.status.value,
+                        memory.version,
+                        memory.supersedes_memory_id,
+                        memory.superseded_by_memory_id,
+                        memory.conflict_group_id,
+                        memory.session_id,
+                        memory.task_id,
+                        memory.decision_id,
+                        tags_str,
+                        memory.content_hash,
+                        memory.embedding_id,
+                        memory.retention_class.value
+                        if hasattr(memory.retention_class, "value")
+                        else str(memory.retention_class),
                     ),
                 )
                 conn.commit()
@@ -302,7 +328,9 @@ class CanonicalMemoryStore:
 
         like_clauses = []
         for term in terms[:5]:
-            like_clauses.append("(LOWER(content) LIKE ? OR LOWER(entity) LIKE ? OR LOWER(attribute) LIKE ? OR LOWER(value) LIKE ?)")
+            like_clauses.append(
+                "(LOWER(content) LIKE ? OR LOWER(entity) LIKE ? OR LOWER(attribute) LIKE ? OR LOWER(value) LIKE ?)"
+            )
             p_val = f"%{term}%"
             params.extend([p_val, p_val, p_val, p_val])
 
@@ -370,7 +398,9 @@ class CanonicalMemoryStore:
             tags=tags,
             content_hash=row["content_hash"] or "",
             embedding_id=row["embedding_id"],
-            retention_class=RetentionClass(row["retention_class"]) if ("retention_class" in row.keys() and row["retention_class"]) else RetentionClass.NORMAL,
+            retention_class=RetentionClass(row["retention_class"])
+            if ("retention_class" in row.keys() and row["retention_class"])
+            else RetentionClass.NORMAL,
         )
 
 

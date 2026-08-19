@@ -3,11 +3,13 @@
 Skill Registry: High-level search, category grouping, and discovery interface
 for BR JARVIS's 400+ domain skills.
 """
+
 from __future__ import annotations
 
 import time
-from typing import Dict, List, Optional
-from .loader import SkillDef, load_skills, find_skill
+from typing import Dict, List
+
+from .loader import SkillDef, load_skills
 
 _cached_skills_list: List[SkillDef] = []
 _last_skills_load_time: float = 0.0

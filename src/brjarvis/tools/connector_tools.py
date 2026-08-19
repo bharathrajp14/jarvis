@@ -9,6 +9,7 @@ Registered tools:
   - connector_search      → Smart search across all configured connectors
   - connector_add_mcp     → Dynamically add a new MCP server at runtime
 """
+
 from __future__ import annotations
 
 import json
@@ -21,6 +22,7 @@ logger = logging.getLogger("JARVIS.ConnectorTools")
 
 
 # ── Tool 1: Connector Status Dashboard ───────────────────────────────────────
+
 
 @register_tool(
     name="connector_status",
@@ -35,6 +37,7 @@ def connector_status_action(args: Dict[str, Any]) -> str:
     """Display the Connector Hub status dashboard."""
     try:
         from brjarvis.connectors.hub import get_hub
+
         hub = get_hub()
         return hub.status_report()
     except Exception as e:
@@ -42,6 +45,7 @@ def connector_status_action(args: Dict[str, Any]) -> str:
 
 
 # ── Tool 2: Universal Connector Call ─────────────────────────────────────────
+
 
 @register_tool(
     name="connector_call",
@@ -94,6 +98,7 @@ def connector_call_action(args: Dict[str, Any]) -> str:
 
     try:
         from brjarvis.connectors.hub import get_hub
+
         hub = get_hub()
         return hub.call(connector_id, tool_name, tool_args)
     except Exception as e:
@@ -101,6 +106,7 @@ def connector_call_action(args: Dict[str, Any]) -> str:
 
 
 # ── Tool 3: Smart Cross-Connector Search ─────────────────────────────────────
+
 
 @register_tool(
     name="connector_search",
@@ -135,6 +141,7 @@ def connector_search_action(args: Dict[str, Any]) -> str:
 
     try:
         from brjarvis.connectors.hub import get_hub
+
         hub = get_hub()
 
         # Determine which connectors to search
@@ -148,7 +155,7 @@ def connector_search_action(args: Dict[str, Any]) -> str:
             search_sources = [s for s in priority if s in available]
 
         if not search_sources:
-            return f"No configured connectors available for search. Run connector_status to see setup guide."
+            return "No configured connectors available for search. Run connector_status to see setup guide."
 
         results = []
         for source in search_sources[:4]:  # Limit to 4 sources
@@ -168,7 +175,7 @@ def connector_search_action(args: Dict[str, Any]) -> str:
                             if result:
                                 results.append(f"--- From **{source.replace('_', ' ').title()}** ---\n{result}")
                 except Exception as e:
-                    logger.debug('Suppressed exception: %s', e)
+                    logger.debug("Suppressed exception: %s", e)
         if not results:
             return f"No results found for '{query}' across connected sources."
 
@@ -180,6 +187,7 @@ def connector_search_action(args: Dict[str, Any]) -> str:
 
 
 # ── Tool 4: Add MCP Server at Runtime ────────────────────────────────────────
+
 
 @register_tool(
     name="connector_add_mcp",
@@ -210,17 +218,18 @@ def connector_add_mcp_action(args: Dict[str, Any]) -> str:
 
     try:
         from brjarvis.connectors.hub import get_hub
-        from brjarvis.connectors.mcp_proxy import MCPServerProxy
+
         hub = get_hub()
         mcp_connector = hub.get_connector("mcp_proxy")
         if mcp_connector:
             return mcp_connector.add_server(url, name=name, api_key=api_key)
-        return f"❌ MCP proxy connector not loaded."
+        return "❌ MCP proxy connector not loaded."
     except Exception as e:
         return f"❌ Failed to add MCP server: {e}"
 
 
 # ── Tool 5: List Connector Tools ──────────────────────────────────────────────
+
 
 @register_tool(
     name="connector_list_tools",
@@ -244,6 +253,7 @@ def connector_list_tools_action(args: Dict[str, Any]) -> str:
 
     try:
         from brjarvis.connectors.hub import get_hub
+
         hub = get_hub()
         connector = hub.get_connector(connector_id)
         if not connector:
@@ -255,9 +265,7 @@ def connector_list_tools_action(args: Dict[str, Any]) -> str:
         for t in tools:
             params = list((t.parameters.get("properties") or {}).keys())
             required = t.parameters.get("required", [])
-            param_str = ", ".join(
-                f"{p}{'*' if p in required else ''}" for p in params
-            )
+            param_str = ", ".join(f"{p}{'*' if p in required else ''}" for p in params)
             lines.append(f"• **{t.name}**({param_str})\n  {t.description}")
         lines.append("\n*(Parameters marked with * are required)*")
         return "\n".join(lines)

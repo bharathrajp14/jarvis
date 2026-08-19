@@ -6,11 +6,12 @@ Inspects, tracks, and registers model capabilities with three explicit states:
 Decouples model names from capabilities. Name substrings are treated ONLY as initial
 provisional hints; true capabilities are verified progressively via lazy probes on demand.
 """
+
 from __future__ import annotations
 
 import logging
 import threading
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Optional
 
@@ -19,6 +20,7 @@ logger = logging.getLogger("JARVIS.ModelCapabilities")
 
 class CapabilityState(str, Enum):
     """Explicit 3-state representation of capability status."""
+
     SUPPORTED = "supported"
     UNSUPPORTED = "unsupported"
     UNKNOWN = "unknown"
@@ -33,6 +35,7 @@ class CapabilityState(str, Enum):
 @dataclass
 class ModelCapabilities:
     """9-dimensional capability profile for an LLM."""
+
     chat: CapabilityState = CapabilityState.SUPPORTED
     streaming: CapabilityState = CapabilityState.SUPPORTED
     structured_output: CapabilityState = CapabilityState.UNKNOWN
@@ -70,7 +73,7 @@ class ModelCapabilities:
         requires_image_gen: bool = False,
         requires_agent: bool = False,
         requires_reasoning: bool = False,
-        requires_long_context: bool = False
+        requires_long_context: bool = False,
     ) -> tuple[bool, str]:
         """
         Check if capabilities satisfy all required dimensions.
@@ -108,12 +111,7 @@ class ModelCapabilityRegistry:
                 self._profiles[model_id] = self._generate_provisional_profile(model_id)
             return self._profiles[model_id]
 
-    def set_capability(
-        self,
-        model_id: str,
-        capability: str,
-        state: CapabilityState
-    ) -> None:
+    def set_capability(self, model_id: str, capability: str, state: CapabilityState) -> None:
         """Update a specific capability after empirical verification."""
         with self._lock:
             profile = self.get_capabilities(model_id)
@@ -129,7 +127,7 @@ class ModelCapabilityRegistry:
         vision: Optional[CapabilityState] = None,
         image_generation: Optional[CapabilityState] = None,
         reasoning: Optional[CapabilityState] = None,
-        agentic: Optional[CapabilityState] = None
+        agentic: Optional[CapabilityState] = None,
     ) -> None:
         """Bulk update verified capabilities after benchmark or live execution."""
         with self._lock:

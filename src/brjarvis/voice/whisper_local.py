@@ -4,16 +4,16 @@ Offline speech-to-text using OpenAI Whisper running locally.
 Supports faster-whisper (preferred) or openai-whisper as backends.
 No API calls — everything runs on the local machine.
 """
+
 from __future__ import annotations
 
-import io
 import logging
 import os
 import tempfile
-import traceback
 import threading
+import traceback
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 
 logger = logging.getLogger("JARVIS.WhisperLocal")
 
@@ -41,6 +41,7 @@ def _get_engine():
         # Try faster-whisper first (much faster with CTranslate2)
         try:
             from faster_whisper import WhisperModel
+
             device = "cuda" if _cuda_available() else "cpu"
             compute_type = "float16" if device == "cuda" else "int8"
             logger.info(f"Loading faster-whisper model '{model_name}' on {device}...")
@@ -56,6 +57,7 @@ def _get_engine():
         # Fallback to openai-whisper
         try:
             import whisper
+
             device = "cuda" if _cuda_available() else "cpu"
             logger.info(f"Loading openai-whisper model '{model_name}' on {device}...")
             _whisper_engine = whisper.load_model(model_name, device=device)
@@ -70,11 +72,11 @@ def _get_engine():
         return None, None
 
 
-
 def _cuda_available() -> bool:
     """Check if CUDA is available."""
     try:
         import torch
+
         return torch.cuda.is_available()
     except Exception:
         return False
@@ -84,11 +86,13 @@ def is_available() -> bool:
     """Check if local Whisper is available (either faster-whisper or openai-whisper installed)."""
     try:
         from faster_whisper import WhisperModel
+
         return True
     except ImportError:
         pass
     try:
         import whisper
+
         return True
     except ImportError:
         pass
@@ -105,16 +109,36 @@ import re as _re
 _WHISPER_ARTIFACT_TAGS = _re.compile(
     r"\[(BLANK_AUDIO|Music|Applause|Laughter|Silence|noise|inaudible|crosstalk"
     r"|background noise|sound effects|music playing|ambient|static)\]",
-    _re.IGNORECASE
+    _re.IGNORECASE,
 )
 
-_KNOWN_HALLUCINATIONS = frozenset({
-    "thank you", "thank you very much", "thanks for watching", "bye", "you",
-    "thank you thank you", "i know that", "yeah", "uh", "um", "hmm", "hm",
-    "subtitles by", "translated by", "subscribe", "like and subscribe",
-    "i love you", "lets go for it", "what are you doing",
-    "what is going on", "what are you talking about", "mostly", "sms",
-})
+_KNOWN_HALLUCINATIONS = frozenset(
+    {
+        "thank you",
+        "thank you very much",
+        "thanks for watching",
+        "bye",
+        "you",
+        "thank you thank you",
+        "i know that",
+        "yeah",
+        "uh",
+        "um",
+        "hmm",
+        "hm",
+        "subtitles by",
+        "translated by",
+        "subscribe",
+        "like and subscribe",
+        "i love you",
+        "lets go for it",
+        "what are you doing",
+        "what is going on",
+        "what are you talking about",
+        "mostly",
+        "sms",
+    }
+)
 
 _REPETITION_PATTERN = _re.compile(r"\b(\w{3,})\b(?:\s+\1){3,}", _re.IGNORECASE)
 _PUNCT_ONLY = _re.compile(r"^[\s\W]+$")
@@ -160,8 +184,9 @@ def _is_hallucination(text: str) -> bool:
     return False
 
 
-
-def transcribe(audio_bytes: bytes, language: str = "en", detect_language: bool = False, initial_prompt: str = "") -> str:
+def transcribe(
+    audio_bytes: bytes, language: str = "en", detect_language: bool = False, initial_prompt: str = ""
+) -> str:
     """
     Transcribe audio bytes using local Whisper (or Groq cloud fast-path).
     Operates 100% in-memory using NumPy float32 arrays — zero disk file creation latency.
@@ -174,6 +199,7 @@ def transcribe(audio_bytes: bytes, language: str = "en", detect_language: bool =
     if groq_key:
         try:
             import httpx
+
             headers = {"Authorization": f"Bearer {groq_key}"}
             files = {"file": ("speech.wav", audio_bytes, "audio/wav")}
             data = {"model": "whisper-large-v3-turbo", "response_format": "text"}
@@ -183,7 +209,10 @@ def transcribe(audio_bytes: bytes, language: str = "en", detect_language: bool =
                 data["prompt"] = initial_prompt
             resp = httpx.post(
                 "https://api.groq.com/openai/v1/audio/transcriptions",
-                headers=headers, files=files, data=data, timeout=3.0
+                headers=headers,
+                files=files,
+                data=data,
+                timeout=3.0,
             )
             if resp.status_code == 200:
                 txt = resp.text.strip()
@@ -194,18 +223,18 @@ def transcribe(audio_bytes: bytes, language: str = "en", detect_language: bool =
 
     # ── RMS Silence Gate ──────────────────────────────────────────────────────
     try:
-        import struct
         import math
+
         import numpy as np
-        
+
         # WAV file header is 44 bytes, raw PCM starts after header
         pcm_data = audio_bytes[44:] if len(audio_bytes) > 44 else audio_bytes
         num_samples = len(pcm_data) // 2
         if num_samples > 0:
-            shorts = np.frombuffer(pcm_data[:num_samples * 2], dtype=np.int16)
+            shorts = np.frombuffer(pcm_data[: num_samples * 2], dtype=np.int16)
             float_samples = shorts.astype(np.float32) / 32768.0
-            rms = math.sqrt(np.mean(float_samples ** 2))
-            
+            rms = math.sqrt(np.mean(float_samples**2))
+
             min_rms = float(os.environ.get("JARVIS_AUDIO_MIN_RMS", "0.015"))
             if rms < min_rms:
                 return ""
@@ -299,12 +328,13 @@ def transcribe_wake_fast(audio_bytes: Any, language: str = "en", initial_prompt:
 
     try:
         import numpy as np
+
         if isinstance(audio_bytes, (bytes, bytearray)):
             pcm_data = audio_bytes[44:] if len(audio_bytes) > 44 else audio_bytes
             num_samples = len(pcm_data) // 2
             if num_samples < 800:
                 return ""
-            shorts = np.frombuffer(pcm_data[:num_samples * 2], dtype=np.int16)
+            shorts = np.frombuffer(pcm_data[: num_samples * 2], dtype=np.int16)
             float_samples = shorts.astype(np.float32) / 32768.0
         else:
             float_samples = audio_bytes
@@ -326,6 +356,7 @@ def transcribe_wake_fast(audio_bytes: Any, language: str = "en", initial_prompt:
         parts = [seg.text.strip() for seg in segments]
         text = " ".join(parts).strip()
         from brjarvis.voice.prompt_refiner import collapse_repetitions
+
         return collapse_repetitions(text)
     except Exception as e:
         logger.warning(f"transcribe_wake_fast error: {e}")
@@ -392,11 +423,13 @@ def transcribe_file(file_path: str, language: str = "auto", output_format: str =
             segments = []
             full_text = []
             for seg in segments_data:
-                segments.append({
-                    "start": seg.start,
-                    "end": seg.end,
-                    "text": seg.text.strip(),
-                })
+                segments.append(
+                    {
+                        "start": seg.start,
+                        "end": seg.end,
+                        "text": seg.text.strip(),
+                    }
+                )
                 full_text.append(seg.text.strip())
 
             detected_lang = getattr(info, "language", language)
@@ -408,11 +441,13 @@ def transcribe_file(file_path: str, language: str = "auto", output_format: str =
             )
             segments = []
             for seg in result.get("segments", []):
-                segments.append({
-                    "start": seg["start"],
-                    "end": seg["end"],
-                    "text": seg["text"].strip(),
-                })
+                segments.append(
+                    {
+                        "start": seg["start"],
+                        "end": seg["end"],
+                        "text": seg["text"].strip(),
+                    }
+                )
             full_text = [result.get("text", "").strip()]
             detected_lang = result.get("language", language)
 
@@ -428,6 +463,7 @@ def transcribe_file(file_path: str, language: str = "auto", output_format: str =
             _write_vtt(segments, output_path)
         elif output_format == "json":
             import json
+
             Path(output_path).write_text(
                 json.dumps({"text": text, "segments": segments, "language": detected_lang}, indent=2),
                 encoding="utf-8",
@@ -455,13 +491,14 @@ def transcribe_file(file_path: str, language: str = "auto", output_format: str =
 def _extract_audio(video_path: str) -> str | None:
     """Extract audio from video file using ffmpeg."""
     import subprocess
+
     with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
         output_path = tmp.name
     try:
         subprocess.run(
-            ["ffmpeg", "-i", video_path, "-vn", "-acodec", "pcm_s16le",
-             "-ar", "16000", "-ac", "1", output_path, "-y"],
-            capture_output=True, timeout=300,
+            ["ffmpeg", "-i", video_path, "-vn", "-acodec", "pcm_s16le", "-ar", "16000", "-ac", "1", output_path, "-y"],
+            capture_output=True,
+            timeout=300,
         )
         if Path(output_path).exists() and Path(output_path).stat().st_size > 0:
             return output_path

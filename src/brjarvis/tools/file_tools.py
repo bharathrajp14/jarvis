@@ -4,14 +4,15 @@ High-Fidelity Verified Filesystem Tools Suite for BR JARVIS MK40.2 / MK41.
 Guarantees atomic file writes, SHA-256 content hashing, workspace boundary enforcement,
 soft-delete (trash) safeguards, and canonical ToolResult evidence contracts.
 """
+
 from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Optional
 
 from brjarvis.core.paths import paths
-from .domain import RiskLevel, SideEffectLevel, ToolCategory, ToolErrorCode, VerificationStrategy
+
+from .domain import ToolErrorCode
 from .files import FileManager
 from .registry import register_tool
 from .tool_result import ToolResult
@@ -147,8 +148,7 @@ def tool_file_list(args: dict) -> ToolResult:
     try:
         entries = _files.list_dir(path=path, recursive=recursive, pattern=pattern)
         summary_lines = [
-            f"{'📁' if e['is_dir'] else '📄'} {e['relative_path']} ({e['size_bytes']:,} bytes)"
-            for e in entries
+            f"{'📁' if e['is_dir'] else '📄'} {e['relative_path']} ({e['size_bytes']:,} bytes)" for e in entries
         ]
         evidence = f"Found {len(entries)} items in directory '{path}' matching '{pattern}'."
         return ToolResult.success(
@@ -180,7 +180,10 @@ def tool_file_list(args: dict) -> ToolResult:
         "type": "object",
         "properties": {
             "path": {"type": "string", "description": "Relative path to delete"},
-            "permanent": {"type": "boolean", "description": "Permanently delete without moving to trash (default: false)"},
+            "permanent": {
+                "type": "boolean",
+                "description": "Permanently delete without moving to trash (default: false)",
+            },
         },
         "required": ["path"],
     },
@@ -202,7 +205,8 @@ def tool_file_delete(args: dict) -> ToolResult:
     try:
         del_meta = _files.delete(path, permanent=permanent)
         evidence = (
-            f"Permanently deleted '{path}'" if permanent
+            f"Permanently deleted '{path}'"
+            if permanent
             else f"Moved '{path}' to workspace trash ({del_meta.get('trash_path', '')})"
         )
         return ToolResult.success(
@@ -295,4 +299,3 @@ def tool_file_search(args: dict) -> ToolResult:
             error_code=ToolErrorCode.EXECUTION_EXCEPTION,
             message=f"Error searching files for '{query}': {e}",
         )
-

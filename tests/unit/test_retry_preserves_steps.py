@@ -4,16 +4,19 @@ Test 38 — Retry Preserves Completed Steps — MK40.2 §8
 Verifies that when a task is retried after a step 2 failure, step 1 (already
 verified in the ledger) is NOT re-executed. Only failed steps are retried.
 """
+
 from __future__ import annotations
 
+from unittest.mock import patch
+
 import pytest
-from unittest.mock import MagicMock, patch, call
 
 
 @pytest.fixture
 def executor():
     """Create an AgentExecutor with a minimal config."""
     from brjarvis.agent.executor import AgentExecutor
+
     return AgentExecutor()
 
 
@@ -24,21 +27,23 @@ def test_retry_skips_already_verified_steps(tmp_path):
     runs a second attempt (replan), step 1 must NOT be re-executed.
     """
     from brjarvis.agent.execution_ledger import ExecutionLedger, LedgerEntry, LedgerStatus
-    from brjarvis.memory.canonical_db import CanonicalDatabaseManager
     from brjarvis.agent.executor import AgentExecutor
+    from brjarvis.memory.canonical_db import CanonicalDatabaseManager
 
     # Set up a ledger with step 1 already verified
     db = CanonicalDatabaseManager(db_path=tmp_path / "test.db")
     ledger = ExecutionLedger(db_manager=db)
-    ledger.append(LedgerEntry(
-        tool_name="file_write",
-        task_id="retry_task",
-        step_id="step_1",
-        status=LedgerStatus.SUCCESS,
-        verification_status=LedgerStatus.SUCCESS,
-        stdout="Portfolio created at /workspace/portfolio.html",
-        evidence="File portfolio.html verified (6,144 bytes).",
-    ))
+    ledger.append(
+        LedgerEntry(
+            tool_name="file_write",
+            task_id="retry_task",
+            step_id="step_1",
+            status=LedgerStatus.SUCCESS,
+            verification_status=LedgerStatus.SUCCESS,
+            stdout="Portfolio created at /workspace/portfolio.html",
+            evidence="File portfolio.html verified (6,144 bytes).",
+        )
+    )
 
     executor = AgentExecutor()
     call_log = []
@@ -52,8 +57,20 @@ def test_retry_skips_already_verified_steps(tmp_path):
         return "Done."
 
     steps = [
-        {"step": 1, "tool": "file_write",   "description": "Create portfolio",  "critical": True,  "parameters": {"path": "portfolio.html"}},
-        {"step": 2, "tool": "git_repo_mgr", "description": "Push to GitHub",    "critical": False, "parameters": {"action": "push"}},
+        {
+            "step": 1,
+            "tool": "file_write",
+            "description": "Create portfolio",
+            "critical": True,
+            "parameters": {"path": "portfolio.html"},
+        },
+        {
+            "step": 2,
+            "tool": "git_repo_mgr",
+            "description": "Push to GitHub",
+            "critical": False,
+            "parameters": {"action": "push"},
+        },
     ]
 
     step_results: dict = {}
@@ -74,8 +91,7 @@ def test_retry_skips_already_verified_steps(tmp_path):
 
     # file_write (step_1) was already in the ledger as verified → should NOT be called again
     assert "file_write" not in call_log, (
-        f"file_write was re-executed even though it was already verified in the ledger. "
-        f"Calls: {call_log}"
+        f"file_write was re-executed even though it was already verified in the ledger. Calls: {call_log}"
     )
     # git_repo_mgr (step_2) was NOT in the ledger → should be executed
     assert "git_repo_mgr" in call_log, "git_repo_mgr (step_2) should have been executed."
@@ -88,20 +104,22 @@ def test_unverified_step_is_not_skipped(tmp_path):
     not silently skipped.
     """
     from brjarvis.agent.execution_ledger import ExecutionLedger, LedgerEntry, LedgerStatus
-    from brjarvis.memory.canonical_db import CanonicalDatabaseManager
     from brjarvis.agent.executor import AgentExecutor
+    from brjarvis.memory.canonical_db import CanonicalDatabaseManager
 
     db = CanonicalDatabaseManager(db_path=tmp_path / "test2.db")
     ledger = ExecutionLedger(db_manager=db)
     # Add an UNVERIFIED entry for step 1
-    ledger.append(LedgerEntry(
-        tool_name="file_write",
-        task_id="rerun_task",
-        step_id="step_1",
-        status=LedgerStatus.SUCCESS,
-        verification_status=LedgerStatus.UNVERIFIED,  # NOT verified
-        stdout="Created something.",
-    ))
+    ledger.append(
+        LedgerEntry(
+            tool_name="file_write",
+            task_id="rerun_task",
+            step_id="step_1",
+            status=LedgerStatus.SUCCESS,
+            verification_status=LedgerStatus.UNVERIFIED,  # NOT verified
+            stdout="Created something.",
+        )
+    )
 
     executor = AgentExecutor()
     call_log = []

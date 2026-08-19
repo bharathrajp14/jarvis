@@ -3,11 +3,12 @@
 Implements explicit Observe -> Think -> Critic -> Improve -> Retry cognitive loop
 for BR JARVIS step execution evaluation.
 """
+
 from __future__ import annotations
 
 import logging
-import time
 from typing import Any, Dict, List, Optional
+
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger("JARVIS.CognitiveLoop")
@@ -21,8 +22,12 @@ class SelfEvaluationPayload(BaseModel):
     confidence_score: float = Field(..., ge=0.0, le=1.0, description="Confidence metric (0.0 - 1.0)")
     reasoning_depth: int = Field(default=1, description="Depth of CoT reasoning steps")
     missing_info: List[str] = Field(default_factory=list, description="Identified missing context or dependencies")
-    alternative_options: List[str] = Field(default_factory=list, description="Alternative execution pathways considered")
-    failure_risk: float = Field(default=0.0, ge=0.0, le=1.0, description="Estimated probability of step execution failure")
+    alternative_options: List[str] = Field(
+        default_factory=list, description="Alternative execution pathways considered"
+    )
+    failure_risk: float = Field(
+        default=0.0, ge=0.0, le=1.0, description="Estimated probability of step execution failure"
+    )
     should_retry: bool = False
     improvement_suggestion: Optional[str] = None
 
@@ -48,11 +53,11 @@ class CognitiveLoop:
         Evaluate tool execution outcome and produce a SelfEvaluationPayload.
         """
         lower_output = str(tool_output).lower()
-        
+
         # Check for failure indicators
         failure_signals = ["error", "exception", "failed", "permission denied", "not found", "timeout", "invalid"]
         has_failure_signal = any(sig in lower_output for sig in failure_signals) or not execution_success
-        
+
         if has_failure_signal:
             confidence = 0.2 if not execution_success else 0.4
             failure_risk = 0.8
@@ -70,7 +75,7 @@ class CognitiveLoop:
             confidence_score=confidence,
             reasoning_depth=2,
             missing_info=[] if execution_success else ["Tool execution error output"],
-            alternative_options=[f"fallback_script", f"python_code_execution"],
+            alternative_options=["fallback_script", "python_code_execution"],
             failure_risk=failure_risk,
             should_retry=should_retry,
             improvement_suggestion=improvement,

@@ -3,24 +3,35 @@
 Pika Voice-style Advanced Desktop File Search engine.
 Searches files by name, extension, or inside text contents across system drives.
 """
+
 from __future__ import annotations
 
+import glob
 import logging
 import os
-import sys
-import time
-import glob
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-_EXCLUDE_DIRS = {".git", "__pycache__", "node_modules", "AppData", "Windows", "Program Files", "Program Files (x86)", "$Recycle.Bin", ".venv", "venv"}
+_EXCLUDE_DIRS = {
+    ".git",
+    "__pycache__",
+    "node_modules",
+    "AppData",
+    "Windows",
+    "Program Files",
+    "Program Files (x86)",
+    "$Recycle.Bin",
+    ".venv",
+    "venv",
+}
 
 
 def search_files_by_name(query: str, root_dir: str = "", max_results: int = 20) -> list[str]:
     """Fast recursive filename search."""
     if not root_dir or not os.path.exists(root_dir):
         from brjarvis.core.paths import paths
+
         root_dir = str(paths.WORKSPACE_ROOT)
 
     query_low = query.lower().strip()
@@ -37,7 +48,7 @@ def search_files_by_name(query: str, root_dir: str = "", max_results: int = 20) 
                     if len(results) >= max_results:
                         return results
     except Exception as e:
-        logger.debug('Suppressed exception: %s', e)
+        logger.debug("Suppressed exception: %s", e)
     return results[:max_results]
 
 
@@ -45,6 +56,7 @@ def search_file_contents(query: str, search_path: str = "", extension: str = "",
     """Search inside text files for target string."""
     if not search_path or not os.path.exists(search_path):
         from brjarvis.core.paths import paths
+
         search_path = str(paths.WORKSPACE_ROOT)
 
     query_low = query.lower().strip()
@@ -59,7 +71,19 @@ def search_file_contents(query: str, search_path: str = "", extension: str = "",
             p = Path(filepath)
             if any(part in _EXCLUDE_DIRS or part.startswith(".") for part in p.parts):
                 continue
-            if p.suffix.lower() in (".exe", ".dll", ".png", ".jpg", ".zip", ".mp3", ".mp4", ".pdf", ".docx", ".xlsx", ".pyc"):
+            if p.suffix.lower() in (
+                ".exe",
+                ".dll",
+                ".png",
+                ".jpg",
+                ".zip",
+                ".mp3",
+                ".mp4",
+                ".pdf",
+                ".docx",
+                ".xlsx",
+                ".pyc",
+            ):
                 continue
 
             try:
@@ -69,15 +93,17 @@ def search_file_contents(query: str, search_path: str = "", extension: str = "",
                     start = max(0, idx - 40)
                     end = min(len(content), idx + len(query) + 60)
                     snippet = content[start:end].replace("\n", " ").strip()
-                    matches.append({
-                        "path": str(p),
-                        "name": p.name,
-                        "snippet": f"...{snippet}...",
-                    })
+                    matches.append(
+                        {
+                            "path": str(p),
+                            "name": p.name,
+                            "snippet": f"...{snippet}...",
+                        }
+                    )
             except Exception as e:
-                logger.debug('Suppressed exception: %s', e)
+                logger.debug("Suppressed exception: %s", e)
     except Exception as e:
-        logger.debug('Suppressed exception: %s', e)
+        logger.debug("Suppressed exception: %s", e)
     return matches[:max_results]
 
 

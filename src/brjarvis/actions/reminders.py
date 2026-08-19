@@ -4,17 +4,14 @@ Pika Voice-style Smart Reminder Engine.
 Schedules one-time or recurring reminders, tracks active tasks,
 and triggers native Windows desktop notification toasts with sound alerts.
 """
+
 from __future__ import annotations
 
-import logging
-import os
-import sys
-import time
 import json
+import logging
 import re
 import threading
-import subprocess
-from pathlib import Path
+import time
 from datetime import datetime, timedelta
 
 from brjarvis.core.paths import paths
@@ -22,7 +19,6 @@ from brjarvis.core.paths import paths
 logger = logging.getLogger("JARVIS.Reminders")
 
 _REMINDERS_FILE = paths.STATE_ROOT / "reminders.json"
-
 
 
 class ReminderManager:
@@ -49,9 +45,7 @@ class ReminderManager:
         """Save reminders to persistent storage."""
         try:
             _REMINDERS_FILE.parent.mkdir(parents=True, exist_ok=True)
-            _REMINDERS_FILE.write_text(
-                json.dumps({"reminders": self._reminders}, indent=2), encoding="utf-8"
-            )
+            _REMINDERS_FILE.write_text(json.dumps({"reminders": self._reminders}, indent=2), encoding="utf-8")
         except Exception as e:
             logger.warning("Save error: %s", e)
 
@@ -87,13 +81,13 @@ class ReminderManager:
 
         try:
             from brjarvis.actions.reminder import reminder
+
             now = datetime.now() + timedelta(seconds=1)
             date_str = now.strftime("%Y-%m-%d")
             time_str = now.strftime("%H:%M")
             reminder({"date": date_str, "time": time_str, "message": text})
         except Exception as e:
             logger.warning(f"Failed to trigger toast via reminder action: {e}")
-
 
     def add_reminder(self, text: str, delay_seconds: int = 0, target_time_str: str = "") -> dict:
         """Add a new reminder."""

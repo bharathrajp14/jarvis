@@ -9,14 +9,15 @@ Registers the following tools in the JARVIS tool registry:
   - telegram_bot_info         → Check bot connection status and get bot link
   - telegram_get_updates      → Discover chat_ids from users who have messaged the bot
 """
+
 from __future__ import annotations
 
-from typing import Any, Dict
-from .registry import register_tool
 from brjarvis.actions.telegram_automation import get_telegram_automation
 
+from .registry import register_tool
 
 # ── Tool 1: Send Telegram Message ─────────────────────────────────────────────
+
 
 @register_tool(
     name="send_telegram",
@@ -35,8 +36,7 @@ from brjarvis.actions.telegram_automation import get_telegram_automation
             "recipient": {
                 "type": "string",
                 "description": (
-                    "Contact name (e.g. 'Appa'), @username (e.g. '@johnsmith'), "
-                    "or numeric chat_id (e.g. '123456789')"
+                    "Contact name (e.g. 'Appa'), @username (e.g. '@johnsmith'), or numeric chat_id (e.g. '123456789')"
                 ),
             },
             "message": {
@@ -63,13 +63,7 @@ def tool_send_telegram(args: dict) -> str:
             or args.get("target")
             or ""
         ).strip()
-        message = str(
-            args.get("message")
-            or args.get("text")
-            or args.get("body")
-            or args.get("content")
-            or ""
-        ).strip()
+        message = str(args.get("message") or args.get("text") or args.get("body") or args.get("content") or "").strip()
 
     if not recipient or not message:
         return "❌ Error: Both 'recipient' and 'message' are required for send_telegram."
@@ -79,6 +73,7 @@ def tool_send_telegram(args: dict) -> str:
 
 
 # ── Tool 2: Schedule Telegram Message ─────────────────────────────────────────
+
 
 @register_tool(
     name="schedule_telegram_message",
@@ -101,8 +96,7 @@ def tool_send_telegram(args: dict) -> str:
             "send_at": {
                 "type": "string",
                 "description": (
-                    "Target date/time string. Formats: "
-                    "'2026-08-01 09:00', '2026-08-01 09:00:00', '14:30', '9:00 AM'"
+                    "Target date/time string. Formats: '2026-08-01 09:00', '2026-08-01 09:00:00', '14:30', '9:00 AM'"
                 ),
             },
         },
@@ -114,15 +108,9 @@ def tool_schedule_telegram_message(args: dict) -> str:
     if isinstance(args, str):
         return "❌ Error: 'schedule_telegram_message' expects a JSON dictionary with recipient, message, and send_at."
 
-    recipient = str(
-        args.get("recipient") or args.get("to") or args.get("contact") or ""
-    ).strip()
-    message = str(
-        args.get("message") or args.get("text") or args.get("body") or ""
-    ).strip()
-    send_at = str(
-        args.get("send_at") or args.get("time") or args.get("date") or args.get("at") or ""
-    ).strip()
+    recipient = str(args.get("recipient") or args.get("to") or args.get("contact") or "").strip()
+    message = str(args.get("message") or args.get("text") or args.get("body") or "").strip()
+    send_at = str(args.get("send_at") or args.get("time") or args.get("date") or args.get("at") or "").strip()
 
     if not recipient or not message or not send_at:
         return "❌ Error: 'recipient', 'message', and 'send_at' are all required."
@@ -132,6 +120,7 @@ def tool_schedule_telegram_message(args: dict) -> str:
 
 
 # ── Tool 3: Manage Telegram Contacts ──────────────────────────────────────────
+
 
 @register_tool(
     name="manage_telegram_contacts",
@@ -177,12 +166,7 @@ def tool_manage_telegram_contacts(args: dict | str) -> str:
 
     if action in ("add", "save", "create"):
         name = str(args_dict.get("name") or args_dict.get("contact_name") or "").strip()
-        chat_id = str(
-            args_dict.get("chat_id")
-            or args_dict.get("username")
-            or args_dict.get("id")
-            or ""
-        ).strip()
+        chat_id = str(args_dict.get("chat_id") or args_dict.get("username") or args_dict.get("id") or "").strip()
         if not name or not chat_id:
             return "❌ Error: Both 'name' and 'chat_id' (or @username) are required to add a contact."
         return tg.add_contact(name=name, chat_id=chat_id)
@@ -205,6 +189,7 @@ def tool_manage_telegram_contacts(args: dict | str) -> str:
 
 # ── Tool 4: Telegram Bot Info ──────────────────────────────────────────────────
 
+
 @register_tool(
     name="telegram_bot_info",
     description=(
@@ -224,6 +209,7 @@ def tool_telegram_bot_info(args: dict) -> str:
 
 
 # ── Tool 5: Telegram Get Updates (Discover Chat IDs) ──────────────────────────
+
 
 @register_tool(
     name="telegram_get_updates",

@@ -3,9 +3,9 @@
 Live Autonomous OS Visual Control Engine ("Antigravity Live Control").
 Real-time screen perception, visual grounding, fast reaction loop, and continuous desktop automation.
 """
+
 from __future__ import annotations
 
-import hashlib
 import io
 import json
 import logging
@@ -13,45 +13,40 @@ import math
 import os
 import platform
 import re
-import sys
 import time
 from pathlib import Path
 
 logger = logging.getLogger("JARVIS.Actions.LiveOS")
 
+from brjarvis.core.native_bridge import fast_hash, grid_transform
+
 from .computer_control import (
-    _screen_size,
-    _take_screenshot_bytes,
     _click,
     _double_click,
-    _right_click,
-    _type_text,
-    _smart_type,
+    _focus_window,
     _hotkey,
     _press,
+    _right_click,
+    _screen_size,
     _scroll,
-    _drag,
-    _move,
-    _focus_window,
-    _clear_field,
+    _smart_type,
+    _take_screenshot_bytes,
 )
-
-from brjarvis.core.native_bridge import fast_hash, grid_transform
 
 _OS = platform.system()
 
 
 def _base_dir() -> Path:
     from brjarvis.core.paths import paths
+
     return paths.PROJECT_ROOT
 
 
 from brjarvis.config import get_gemini_api_key as _get_api_key
 
-
-
 try:
     import pyautogui
+
     # Keep failsafe ON by default (move mouse to corner to abort).
     # Set JARVIS_DISABLE_FAILSAFE=true in .env to disable for headless/automated use.
     pyautogui.FAILSAFE = os.environ.get("JARVIS_DISABLE_FAILSAFE", "false").lower() != "true"
@@ -66,13 +61,14 @@ def _draw_grid_overlay(img_bytes: bytes, density: str = "auto") -> bytes:
     """
     try:
         from PIL import Image, ImageDraw
+
         img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
         w, h = img.size
         draw = ImageDraw.Draw(img)
 
-        is_fine = (density == "fine")
+        is_fine = density == "fine"
         grid_step = 50 if is_fine else 100
-        grid_color = (255, 0, 200) if is_fine else (255, 60, 60) # Magenta for fine, Red for coarse
+        grid_color = (255, 0, 200) if is_fine else (255, 60, 60)  # Magenta for fine, Red for coarse
         major_color = (0, 200, 255)
         text_bg = "black"
         text_fill = "yellow"
@@ -102,15 +98,16 @@ def _save_action_visualization(img_bytes: bytes, px_x: int, px_y: int, action: s
     """Burn visual target marker (red crosshair + circle) and save step frame."""
     try:
         from PIL import Image, ImageDraw
+
         img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
         draw = ImageDraw.Draw(img)
-        
+
         # Red target ring and crosshairs
         r = 18
         draw.ellipse([(px_x - r, px_y - r), (px_x + r, px_y + r)], outline=(255, 0, 0), width=3)
         draw.line([(px_x - r - 8, px_y), (px_x + r + 8, px_y)], fill=(255, 255, 0), width=2)
         draw.line([(px_x, px_y - r - 8), (px_x, px_y + r + 8)], fill=(255, 255, 0), width=2)
-        
+
         # Action banner
         draw.rectangle([(px_x - 30, px_y - 35), (px_x + 90, px_y - 18)], fill="black")
         draw.text((px_x - 25, px_y - 33), f"Step {step}: {action}", fill="lime")
@@ -130,6 +127,7 @@ def _compile_session_recording(frame_paths: list[Path], session_id: str) -> str:
         if not frame_paths:
             return ""
         from PIL import Image
+
         images = []
         for p in frame_paths:
             if p and p.exists():
@@ -143,21 +141,16 @@ def _compile_session_recording(frame_paths: list[Path], session_id: str) -> str:
         rec_dir = Path("BR_WORKSPACE/Logs/live_os/recordings")
         rec_dir.mkdir(parents=True, exist_ok=True)
         video_path = rec_dir / f"session_{session_id}.webp"
-        
-        images[0].save(
-            video_path,
-            save_all=True,
-            append_images=images[1:],
-            duration=500,
-            loop=0,
-            format="WEBP"
-        )
+
+        images[0].save(video_path, save_all=True, append_images=images[1:], duration=500, loop=0, format="WEBP")
         return str(video_path.resolve())
     except Exception as e:
         return f"Recording export error: {e}"
 
 
-def _export_session_analytics(goal: str, subgoals: list[dict], history: list[dict], duration_s: float, session_id: str) -> str:
+def _export_session_analytics(
+    goal: str, subgoals: list[dict], history: list[dict], duration_s: float, session_id: str
+) -> str:
     """Export structured JSON session analytics telemetry."""
     try:
         analytics_dir = Path("BR_WORKSPACE/Logs/live_os/analytics")
@@ -183,7 +176,7 @@ def _export_session_analytics(goal: str, subgoals: list[dict], history: list[dic
             "completion_rate_percent": round(completion_rate, 1),
             "action_distribution": action_counts,
             "subgoals": subgoals,
-            "step_history": history
+            "step_history": history,
         }
 
         out_path.write_text(json.dumps(analytics_data, indent=2), encoding="utf-8")
@@ -196,6 +189,7 @@ def _compress_screenshot(img_bytes: bytes, draw_grid: bool = True, density: str 
     """Compress screen frame to turbo JPEG image (1280x720 LANCZOS + Quality 75 + SOM Grid Overlay)."""
     try:
         from PIL import Image
+
         img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
         # Turbo 1280x720 scaling for 65% smaller payload and sub-400ms inference roundtrip
         img.thumbnail((1280, 720), Image.Resampling.LANCZOS)
@@ -255,7 +249,7 @@ def _parse_vision_json(raw_text: str) -> dict:
 
     # Stage 5: Regex key extraction fallback
     data = {}
-    
+
     thought_m = re.search(r'"thought"\s*:\s*"(.*?)"(?:\s*,|\s*\})', candidate, re.DOTALL)
     if not thought_m:
         thought_m = re.search(r'thought["\']?\s*:\s*["\'](.*?)["\']', candidate, re.DOTALL)
@@ -292,11 +286,9 @@ def _parse_vision_json(raw_text: str) -> dict:
             sub_act = m.group(1).lower().strip()
             sub_k = re.search(r'"keys"\s*:\s*"([^"]+)"', m.group(0))
             sub_t = re.search(r'"text"\s*:\s*"([^"]+)"', m.group(0))
-            sub_acts.append({
-                "action": sub_act,
-                "keys": sub_k.group(1) if sub_k else "",
-                "text": sub_t.group(1) if sub_t else ""
-            })
+            sub_acts.append(
+                {"action": sub_act, "keys": sub_k.group(1) if sub_k else "", "text": sub_t.group(1) if sub_t else ""}
+            )
         if sub_acts:
             data["compound_actions"] = sub_acts
             data["action"] = "compound"
@@ -329,8 +321,8 @@ def _call_offline_ollama_vision(img_bytes: bytes, system_instruction: str, densi
     Tries lightweight vision models: llama3.2-vision, moondream, llava, qwen2-vl.
     """
     import base64
-    import urllib.request
     import json
+    import urllib.request
 
     compressed_bytes, mime_type = _compress_screenshot(img_bytes, draw_grid=True, density=density)
     b64_img = base64.b64encode(compressed_bytes).decode("utf-8")
@@ -339,17 +331,10 @@ def _call_offline_ollama_vision(img_bytes: bytes, system_instruction: str, densi
 
     for o_model in ollama_models:
         try:
-            payload = {
-                "model": o_model,
-                "prompt": system_instruction,
-                "images": [b64_img],
-                "stream": False
-            }
+            payload = {"model": o_model, "prompt": system_instruction, "images": [b64_img], "stream": False}
             data_bytes = json.dumps(payload).encode("utf-8")
             req = urllib.request.Request(
-                "http://localhost:11434/api/generate",
-                data=data_bytes,
-                headers={"Content-Type": "application/json"}
+                "http://localhost:11434/api/generate", data=data_bytes, headers={"Content-Type": "application/json"}
             )
             with urllib.request.urlopen(req, timeout=6) as resp:
                 body = json.loads(resp.read().decode("utf-8"))
@@ -361,7 +346,9 @@ def _call_offline_ollama_vision(img_bytes: bytes, system_instruction: str, densi
     return ""
 
 
-def _snap_target_to_ocr_or_accessibility(px_x: int | None, px_y: int | None, thought: str, text_val: str, screen_w: int, screen_h: int) -> tuple[int | None, int | None]:
+def _snap_target_to_ocr_or_accessibility(
+    px_x: int | None, px_y: int | None, thought: str, text_val: str, screen_w: int, screen_h: int
+) -> tuple[int | None, int | None]:
     """
     Snap target coordinates (px_x, px_y) to the exact center of matched text bounding box
     using local OCR or native accessibility API for 100% offline click precision.
@@ -375,6 +362,7 @@ def _snap_target_to_ocr_or_accessibility(px_x: int | None, px_y: int | None, tho
 
     try:
         from brjarvis.vision.ocr_engine import OCREngine
+
         ocr = OCREngine()
         raw_bytes = _take_screenshot_bytes()
         if raw_bytes:
@@ -393,7 +381,9 @@ def _snap_target_to_ocr_or_accessibility(px_x: int | None, px_y: int | None, tho
     return px_x, px_y
 
 
-def _call_vision_llm(img_bytes: bytes, system_instruction: str, api_key: str, model_name: str, density: str = "coarse") -> str:
+def _call_vision_llm(
+    img_bytes: bytes, system_instruction: str, api_key: str, model_name: str, density: str = "coarse"
+) -> str:
     """
     Ultra-Fast Resilient Multi-Source Vision LLM caller:
     1. Local proxy gateway (http://localhost:8045/v1) with 3.5s Turbo timeout
@@ -401,14 +391,20 @@ def _call_vision_llm(img_bytes: bytes, system_instruction: str, api_key: str, mo
     3. Google GenAI Cloud Fallback API
     """
     import base64
-    import urllib.request
     import json
     import time
+    import urllib.request
 
     compressed_bytes, mime_type = _compress_screenshot(img_bytes, draw_grid=True, density=density)
     b64_img = base64.b64encode(compressed_bytes).decode("utf-8")
 
-    gateway_models = [model_name, "gemini-3.6-flash", "gemini-3.6-flash-high", "gemini-3.1-flash-image", "gemini-3-flash"]
+    gateway_models = [
+        model_name,
+        "gemini-3.6-flash",
+        "gemini-3.6-flash-high",
+        "gemini-3.1-flash-image",
+        "gemini-3-flash",
+    ]
     # De-duplicate while preserving priority order
     seen = set()
     gateway_models = [m for m in gateway_models if m and not (m in seen or seen.add(m))]
@@ -422,21 +418,17 @@ def _call_vision_llm(img_bytes: bytes, system_instruction: str, api_key: str, mo
                         "role": "user",
                         "content": [
                             {"type": "text", "text": system_instruction},
-                            {"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{b64_img}"}}
-                        ]
+                            {"type": "image_url", "image_url": {"url": f"data:{mime_type};base64,{b64_img}"}},
+                        ],
                     }
-                ]
+                ],
             }
             data_bytes = json.dumps(payload).encode("utf-8")
             headers = {"Content-Type": "application/json"}
             api_key = os.environ.get("OPENAI_API_KEY", "").strip()
             if api_key:
                 headers["Authorization"] = f"Bearer {api_key}"
-            req = urllib.request.Request(
-                "http://localhost:8045/v1/chat/completions",
-                data=data_bytes,
-                headers=headers
-            )
+            req = urllib.request.Request("http://localhost:8045/v1/chat/completions", data=data_bytes, headers=headers)
             with urllib.request.urlopen(req, timeout=3.5) as resp:
                 body = json.loads(resp.read().decode("utf-8"))
                 content = body.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
@@ -454,6 +446,7 @@ def _call_vision_llm(img_bytes: bytes, system_instruction: str, api_key: str, mo
     try:
         from google import genai
         from google.genai import types as gtypes
+
         client = genai.Client(api_key=api_key)
         response = client.models.generate_content(
             model=model_name if (model_name and "1.5" not in model_name) else "gemini-2.0-flash",
@@ -468,7 +461,6 @@ def _call_vision_llm(img_bytes: bytes, system_instruction: str, api_key: str, mo
             time.sleep(2.0)
             raise RuntimeError("Cloud quota exceeded (429). Cooldown active...") from err
         raise err
-
 
 
 def _execute_single_action(act_dict: dict, screen_w: int, screen_h: int) -> str:
@@ -532,30 +524,22 @@ def _decompose_subgoals(goal: str) -> list[dict]:
         if any(w in c_lower for w in ["type", "write", "enter", "input", "search for", "fill"]):
             type_match = re.search(r"(?:type|write|enter|search for|fill)\s+(.+)", c, re.IGNORECASE)
             text_to_type = type_match.group(1).strip() if type_match else "hello world"
-            subgoals.append({
-                "id": sg_id,
-                "description": f"Type '{text_to_type}' into active editor/field",
-                "type": "UI_ACTION",
-                "text": text_to_type,
-                "completed": False
-            })
+            subgoals.append(
+                {
+                    "id": sg_id,
+                    "description": f"Type '{text_to_type}' into active editor/field",
+                    "type": "UI_ACTION",
+                    "text": text_to_type,
+                    "completed": False,
+                }
+            )
             sg_id += 1
         else:
-            subgoals.append({
-                "id": sg_id,
-                "description": c,
-                "type": "VISUAL_NAVIGATION",
-                "completed": False
-            })
+            subgoals.append({"id": sg_id, "description": c, "type": "VISUAL_NAVIGATION", "completed": False})
             sg_id += 1
 
     if not subgoals:
-        subgoals.append({
-            "id": 1,
-            "description": goal,
-            "type": "VISUAL_NAVIGATION",
-            "completed": False
-        })
+        subgoals.append({"id": 1, "description": goal, "type": "VISUAL_NAVIGATION", "completed": False})
 
     return subgoals
 
@@ -595,6 +579,7 @@ class LiveOSController:
             return "Error: No API key available for Live OS Vision Controller."
 
         from brjarvis.config.models import get_model_for_task
+
         model_name = get_model_for_task("vision") or "gemini-3.6-flash"
 
         screen_w, screen_h = _screen_size()
@@ -607,7 +592,12 @@ class LiveOSController:
         bg_tag = " (Background Daemon Mode 🛡️)" if self.is_background else ""
         logger.info(
             "JARVIS LIVE OS CONTROL ENGINE (Goal: %s, Subgoals: %d, Steps: %s, Res: %dx%d, Model: %s)",
-            self.goal, len(self.subgoals), self.limit_label, screen_w, screen_h, model_name
+            self.goal,
+            len(self.subgoals),
+            self.limit_label,
+            screen_w,
+            screen_h,
+            model_name,
         )
 
         for step in range(1, self.max_steps + 1):
@@ -621,23 +611,25 @@ class LiveOSController:
 
             # Native C fast FNV-1a hash check for static screen detection
             img_hash = fast_hash(img_bytes)
-            is_static = (img_hash == self._last_img_hash)
+            is_static = img_hash == self._last_img_hash
             self._last_img_hash = img_hash
 
             # Dynamic Velocity & Step Delay Adaptation
             if is_static:
                 self._static_count += 1
-                self.step_delay = min(0.5, self.step_delay + 0.1) # Decelerate on static/loading frame
+                self.step_delay = min(0.5, self.step_delay + 0.1)  # Decelerate on static/loading frame
             else:
                 self._static_count = 0
-                self.step_delay = max(0.05, self.step_delay - 0.02) # Accelerate on fast screen transition
+                self.step_delay = max(0.05, self.step_delay - 0.02)  # Accelerate on fast screen transition
 
             # Adaptive SOM Grid Density Selection ('fine' 50px ticks on static/micro-targeting, 'coarse' 100px on standard navigation)
             grid_density = "fine" if self._static_count >= 1 else "coarse"
 
             # Adaptive recovery on persistent static screen
             if self._static_count >= 2:
-                logger.warning("Static screen detected across 2 turns. Triggering adaptive recovery shortcut (Ctrl+L focus)...")
+                logger.warning(
+                    "Static screen detected across 2 turns. Triggering adaptive recovery shortcut (Ctrl+L focus)..."
+                )
                 _focus_window("Edge") or _focus_window("Chrome") or _focus_window("Brave") or _focus_window("Firefox")
                 _hotkey("ctrl", "l")
                 time.sleep(0.1)
@@ -659,7 +651,7 @@ class LiveOSController:
                 status_icon = "✅ COMPLETED" if sg.get("completed") else "➔ ACTIVE IN PROGRESS"
                 sg_tracker_lines.append(f" - [{status_icon}] Subgoal {sg['id']}: {sg['description']}")
                 if not sg.get("completed") and not active_sg_desc:
-                    active_sg_desc = sg['description']
+                    active_sg_desc = sg["description"]
 
             subgoal_tracker_text = "SUB-GOAL PROGRESS TRACKER:\n" + "\n".join(sg_tracker_lines) + "\n"
             if active_sg_desc:
@@ -670,7 +662,7 @@ class LiveOSController:
             if self.history:
                 last_few = self.history[-4:]
                 history_summary = "PAST ACTIONS TAKEN:\n" + "\n".join(
-                    f" - Step {h['step']}: Action='{h['action']}', Target='{h.get('target','')}', Result='{h['result']}'"
+                    f" - Step {h['step']}: Action='{h['action']}', Target='{h.get('target', '')}', Result='{h['result']}'"
                     for h in last_few
                 )
 
@@ -712,7 +704,7 @@ class LiveOSController:
                 f'     {{"action": "hotkey", "keys": "ctrl+l"}},\n'
                 f'     {{"action": "type", "text": "https://word.new"}},\n'
                 f'     {{"action": "press", "keys": "enter"}}\n'
-                f'  ],\n'
+                f"  ],\n"
                 f'  "mark_subgoal_completed": 1,\n'
                 f'  "reason": "why this action or shortcut sequence is taken",\n'
                 f'  "done": true/false\n'
@@ -740,7 +732,9 @@ class LiveOSController:
                 for sg in self.subgoals:
                     if sg["id"] == mark_sg_id and not sg.get("completed"):
                         sg["completed"] = True
-                        logger.info("Subgoal Marked Completed by Vision LLM: Subgoal %s (%s)", sg['id'], sg['description'])
+                        logger.info(
+                            "Subgoal Marked Completed by Vision LLM: Subgoal %s (%s)", sg["id"], sg["description"]
+                        )
 
             # Native hardware grid transform: (0..1000) -> actual pixels
             px_x, px_y = None, None
@@ -757,7 +751,15 @@ class LiveOSController:
                 if f_path:
                     self.frame_paths.append(f_path)
 
-            logger.info("[Step %d/%d] Thought: %s | Action: '%s' | Coords: (%d, %d)", step, self.max_steps, thought, action, px_x, px_y)
+            logger.info(
+                "[Step %d/%d] Thought: %s | Action: '%s' | Coords: (%d, %d)",
+                step,
+                self.max_steps,
+                thought,
+                action,
+                px_x,
+                px_y,
+            )
 
             if player:
                 player.write_log(f"[LiveOS #{step}] {action} -> ({px_x},{px_y})")
@@ -806,7 +808,9 @@ class LiveOSController:
                 elif action == "hotkey":
                     # Browser focus safeguard before browser shortcuts
                     if any(b_kw in keys_val for b_kw in ["ctrl+l", "ctrl+t", "ctrl+w", "alt+d"]):
-                        _focus_window("Edge") or _focus_window("Chrome") or _focus_window("Brave") or _focus_window("Firefox")
+                        _focus_window("Edge") or _focus_window("Chrome") or _focus_window("Brave") or _focus_window(
+                            "Firefox"
+                        )
                     result_str = _hotkey(*[k.strip() for k in keys_val.split("+")])
 
                 elif action == "press":
@@ -832,17 +836,21 @@ class LiveOSController:
             if action in ["type", "press", "hotkey", "click"]:
                 for sg in self.subgoals:
                     if not sg.get("completed") and sg.get("type") == "UI_ACTION":
-                        if action == "type" or (action in ["press", "hotkey"] and ("enter" in keys_val or "win+" in keys_val)):
+                        if action == "type" or (
+                            action in ["press", "hotkey"] and ("enter" in keys_val or "win+" in keys_val)
+                        ):
                             sg["completed"] = True
-                            logger.info("Subgoal Auto-Fulfilled: %s", sg['description'])
+                            logger.info("Subgoal Auto-Fulfilled: %s", sg["description"])
                             break
 
-            self.history.append({
-                "step": step,
-                "action": action,
-                "target": f"({px_x},{px_y})" if px_x is not None else "",
-                "result": result_str
-            })
+            self.history.append(
+                {
+                    "step": step,
+                    "action": action,
+                    "target": f"({px_x},{px_y})" if px_x is not None else "",
+                    "result": result_str,
+                }
+            )
 
         summary = f"Live OS Control reached maximum step limit ({self.max_steps}). Goal: {self.goal}"
         logger.warning("Step limit reached: %s", summary)
@@ -869,6 +877,7 @@ def live_os_control_action(parameters: dict, player=None, speak=None) -> str:
 def launch_live_os_background(goal: str, max_steps: int = 0) -> str:
     """Launch Autonomous Live OS Control in non-blocking background mode."""
     import threading
+
     controller = LiveOSController(goal=goal, max_steps=max_steps, is_background=True)
     t = threading.Thread(target=controller.run, daemon=True, name=f"LiveOS_Bg_{goal[:10]}")
     t.start()

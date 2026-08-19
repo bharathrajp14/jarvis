@@ -4,30 +4,29 @@ RSS/Atom news feed reader connector.
 Zero-setup, zero-auth. Works with any public RSS feed.
 Pre-configured with popular free news sources.
 """
+
 from __future__ import annotations
 
-import json
 import logging
 import re
 import urllib.request
 import xml.etree.ElementTree as ET
-from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from .base import BaseConnector, ConnectorTool
 
 logger = logging.getLogger("JARVIS.Connectors.RSS")
 
 PRESET_FEEDS = {
-    "bbc_world":       "http://feeds.bbci.co.uk/news/world/rss.xml",
-    "bbc_tech":        "http://feeds.bbci.co.uk/news/technology/rss.xml",
-    "techcrunch":      "https://techcrunch.com/feed/",
-    "hacker_news":     "https://news.ycombinator.com/rss",
-    "the_verge":       "https://www.theverge.com/rss/index.xml",
-    "reuters":         "https://feeds.reuters.com/reuters/topNews",
-    "wired":           "https://www.wired.com/feed/rss",
+    "bbc_world": "http://feeds.bbci.co.uk/news/world/rss.xml",
+    "bbc_tech": "http://feeds.bbci.co.uk/news/technology/rss.xml",
+    "techcrunch": "https://techcrunch.com/feed/",
+    "hacker_news": "https://news.ycombinator.com/rss",
+    "the_verge": "https://www.theverge.com/rss/index.xml",
+    "reuters": "https://feeds.reuters.com/reuters/topNews",
+    "wired": "https://www.wired.com/feed/rss",
     "mit_tech_review": "https://www.technologyreview.com/feed/",
-    "ai_news":         "https://aiweekly.co/issues.rss",
+    "ai_news": "https://aiweekly.co/issues.rss",
     "github_trending": "https://github-trending-api.fly.dev/feed",
 }
 
@@ -44,7 +43,6 @@ PRESET_ALIASES = {
 
 
 class RSSNewsConnector(BaseConnector):
-
     @property
     def connector_id(self) -> str:
         return "rss_news"
@@ -140,9 +138,7 @@ class RSSNewsConnector(BaseConnector):
     def _fetch_rss(self, url: str) -> List[Dict]:
         req = urllib.request.Request(
             url,
-            headers={
-                "User-Agent": "JARVIS-ConnectorHub/1.0 (RSS Reader; +https://github.com/bharthraj1412/BrJarvis)"
-            }
+            headers={"User-Agent": "JARVIS-ConnectorHub/1.0 (RSS Reader; +https://github.com/bharthraj1412/BrJarvis)"},
         )
         with urllib.request.urlopen(req, timeout=10.0) as resp:
             content = resp.read()
@@ -167,7 +163,9 @@ class RSSNewsConnector(BaseConnector):
                 title = entry.findtext("{http://www.w3.org/2005/Atom}title", "").strip()
                 link_el = entry.find("{http://www.w3.org/2005/Atom}link")
                 link = link_el.get("href", "") if link_el is not None else ""
-                summary = entry.findtext("{http://www.w3.org/2005/Atom}summary", "") or entry.findtext("{http://www.w3.org/2005/Atom}content", "")
+                summary = entry.findtext("{http://www.w3.org/2005/Atom}summary", "") or entry.findtext(
+                    "{http://www.w3.org/2005/Atom}content", ""
+                )
                 summary_clean = re.sub(r"<[^>]+>", "", summary)[:200].strip()
                 if title:
                     items.append({"title": title, "link": link, "summary": summary_clean, "published": ""})

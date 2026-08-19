@@ -3,40 +3,45 @@
 Universal high-resilience web search & page extractor for BR-JARVIS.
 Combines DuckDuckGo, Wikipedia API, Gemini Search Grounding, and HTTP/Playwright scrapers.
 """
+
 from __future__ import annotations
 
-import logging
-import os
 import asyncio
 import json
+import logging
+import os
 import re
 import urllib.parse
 import urllib.request
-from pathlib import Path
+import warnings
+
 from brjarvis.core.paths import paths
 
-import warnings
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
 _DDG_AVAILABLE = False
 try:
     from ddgs import DDGS
+
     _DDG_AVAILABLE = True
 except ImportError:
     try:
         from duckduckgo_search import DDGS
+
         _DDG_AVAILABLE = True
     except ImportError:
         _DDG_AVAILABLE = False
 
 try:
     import httpx
+
     _HTTPX_AVAILABLE = True
 except ImportError:
     _HTTPX_AVAILABLE = False
 
 try:
     from playwright.async_api import async_playwright
+
     _PLAYWRIGHT_AVAILABLE = True
 except Exception:
     _PLAYWRIGHT_AVAILABLE = False
@@ -69,14 +74,16 @@ async def search_wikipedia(query: str, max_results: int = 3) -> list[dict]:
         if len(data) >= 4 and data[1]:
             titles, snippets, urls = data[1], data[2], data[3]
             for t, s, u in zip(titles, snippets, urls):
-                results.append({
-                    "title": f"Wikipedia: {t}",
-                    "href": u,
-                    "body": s or f"Wikipedia article for {t}.",
-                    "source": "Wikipedia"
-                })
+                results.append(
+                    {
+                        "title": f"Wikipedia: {t}",
+                        "href": u,
+                        "body": s or f"Wikipedia article for {t}.",
+                        "source": "Wikipedia",
+                    }
+                )
     except Exception as e:
-        logger.debug('Suppressed exception: %s', e)
+        logger.debug("Suppressed exception: %s", e)
     return results
 
 
@@ -103,18 +110,20 @@ async def search_tavily(query: str, max_results: int = 6) -> list[dict]:
             req = urllib.request.Request(
                 "https://api.tavily.com/search",
                 data=json.dumps({"api_key": api_key, "query": query, "max_results": max_results}).encode("utf-8"),
-                headers={"Content-Type": "application/json"}
+                headers={"Content-Type": "application/json"},
             )
             with urllib.request.urlopen(req, timeout=5) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
                 out = []
                 for r in data.get("results", []):
-                    out.append({
-                        "source": "Tavily",
-                        "title": _clean_text(r.get("title", "")),
-                        "href": r.get("url", ""),
-                        "body": _clean_text(r.get("content", ""))
-                    })
+                    out.append(
+                        {
+                            "source": "Tavily",
+                            "title": _clean_text(r.get("title", "")),
+                            "href": r.get("url", ""),
+                            "body": _clean_text(r.get("content", "")),
+                        }
+                    )
                 return out
         except Exception as e:
             logger.debug("[WebSearch] Tavily notice: %s", e)
@@ -176,18 +185,21 @@ async def web_search(query: str, max_results: int = 8) -> list[dict]:
     if not results:
         try:
             from brjarvis.gateway.model_gateway import get_model_gateway
+
             gw = get_model_gateway()
             resp = gw.complete(
                 messages=[{"role": "user", "content": f"Search and summarize: {clean_query}"}],
-                system="Provide a concise factual search summary with key details and sources."
+                system="Provide a concise factual search summary with key details and sources.",
             )
             if resp.text and not resp.text.startswith("ERROR"):
-                results.append({
-                    "title": f"Search Synthesis: {clean_query}",
-                    "href": "https://google.com/search?q=" + urllib.parse.quote(clean_query),
-                    "body": resp.text[:1000],
-                    "source": "AI Search Synthesis"
-                })
+                results.append(
+                    {
+                        "title": f"Search Synthesis: {clean_query}",
+                        "href": "https://google.com/search?q=" + urllib.parse.quote(clean_query),
+                        "body": resp.text[:1000],
+                        "source": "AI Search Synthesis",
+                    }
+                )
         except Exception as e:
             logger.debug("[WebSearch] AI synthesis search notice: %s", e)
 
@@ -209,13 +221,15 @@ async def fetch_page(url: str) -> str:
                 await browser.close()
                 return _clean_text(text[:10000])
         except Exception as e:
-            logger.debug('Suppressed exception: %s', e)
+            logger.debug("Suppressed exception: %s", e)
     return await fetch_raw(url)
 
 
 async def fetch_raw(url: str) -> str:
     """Fetch raw text/HTML content from URL."""
-    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"}
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    }
     if _HTTPX_AVAILABLE:
         try:
             async with httpx.AsyncClient(timeout=10.0, follow_redirects=True) as client:

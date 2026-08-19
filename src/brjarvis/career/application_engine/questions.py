@@ -2,8 +2,7 @@
 from __future__ import annotations
 
 import logging
-import re
-from typing import Any, Dict, List, Optional, Tuple
+from typing import List
 
 from ..models import ApplicationQuestion, CareerProfile
 
@@ -11,8 +10,23 @@ logger = logging.getLogger("JARVIS.QuestionEngine")
 
 SENSITIVE_KEYWORDS = {
     "work_authorization": ["authorized to work", "legal right to work", "work permit", "eligible to work"],
-    "sponsorship": ["visa sponsorship", "require sponsorship", "require visa", "sponsorship in future", "h1b", "h-1b", "opt", "cpt"],
-    "salary": ["salary expectation", "desired salary", "compensation expectations", "target compensation", "current salary"],
+    "sponsorship": [
+        "visa sponsorship",
+        "require sponsorship",
+        "require visa",
+        "sponsorship in future",
+        "h1b",
+        "h-1b",
+        "opt",
+        "cpt",
+    ],
+    "salary": [
+        "salary expectation",
+        "desired salary",
+        "compensation expectations",
+        "target compensation",
+        "current salary",
+    ],
     "relocation": ["willing to relocate", "relocation assistance", "open to relocate"],
     "eeo": ["gender", "race", "ethnicity", "veteran", "disability", "equal opportunity", "demographic"],
     "legal": ["criminal record", "background check", "felony", "misdemeanor", "drug test"],
@@ -79,7 +93,12 @@ class QuestionEngine:
                 q.confidence = 0.95
 
             elif q.sensitive_category == "work_authorization":
-                q.suggested_answer = "Yes" if "without sponsorship" in profile.preferences.work_authorization.lower() or "authorized" in profile.preferences.work_authorization.lower() else "No"
+                q.suggested_answer = (
+                    "Yes"
+                    if "without sponsorship" in profile.preferences.work_authorization.lower()
+                    or "authorized" in profile.preferences.work_authorization.lower()
+                    else "No"
+                )
                 q.confidence = 0.9
 
             elif q.sensitive_category == "sponsorship":

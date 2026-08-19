@@ -3,6 +3,7 @@
 BR JARVIS v41.0 (MARK XLI)
 Autonomous Cognitive Agent Architecture & Isolated Sandbox Lifecycle Engine
 """
+
 from __future__ import annotations
 
 import os
@@ -57,6 +58,7 @@ _ALIASES = {
 import importlib.abc
 import importlib.util
 
+
 class _AliasLoader(importlib.abc.Loader):
     def __init__(self, canonical_name: str):
         self.canonical_name = canonical_name
@@ -72,6 +74,7 @@ class _AliasLoader(importlib.abc.Loader):
 
 class LegacyNamespaceFinder(importlib.abc.MetaPathFinder):
     """Universal transparent import router for legacy package paths to brjarvis.*"""
+
     def find_spec(self, fullname: str, path=None, target=None):
         for legacy, canonical in _ALIASES.items():
             if fullname == legacy:
@@ -90,7 +93,7 @@ class LegacyNamespaceFinder(importlib.abc.MetaPathFinder):
                 except Exception:
                     pass
             elif fullname.startswith(legacy + "."):
-                rel = fullname[len(legacy):]
+                rel = fullname[len(legacy) :]
                 canonical_sub = canonical + rel
                 try:
                     canonical_spec = importlib.util.find_spec(canonical_sub)
@@ -108,11 +111,13 @@ class LegacyNamespaceFinder(importlib.abc.MetaPathFinder):
                     pass
         return None
 
+
 if not any(isinstance(f, LegacyNamespaceFinder) for f in getattr(sys, "meta_path", [])):
     sys.meta_path.insert(0, LegacyNamespaceFinder())
 
 try:
-    from brjarvis.core.version import VERSION, BUILD, CODENAME
+    from brjarvis.core.version import BUILD, CODENAME, VERSION
+
     __version__ = VERSION
     __build__ = BUILD
     __codename__ = CODENAME
@@ -121,7 +126,7 @@ except Exception:
     __build__ = "2026-08-18"
     __codename__ = "MARK XLI"
 
-from brjarvis.core.paths import get_path_manager, PathManager, paths
+from brjarvis.core.paths import PathManager, get_path_manager, paths
 
 # Eagerly import aliased packages to trigger self-registration in sys.modules
 try:

@@ -3,10 +3,10 @@
 RAG (Retrieval-Augmented Generation) and Semantic Search skills for BR-JARVIS MK37.
 Importing this module registers skills for document Q&A, knowledge base querying, and semantic indexing.
 """
+
 from __future__ import annotations
 
 from .loader import SkillDef, register_builtin_skill
-
 
 _CHAT_PDF_PROMPT = """\
 You are a document analysis expert. Chat with and extract insights from documents using the RAG engine.
@@ -61,57 +61,65 @@ $ARGUMENTS
 
 
 def _register_rag_builtins() -> None:
-    register_builtin_skill(SkillDef(
-        name="chat-pdf",
-        description="Chat with and analyze PDF or document files using RAG knowledge indexing",
-        triggers=["/chat-pdf", "/pdf", "chat with pdf", "read this pdf", "analyze this document"],
-        tools=["rag_ingest", "rag_query", "rag_chat", "import_file_to_knowledge", "file_read"],
-        prompt=_CHAT_PDF_PROMPT,
-        file_path="builtin:chat-pdf",
-        category="research",
-        domain="Knowledge & RAG",
-        user_invocable=True,
-        source="builtin"
-    ))
+    register_builtin_skill(
+        SkillDef(
+            name="chat-pdf",
+            description="Chat with and analyze PDF or document files using RAG knowledge indexing",
+            triggers=["/chat-pdf", "/pdf", "chat with pdf", "read this pdf", "analyze this document"],
+            tools=["rag_ingest", "rag_query", "rag_chat", "import_file_to_knowledge", "file_read"],
+            prompt=_CHAT_PDF_PROMPT,
+            file_path="builtin:chat-pdf",
+            category="research",
+            domain="Knowledge & RAG",
+            user_invocable=True,
+            source="builtin",
+        )
+    )
 
-    register_builtin_skill(SkillDef(
-        name="chat-webpage",
-        description="Ingest and query web pages via semantic RAG retrieval",
-        triggers=["/chat-webpage", "/webpage", "chat with webpage", "analyze this website"],
-        tools=["rag_ingest_webpage", "rag_query", "rag_chat", "fetch_page"],
-        prompt=_CHAT_WEBPAGE_PROMPT,
-        file_path="builtin:chat-webpage",
-        category="research",
-        domain="Knowledge & RAG",
-        user_invocable=True,
-        source="builtin"
-    ))
+    register_builtin_skill(
+        SkillDef(
+            name="chat-webpage",
+            description="Ingest and query web pages via semantic RAG retrieval",
+            triggers=["/chat-webpage", "/webpage", "chat with webpage", "analyze this website"],
+            tools=["rag_ingest_webpage", "rag_query", "rag_chat", "fetch_page"],
+            prompt=_CHAT_WEBPAGE_PROMPT,
+            file_path="builtin:chat-webpage",
+            category="research",
+            domain="Knowledge & RAG",
+            user_invocable=True,
+            source="builtin",
+        )
+    )
 
-    register_builtin_skill(SkillDef(
-        name="library",
-        description="Manage personal document knowledge base (list, ingest, search, delete)",
-        triggers=["/library", "/rag", "document library", "my documents", "knowledge base"],
-        tools=["rag_list", "rag_ingest", "rag_ingest_webpage", "rag_query", "rag_delete"],
-        prompt=_LIBRARY_PROMPT,
-        file_path="builtin:library",
-        category="research",
-        domain="Knowledge & RAG",
-        user_invocable=True,
-        source="builtin"
-    ))
+    register_builtin_skill(
+        SkillDef(
+            name="library",
+            description="Manage personal document knowledge base (list, ingest, search, delete)",
+            triggers=["/library", "/rag", "document library", "my documents", "knowledge base"],
+            tools=["rag_list", "rag_ingest", "rag_ingest_webpage", "rag_query", "rag_delete"],
+            prompt=_LIBRARY_PROMPT,
+            file_path="builtin:library",
+            category="research",
+            domain="Knowledge & RAG",
+            user_invocable=True,
+            source="builtin",
+        )
+    )
 
-    register_builtin_skill(SkillDef(
-        name="semantic_search",
-        description="Search workspace files and documentation using semantic vector similarity",
-        triggers=["/semantic-search", "/vector-search", "semantic search"],
-        tools=["file_search_semantic", "semantic_file_search", "rag_query"],
-        prompt=_SEMANTIC_SEARCH_PROMPT,
-        file_path="builtin:semantic_search",
-        category="engineering",
-        domain="Semantic Retrieval",
-        user_invocable=True,
-        source="builtin"
-    ))
+    register_builtin_skill(
+        SkillDef(
+            name="semantic_search",
+            description="Search workspace files and documentation using semantic vector similarity",
+            triggers=["/semantic-search", "/vector-search", "semantic search"],
+            tools=["file_search_semantic", "semantic_file_search", "rag_query"],
+            prompt=_SEMANTIC_SEARCH_PROMPT,
+            file_path="builtin:semantic_search",
+            category="engineering",
+            domain="Semantic Retrieval",
+            user_invocable=True,
+            source="builtin",
+        )
+    )
 
 
 _register_rag_builtins()

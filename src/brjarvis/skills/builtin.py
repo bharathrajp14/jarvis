@@ -3,9 +3,11 @@
 Built-in core skills that ship natively with BR-JARVIS MK37.
 Importing this module registers all built-in skills into the loader.
 """
+
 from __future__ import annotations
 
 import logging
+
 from .loader import SkillDef, register_builtin_skill
 
 logger = logging.getLogger("JARVIS.Skills.Builtin")
@@ -218,164 +220,201 @@ $ARGUMENTS
 def _register_builtins() -> None:
     """Register all built-in core skills."""
 
-    register_builtin_skill(SkillDef(
-        name="live_os",
-        description="Autonomous live OS visual control ('Antigravity Mode') with real-time perception and fast reaction loop",
-        triggers=["/live-control", "/os-control", "/screen-react", "/live-os"],
-        tools=["live_os_control", "live_screen_analyze", "visual_click", "visual_type", "visual_drag", "take_screenshot", "focus_window"],
-        prompt=_LIVE_OS_PROMPT,
-        file_path="<builtin:live_os>",
-        category="general",
-        domain="OS Automation",
-        when_to_use="Use when the user wants full autonomous visual control over the operating system desktop.",
-        argument_hint="<goal or task on desktop>",
-        arguments=[],
-        user_invocable=True,
-        context="inline",
-        source="builtin",
-    ))
+    register_builtin_skill(
+        SkillDef(
+            name="live_os",
+            description="Autonomous live OS visual control ('Antigravity Mode') with real-time perception and fast reaction loop",
+            triggers=["/live-control", "/os-control", "/screen-react", "/live-os"],
+            tools=[
+                "live_os_control",
+                "live_screen_analyze",
+                "visual_click",
+                "visual_type",
+                "visual_drag",
+                "take_screenshot",
+                "focus_window",
+            ],
+            prompt=_LIVE_OS_PROMPT,
+            file_path="<builtin:live_os>",
+            category="general",
+            domain="OS Automation",
+            when_to_use="Use when the user wants full autonomous visual control over the operating system desktop.",
+            argument_hint="<goal or task on desktop>",
+            arguments=[],
+            user_invocable=True,
+            context="inline",
+            source="builtin",
+        )
+    )
 
-    register_builtin_skill(SkillDef(
-        name="commit",
-        description="Review staged changes, check secrets, and create a well-structured git commit",
-        triggers=["/commit", "/git-commit", "commit changes"],
-        tools=["run_code", "git_repo_mgr", "file_read", "file_list"],
-        prompt=_COMMIT_PROMPT,
-        file_path="<builtin:commit>",
-        category="engineering",
-        domain="Version Control",
-        when_to_use="Use when the user wants to commit changes to git repository.",
-        argument_hint="[optional context / commit message hint]",
-        arguments=[],
-        user_invocable=True,
-        context="inline",
-        source="builtin",
-    ))
+    register_builtin_skill(
+        SkillDef(
+            name="commit",
+            description="Review staged changes, check secrets, and create a well-structured git commit",
+            triggers=["/commit", "/git-commit", "commit changes"],
+            tools=["run_code", "git_repo_mgr", "file_read", "file_list"],
+            prompt=_COMMIT_PROMPT,
+            file_path="<builtin:commit>",
+            category="engineering",
+            domain="Version Control",
+            when_to_use="Use when the user wants to commit changes to git repository.",
+            argument_hint="[optional context / commit message hint]",
+            arguments=[],
+            user_invocable=True,
+            context="inline",
+            source="builtin",
+        )
+    )
 
-    register_builtin_skill(SkillDef(
-        name="review",
-        description="Perform deep architectural, security, and quality code review of changes or pull requests",
-        triggers=["/review", "/review-pr", "/code-review"],
-        tools=["file_read", "file_list", "run_code", "web_search"],
-        prompt=_REVIEW_PROMPT,
-        file_path="<builtin:review>",
-        category="engineering",
-        domain="Code Quality",
-        when_to_use="Use when the user wants a code review on files, PRs, or git diffs.",
-        argument_hint="[file path, PR number, or diff scope]",
-        arguments=["scope"],
-        user_invocable=True,
-        context="inline",
-        source="builtin",
-    ))
+    register_builtin_skill(
+        SkillDef(
+            name="review",
+            description="Perform deep architectural, security, and quality code review of changes or pull requests",
+            triggers=["/review", "/review-pr", "/code-review"],
+            tools=["file_read", "file_list", "run_code", "web_search"],
+            prompt=_REVIEW_PROMPT,
+            file_path="<builtin:review>",
+            category="engineering",
+            domain="Code Quality",
+            when_to_use="Use when the user wants a code review on files, PRs, or git diffs.",
+            argument_hint="[file path, PR number, or diff scope]",
+            arguments=["scope"],
+            user_invocable=True,
+            context="inline",
+            source="builtin",
+        )
+    )
 
-    register_builtin_skill(SkillDef(
-        name="edit",
-        description="Precisely edit files in the workspace with minimal changes and syntax verification",
-        triggers=["/edit", "/modify-file", "/code-edit"],
-        tools=["file_read", "file_write", "open_workspace_file", "batch_file_ops", "run_code"],
-        prompt=_EDIT_PROMPT,
-        file_path="<builtin:edit>",
-        category="engineering",
-        domain="Code Editing",
-        when_to_use="Use when the user wants to edit a specific file or make code changes.",
-        argument_hint="<file path> <what to change>",
-        arguments=[],
-        user_invocable=True,
-        context="inline",
-        source="builtin",
-    ))
+    register_builtin_skill(
+        SkillDef(
+            name="edit",
+            description="Precisely edit files in the workspace with minimal changes and syntax verification",
+            triggers=["/edit", "/modify-file", "/code-edit"],
+            tools=["file_read", "file_write", "open_workspace_file", "batch_file_ops", "run_code"],
+            prompt=_EDIT_PROMPT,
+            file_path="<builtin:edit>",
+            category="engineering",
+            domain="Code Editing",
+            when_to_use="Use when the user wants to edit a specific file or make code changes.",
+            argument_hint="<file path> <what to change>",
+            arguments=[],
+            user_invocable=True,
+            context="inline",
+            source="builtin",
+        )
+    )
 
-    register_builtin_skill(SkillDef(
-        name="pc_control",
-        description="Control mouse, keyboard, clipboard, and screen elements on the user's PC",
-        triggers=["/pc", "/control", "/desktop-action"],
-        tools=["cursor_move", "cursor_click", "keyboard_type", "keyboard_hotkey",
-               "keyboard_press", "screen_find", "screen_click", "take_screenshot",
-               "focus_window", "clipboard_read", "clipboard_write"],
-        prompt=_PC_CONTROL_PROMPT,
-        file_path="<builtin:pc_control>",
-        category="general",
-        domain="PC Automation",
-        when_to_use="Use when the user wants to automate mouse/keyboard/screen interactions.",
-        argument_hint="<what to do on screen>",
-        arguments=[],
-        user_invocable=True,
-        context="inline",
-        source="builtin",
-    ))
+    register_builtin_skill(
+        SkillDef(
+            name="pc_control",
+            description="Control mouse, keyboard, clipboard, and screen elements on the user's PC",
+            triggers=["/pc", "/control", "/desktop-action"],
+            tools=[
+                "cursor_move",
+                "cursor_click",
+                "keyboard_type",
+                "keyboard_hotkey",
+                "keyboard_press",
+                "screen_find",
+                "screen_click",
+                "take_screenshot",
+                "focus_window",
+                "clipboard_read",
+                "clipboard_write",
+            ],
+            prompt=_PC_CONTROL_PROMPT,
+            file_path="<builtin:pc_control>",
+            category="general",
+            domain="PC Automation",
+            when_to_use="Use when the user wants to automate mouse/keyboard/screen interactions.",
+            argument_hint="<what to do on screen>",
+            arguments=[],
+            user_invocable=True,
+            context="inline",
+            source="builtin",
+        )
+    )
 
-    register_builtin_skill(SkillDef(
-        name="research",
-        description="Deep web intelligence research with multi-query coverage and source citations",
-        triggers=["/research", "/web-research", "/deep-search"],
-        tools=["web_search", "fetch_page", "fetch_raw", "browser_auto_navigate_and_extract", "file_write"],
-        prompt=_WEB_RESEARCH_PROMPT,
-        file_path="<builtin:research>",
-        category="research",
-        domain="Web Intelligence",
-        when_to_use="Use when the user wants comprehensive research on a topic.",
-        argument_hint="<topic to research>",
-        arguments=[],
-        user_invocable=True,
-        context="inline",
-        source="builtin",
-    ))
+    register_builtin_skill(
+        SkillDef(
+            name="research",
+            description="Deep web intelligence research with multi-query coverage and source citations",
+            triggers=["/research", "/web-research", "/deep-search"],
+            tools=["web_search", "fetch_page", "fetch_raw", "browser_auto_navigate_and_extract", "file_write"],
+            prompt=_WEB_RESEARCH_PROMPT,
+            file_path="<builtin:research>",
+            category="research",
+            domain="Web Intelligence",
+            when_to_use="Use when the user wants comprehensive research on a topic.",
+            argument_hint="<topic to research>",
+            arguments=[],
+            user_invocable=True,
+            context="inline",
+            source="builtin",
+        )
+    )
 
-    register_builtin_skill(SkillDef(
-        name="audit",
-        description="Perform comprehensive codebase security, AST structure, and vulnerability analysis",
-        triggers=["/audit", "/code-audit", "/security-audit"],
-        tools=["audit_codebase", "audit_prompt_security", "code_refactor", "file_list", "file_read"],
-        prompt=_AUDIT_PROMPT,
-        file_path="<builtin:audit>",
-        category="engineering",
-        domain="Security & Audit",
-        when_to_use="Use when auditing codebase quality or searching for vulnerabilities.",
-        argument_hint="[target directory or component]",
-        arguments=[],
-        user_invocable=True,
-        context="inline",
-        source="builtin",
-    ))
+    register_builtin_skill(
+        SkillDef(
+            name="audit",
+            description="Perform comprehensive codebase security, AST structure, and vulnerability analysis",
+            triggers=["/audit", "/code-audit", "/security-audit"],
+            tools=["audit_codebase", "audit_prompt_security", "code_refactor", "file_list", "file_read"],
+            prompt=_AUDIT_PROMPT,
+            file_path="<builtin:audit>",
+            category="engineering",
+            domain="Security & Audit",
+            when_to_use="Use when auditing codebase quality or searching for vulnerabilities.",
+            argument_hint="[target directory or component]",
+            arguments=[],
+            user_invocable=True,
+            context="inline",
+            source="builtin",
+        )
+    )
 
-    register_builtin_skill(SkillDef(
-        name="optimize",
-        description="Optimize system performance, reclaim RAM/CPU, and clean cache",
-        triggers=["/optimize", "/clean-system", "/system-tune"],
-        tools=["get_system_diagnostics", "system_diagnostic", "system_cleanup", "system_optimizer", "kill_process"],
-        prompt=_OPTIMIZE_PROMPT,
-        file_path="<builtin:optimize>",
-        category="general",
-        domain="System Performance",
-        when_to_use="Use when tuning operating system performance or cleaning system memory.",
-        argument_hint="[optional target aspect: memory, disk, processes]",
-        arguments=[],
-        user_invocable=True,
-        context="inline",
-        source="builtin",
-    ))
+    register_builtin_skill(
+        SkillDef(
+            name="optimize",
+            description="Optimize system performance, reclaim RAM/CPU, and clean cache",
+            triggers=["/optimize", "/clean-system", "/system-tune"],
+            tools=["get_system_diagnostics", "system_diagnostic", "system_cleanup", "system_optimizer", "kill_process"],
+            prompt=_OPTIMIZE_PROMPT,
+            file_path="<builtin:optimize>",
+            category="general",
+            domain="System Performance",
+            when_to_use="Use when tuning operating system performance or cleaning system memory.",
+            argument_hint="[optional target aspect: memory, disk, processes]",
+            arguments=[],
+            user_invocable=True,
+            context="inline",
+            source="builtin",
+        )
+    )
 
-    register_builtin_skill(SkillDef(
-        name="testrun",
-        description="Discover, execute, and report results for project test suites",
-        triggers=["/testrun", "/run-tests", "/pytest"],
-        tools=["run_code", "file_list", "batch_file_ops", "fast_file_search"],
-        prompt=_TESTRUN_PROMPT,
-        file_path="<builtin:testrun>",
-        category="engineering",
-        domain="Testing & QA",
-        when_to_use="Use when running automated tests across the workspace.",
-        argument_hint="[test path or filter keyword]",
-        arguments=[],
-        user_invocable=True,
-        context="inline",
-        source="builtin",
-    ))
+    register_builtin_skill(
+        SkillDef(
+            name="testrun",
+            description="Discover, execute, and report results for project test suites",
+            triggers=["/testrun", "/run-tests", "/pytest"],
+            tools=["run_code", "file_list", "batch_file_ops", "fast_file_search"],
+            prompt=_TESTRUN_PROMPT,
+            file_path="<builtin:testrun>",
+            category="engineering",
+            domain="Testing & QA",
+            when_to_use="Use when running automated tests across the workspace.",
+            argument_hint="[test path or filter keyword]",
+            arguments=[],
+            user_invocable=True,
+            context="inline",
+            source="builtin",
+        )
+    )
 
     # Register built-in connector skills
     try:
         from .builtin_connectors import load_builtin_connector_skills
+
         for c_skill in load_builtin_connector_skills():
             register_builtin_skill(c_skill)
     except Exception as ex:

@@ -3,15 +3,15 @@
 LessonStore for storing and semantically retrieving explicit and implicit user corrections.
 Used by ContextEngine and Task Planner to prevent repeating errors and enforce learned rules.
 """
+
 from __future__ import annotations
 
-import json
 import logging
 import sqlite3
 import threading
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from brjarvis.core.paths import paths
 
@@ -61,9 +61,7 @@ class LessonStore:
             )
             conn.commit()
 
-    def add_lesson(
-        self, topic: str, correction: str, source: str = "explicit", weight: float = 1.0
-    ) -> int:
+    def add_lesson(self, topic: str, correction: str, source: str = "explicit", weight: float = 1.0) -> int:
         """Add a correction lesson to the database."""
         return self.store_lesson(topic, correction, source, weight)
 
@@ -75,6 +73,7 @@ class LessonStore:
         weight: float = 1.0,
     ) -> int:
         """Store a new lesson learned from a user correction or operational feedback."""
+
         def _do_write():
             with self._lock:
                 conn = self._get_conn()
@@ -89,6 +88,7 @@ class LessonStore:
                 return cur.lastrowid or 0
 
         from brjarvis.memory.sqlite_lock import run_sqlite_write
+
         return run_sqlite_write(_do_write)
 
     def strengthen_lesson(self, lesson_id: int, factor: float = 1.25) -> bool:
@@ -129,9 +129,7 @@ class LessonStore:
 
         with self._lock:
             conn = self._get_conn()
-            rows = conn.execute(
-                "SELECT * FROM lessons ORDER BY weight DESC, created_at DESC LIMIT 100"
-            ).fetchall()
+            rows = conn.execute("SELECT * FROM lessons ORDER BY weight DESC, created_at DESC LIMIT 100").fetchall()
 
             matched = []
             for row in rows:
@@ -154,9 +152,7 @@ class LessonStore:
         """Get latest lessons sorted by timestamp."""
         with self._lock:
             conn = self._get_conn()
-            rows = conn.execute(
-                "SELECT * FROM lessons ORDER BY created_at DESC LIMIT ?", (limit,)
-            ).fetchall()
+            rows = conn.execute("SELECT * FROM lessons ORDER BY created_at DESC LIMIT ?", (limit,)).fetchall()
             return [dict(r) for r in rows]
 
     def record_workflow_lesson(self, workflow_name: str, sequence_desc: str, success: bool = True) -> int:
@@ -164,7 +160,9 @@ class LessonStore:
         topic = f"workflow.{workflow_name.lower().replace(' ', '_')}"
         status_tag = "SUCCESS" if success else "FAILURE"
         correction = f"[{status_tag}] Workflow sequence: {sequence_desc}"
-        return self.store_lesson(topic=topic, correction=correction, source="workflow_orchestrator", weight=1.5 if success else 0.8)
+        return self.store_lesson(
+            topic=topic, correction=correction, source="workflow_orchestrator", weight=1.5 if success else 0.8
+        )
 
     def get_workflow_patterns(self, query: str = "") -> List[Dict[str, Any]]:
         """Retrieve verified workflow lessons."""

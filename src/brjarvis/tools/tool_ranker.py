@@ -4,6 +4,7 @@ Multi-factor tool ranking engine for BR JARVIS MK40.
 Ensures models receive only the most relevant, safe, and performant top-N tools per turn,
 avoiding context bloat, hallucinated schemas, and latency degradation.
 """
+
 from __future__ import annotations
 
 import logging
@@ -18,6 +19,7 @@ logger = logging.getLogger("JARVIS.ToolRanker")
 @dataclass
 class ToolMetadata:
     """Rich semantic and governance metadata for a tool."""
+
     name: str
     description: str
     category: str = "general"
@@ -35,6 +37,7 @@ class ToolMetadata:
 @dataclass
 class ToolExecutionStats:
     """Historical execution and reliability telemetry."""
+
     total_calls: int = 0
     success_count: int = 0
     failure_count: int = 0
@@ -62,8 +65,14 @@ class ToolRanker:
 
     # Core high-priority tools that remain accessible for broad OS autonomy
     CORE_ESSENTIALS = {
-        "open_app", "web_search", "file_read", "file_write", "run_code",
-        "computer_settings", "window_manager", "system_health"
+        "open_app",
+        "web_search",
+        "file_read",
+        "file_write",
+        "run_code",
+        "computer_settings",
+        "window_manager",
+        "system_health",
     }
 
     def __init__(self):
@@ -111,8 +120,27 @@ class ToolRanker:
                 return []
 
             low_query = query.lower()
-            query_tokens = [w for w in re.findall(r'\b\w+\b', low_query) if len(w) >= 2]
-            stop_words = {"the", "and", "for", "with", "this", "that", "from", "into", "onto", "about", "your", "what", "how", "can", "you", "please", "all", "our"}
+            query_tokens = [w for w in re.findall(r"\b\w+\b", low_query) if len(w) >= 2]
+            stop_words = {
+                "the",
+                "and",
+                "for",
+                "with",
+                "this",
+                "that",
+                "from",
+                "into",
+                "onto",
+                "about",
+                "your",
+                "what",
+                "how",
+                "can",
+                "you",
+                "please",
+                "all",
+                "our",
+            }
             content_query_words = set(w for w in query_tokens if w not in stop_words)
 
             scored: List[tuple[float, ToolMetadata]] = []
@@ -121,42 +149,60 @@ class ToolRanker:
                 score = 0.0
 
                 # 1. Exact or partial tool name token matching
-                tool_name_words = set(re.findall(r'\w+', tool.name.lower()))
+                tool_name_words = set(re.findall(r"\w+", tool.name.lower()))
                 name_overlap = len(tool_name_words.intersection(content_query_words))
                 if name_overlap > 0:
                     score += name_overlap * 2.0
 
                 # 2. Capability matching
                 for cap in tool.capabilities:
-                    cap_words = set(re.findall(r'\w+', cap.lower()))
+                    cap_words = set(re.findall(r"\w+", cap.lower()))
                     if cap.lower() in low_query or cap_words.intersection(content_query_words):
                         score += 1.5
 
                 # 3. Description semantic keyword overlap
-                desc_words = set(w for w in re.findall(r'\b\w+\b', tool.description.lower()) if w not in stop_words)
+                desc_words = set(w for w in re.findall(r"\b\w+\b", tool.description.lower()) if w not in stop_words)
                 desc_overlap = len(desc_words.intersection(content_query_words))
                 score += desc_overlap * 0.75
 
                 # 4. Contextual domain hints
-                if any(u in low_query for u in ["http://", "https://", "www.", ".com", ".org", "url"]) and "web" in tool.capabilities:
+                if (
+                    any(u in low_query for u in ["http://", "https://", "www.", ".com", ".org", "url"])
+                    and "web" in tool.capabilities
+                ):
                     score += 1.5
 
-                if any(k in low_query for k in ["commit", "branch", "repo", "push", "diff", "checkout"]) and tool.name == "git_repo_tool":
+                if (
+                    any(k in low_query for k in ["commit", "branch", "repo", "push", "diff", "checkout"])
+                    and tool.name == "git_repo_tool"
+                ):
                     score += 2.5
 
-                if any(k in low_query for k in ["xlsx", "csv", "spreadsheet", "revenue", "formula", "rows", "columns"]) and tool.name == "excel_analyze":
+                if (
+                    any(k in low_query for k in ["xlsx", "csv", "spreadsheet", "revenue", "formula", "rows", "columns"])
+                    and tool.name == "excel_analyze"
+                ):
                     score += 2.5
 
                 if any(k in low_query for k in ["pdf", "invoice.pdf", "contract"]) and tool.name == "pdf_tools":
                     score += 2.5
 
-                if any(k in low_query for k in ["remind", "reminder", "alarm", "notify", "standup"]) and tool.name == "reminder":
+                if (
+                    any(k in low_query for k in ["remind", "reminder", "alarm", "notify", "standup"])
+                    and tool.name == "reminder"
+                ):
                     score += 2.5
 
-                if any(k in low_query for k in ["book", "manual", "guide", "multi-volume", "documentation"]) and tool.name == "longform_builder":
+                if (
+                    any(k in low_query for k in ["book", "manual", "guide", "multi-volume", "documentation"])
+                    and tool.name == "longform_builder"
+                ):
                     score += 2.0
 
-                if any(k in low_query for k in ["semantic", "authentication", "payment", "meaning"]) and tool.name == "file_search_semantic":
+                if (
+                    any(k in low_query for k in ["semantic", "authentication", "payment", "meaning"])
+                    and tool.name == "file_search_semantic"
+                ):
                     score += 2.0
 
                 # 5. Historical Telemetry Accounting
@@ -168,7 +214,9 @@ class ToolRanker:
                         score -= 0.2
 
                 # 6. Risk penalty for CRITICAL unless prompted
-                if tool.risk_level == "CRITICAL" and not any(w in low_query for w in ["delete", "remove", "drop", "kill", "format"]):
+                if tool.risk_level == "CRITICAL" and not any(
+                    w in low_query for w in ["delete", "remove", "drop", "kill", "format"]
+                ):
                     score -= 0.5
 
                 scored.append((score, tool))
@@ -188,13 +236,16 @@ def get_tool_ranker() -> ToolRanker:
         _global_tool_ranker = ToolRanker()
         try:
             from brjarvis.tools.registry import TOOL_SCHEMAS
+
             for s in TOOL_SCHEMAS:
-                _global_tool_ranker.register_metadata(ToolMetadata(
-                    name=s.get("name", ""),
-                    description=s.get("description", ""),
-                    capabilities=s.get("name", "").split("_"),
-                    input_schema=s.get("parameters", {}),
-                ))
+                _global_tool_ranker.register_metadata(
+                    ToolMetadata(
+                        name=s.get("name", ""),
+                        description=s.get("description", ""),
+                        capabilities=s.get("name", "").split("_"),
+                        input_schema=s.get("parameters", {}),
+                    )
+                )
         except Exception:
             pass
     return _global_tool_ranker

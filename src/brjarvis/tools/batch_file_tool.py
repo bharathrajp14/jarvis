@@ -3,6 +3,7 @@
 Provides directory tree visualization, batch regex search and replace across files,
 and zip archive operations.
 """
+
 from __future__ import annotations
 
 import logging
@@ -10,6 +11,7 @@ import os
 import re
 import zipfile
 from pathlib import Path
+
 from .registry import register_tool
 
 logger = logging.getLogger(__name__)
@@ -24,16 +26,16 @@ logger = logging.getLogger(__name__)
             "action": {
                 "type": "string",
                 "enum": ["tree_view", "batch_replace", "create_zip", "extract_zip"],
-                "description": "Batch operation to perform"
+                "description": "Batch operation to perform",
             },
             "target_dir": {"type": "string", "description": "Target root directory path"},
             "pattern": {"type": "string", "description": "Regex pattern or glob file filter"},
             "replace_text": {"type": "string", "description": "Replacement string for batch_replace"},
             "zip_path": {"type": "string", "description": "Archive file path for create_zip/extract_zip"},
-            "max_depth": {"type": "integer", "description": "Max depth for tree view (default: 3)"}
+            "max_depth": {"type": "integer", "description": "Max depth for tree view (default: 3)"},
         },
-        "required": ["action"]
-    }
+        "required": ["action"],
+    },
 )
 def batch_file_ops(args: dict) -> str:
     action = args.get("action", "tree_view")
@@ -58,7 +60,7 @@ def batch_file_ops(args: dict) -> str:
                 entries = [e for e in entries if not e.name.startswith(".") and e.name != "__pycache__"]
                 count = len(entries)
                 for idx, entry in enumerate(entries):
-                    is_last = (idx == count - 1)
+                    is_last = idx == count - 1
                     connector = "└── " if is_last else "├── "
                     if entry.is_dir():
                         tree_lines.append(f"{prefix}{connector}📁 {entry.name}/")
@@ -80,7 +82,7 @@ def batch_file_ops(args: dict) -> str:
 
         modified_files = []
         rx = re.compile(pattern)
-        
+
         files_to_check = [target_dir] if target_dir.is_file() else list(target_dir.rglob("*"))
         for f in files_to_check:
             if f.is_file() and not f.name.startswith(".") and "__pycache__" not in f.parts:
@@ -89,22 +91,26 @@ def batch_file_ops(args: dict) -> str:
                     if rx.search(content):
                         new_content = rx.sub(replace_text, content)
                         f.write_text(new_content, encoding="utf-8")
-                        modified_files.append(str(f.relative_to(target_dir if target_dir.is_dir() else target_dir.parent)))
+                        modified_files.append(
+                            str(f.relative_to(target_dir if target_dir.is_dir() else target_dir.parent))
+                        )
                 except Exception as e:
-                    logger.debug('Suppressed exception: %s', e)
-        return f"✅ Batch replace complete. Modified {len(modified_files)} file(s):\n" + "\n".join(f"- {m}" for m in modified_files[:20])
+                    logger.debug("Suppressed exception: %s", e)
+        return f"✅ Batch replace complete. Modified {len(modified_files)} file(s):\n" + "\n".join(
+            f"- {m}" for m in modified_files[:20]
+        )
 
     elif action == "create_zip":
         archive = Path(zip_path or "archive.zip").resolve()
         if not target_dir.exists():
             return f"Error: Target path '{target_dir}' does not exist."
 
-        with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED) as zf:
+        with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as zf:
             if target_dir.is_file():
                 zf.write(target_dir, arcname=target_dir.name)
             else:
                 for root, dirs, files in os.walk(target_dir):
-                    dirs[:] = [d for d in dirs if not d.startswith('.') and d != '__pycache__']
+                    dirs[:] = [d for d in dirs if not d.startswith(".") and d != "__pycache__"]
                     for file in files:
                         full_p = Path(root) / file
                         arcname = full_p.relative_to(target_dir)
@@ -117,7 +123,7 @@ def batch_file_ops(args: dict) -> str:
         dest = Path(target_dir or ".").resolve()
         dest.mkdir(parents=True, exist_ok=True)
 
-        with zipfile.ZipFile(zip_path, 'r') as zf:
+        with zipfile.ZipFile(zip_path, "r") as zf:
             zf.extractall(dest)
         return f"✅ Extracted '{zip_path}' to '{dest}'."
 

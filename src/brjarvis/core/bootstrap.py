@@ -6,11 +6,12 @@ import threading
 from dataclasses import dataclass
 from typing import Any, Optional
 
-from .runtime import CoreRuntime, get_runtime
 from brjarvis.events.bus import EventBus, get_event_bus
 from brjarvis.events.types import SystemEvent
 from brjarvis.orchestrator import JarvisOrchestrator
 from brjarvis.router import AgentRouter, load_available_backends
+
+from .runtime import CoreRuntime, get_runtime
 
 logger = logging.getLogger(__name__)
 
@@ -28,9 +29,11 @@ class AssistantRuntime:
     def __post_init__(self):
         if self.memory is None:
             from brjarvis.memory.unified_memory import get_unified_memory
+
             self.memory = get_unified_memory()
         if self.tools is None:
             from brjarvis.tools.registry import get_tool_registry
+
             self.tools = get_tool_registry()
 
 
@@ -78,15 +81,14 @@ def build_assistant_runtime(*, use_vector_memory: bool = True) -> AssistantRunti
                 # BUG-8 FIX: logger.exception() would double-log the traceback and re-raise,
                 # swallowing the shutdown flow. Use warning here instead.
                 logger.warning("Orchestrator shutdown error: %s", e)
+
         core_runtime.lifecycle.add_shutdown_hook(_orchestrator_shutdown)
 
         # FIXED: Publish startup event AFTER all DI registrations are complete
         # so any subscriber that gets added during registration sees this event.
-        event_bus.publish(SystemEvent(
-            topic="system.startup",
-            state="RUNNING",
-            payload={"backends_count": len(backends)}
-        ))
+        event_bus.publish(
+            SystemEvent(topic="system.startup", state="RUNNING", payload={"backends_count": len(backends)})
+        )
 
         _runtime_instance = AssistantRuntime(
             backends=backends,
@@ -113,10 +115,7 @@ class CoreBootstrapper:
     @classmethod
     def setup_environment(cls) -> dict:
         """Configure platform encoding, environment variables, and return status."""
-        import json
-        import platform
         import sys
-        from pathlib import Path
 
         if cls._initialized:
             return cls.get_status()
@@ -133,10 +132,12 @@ class CoreBootstrapper:
                 pass
 
         from brjarvis.core.paths import paths
+
         env_file = paths.DOTENV_FILE
         if env_file.exists():
             try:
                 from dotenv import load_dotenv  # type: ignore[import-not-found]
+
                 load_dotenv(env_file)
             except ImportError:
                 pass
@@ -150,7 +151,7 @@ class CoreBootstrapper:
         import json
         import platform
         import sys
-        from pathlib import Path
+
         from brjarvis.core.paths import paths
 
         config_path = paths.CONFIG_ROOT / "api_keys.json"
@@ -171,7 +172,12 @@ class CoreBootstrapper:
                     api_keys["GPT"] = True
             except Exception:
                 pass
-        if os.environ.get("JARVIS_ROUTE_GEMINI_TO_GATEWAY", "true").lower() in ("1", "true", "yes", "on") and api_keys.get("GPT"):
+        if os.environ.get("JARVIS_ROUTE_GEMINI_TO_GATEWAY", "true").lower() in (
+            "1",
+            "true",
+            "yes",
+            "on",
+        ) and api_keys.get("GPT"):
             api_keys["Gemini"] = True
         return {
             "initialized": cls._initialized,
@@ -186,4 +192,3 @@ class CoreBootstrapper:
         """Setup environment and build the AssistantRuntime singleton."""
         cls.setup_environment()
         return build_assistant_runtime(use_vector_memory=use_vector_memory)
-

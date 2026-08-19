@@ -1,9 +1,9 @@
 # screen_server/ws_server.py — Asyncio WebSocket Server for JARVIS MK37 Screen Sharing
 from __future__ import annotations
 
-import logging
 import asyncio
 import json
+import logging
 import os
 import threading
 from typing import Any, Set
@@ -11,6 +11,7 @@ from typing import Any, Set
 try:
     import websockets
     from websockets.server import serve as ws_serve
+
     _ws_available = True
 except ImportError:
     _ws_available = False
@@ -94,12 +95,7 @@ class ScreenShareServer:
         if self.ssl_context:
             kwargs["ssl"] = self.ssl_context
 
-        self._server = await ws_serve(
-            self._handler,
-            self.host,
-            self.port,
-            **kwargs
-        )
+        self._server = await ws_serve(self._handler, self.host, self.port, **kwargs)
         protocol = "wss" if self.ssl_context else "ws"
         logger.info(f"[ScreenShare] WebSocket server listening on {protocol}://{self.host}:{self.port}")
 
@@ -136,7 +132,7 @@ class ScreenShareServer:
                 return None
             except Exception:
                 return ws
-                
+
         results = await asyncio.gather(*[_send_to_viewer(ws) for ws in viewers_copy])
         disconnected = [ws for ws in results if ws is not None]
 

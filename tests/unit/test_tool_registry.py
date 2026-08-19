@@ -1,4 +1,5 @@
 """Unit tests for Dynamic Tool Registry & Validation."""
+
 from __future__ import annotations
 
 import pytest
@@ -17,6 +18,7 @@ def test_global_tool_registry_active_count():
 @pytest.mark.unit
 def test_tool_registration_and_execution():
     """Verify registering a custom test tool and executing it."""
+
     @register_tool(
         name="calc_add_unit_test",
         description="Add two integers",

@@ -1,7 +1,9 @@
 """Unit tests for Career CRM SQLite WAL Database."""
+
 from __future__ import annotations
 
 import pytest
+
 from brjarvis.career.crm.database import get_career_crm_db
 from brjarvis.career.models import Application, ApplicationStatus
 
@@ -15,7 +17,7 @@ def test_career_crm_db_crud():
         company="Anthropic",
         job_title="AI Systems Architect",
         application_status=ApplicationStatus.SUBMITTED,
-        match_score=92.5
+        match_score=92.5,
     )
     db.save_application(app)
     saved = db.get_application("APP-TEST01")

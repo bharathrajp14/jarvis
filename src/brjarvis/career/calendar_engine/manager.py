@@ -1,16 +1,14 @@
 # career/calendar_engine/manager.py — Career Calendar & Conflict Management Engine
 from __future__ import annotations
 
-import datetime
-import json
 import logging
-import time
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 from brjarvis.actions.calendar_engine import get_calendar_engine
+
 from ..crm.database import get_career_crm_db
 from ..interview_prep import InterviewPrepGenerator
-from ..models import Application, InterviewSchedule, JobPosting
+from ..models import InterviewSchedule, JobPosting
 from ..profile_manager import get_profile_manager
 
 logger = logging.getLogger("JARVIS.CareerCalendar.Manager")
@@ -34,7 +32,9 @@ class CareerCalendarManager:
             cls._INSTANCE = cls()
         return cls._INSTANCE
 
-    def detect_conflicts(self, target_date_str: str, target_time_str: str, duration_minutes: int = 45) -> List[Dict[str, Any]]:
+    def detect_conflicts(
+        self, target_date_str: str, target_time_str: str, duration_minutes: int = 45
+    ) -> List[Dict[str, Any]]:
         """
         Check existing calendar appointments for time collisions or tight buffers.
         """
@@ -47,13 +47,15 @@ class CareerCalendarManager:
                 ev_time_str = str(ev.get("start_time", "")).lower()
                 # Direct string collision or same-day overlap check
                 if target_date_str in ev_time_str:
-                    conflicts.append({
-                        "event_id": ev.get("id"),
-                        "title": ev.get("title"),
-                        "start_time": ev.get("start_time"),
-                        "conflict_type": "SAME_DAY_SCHEDULE",
-                        "severity": "WARNING",
-                    })
+                    conflicts.append(
+                        {
+                            "event_id": ev.get("id"),
+                            "title": ev.get("title"),
+                            "start_time": ev.get("start_time"),
+                            "conflict_type": "SAME_DAY_SCHEDULE",
+                            "severity": "WARNING",
+                        }
+                    )
         except Exception as exc:
             logger.debug("Calendar conflict scan note: %s", exc)
 
@@ -107,7 +109,9 @@ class CareerCalendarManager:
                 )
                 kit = InterviewPrepGenerator.generate_prep_kit(profile, dummy_job)
                 interview.preparation_status = "GENERATED"
-                desc_lines.append(f"\n📋 PREPARATION HIGHLIGHTS ({len(kit.technical_questions)} Tech Qs, {len(kit.star_stories)} STAR Stories generated).")
+                desc_lines.append(
+                    f"\n📋 PREPARATION HIGHLIGHTS ({len(kit.technical_questions)} Tech Qs, {len(kit.star_stories)} STAR Stories generated)."
+                )
             except Exception as e:
                 logger.debug("Prep kit auto-generation note: %s", e)
 
@@ -128,7 +132,9 @@ class CareerCalendarManager:
             interview.status = "SCHEDULED"
             self.db.save_interview(interview)
 
-            logger.info("📅 Created Calendar Event #%s for Interview [%s]", interview.calendar_event_id, interview.interview_id)
+            logger.info(
+                "📅 Created Calendar Event #%s for Interview [%s]", interview.calendar_event_id, interview.interview_id
+            )
             return {
                 "success": True,
                 "status": "SUCCESS_VERIFIED",

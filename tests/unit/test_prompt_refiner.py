@@ -1,8 +1,10 @@
 """Unit tests for Technical Vocabulary Prompt Refiner."""
+
 from __future__ import annotations
 
 import pytest
-from brjarvis.voice.prompt_refiner import refine_prompt, refine_voice_prompt, VoicePromptRefiner
+
+from brjarvis.voice.prompt_refiner import VoicePromptRefiner
 
 
 @pytest.mark.unit
@@ -11,7 +13,7 @@ def test_prompt_refiner_vocabulary_normalization():
     refiner = VoicePromptRefiner.get_instance()
     raw = "start fast api server with chroma db and open claw"
     refined_dict = refiner.refine(raw)
-    
+
     refined = refined_dict["refined"]
     assert "FastAPI" in refined or "fastapi" in refined.lower()
     assert "ChromaDB" in refined or "chromadb" in refined.lower() or "chroma" in refined.lower()

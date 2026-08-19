@@ -1,4 +1,5 @@
 """Integration tests for FastAPI REST Endpoints via TestClient."""
+
 from __future__ import annotations
 
 import pytest
@@ -44,9 +45,12 @@ def test_fastapi_login_creates_authenticated_cookie_session():
 
     valid = client.post("/api/auth/login", json={"api_key": SERVER_API_KEY})
     assert valid.status_code == 200
+
     assert "jarvis_session" in valid.cookies
+    assert "session_token" not in valid.json()
 
     authenticated = client.get("/api/connectors")
+
     assert authenticated.status_code == 200
 
 

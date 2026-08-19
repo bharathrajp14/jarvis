@@ -14,6 +14,7 @@ Features:
 - Manual model pinning (/model <name> / auto) with safety & availability enforcement.
 - Explainable selection envelopes (ModelSelection).
 """
+
 from __future__ import annotations
 
 import logging
@@ -21,12 +22,13 @@ import threading
 from dataclasses import dataclass, field
 from typing import Any, Optional
 
+from brjarvis.gateway.benchmark import ModelBenchmarkService, get_benchmark_service
 from brjarvis.gateway.capabilities import CapabilityState, ModelCapabilityRegistry, get_capability_registry
 from brjarvis.gateway.client import ModelResponse, ProxyBrainClient, get_proxy_brain_client
 from brjarvis.gateway.discovery import DiscoveredModel, ModelDiscoveryService, get_discovery_service
-from brjarvis.gateway.health import HealthState, ModelHealthService, get_health_service
-from brjarvis.gateway.benchmark import ModelBenchmarkService, get_benchmark_service
-from .task_profile import TaskComplexity, TaskProfile, TaskProfileClassifier
+from brjarvis.gateway.health import ModelHealthService, get_health_service
+
+from .task_profile import TaskComplexity, TaskProfile
 
 logger = logging.getLogger("JARVIS.SmartRouter")
 
@@ -34,6 +36,7 @@ logger = logging.getLogger("JARVIS.SmartRouter")
 @dataclass
 class ModelSelection:
     """Transparent, explainable selection record produced by the router."""
+
     model_id: str
     provider: str
     score: float
@@ -59,6 +62,7 @@ RoutingDecision = ModelSelection  # Backwards compatibility alias
 @dataclass
 class ModelRequest:
     """Request envelope for model routing and completion (backwards compatibility)."""
+
     messages: list[dict[str, Any]] = field(default_factory=list)
     task_type: Any = "chat"
     system: str = ""
@@ -75,6 +79,7 @@ class ModelRequest:
 
     def to_task_profile(self) -> TaskProfile:
         from brjarvis.router.task_profile import TaskComplexity, TaskProfile
+
         comp_map = {
             "low": TaskComplexity.LOW,
             "medium": TaskComplexity.MEDIUM,
@@ -92,9 +97,8 @@ class ModelRequest:
             requires_tools=self.requires_tools or bool(self.tools),
             requires_agent=self.requires_agent or t_type in ("agent", "planning"),
             requires_vision=self.requires_vision or t_type == "vision",
-            requires_structured_output=self.json_mode or bool(self.response_format)
+            requires_structured_output=self.json_mode or bool(self.response_format),
         )
-
 
 
 class SmartModelRouter:
@@ -110,7 +114,7 @@ class SmartModelRouter:
         benchmark_service: Optional[ModelBenchmarkService] = None,
         client: Optional[ProxyBrainClient] = None,
         gateway: Optional[Any] = None,
-        preferred_provider: str = "gemini"
+        preferred_provider: str = "gemini",
     ):
         self.discovery = discovery_service or get_discovery_service()
         self.capabilities = capability_registry or get_capability_registry()
@@ -118,7 +122,6 @@ class SmartModelRouter:
         self.benchmark = benchmark_service or get_benchmark_service()
         self.client = client or gateway or get_proxy_brain_client()
         self.preferred_provider = preferred_provider.lower()
-
 
         self._manual_override: Optional[str] = None
         self._session_model: Optional[str] = None
@@ -152,24 +155,20 @@ class SmartModelRouter:
         with self._lock:
             return self._manual_override
 
-
     def get_metrics(self) -> dict[str, Any]:
         """Return operational router metrics."""
         return {
             "total_requests": 1,
             "successful_requests": 1,
             "fallback_events": 0,
-            "pinned_model": self._manual_override
+            "pinned_model": self._manual_override,
         }
 
     def complete(self, request: Any) -> ModelResponse:
         """Execute a completion request using ModelExecutionService."""
         from brjarvis.gateway.execution import ModelExecutionService
-        exec_service = ModelExecutionService(
-            router=self,
-            client=self.client,
-            health_service=self.health
-        )
+
+        exec_service = ModelExecutionService(router=self, client=self.client, health_service=self.health)
 
         if hasattr(request, "to_task_profile"):
             profile = request.to_task_profile()
@@ -195,9 +194,8 @@ class SmartModelRouter:
             max_tokens=max_tokens,
             temperature=temperature,
             json_mode=json_mode,
-            task_profile=profile
+            task_profile=profile,
         )
-
 
     def route(self, task: Any) -> ModelSelection:
         """
@@ -211,13 +209,12 @@ class SmartModelRouter:
         task = task_profile
 
         with self._lock:
-
             # 1. Check manual override
             if self._manual_override:
                 override_id = self._manual_override
                 override_model = self.discovery.get_model(override_id)
                 provider = override_model.provider if override_model else "proxy_brain"
-                
+
                 # Check capability compatibility
                 caps = self.capabilities.get_capabilities(override_id)
                 satisfies, reason_fail = caps.satisfies_requirements(
@@ -227,10 +224,12 @@ class SmartModelRouter:
                     requires_image_gen=task.requires_image_gen,
                     requires_agent=task.requires_agent,
                     requires_reasoning=task.requires_reasoning,
-                    requires_long_context=task.requires_long_context
+                    requires_long_context=task.requires_long_context,
                 )
                 if not satisfies:
-                    logger.warning(f"[SmartRouter] Pinned model '{override_id}' incompatible: {reason_fail}. Falling back to auto.")
+                    logger.warning(
+                        f"[SmartRouter] Pinned model '{override_id}' incompatible: {reason_fail}. Falling back to auto."
+                    )
                 else:
                     return ModelSelection(
                         model_id=override_id,
@@ -239,7 +238,7 @@ class SmartModelRouter:
                         reason=f"Manual user override pinned to '{override_id}'",
                         fallback_models=self._generate_fallbacks_for(override_id, task),
                         task_type=task.task_type,
-                        complexity=task.complexity.value
+                        complexity=task.complexity.value,
                     )
 
             # 2. Discover live models
@@ -251,7 +250,7 @@ class SmartModelRouter:
                     provider="gemini",
                     score=50.0,
                     reason="Default emergency baseline (no gateway models discovered)",
-                    fallback_models=["gemini-3.6-flash-tiered", "gemini-3.6-flash-low"]
+                    fallback_models=["gemini-3.6-flash-tiered", "gemini-3.6-flash-low"],
                 )
 
             # 3. Filter Candidates
@@ -272,7 +271,7 @@ class SmartModelRouter:
                     requires_image_gen=task.requires_image_gen,
                     requires_agent=task.requires_agent,
                     requires_reasoning=task.requires_reasoning,
-                    requires_long_context=task.requires_long_context
+                    requires_long_context=task.requires_long_context,
                 )
                 if not satisfies:
                     continue
@@ -304,15 +303,10 @@ class SmartModelRouter:
                 reason=top_reason,
                 fallback_models=fallbacks,
                 task_type=task.task_type,
-                complexity=task.complexity.value
+                complexity=task.complexity.value,
             )
 
-    def _score_model(
-        self,
-        model: DiscoveredModel,
-        caps: Any,
-        task: TaskProfile
-    ) -> tuple[float, str]:
+    def _score_model(self, model: DiscoveredModel, caps: Any, task: TaskProfile) -> tuple[float, str]:
         """
         Compute multi-factor routing score for a candidate model.
         Score formula:
@@ -348,8 +342,18 @@ class SmartModelRouter:
                 task_fit = 0.6
                 reasons.append("heavy model de-prioritized for fast greeting")
 
-        elif task.task_type in ("code", "reasoning") or task.complexity in (TaskComplexity.HIGH, TaskComplexity.CRITICAL):
-            if "pro" in m_id or "opus" in m_id or "thinking" in m_id or "tiered" in m_id or "gpt-4" in m_id or "sonnet" in m_id:
+        elif task.task_type in ("code", "reasoning") or task.complexity in (
+            TaskComplexity.HIGH,
+            TaskComplexity.CRITICAL,
+        ):
+            if (
+                "pro" in m_id
+                or "opus" in m_id
+                or "thinking" in m_id
+                or "tiered" in m_id
+                or "gpt-4" in m_id
+                or "sonnet" in m_id
+            ):
                 task_fit = 1.5
                 reasons.append("high reasoning capability")
             elif "lite" in m_id or "extra-low" in m_id:
@@ -394,7 +398,6 @@ class SmartModelRouter:
         # Combined Multiplicative Score (Normalized to 0 - 100)
         raw_score = (task_fit * cap_match * quality * health * latency_factor * provider_pref) * 75.0
         final_score = max(5.0, min(99.0, raw_score))
-
 
         reason_str = f"Score: {round(final_score, 1)} ({', '.join(reasons) if reasons else 'general fit'})"
         return final_score, reason_str

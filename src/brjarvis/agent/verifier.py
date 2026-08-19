@@ -4,6 +4,7 @@ State and Goal Verification Engine for BR JARVIS MK40.
 Ensures actions are rigorously verified against actual OS/filesystem/process/browser state,
 preventing false-positive completions, unhandled sandbox handoffs, and hallucinated success states.
 """
+
 from __future__ import annotations
 
 import json
@@ -11,8 +12,7 @@ import logging
 import os
 import re
 import sys
-import time
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Union
@@ -21,19 +21,20 @@ logger = logging.getLogger("JARVIS.Verifier")
 
 
 class VerificationStatus(str, Enum):
-    SUCCESS_VERIFIED   = "SUCCESS_VERIFIED"
+    SUCCESS_VERIFIED = "SUCCESS_VERIFIED"
     SUCCESS_UNVERIFIED = "SUCCESS_UNVERIFIED"
-    PARTIAL_SUCCESS    = "PARTIAL_SUCCESS"
-    FAILED             = "FAILED"
-    TIMEOUT            = "TIMEOUT"
-    CANCELLED          = "CANCELLED"
-    BLOCKED            = "BLOCKED"
-    NOT_IMPLEMENTED    = "NOT_IMPLEMENTED"
+    PARTIAL_SUCCESS = "PARTIAL_SUCCESS"
+    FAILED = "FAILED"
+    TIMEOUT = "TIMEOUT"
+    CANCELLED = "CANCELLED"
+    BLOCKED = "BLOCKED"
+    NOT_IMPLEMENTED = "NOT_IMPLEMENTED"
 
 
 @dataclass
 class VerificationResult:
     """Outcome of an action verification check with evidence and status."""
+
     verified: bool
     status: VerificationStatus = VerificationStatus.SUCCESS_VERIFIED
     evidence: str = ""
@@ -65,6 +66,7 @@ class VerificationResult:
 
 # ── Specialized Verifiers ──────────────────────────────────────────────────
 
+
 class FileVerifier:
     """Verifies file existence, size, permissions, integrity, and parsability."""
 
@@ -77,14 +79,14 @@ class FileVerifier:
                     verified=False,
                     status=VerificationStatus.FAILED,
                     details=f"Verification failed: File '{path_str}' does not exist on disk.",
-                    error="FILE_NOT_FOUND"
+                    error="FILE_NOT_FOUND",
                 )
             if not p.is_file():
                 return VerificationResult(
                     verified=False,
                     status=VerificationStatus.FAILED,
                     details=f"Verification failed: Path '{path_str}' is a directory, not a file.",
-                    error="NOT_A_FILE"
+                    error="NOT_A_FILE",
                 )
             size = p.stat().st_size
             if size < min_size_bytes:
@@ -92,21 +94,21 @@ class FileVerifier:
                     verified=False,
                     status=VerificationStatus.FAILED,
                     details=f"Verification failed: File '{path_str}' is empty ({size} bytes).",
-                    error="FILE_EMPTY"
+                    error="FILE_EMPTY",
                 )
             return VerificationResult(
                 verified=True,
                 status=VerificationStatus.SUCCESS_VERIFIED,
                 evidence=f"File '{p.name}' verified on disk ({size:,} bytes, path: {p}).",
                 details=f"Verified file '{p.name}' created successfully ({size} bytes).",
-                metadata={"path": str(p), "size_bytes": size}
+                metadata={"path": str(p), "size_bytes": size},
             )
         except Exception as e:
             return VerificationResult(
                 verified=False,
                 status=VerificationStatus.FAILED,
                 details=f"Verification error for '{path_str}': {e}",
-                error="VERIFICATION_EXCEPTION"
+                error="VERIFICATION_EXCEPTION",
             )
 
     @staticmethod
@@ -125,21 +127,21 @@ class FileVerifier:
                         status=VerificationStatus.PARTIAL_SUCCESS,
                         details=f"File exists but missing expected content: {missing}",
                         error="CONTENT_MISMATCH",
-                        metadata={"missing": missing, "path": str(p)}
+                        metadata={"missing": missing, "path": str(p)},
                     )
             return VerificationResult(
                 verified=True,
                 status=VerificationStatus.SUCCESS_VERIFIED,
                 evidence=f"File '{p.name}' contains verified content ({len(content)} chars).",
                 details=f"File content verified for '{p.name}'.",
-                metadata={"path": str(p), "char_count": len(content)}
+                metadata={"path": str(p), "char_count": len(content)},
             )
         except Exception as e:
             return VerificationResult(
                 verified=False,
                 status=VerificationStatus.FAILED,
                 details=f"Error reading file '{path_str}': {e}",
-                error="READ_ERROR"
+                error="READ_ERROR",
             )
 
     @staticmethod
@@ -155,6 +157,7 @@ class FileVerifier:
         try:
             if ext == ".docx":
                 import docx
+
                 doc = docx.Document(str(p))
                 p_count = len(doc.paragraphs)
                 t_count = len(doc.tables)
@@ -164,14 +167,14 @@ class FileVerifier:
                         verified=False,
                         status=VerificationStatus.FAILED,
                         details=f"DOCX '{p.name}' parsed but contains zero paragraphs and zero tables.",
-                        error="EMPTY_DOCX"
+                        error="EMPTY_DOCX",
                     )
                 return VerificationResult(
                     verified=True,
                     status=VerificationStatus.SUCCESS_VERIFIED,
                     evidence=f"DOCX '{p.name}' parsed successfully ({p_count} paragraphs, {t_count} tables, {total_text_len} chars).",
                     details=f"Verified DOCX structure for '{p.name}'.",
-                    metadata={"paragraphs": p_count, "tables": t_count, "size": p.stat().st_size}
+                    metadata={"paragraphs": p_count, "tables": t_count, "size": p.stat().st_size},
                 )
 
             elif ext == ".pdf":
@@ -183,14 +186,14 @@ class FileVerifier:
                         verified=False,
                         status=VerificationStatus.FAILED,
                         details=f"File '{p.name}' lacks valid PDF magic header %PDF-.",
-                        error="INVALID_PDF_HEADER"
+                        error="INVALID_PDF_HEADER",
                     )
                 return VerificationResult(
                     verified=True,
                     status=VerificationStatus.SUCCESS_VERIFIED,
                     evidence=f"PDF '{p.name}' header and binary structure verified ({p.stat().st_size:,} bytes).",
                     details=f"Verified PDF structure for '{p.name}'.",
-                    metadata={"size": p.stat().st_size}
+                    metadata={"size": p.stat().st_size},
                 )
 
             elif ext == ".json":
@@ -199,37 +202,38 @@ class FileVerifier:
                     verified=True,
                     status=VerificationStatus.SUCCESS_VERIFIED,
                     evidence=f"JSON '{p.name}' parsed successfully ({type(data).__name__} root).",
-                    details=f"Verified JSON structure for '{p.name}'."
+                    details=f"Verified JSON structure for '{p.name}'.",
                 )
 
             elif ext in (".xlsx", ".xlsm"):
                 import zipfile
+
                 if not zipfile.is_zipfile(str(p)):
                     return VerificationResult(
                         verified=False,
                         status=VerificationStatus.FAILED,
                         details=f"XLSX '{p.name}' is not a valid OpenXML ZIP archive.",
-                        error="INVALID_XLSX"
+                        error="INVALID_XLSX",
                     )
                 return VerificationResult(
                     verified=True,
                     status=VerificationStatus.SUCCESS_VERIFIED,
                     evidence=f"Excel spreadsheet '{p.name}' verified ({p.stat().st_size:,} bytes).",
-                    details=f"Verified XLSX archive for '{p.name}'."
+                    details=f"Verified XLSX archive for '{p.name}'.",
                 )
 
             return VerificationResult(
                 verified=True,
                 status=VerificationStatus.SUCCESS_VERIFIED,
                 evidence=f"File '{p.name}' verified ({p.stat().st_size:,} bytes).",
-                details=f"File verified: {p.name}"
+                details=f"File verified: {p.name}",
             )
         except Exception as e:
             return VerificationResult(
                 verified=False,
                 status=VerificationStatus.FAILED,
                 details=f"Structural parse verification failed for '{p.name}': {e}",
-                error="PARSE_ERROR"
+                error="PARSE_ERROR",
             )
 
 
@@ -240,13 +244,14 @@ class ApplicationVerifier:
     def verify_process_running(proc_name: str) -> VerificationResult:
         try:
             import psutil
+
             low = proc_name.lower().strip()
             base = os.path.splitext(low)[0]
 
             matched = []
-            for proc in psutil.process_iter(['name', 'pid', 'create_time']):
+            for proc in psutil.process_iter(["name", "pid", "create_time"]):
                 try:
-                    pname = (proc.info.get('name') or '').lower()
+                    pname = (proc.info.get("name") or "").lower()
                     if base in pname or low in pname:
                         matched.append(proc.info)
                 except (psutil.NoSuchProcess, psutil.AccessDenied):
@@ -259,24 +264,26 @@ class ApplicationVerifier:
                     status=VerificationStatus.SUCCESS_VERIFIED,
                     evidence=f"Process '{best['name']}' (PID: {best['pid']}) confirmed active in OS process table.",
                     details=f"Verified process '{best['name']}' active (PID: {best['pid']}).",
-                    metadata={"process_name": best['name'], "pid": best['pid']}
+                    metadata={"process_name": best["name"], "pid": best["pid"]},
                 )
 
             return VerificationResult(
                 verified=False,
                 status=VerificationStatus.SUCCESS_UNVERIFIED,
                 details=f"Process '{proc_name}' not found in active process table.",
-                error="PROCESS_NOT_FOUND"
+                error="PROCESS_NOT_FOUND",
             )
         except Exception as e:
             return VerificationResult(
                 verified=True,
                 status=VerificationStatus.SUCCESS_UNVERIFIED,
-                details=f"Process verification skipped (psutil notice: {e})."
+                details=f"Process verification skipped (psutil notice: {e}).",
             )
 
     @staticmethod
-    def verify_window_open(window_title_keyword: Optional[str] = None, app_name: Optional[str] = None) -> VerificationResult:
+    def verify_window_open(
+        window_title_keyword: Optional[str] = None, app_name: Optional[str] = None
+    ) -> VerificationResult:
         """Inspect visible GUI window handles on Windows OS."""
         if sys.platform != "win32":
             return ApplicationVerifier.verify_process_running(app_name or "")
@@ -309,7 +316,7 @@ class ApplicationVerifier:
                         status=VerificationStatus.SUCCESS_VERIFIED,
                         evidence=f"Active window detected: '{matches[0]}'.",
                         details=f"Verified window open matching '{kw}': '{matches[0]}'",
-                        metadata={"window_title": matches[0], "all_matches": matches}
+                        metadata={"window_title": matches[0], "all_matches": matches},
                     )
 
             # If no specific keyword or not found in windows, fallback to process check
@@ -320,17 +327,17 @@ class ApplicationVerifier:
                         verified=True,
                         status=VerificationStatus.SUCCESS_VERIFIED,
                         evidence=f"Application '{app_name}' active with running process PID: {p_res.metadata.get('pid')}.",
-                        details=f"Application process confirmed running.",
-                        metadata=p_res.metadata
+                        details="Application process confirmed running.",
+                        metadata=p_res.metadata,
                     )
 
             return VerificationResult(
                 verified=False,
                 status=VerificationStatus.SUCCESS_UNVERIFIED,
                 details=f"No visible window or process detected matching '{kw or app_name}'.",
-                error="WINDOW_NOT_FOUND"
+                error="WINDOW_NOT_FOUND",
             )
-        except Exception as e:
+        except Exception:
             return ApplicationVerifier.verify_process_running(app_name or window_title_keyword or "")
 
 
@@ -341,7 +348,7 @@ class BrowserVerifier:
     def verify_browser_artifact_opened(
         host_path_or_url: Union[str, Path],
         browser_response: Optional[Union[dict, str]] = None,
-        expected_content: Optional[str] = None
+        expected_content: Optional[str] = None,
     ) -> VerificationResult:
         target_str = str(host_path_or_url).strip()
         low_target = target_str.lower().replace("\\", "/")
@@ -352,7 +359,7 @@ class BrowserVerifier:
                 verified=False,
                 status=VerificationStatus.BLOCKED,
                 details=f"Security Violation: Browser attempted to open internal sandbox jail path '{target_str}'.",
-                error="SANDBOX_PATH_EXPOSURE"
+                error="SANDBOX_PATH_EXPOSURE",
             )
 
         # 2. Local file validation
@@ -369,21 +376,21 @@ class BrowserVerifier:
                     verified=False,
                     status=VerificationStatus.FAILED,
                     details=f"Browser target file '{clean_path}' does not exist on disk.",
-                    error="ERR_FILE_NOT_FOUND"
+                    error="ERR_FILE_NOT_FOUND",
                 )
             if not os.access(p, os.R_OK):
                 return VerificationResult(
                     verified=False,
                     status=VerificationStatus.BLOCKED,
                     details=f"Browser target file '{clean_path}' is not readable.",
-                    error="ERR_ACCESS_DENIED"
+                    error="ERR_ACCESS_DENIED",
                 )
             if p.is_file() and p.stat().st_size == 0:
                 return VerificationResult(
                     verified=False,
                     status=VerificationStatus.FAILED,
                     details=f"Browser target file '{clean_path}' is empty (0 bytes).",
-                    error="FILE_EMPTY"
+                    error="FILE_EMPTY",
                 )
 
         # 3. Check browser response for error strings
@@ -402,14 +409,14 @@ class BrowserVerifier:
                         verified=False,
                         status=VerificationStatus.FAILED,
                         details=f"Browser error detected: '{pattern}' loading '{target_str}'.",
-                        error=err_code
+                        error=err_code,
                     )
 
         return VerificationResult(
             verified=True,
             status=VerificationStatus.SUCCESS_VERIFIED,
             evidence=f"Browser opened valid, readable target '{target_str}'.",
-            details=f"Browser target verified successfully: {target_str}"
+            details=f"Browser target verified successfully: {target_str}",
         )
 
 
@@ -420,13 +427,14 @@ class ArtifactVerifier:
     def verify_artifact_exported(record_or_path: Union[Any, str, Path]) -> VerificationResult:
         try:
             from brjarvis.agent.artifacts import ArtifactRecord
+
             if isinstance(record_or_path, ArtifactRecord):
                 if not record_or_path.exported or not record_or_path.host_path:
                     return VerificationResult(
                         verified=False,
                         status=VerificationStatus.FAILED,
                         details=f"Artifact '{record_or_path.filename}' was not exported to host.",
-                        error="EXPORT_FAILED"
+                        error="EXPORT_FAILED",
                     )
                 host_p = Path(record_or_path.host_path).resolve()
             else:
@@ -438,11 +446,12 @@ class ArtifactVerifier:
                 verified=False,
                 status=VerificationStatus.FAILED,
                 details=f"Artifact export verification error: {e}",
-                error="VERIFICATION_EXCEPTION"
+                error="VERIFICATION_EXCEPTION",
             )
 
 
 # ── Universal ActionVerifier Facade ────────────────────────────────────────
+
 
 class ActionVerifier:
     """Deterministic, multi-layered verifier for tool executions and OS mutations."""
@@ -460,14 +469,24 @@ class ActionVerifier:
     def verify_tool_output(cls, output_str: str) -> VerificationResult:
         """Inspect tool output for embedded error indicators."""
         if not isinstance(output_str, str):
-            return VerificationResult(verified=True, status=VerificationStatus.SUCCESS_VERIFIED, details="Non-string output")
+            return VerificationResult(
+                verified=True, status=VerificationStatus.SUCCESS_VERIFIED, details="Non-string output"
+            )
 
         low = output_str.lower().strip()
         error_indicators = [
-            "error:", "traceback (most recent call last):", "zerodivisionerror:",
-            "syntaxerror:", "permission denied", "access denied", "scope violation",
-            '"status": "failure"', '"error":', '"status": "error"', "err_file_not_found",
-            "error building document"
+            "error:",
+            "traceback (most recent call last):",
+            "zerodivisionerror:",
+            "syntaxerror:",
+            "permission denied",
+            "access denied",
+            "scope violation",
+            '"status": "failure"',
+            '"error":',
+            '"status": "error"',
+            "err_file_not_found",
+            "error building document",
         ]
 
         for ind in error_indicators:
@@ -480,9 +499,7 @@ class ActionVerifier:
                 )
 
         return VerificationResult(
-            verified=True,
-            status=VerificationStatus.SUCCESS_VERIFIED,
-            details="Tool output clean."
+            verified=True, status=VerificationStatus.SUCCESS_VERIFIED, details="Tool output clean."
         )
 
     @classmethod
@@ -505,7 +522,7 @@ class ActionVerifier:
             if not filename:
                 title = args.get("title", "Document")
                 fmt = args.get("format", "docx" if "word" in tool_name else "pdf" if "pdf" in tool_name else "docx")
-                clean_title = re.sub(r'[^\w\-]', '_', title)
+                clean_title = re.sub(r"[^\w\-]", "_", title)
                 filename = f"workspace/Documents/{clean_title}.{fmt}"
             return cls.verify_file_parsed(filename)
 
@@ -535,7 +552,7 @@ class ActionVerifier:
             verified=True,
             status=VerificationStatus.SUCCESS_VERIFIED,
             evidence=f"Action '{tool_name}' completed without errors.",
-            details=f"Action '{tool_name}' verified without errors."
+            details=f"Action '{tool_name}' verified without errors.",
         )
 
 
@@ -564,4 +581,3 @@ def verify_goal_outcome(goal: str, results: List[Any]) -> VerificationResult:
         evidence=f"Goal '{goal[:60]}' verified successfully.",
         details=f"Goal '{goal[:60]}' verified successfully.",
     )
-

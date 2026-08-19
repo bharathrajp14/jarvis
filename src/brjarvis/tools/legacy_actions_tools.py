@@ -4,12 +4,12 @@ High-Fidelity Legacy Actions Adapter Suite for BR JARVIS MK40.2 / MK41.
 Eliminates unverified false-success placeholders ('Done.', 'Completed.') and wraps
 legacy actions with canonical ToolResult contracts and physical verification.
 """
+
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Optional
 
-from .domain import RiskLevel, SideEffectLevel, ToolCategory, ToolErrorCode, VerificationStrategy
+from .domain import ToolErrorCode
 from .registry import register_tool
 from .tool_result import ToolResult
 
@@ -41,6 +41,7 @@ def tool_open_app(args: dict) -> ToolResult:
 
     try:
         from brjarvis.actions.open_app import open_app
+
         raw_res = open_app(parameters=args)
         evidence = f"Successfully launched application '{app_name}'."
         return ToolResult.success(
@@ -85,6 +86,7 @@ def tool_computer_settings(args: dict) -> ToolResult:
 
     try:
         from brjarvis.actions.computer_settings import computer_settings
+
         raw_res = computer_settings(parameters=args)
         evidence = f"Executed system setting '{action}'."
         return ToolResult.success(
@@ -127,6 +129,7 @@ def tool_desktop_control(args: dict) -> ToolResult:
 
     try:
         from brjarvis.actions.desktop import desktop_control
+
         raw_res = desktop_control(parameters=args)
         evidence = f"Desktop action '{action}' completed."
         return ToolResult.success(
@@ -167,6 +170,7 @@ def tool_weather_report(args: dict) -> ToolResult:
 
     try:
         from brjarvis.actions.weather_report import weather_action
+
         raw_res = weather_action(parameters=args)
         evidence = f"Retrieved weather conditions for '{city}'."
         return ToolResult.success(
@@ -206,10 +210,13 @@ def tool_youtube_video(args: dict) -> ToolResult:
     action = str(args.get("action", "")).strip()
     query = str(args.get("query", "")).strip()
     if not action or not query:
-        return ToolResult.failed("youtube_video", ToolErrorCode.INVALID_ARGUMENT, "Parameters 'action' and 'query' are required.")
+        return ToolResult.failed(
+            "youtube_video", ToolErrorCode.INVALID_ARGUMENT, "Parameters 'action' and 'query' are required."
+        )
 
     try:
         from brjarvis.actions.youtube_video import youtube_video
+
         raw_res = youtube_video(parameters=args)
         evidence = f"Executed YouTube action '{action}' for '{query}'."
         return ToolResult.success(
@@ -249,6 +256,7 @@ def tool_screen_process(args: dict) -> ToolResult:
 
     try:
         from brjarvis.actions.screen_processor import screen_process
+
         raw_res = screen_process(parameters=args)
         evidence = "Captured and analyzed live desktop screen."
         return ToolResult.success(
@@ -291,6 +299,7 @@ def tool_agent_task(args: dict) -> ToolResult:
 
     try:
         from brjarvis.agent.executor import AgentExecutor
+
         sub_executor = AgentExecutor()
         raw_res = sub_executor.execute(goal=goal)
         evidence = f"Sub-agent task completed for goal: '{goal[:80]}...'"

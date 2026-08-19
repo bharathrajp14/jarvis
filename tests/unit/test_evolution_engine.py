@@ -4,19 +4,17 @@ Tests for the evolution.engine module — validates that the
 SelfImprovementEngine correctly constructs proposals from mocked lesson
 and experience data without requiring a live SQLite database.
 """
+
 from __future__ import annotations
 
 import time
 from unittest.mock import MagicMock, patch
-
-import pytest
 
 from brjarvis.evolution.engine import (
     ImprovementProposal,
     SelfImprovementEngine,
     get_evolution_engine,
 )
-
 
 # ── ImprovementProposal Tests ─────────────────────────────────────────────────
 
@@ -107,10 +105,13 @@ class TestSelfImprovementEngine:
         ]
         engine = self._make_engine_with_lessons(lessons)
 
-        with patch(
-            "brjarvis.evolution.engine.SelfImprovementEngine._load_experience_store",
-            return_value=None,
-        ), patch.object(engine, "_log_cycle"):
+        with (
+            patch(
+                "brjarvis.evolution.engine.SelfImprovementEngine._load_experience_store",
+                return_value=None,
+            ),
+            patch.object(engine, "_log_cycle"),
+        ):
             proposals = engine.analyse()
 
         assert len(proposals) == 2
@@ -125,10 +126,13 @@ class TestSelfImprovementEngine:
         ]
         engine = self._make_engine_with_lessons(lessons)
 
-        with patch(
-            "brjarvis.evolution.engine.SelfImprovementEngine._load_experience_store",
-            return_value=None,
-        ), patch.object(engine, "_log_cycle"):
+        with (
+            patch(
+                "brjarvis.evolution.engine.SelfImprovementEngine._load_experience_store",
+                return_value=None,
+            ),
+            patch.object(engine, "_log_cycle"),
+        ):
             proposals = engine.analyse()
 
         assert len(proposals) == 1
@@ -140,10 +144,13 @@ class TestSelfImprovementEngine:
         ]
         engine = self._make_engine_with_lessons(lessons)
 
-        with patch(
-            "brjarvis.evolution.engine.SelfImprovementEngine._load_experience_store",
-            return_value=None,
-        ), patch.object(engine, "_log_cycle"):
+        with (
+            patch(
+                "brjarvis.evolution.engine.SelfImprovementEngine._load_experience_store",
+                return_value=None,
+            ),
+            patch.object(engine, "_log_cycle"),
+        ):
             proposals = engine.analyse()
 
         assert proposals == []
@@ -155,10 +162,13 @@ class TestSelfImprovementEngine:
         ]
         engine = self._make_engine_with_lessons(lessons)
 
-        with patch(
-            "brjarvis.evolution.engine.SelfImprovementEngine._load_experience_store",
-            return_value=None,
-        ), patch.object(engine, "_log_cycle"):
+        with (
+            patch(
+                "brjarvis.evolution.engine.SelfImprovementEngine._load_experience_store",
+                return_value=None,
+            ),
+            patch.object(engine, "_log_cycle"),
+        ):
             proposals = engine.analyse()
 
         confidences = [p.confidence for p in proposals]
@@ -173,10 +183,13 @@ class TestSelfImprovementEngine:
         ]
         engine = self._make_engine_with_lessons(lessons)
 
-        with patch(
-            "brjarvis.evolution.engine.SelfImprovementEngine._load_experience_store",
-            return_value=None,
-        ), patch.object(engine, "_log_cycle"):
+        with (
+            patch(
+                "brjarvis.evolution.engine.SelfImprovementEngine._load_experience_store",
+                return_value=None,
+            ),
+            patch.object(engine, "_log_cycle"),
+        ):
             proposals = engine.propose_improvements(context="voice")
 
         # "voice" topic should be ranked first due to relevance boost
@@ -189,10 +202,13 @@ class TestSelfImprovementEngine:
         ]
         engine = self._make_engine_with_lessons(lessons)
 
-        with patch(
-            "brjarvis.evolution.engine.SelfImprovementEngine._load_experience_store",
-            return_value=None,
-        ), patch.object(engine, "_log_cycle"):
+        with (
+            patch(
+                "brjarvis.evolution.engine.SelfImprovementEngine._load_experience_store",
+                return_value=None,
+            ),
+            patch.object(engine, "_log_cycle"),
+        ):
             proposals = engine.propose_improvements()
 
         assert len(proposals) == 2
@@ -201,6 +217,7 @@ class TestSelfImprovementEngine:
 
     def test_get_evolution_engine_singleton(self):
         import brjarvis.evolution.engine as mod
+
         original = mod._engine
         try:
             mod._engine = None

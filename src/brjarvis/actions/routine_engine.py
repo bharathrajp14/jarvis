@@ -15,6 +15,7 @@ Supports 9 trigger types:
 Persists routines and execution history in SQLite across restarts.
 Safely executes autonomous background tasks with approval checkpoints.
 """
+
 from __future__ import annotations
 
 import json
@@ -154,7 +155,7 @@ class RoutineEngine:
         trigger_config: Optional[Dict[str, Any]] = None,
         skill_name: Optional[str] = None,
         target_device: str = "pc",
-        requires_approval: bool = False
+        requires_approval: bool = False,
     ) -> RoutineDefinition:
         r_id = str(uuid.uuid4())
         routine = RoutineDefinition(
@@ -166,7 +167,7 @@ class RoutineEngine:
             skill_name=skill_name,
             target_device=target_device,
             requires_approval=requires_approval,
-            enabled=True
+            enabled=True,
         )
         self.save_routine(routine)
         logger.info("RoutineEngine: Created routine '%s' (%s)", name, r_id)
@@ -175,7 +176,8 @@ class RoutineEngine:
     def save_routine(self, routine: RoutineDefinition) -> None:
         routine.updated_at = time.time()
         with self._get_conn() as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 INSERT INTO routines (
                     routine_id, name, trigger_type, enabled, data_json, last_run, next_run, created_at, updated_at
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -187,17 +189,19 @@ class RoutineEngine:
                     last_run=excluded.last_run,
                     next_run=excluded.next_run,
                     updated_at=excluded.updated_at
-            """, (
-                routine.routine_id,
-                routine.name,
-                routine.trigger_type.value,
-                1 if routine.enabled else 0,
-                json.dumps(routine.to_dict()),
-                routine.last_run,
-                routine.next_run,
-                routine.created_at,
-                routine.updated_at
-            ))
+            """,
+                (
+                    routine.routine_id,
+                    routine.name,
+                    routine.trigger_type.value,
+                    1 if routine.enabled else 0,
+                    json.dumps(routine.to_dict()),
+                    routine.last_run,
+                    routine.next_run,
+                    routine.created_at,
+                    routine.updated_at,
+                ),
+            )
             conn.commit()
 
     def get_routine(self, routine_id: str) -> Optional[RoutineDefinition]:
@@ -209,7 +213,11 @@ class RoutineEngine:
 
     def list_routines(self, enabled_only: bool = False) -> List[RoutineDefinition]:
         with self._get_conn() as conn:
-            query = "SELECT data_json FROM routines WHERE enabled = 1 ORDER BY updated_at DESC" if enabled_only else "SELECT data_json FROM routines ORDER BY updated_at DESC"
+            query = (
+                "SELECT data_json FROM routines WHERE enabled = 1 ORDER BY updated_at DESC"
+                if enabled_only
+                else "SELECT data_json FROM routines ORDER BY updated_at DESC"
+            )
             rows = conn.execute(query).fetchall()
             return [RoutineDefinition.from_dict(json.loads(r["data_json"])) for r in rows]
 
@@ -244,12 +252,14 @@ class RoutineEngine:
         try:
             if routine.skill_name:
                 from brjarvis.skills.skill_engine import get_skill_engine
+
                 engine = get_skill_engine()
                 res = engine.execute_skill(routine.skill_name, event_payload or {})
                 status = "completed" if res.get("success") else "failed"
                 output = json.dumps(res)
             elif routine.goal:
                 from brjarvis.agent.executor import AgentExecutor
+
                 executor = AgentExecutor()
                 output = executor.execute(routine.goal)
                 status = "completed"
@@ -264,10 +274,13 @@ class RoutineEngine:
         self.save_routine(routine)
 
         with self._get_conn() as conn:
-            conn.execute("""
+            conn.execute(
+                """
                 INSERT INTO routine_history (run_id, routine_id, status, output, duration, timestamp)
                 VALUES (?, ?, ?, ?, ?, ?)
-            """, (run_id, routine_id, status, output[:1000], duration, time.time()))
+            """,
+                (run_id, routine_id, status, output[:1000], duration, time.time()),
+            )
             conn.commit()
 
         return {
@@ -276,7 +289,7 @@ class RoutineEngine:
             "name": routine.name,
             "status": status,
             "duration": duration,
-            "output": output
+            "output": output,
         }
 
     def _evaluate_due_routines(self) -> None:

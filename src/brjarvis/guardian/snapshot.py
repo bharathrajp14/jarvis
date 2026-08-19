@@ -3,16 +3,15 @@
 Manages pre-upgrade git commits, database backups, and rolling snapshot retention.
 Supports canonical database backups (SQLite WAL), lessons, and task state.
 """
+
 from __future__ import annotations
 
 import json
 import logging
-import os
 import shutil
 import subprocess
 import time
-from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from brjarvis.core.paths import paths
 
@@ -64,7 +63,9 @@ class SnapshotManager:
             res = subprocess.run(
                 ["git", "rev-parse", "HEAD"],
                 capture_output=True,
-                text=True, encoding="utf-8", errors="replace",
+                text=True,
+                encoding="utf-8",
+                errors="replace",
                 cwd=str(paths.PROJECT_ROOT),
                 timeout=5.0,
             )
@@ -83,9 +84,7 @@ class SnapshotManager:
         }
 
         # Save metadata
-        (snap_path / "metadata.json").write_text(
-            json.dumps(info, indent=2), encoding="utf-8"
-        )
+        (snap_path / "metadata.json").write_text(json.dumps(info, indent=2), encoding="utf-8")
         cls.prune_old_snapshots(max_count=20)
         logger.info("📸 Created system snapshot: %s (%d databases backed up)", snapshot_id, len(backed_up))
         return info

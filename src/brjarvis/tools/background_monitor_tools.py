@@ -1,8 +1,9 @@
 # tools/background_monitor_tools.py — JARVIS Topic Monitor Tool Wrappers
 from __future__ import annotations
 
+from brjarvis.actions.background_monitor import add_monitor, check_all, list_monitors, remove_monitor
+
 from .registry import register_tool
-from brjarvis.actions.background_monitor import add_monitor, remove_monitor, list_monitors, check_all
 
 
 @register_tool(
@@ -10,11 +11,9 @@ from brjarvis.actions.background_monitor import add_monitor, remove_monitor, lis
     description="Add a new topic for JARVIS to monitor daily via background news checks (e.g. AI research, space, tech release). Blocks crypto/financial clutter.",
     parameters={
         "type": "object",
-        "properties": {
-            "topic": {"type": "string", "description": "Topic or keyword to monitor daily."}
-        },
-        "required": ["topic"]
-    }
+        "properties": {"topic": {"type": "string", "description": "Topic or keyword to monitor daily."}},
+        "required": ["topic"],
+    },
 )
 def tool_add_background_monitor(topic: str) -> str:
     return add_monitor(topic)
@@ -25,11 +24,9 @@ def tool_add_background_monitor(topic: str) -> str:
     description="Stop monitoring a previously added news topic.",
     parameters={
         "type": "object",
-        "properties": {
-            "topic": {"type": "string", "description": "Monitored topic or keyword to remove."}
-        },
-        "required": ["topic"]
-    }
+        "properties": {"topic": {"type": "string", "description": "Monitored topic or keyword to remove."}},
+        "required": ["topic"],
+    },
 )
 def tool_remove_background_monitor(topic: str) -> str:
     return remove_monitor(topic)
@@ -38,7 +35,7 @@ def tool_remove_background_monitor(topic: str) -> str:
 @register_tool(
     name="list_monitored_topics",
     description="List all topics currently monitored by JARVIS.",
-    parameters={"type": "object", "properties": {}}
+    parameters={"type": "object", "properties": {}},
 )
 def tool_list_monitored_topics() -> str:
     topics = list_monitors()
@@ -50,7 +47,7 @@ def tool_list_monitored_topics() -> str:
 @register_tool(
     name="check_monitored_topics",
     description="Manually trigger an immediate check across all monitored topics for new headlines.",
-    parameters={"type": "object", "properties": {}}
+    parameters={"type": "object", "properties": {}},
 )
 def tool_check_monitored_topics() -> str:
     alerts = check_all()

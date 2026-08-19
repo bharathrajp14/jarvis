@@ -2,15 +2,15 @@
 """
 Tools for interacting with the BR JARVIS AI OS Workspace (BR_WORKSPACE/).
 """
+
 from __future__ import annotations
 
-import json
 import os
 import sys
-from pathlib import Path
+
+from brjarvis.core.workspace_engine import CognitiveWorkspaceEngine
 
 from .registry import register_tool
-from brjarvis.core.workspace_engine import CognitiveWorkspaceEngine
 
 
 @register_tool(
@@ -18,11 +18,9 @@ from brjarvis.core.workspace_engine import CognitiveWorkspaceEngine
     description="Smart natural language file opener for BR_WORKSPACE/. Accepts query like 'open yesterday's API design' or 'open RouteX architecture'.",
     parameters={
         "type": "object",
-        "properties": {
-            "query": {"type": "string", "description": "Natural language query or file description"}
-        },
-        "required": ["query"]
-    }
+        "properties": {"query": {"type": "string", "description": "Natural language query or file description"}},
+        "required": ["query"],
+    },
 )
 def open_workspace_file(args: dict) -> str:
     """Smart natural language file retrieval and opening."""
@@ -54,8 +52,8 @@ def open_workspace_file(args: dict) -> str:
         "type": "object",
         "properties": {
             "limit": {"type": "integer", "description": "Number of recent events to retrieve (default: 15)"}
-        }
-    }
+        },
+    },
 )
 def get_workspace_timeline(args: dict) -> str:
     """Retrieve workspace action timeline."""
@@ -63,10 +61,14 @@ def get_workspace_timeline(args: dict) -> str:
     ws = CognitiveWorkspaceEngine()
 
     import sqlite3
+
     conn = sqlite3.connect(ws.db_path, timeout=15.0)
 
     cur = conn.cursor()
-    cur.execute("SELECT timestamp, event_type, project_name, description FROM workspace_timeline ORDER BY timestamp DESC LIMIT ?", (limit,))
+    cur.execute(
+        "SELECT timestamp, event_type, project_name, description FROM workspace_timeline ORDER BY timestamp DESC LIMIT ?",
+        (limit,),
+    )
     rows = cur.fetchall()
     conn.close()
 
@@ -82,11 +84,9 @@ def get_workspace_timeline(args: dict) -> str:
     description="Create a standardized self-contained Project Workspace (source, docs, architecture, api, tests, build) inside BR_WORKSPACE/Projects/.",
     parameters={
         "type": "object",
-        "properties": {
-            "project_name": {"type": "string", "description": "Name of the project workspace to create"}
-        },
-        "required": ["project_name"]
-    }
+        "properties": {"project_name": {"type": "string", "description": "Name of the project workspace to create"}},
+        "required": ["project_name"],
+    },
 )
 def init_project_workspace(args: dict) -> str:
     """Create project sub-tree workspace."""

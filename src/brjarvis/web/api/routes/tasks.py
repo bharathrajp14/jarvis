@@ -35,11 +35,7 @@ async def get_tasks():
     try:
         q = get_queue()
         statuses = q.get_all_statuses()
-        return {
-            "active": q.active_count(),
-            "pending": q.pending_count(),
-            "tasks": statuses[-10:]
-        }
+        return {"active": q.active_count(), "pending": q.pending_count(), "tasks": statuses[-10:]}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -79,6 +75,7 @@ async def get_agent_task(task_id: str):
 async def create_agent_task(req: CreateTaskRequest):
     """Create and trigger an autonomous task via AgentExecutor."""
     from brjarvis.agent.executor import AgentExecutor
+
     mgr = get_task_state_manager()
     task = mgr.create_task(req.goal, active_devices=req.active_devices)
 

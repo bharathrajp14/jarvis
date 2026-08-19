@@ -3,11 +3,11 @@
 Mistral backend connector for BR Core.
 Uses the OpenAI SDK pointed at Mistral's API endpoint.
 """
+
 from __future__ import annotations
 
 import logging
 import os
-import traceback
 from typing import Generator
 
 from .base import BaseBackend
@@ -21,6 +21,7 @@ class MistralBackend(BaseBackend):
     def __init__(self, model: str | None = None, api_key: str | None = None):
         try:
             from brjarvis.config.models import get_model
+
             default_model = get_model("mistral") or "mistral-large-latest"
         except Exception:
             default_model = "mistral-large-latest"
@@ -32,6 +33,7 @@ class MistralBackend(BaseBackend):
         if _api_key:
             try:
                 from openai import OpenAI
+
                 self.client = OpenAI(api_key=_api_key, base_url="https://api.mistral.ai/v1")
                 logger.info(f"[Mistral] [OK] Using model: {self.model}")
             except ImportError:
@@ -86,15 +88,10 @@ class MistralBackend(BaseBackend):
                 full_messages.append({"role": "system", "content": system})
             full_messages.extend(messages)
 
-            stream_res = self.client.chat.completions.create(
-                model=self.model,
-                messages=full_messages,
-                stream=True
-            )
+            stream_res = self.client.chat.completions.create(model=self.model, messages=full_messages, stream=True)
             for chunk in stream_res:
                 if chunk.choices and chunk.choices[0].delta.content:
                     yield chunk.choices[0].delta.content
             return
         except Exception as e:
             yield f"\n[Mistral Stream Error: {e}]"
-

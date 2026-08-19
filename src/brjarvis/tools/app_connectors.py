@@ -3,19 +3,20 @@
 App Connectors for external productivity tools and cloud platforms.
 Supports Gmail, Notion, GitHub, Google Calendar, and Slack via ConnectorHub.
 """
+
 from __future__ import annotations
 
-import json
 import logging
-from typing import Any, Dict, List, Optional
+
+from brjarvis.connectors.hub import get_hub
 
 from .registry import register_tool
-from brjarvis.connectors.hub import get_hub
 
 logger = logging.getLogger("JARVIS.AppConnectors")
 
 
 # ── GMAIL CONNECTORS ──────────────────────────────────────────────────────────
+
 
 @register_tool(
     name="gmail_list_unread",
@@ -23,10 +24,13 @@ logger = logging.getLogger("JARVIS.AppConnectors")
     parameters={
         "type": "object",
         "properties": {
-            "max_results": {"type": "integer", "description": "Maximum number of unread emails to retrieve (default: 5)"}
+            "max_results": {
+                "type": "integer",
+                "description": "Maximum number of unread emails to retrieve (default: 5)",
+            }
         },
-        "required": []
-    }
+        "required": [],
+    },
 )
 def gmail_list_unread(max_results: int = 5, *args, **kwargs) -> str:
     """List unread emails from Gmail inbox."""
@@ -52,10 +56,10 @@ def gmail_list_unread(max_results: int = 5, *args, **kwargs) -> str:
         "properties": {
             "to": {"type": "string", "description": "Recipient email address"},
             "subject": {"type": "string", "description": "Email subject line"},
-            "body": {"type": "string", "description": "Email body content"}
+            "body": {"type": "string", "description": "Email body content"},
         },
-        "required": ["to", "subject", "body"]
-    }
+        "required": ["to", "subject", "body"],
+    },
 )
 def gmail_send_email(to: str, subject: str = "", body: str = "", *args, **kwargs) -> str:
     """Send or draft an email via Gmail connector."""
@@ -70,16 +74,15 @@ def gmail_send_email(to: str, subject: str = "", body: str = "", *args, **kwargs
 
 # ── NOTION CONNECTORS ─────────────────────────────────────────────────────────
 
+
 @register_tool(
     name="notion_search_pages",
     description="Search Notion workspace for pages, databases, or documentation notes.",
     parameters={
         "type": "object",
-        "properties": {
-            "query": {"type": "string", "description": "Search query for Notion workspace"}
-        },
-        "required": ["query"]
-    }
+        "properties": {"query": {"type": "string", "description": "Search query for Notion workspace"}},
+        "required": ["query"],
+    },
 )
 def notion_search_pages(query: str = "", *args, **kwargs) -> str:
     """Search Notion workspace for pages and databases."""
@@ -99,10 +102,10 @@ def notion_search_pages(query: str = "", *args, **kwargs) -> str:
         "type": "object",
         "properties": {
             "title": {"type": "string", "description": "Title of the new Notion page"},
-            "content": {"type": "string", "description": "Markdown body content of the page"}
+            "content": {"type": "string", "description": "Markdown body content of the page"},
         },
-        "required": ["title"]
-    }
+        "required": ["title"],
+    },
 )
 def notion_create_page(title: str = "", content: str = "", *args, **kwargs) -> str:
     """Create a new page in Notion workspace."""
@@ -120,16 +123,20 @@ def notion_create_page(title: str = "", content: str = "", *args, **kwargs) -> s
 
 # ── GITHUB CONNECTORS ─────────────────────────────────────────────────────────
 
+
 @register_tool(
     name="github_list_prs",
     description="List open Pull Requests or Issues in a GitHub repository.",
     parameters={
         "type": "object",
         "properties": {
-            "repo": {"type": "string", "description": "Repository in format 'owner/repo' (default: 'bharthraj1412/BrJarvis')"}
+            "repo": {
+                "type": "string",
+                "description": "Repository in format 'owner/repo' (default: 'bharthraj1412/BrJarvis')",
+            }
         },
-        "required": []
-    }
+        "required": [],
+    },
 )
 def github_list_prs(repo: str = "bharthraj1412/BrJarvis", *args, **kwargs) -> str:
     """List open PRs in a GitHub repository."""
@@ -156,10 +163,10 @@ def github_list_prs(repo: str = "bharthraj1412/BrJarvis", *args, **kwargs) -> st
         "properties": {
             "repo": {"type": "string", "description": "Repository in format 'owner/repo'"},
             "title": {"type": "string", "description": "Issue title"},
-            "body": {"type": "string", "description": "Issue description content"}
+            "body": {"type": "string", "description": "Issue description content"},
         },
-        "required": ["repo", "title"]
-    }
+        "required": ["repo", "title"],
+    },
 )
 def github_create_issue(repo: str = "", title: str = "", body: str = "", *args, **kwargs) -> str:
     """Create a new issue on GitHub repository."""
@@ -180,16 +187,15 @@ def github_create_issue(repo: str = "", title: str = "", body: str = "", *args, 
 
 # ── GOOGLE CALENDAR CONNECTORS ────────────────────────────────────────────────
 
+
 @register_tool(
     name="calendar_list_events",
     description="List upcoming events and meetings from Google Calendar.",
     parameters={
         "type": "object",
-        "properties": {
-            "days": {"type": "integer", "description": "Number of days ahead to search (default: 7)"}
-        },
-        "required": []
-    }
+        "properties": {"days": {"type": "integer", "description": "Number of days ahead to search (default: 7)"}},
+        "required": [],
+    },
 )
 def calendar_list_events(days: int = 7, *args, **kwargs) -> str:
     """List upcoming Google Calendar events."""
@@ -210,10 +216,10 @@ def calendar_list_events(days: int = 7, *args, **kwargs) -> str:
         "properties": {
             "summary": {"type": "string", "description": "Title/summary of the meeting"},
             "start_time": {"type": "string", "description": "ISO start time e.g. '2026-07-22T16:00:00'"},
-            "duration_minutes": {"type": "integer", "description": "Duration in minutes (default: 30)"}
+            "duration_minutes": {"type": "integer", "description": "Duration in minutes (default: 30)"},
         },
-        "required": ["summary", "start_time"]
-    }
+        "required": ["summary", "start_time"],
+    },
 )
 def calendar_create_event(summary: str = "", start_time: str = "", duration_minutes: int = 30, *args, **kwargs) -> str:
     """Schedule a new meeting or event in Google Calendar."""
@@ -223,10 +229,13 @@ def calendar_create_event(summary: str = "", start_time: str = "", duration_minu
         summary = summary.get("summary", "")
 
     hub = get_hub()
-    return hub.call("calendar", "create_event", {"summary": summary, "start_time": start_time, "duration_minutes": duration_minutes})
+    return hub.call(
+        "calendar", "create_event", {"summary": summary, "start_time": start_time, "duration_minutes": duration_minutes}
+    )
 
 
 # ── SLACK CONNECTORS ──────────────────────────────────────────────────────────
+
 
 @register_tool(
     name="slack_send_message",
@@ -235,10 +244,10 @@ def calendar_create_event(summary: str = "", start_time: str = "", duration_minu
         "type": "object",
         "properties": {
             "channel": {"type": "string", "description": "Channel name e.g. '#general'"},
-            "message": {"type": "string", "description": "Message text to post"}
+            "message": {"type": "string", "description": "Message text to post"},
         },
-        "required": ["channel", "message"]
-    }
+        "required": ["channel", "message"],
+    },
 )
 def slack_send_message(channel: str = "", message: str = "", *args, **kwargs) -> str:
     """Post a message to a Slack or Discord dev channel."""

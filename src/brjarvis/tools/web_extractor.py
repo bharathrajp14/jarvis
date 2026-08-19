@@ -3,11 +3,13 @@
 High-speed HTML parsing and web content extraction tool.
 Fetches web pages, strips HTML tags, extracts main article content, headers, and metadata.
 """
+
 from __future__ import annotations
 
 import re
 import urllib.request
-from typing import Dict, Any
+from typing import Any, Dict
+
 from .registry import register_tool
 
 
@@ -46,11 +48,9 @@ def extract_web_content(url: str, max_chars: int = 4000) -> str:
     description="Fetch web page HTML and extract clean text content, headers, and main body text.",
     parameters={
         "type": "object",
-        "properties": {
-            "url": {"type": "string", "description": "Web page URL to extract"}
-        },
-        "required": ["url"]
-    }
+        "properties": {"url": {"type": "string", "description": "Web page URL to extract"}},
+        "required": ["url"],
+    },
 )
 def web_extractor_action(args: Dict[str, Any]) -> str:
     """Main tool handler for web extraction."""

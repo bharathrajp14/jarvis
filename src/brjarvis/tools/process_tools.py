@@ -2,17 +2,17 @@
 """
 System Diagnostics, Process Manager, and Telemetry Inspection Suite.
 """
+
 from __future__ import annotations
 
-import os
-import sys
 import subprocess
-from typing import Any
+import sys
 
 from .registry import register_tool
 
 try:
     import psutil
+
     _PSUTIL_AVAILABLE = True
 except ImportError:
     _PSUTIL_AVAILABLE = False
@@ -24,9 +24,12 @@ except ImportError:
     parameters={
         "type": "object",
         "properties": {
-            "top_n": {"type": "integer", "description": "Number of top memory-consuming processes to report (default: 10)"}
-        }
-    }
+            "top_n": {
+                "type": "integer",
+                "description": "Number of top memory-consuming processes to report (default: 10)",
+            }
+        },
+    },
 )
 def get_system_diagnostics(args: dict) -> str:
     """Retrieve system process telemetry."""
@@ -38,11 +41,11 @@ def get_system_diagnostics(args: dict) -> str:
         disk = psutil.disk_usage("/")
 
         top_procs = []
-        for proc in psutil.process_iter(['pid', 'name', 'memory_info', 'cpu_percent']):
+        for proc in psutil.process_iter(["pid", "name", "memory_info", "cpu_percent"]):
             try:
                 info = proc.info
-                mem_mb = round(info['memory_info'].rss / (1024 * 1024), 1)
-                top_procs.append((info['pid'], info['name'], mem_mb, info['cpu_percent']))
+                mem_mb = round(info["memory_info"].rss / (1024 * 1024), 1)
+                top_procs.append((info["pid"], info["name"], mem_mb, info["cpu_percent"]))
             except (psutil.NoSuchProcess, psutil.AccessDenied):
                 pass
 
@@ -52,12 +55,12 @@ def get_system_diagnostics(args: dict) -> str:
         return (
             f"🖥️ SYSTEM DIAGNOSTICS & TELEMETRY:\n"
             f" - CPU Load: {cpu_pct}%\n"
-            f" - Memory Usage: {mem.percent}% ({round(mem.used/(1024**3), 2)} GB / {round(mem.total/(1024**3), 2)} GB)\n"
-            f" - Disk Usage: {disk.percent}% ({round(disk.used/(1024**3), 2)} GB / {round(disk.total/(1024**3), 2)} GB)\n\n"
+            f" - Memory Usage: {mem.percent}% ({round(mem.used / (1024**3), 2)} GB / {round(mem.total / (1024**3), 2)} GB)\n"
+            f" - Disk Usage: {disk.percent}% ({round(disk.used / (1024**3), 2)} GB / {round(disk.total / (1024**3), 2)} GB)\n\n"
             f"🔥 TOP {top_n} MEMORY CONSUMING PROCESSES:\n{top_str}"
         )
     else:
-        return f"System telemetry unavailable (psutil required)."
+        return "System telemetry unavailable (psutil required)."
 
 
 @register_tool(
@@ -68,8 +71,8 @@ def get_system_diagnostics(args: dict) -> str:
         "properties": {
             "identifier": {"type": "string", "description": "PID (e.g. '1234') or Process Name (e.g. 'notepad.exe')"}
         },
-        "required": ["identifier"]
-    }
+        "required": ["identifier"],
+    },
 )
 def kill_process(args: dict) -> str:
     """Kill process by PID or name."""
@@ -83,7 +86,9 @@ def kill_process(args: dict) -> str:
         else:
             cmd = ["taskkill", "/F", "/IM", identifier]
         try:
-            res = subprocess.run(cmd, shell=False, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=15)
+            res = subprocess.run(
+                cmd, shell=False, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=15
+            )
 
             if res.returncode == 0:
                 return f"Successfully terminated process '{identifier}'."

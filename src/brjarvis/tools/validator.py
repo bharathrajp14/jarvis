@@ -3,10 +3,11 @@
 Deterministic Schema Validator for BR JARVIS Tool Invocations.
 Enforces strict JSON schema validation, required properties, enums, type checking, bounds, and string constraints before tool execution.
 """
+
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 logger = logging.getLogger("JARVIS.Tools.Validator")
 
@@ -37,7 +38,11 @@ class SchemaValidator:
         for req in required_fields:
             if req not in args or args[req] is None:
                 return False, f"Missing required parameter '{req}'"
-            if isinstance(args[req], str) and not args[req].strip() and req in ("query", "path", "url", "command", "recipient", "content", "title", "prompt", "code"):
+            if (
+                isinstance(args[req], str)
+                and not args[req].strip()
+                and req in ("query", "path", "url", "command", "recipient", "content", "title", "prompt", "code")
+            ):
                 return False, f"Required parameter '{req}' cannot be empty string"
 
         # 2. Check Individual Property Constraints

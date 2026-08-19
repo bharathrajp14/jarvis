@@ -84,6 +84,7 @@ async def chat(req: ChatRequest):
         raise HTTPException(status_code=503, detail="JARVIS not initialized")
 
     from brjarvis.memory.workspace_store import get_workspace_store
+
     store = get_workspace_store()
     conv_id = req.conversation_id
     t_start = time.time()
@@ -131,6 +132,7 @@ async def galaxy_chat_endpoint(req: ChatRequest):
     """Dedicated 3D Knowledge Galaxy document chat endpoint."""
     try:
         from brjarvis.actions.rag_library import galaxy_chat
+
         res = galaxy_chat(req.message, str(paths.PROJECT_ROOT))
         return {
             "response": res.get("answer", ""),
@@ -173,6 +175,7 @@ async def openai_chat_completions(req: OpenAIChatRequest):
     last_user_prompt = req.messages[-1].content
 
     if req.stream:
+
         async def sse_streamer():
             try:
                 chat_gen = orchestrator.chat_stream(last_user_prompt)
@@ -182,11 +185,7 @@ async def openai_chat_completions(req: OpenAIChatRequest):
                         "object": "chat.completion.chunk",
                         "created": int(time.time()),
                         "model": req.model,
-                        "choices": [{
-                            "index": 0,
-                            "delta": {"content": token},
-                            "finish_reason": None
-                        }]
+                        "choices": [{"index": 0, "delta": {"content": token}, "finish_reason": None}],
                     }
                     yield f"data: {json.dumps(chunk)}\n\n"
                 yield "data: [DONE]\n\n"
@@ -205,19 +204,14 @@ async def openai_chat_completions(req: OpenAIChatRequest):
                 "object": "chat.completion",
                 "created": int(time.time()),
                 "model": req.model,
-                "choices": [{
-                    "index": 0,
-                    "message": {
-                        "role": "assistant",
-                        "content": response_text
-                    },
-                    "finish_reason": "stop"
-                }],
+                "choices": [
+                    {"index": 0, "message": {"role": "assistant", "content": response_text}, "finish_reason": "stop"}
+                ],
                 "usage": {
                     "prompt_tokens": len(last_user_prompt) // 4,
                     "completion_tokens": len(response_text) // 4,
-                    "total_tokens": (len(last_user_prompt) + len(response_text)) // 4
-                }
+                    "total_tokens": (len(last_user_prompt) + len(response_text)) // 4,
+                },
             }
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
@@ -232,12 +226,7 @@ async def list_openai_models():
 
     models_list = []
     for profile, backend in orchestrator.router.backends.items():
-        models_list.append({
-            "id": backend.model_name,
-            "object": "model",
-            "created": 1770652800,
-            "owned_by": "jarvis"
-        })
+        models_list.append({"id": backend.model_name, "object": "model", "created": 1770652800, "owned_by": "jarvis"})
     return {"object": "list", "data": models_list}
 
 

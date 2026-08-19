@@ -2,6 +2,7 @@
 """
 Compatibility shim re-exporting CoreBootstrapper from core.bootstrap.
 """
+
 from __future__ import annotations
 
 from .bootstrap import AssistantRuntime, CoreBootstrapper, build_assistant_runtime, reset_assistant_runtime

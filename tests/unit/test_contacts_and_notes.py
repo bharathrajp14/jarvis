@@ -1,7 +1,9 @@
 """Unit tests for Contact Tools and Document Generation."""
+
 from __future__ import annotations
 
 import pytest
+
 from brjarvis.tools.doc_tools import document_creator
 from brjarvis.tools.whatsapp_tools import tool_manage_whatsapp_contacts
 
@@ -25,7 +27,7 @@ def test_document_creator(temp_workspace):
         "author": "BR JARVIS Core",
         "content": "Autonomous System is Fully Operational.",
         "format": "md",
-        "auto_open": False
+        "auto_open": False,
     }
     res = document_creator(params)
     assert "Quantum_Architecture.md" in str(res) or "created" in str(res).lower() or "success" in str(res).lower()

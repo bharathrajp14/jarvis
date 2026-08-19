@@ -3,11 +3,12 @@ from __future__ import annotations
 
 import json
 import logging
-import sqlite3
-import time
-from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 
+from brjarvis.memory.canonical_db import get_canonical_db
+
+from ..models import CareerProfile, JobPosting
+from ..profile_manager import get_profile_manager
 from .adapters import (
     AshbyAdapter,
     BasePlatformAdapter,
@@ -19,9 +20,6 @@ from .deduplicator import JobDeduplicator
 from .matcher import JobMatcher
 from .models import JobMatchResult, SearchFilters
 from .ranker import JobRanker
-from ..models import CareerProfile, JobPosting
-from ..profile_manager import get_profile_manager
-from brjarvis.memory.canonical_db import get_canonical_db
 
 logger = logging.getLogger("JARVIS.JobFinder")
 
@@ -83,7 +81,17 @@ class JobFinder:
             filters.remote_only = True
 
         # Location checks
-        locations = ["madurai", "bengaluru", "bangalore", "chennai", "hyderabad", "san francisco", "india", "us", "worldwide"]
+        locations = [
+            "madurai",
+            "bengaluru",
+            "bangalore",
+            "chennai",
+            "hyderabad",
+            "san francisco",
+            "india",
+            "us",
+            "worldwide",
+        ]
         for loc in locations:
             if loc in low:
                 filters.location = loc.capitalize()
@@ -105,7 +113,7 @@ class JobFinder:
         for kw, roles in role_candidates:
             if kw in low:
                 matched_roles.extend(roles)
-        
+
         if matched_roles:
             filters.target_roles = list(set(matched_roles))
         elif profile and profile.preferences.target_roles:
@@ -114,7 +122,12 @@ class JobFinder:
             filters.target_roles = ["AI Systems Engineer", "Senior Software Engineer"]
 
         # Keywords extraction
-        filters.keywords = [w.strip() for w in low.split() if len(w.strip()) > 3 and w not in ("find", "jobs", "look", "search", "best", "give", "show", "near", "with")]
+        filters.keywords = [
+            w.strip()
+            for w in low.split()
+            if len(w.strip()) > 3
+            and w not in ("find", "jobs", "look", "search", "best", "give", "show", "near", "with")
+        ]
         return filters
 
     # ── 2. Search & Orchestrate ──────────────────────────────────────────────
@@ -161,7 +174,9 @@ class JobFinder:
         # Rank
         ranked = JobRanker.rank_jobs(match_results)
 
-        logger.info(f"🎯 Job Search Complete: Discovered {len(all_raw_jobs)} -> {len(unique_jobs)} unique -> Ranked {len(ranked)} matches.")
+        logger.info(
+            f"🎯 Job Search Complete: Discovered {len(all_raw_jobs)} -> {len(unique_jobs)} unique -> Ranked {len(ranked)} matches."
+        )
         return ranked[:limit]
 
     def _persist_job(self, job: JobPosting) -> None:
@@ -182,7 +197,7 @@ class JobFinder:
                         job.platform,
                         json.dumps(job.to_dict()),
                         job.discovered_at,
-                    )
+                    ),
                 )
                 conn.commit()
         except Exception as e:
@@ -208,4 +223,3 @@ def get_instance() -> JobFinder:
 
 
 get_job_finder = get_instance
-

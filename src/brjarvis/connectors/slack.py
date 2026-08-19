@@ -6,6 +6,7 @@ Requires a free Slack Bot Token (no paid plan needed):
   Scopes: channels:read, channels:history, search:read, chat:write
   Takes 5 minutes. Works on free Slack workspaces.
 """
+
 from __future__ import annotations
 
 import json
@@ -23,7 +24,6 @@ _API = "https://slack.com/api"
 
 
 class SlackConnector(BaseConnector):
-
     def __init__(self):
         self._token = os.environ.get("SLACK_BOT_TOKEN", "").strip()
 
@@ -151,7 +151,7 @@ class SlackConnector(BaseConnector):
                 if ch.get("name", "").lower() == name:
                     return ch["id"]
         except Exception as e:
-            logger.debug('Suppressed exception: %s', e)
+            logger.debug("Suppressed exception: %s", e)
         return channel  # Return as-is and let Slack handle it
 
     def call_tool(self, tool_name: str, args: Dict[str, Any]) -> Any:
@@ -167,11 +167,14 @@ class SlackConnector(BaseConnector):
 
     def _list_channels(self, limit: int = 20) -> str:
         try:
-            data = self._call_api("conversations.list", {
-                "limit": min(limit, 200),
-                "types": "public_channel,private_channel",
-                "exclude_archived": True,
-            })
+            data = self._call_api(
+                "conversations.list",
+                {
+                    "limit": min(limit, 200),
+                    "types": "public_channel,private_channel",
+                    "exclude_archived": True,
+                },
+            )
             if not data.get("ok"):
                 return f"Slack error: {data.get('error', 'unknown')}"
             channels = data.get("channels", [])
@@ -207,6 +210,7 @@ class SlackConnector(BaseConnector):
                 # Convert timestamp to readable time
                 if ts:
                     import datetime
+
                     dt = datetime.datetime.fromtimestamp(float(ts))
                     time_str = dt.strftime("%H:%M")
                 else:

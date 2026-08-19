@@ -2,9 +2,11 @@
 """
 Registers custom command management tools in the tool registry.
 """
+
 from __future__ import annotations
 
 import json
+
 from .registry import register_tool
 
 
@@ -25,8 +27,14 @@ from .registry import register_tool
                 "items": {
                     "type": "object",
                     "properties": {
-                        "type": {"type": "string", "description": "Action type: speak, open_url, open_app, run_command, press_keys, hotkey"},
-                        "text": {"type": "string", "description": "The target text, URL, app name, command, or keys to type"},
+                        "type": {
+                            "type": "string",
+                            "description": "Action type: speak, open_url, open_app, run_command, press_keys, hotkey",
+                        },
+                        "text": {
+                            "type": "string",
+                            "description": "The target text, URL, app name, command, or keys to type",
+                        },
                     },
                     "required": ["type"],
                 },
@@ -34,10 +42,11 @@ from .registry import register_tool
             },
         },
         "required": ["trigger", "actions"],
-    }
+    },
 )
 def tool_custom_command_add(args: dict) -> str:
     from brjarvis.actions.custom_commands import custom_command_engine
+
     # Normalize actions text keys
     actions = []
     for act in args["actions"]:
@@ -55,12 +64,11 @@ def tool_custom_command_add(args: dict) -> str:
 
 
 @register_tool(
-    name="custom_command_list",
-    description="List all user-configured custom voice and text commands.",
-    parameters={}
+    name="custom_command_list", description="List all user-configured custom voice and text commands.", parameters={}
 )
 def tool_custom_command_list(args: dict) -> str:
     from brjarvis.actions.custom_commands import custom_command_engine
+
     return json.dumps(custom_command_engine.commands, indent=2)
 
 
@@ -73,8 +81,9 @@ def tool_custom_command_list(args: dict) -> str:
             "trigger": {"type": "string", "description": "The exact trigger phrase of the command to delete"},
         },
         "required": ["trigger"],
-    }
+    },
 )
 def tool_custom_command_delete(args: dict) -> str:
     from brjarvis.actions.custom_commands import custom_command_engine
+
     return custom_command_engine.delete_command(args["trigger"])

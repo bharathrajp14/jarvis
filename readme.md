@@ -2,9 +2,10 @@
 
 [![CI](https://github.com/bharthraj1412/BrJarvis/actions/workflows/ci.yml/badge.svg)](https://github.com/bharthraj1412/BrJarvis/actions)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-295%20passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-309%20passing-brightgreen.svg)]()
+
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg)]()
-[![Python](https://img.shields.io/badge/python-3.11--3.13-blue.svg)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/python-3.11--3.14-blue.svg)](https://www.python.org/)
 
 BR-JARVIS is a local agent runtime for verifiable task execution, software work, system automation, multimodal workflows, personal memory, connectors, and Career OS. The platform combines typed configuration, policy-controlled tools, recovery-aware tasks, evidence-led verification, a packaged FastAPI/PWA control plane, and desktop and voice adapters.
 
@@ -18,7 +19,7 @@ The detailed current-state assessment, ownership map, migration strategy, and ri
 
 ## Requirements
 
-Use Python **3.11, 3.12, or 3.13** in a project-local virtual environment. Do not install BR-JARVIS into system Python and do not bypass dependency resolution with `--no-deps`.
+Use Python **3.11, 3.12, 3.13, or 3.14** in a project-local virtual environment. Do not install BR-JARVIS into system Python and do not bypass dependency resolution with `--no-deps`.
 
 ## Installation
 
@@ -62,7 +63,8 @@ JARVIS_COOKIE_SECURE=true
 JARVIS_CORS_ORIGINS=https://your-approved-origin.example
 ```
 
-Localhost is not treated as an authentication boundary. The PWA exchanges the server key for an HttpOnly session and uses one-time WebSocket tickets. Connector secrets are stored through the operating-system keyring rather than plaintext JSON.
+Localhost is not treated as an authentication boundary. The PWA exchanges the server key for an HttpOnly session and uses one-time WebSocket tickets; browser login responses never return the session bearer token. Connector secrets are stored through the operating-system keyring rather than plaintext JSON.
+
 
 > If a real provider secret has ever been committed to Git, rotate it at the provider. Deleting the file or rewriting history does not invalidate the credential.
 
@@ -93,7 +95,7 @@ Run the maintained regression suite:
 python -m pytest tests -m "not benchmark" -q --tb=short --timeout=60
 ```
 
-The current verified result is **295 passed, 1 skipped, and 2 benchmark tests deselected**. CI reports quality, tests, packaging, architecture, security, dependencies, licenses, and secrets independently.
+The current verified result is **309 passed, 1 skipped, and 2 benchmark tests deselected** in the maintained non-benchmark suite. Doctor diagnostics additionally report core versus optional dependency health, Python runtime metadata, non-secret credential-source status, and repair-attempt outcomes. CI reports quality, tests, packaging, architecture, security, dependencies, licenses, and secrets independently.
 
 A release artifact must also pass an installed-wheel smoke test outside the checkout. The August 2026 production-hardening wheel installed into an empty external environment, constructed 51 routes, loaded the packaged PWA, passed dependency integrity, and did not resolve code from the source tree.
 

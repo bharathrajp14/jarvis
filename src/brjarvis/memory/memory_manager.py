@@ -10,40 +10,40 @@ BUG-FIX (Minor — dict mutation during iteration):
 
   FIX: collect the keys to delete first, then delete them in a second pass.
 """
+
 from __future__ import annotations
 
-import logging
 import json
+import logging
 from datetime import datetime
 from pathlib import Path
-from threading import Lock
 from threading import RLock
-import sys
 
 logger = logging.getLogger(__name__)
 
 
 from brjarvis.core.paths import paths
 
+
 def get_base_dir() -> Path:
     return paths.PROJECT_ROOT
 
 
-BASE_DIR         = get_base_dir()
-MEMORY_PATH      = paths.STATE_ROOT / "long_term.json"
-_lock            = RLock()
+BASE_DIR = get_base_dir()
+MEMORY_PATH = paths.STATE_ROOT / "long_term.json"
+_lock = RLock()
 MAX_VALUE_LENGTH = 380
 MEMORY_MAX_CHARS = 2200
 
 
 def _empty_memory() -> dict:
     return {
-        "identity":      {},
-        "preferences":   {},
-        "projects":      {},
+        "identity": {},
+        "preferences": {},
+        "projects": {},
         "relationships": {},
-        "wishes":        {},
-        "notes":         {},
+        "wishes": {},
+        "notes": {},
     }
 
 
@@ -114,6 +114,7 @@ def save_memory(memory: dict) -> None:
     # Synchronize to Central Canonical DB
     try:
         from brjarvis.memory.canonical_db import get_canonical_db
+
         db = get_canonical_db()
         for cat, items in memory.items():
             if isinstance(items, dict):
@@ -144,8 +145,8 @@ def _recursive_update(target: dict, updates: dict) -> bool:
             if _recursive_update(target[key], value):
                 changed = True
         else:
-            new_val  = _truncate_value(str(value["value"] if isinstance(value, dict) else value))
-            entry    = {"value": new_val, "updated": datetime.now().strftime("%Y-%m-%d")}
+            new_val = _truncate_value(str(value["value"] if isinstance(value, dict) else value))
+            entry = {"value": new_val, "updated": datetime.now().strftime("%Y-%m-%d")}
             existing = target.get(key, {})
             if not isinstance(existing, dict) or existing.get("value") != new_val:
                 target[key] = entry
@@ -169,7 +170,7 @@ def format_memory_for_prompt(memory: dict | None) -> str:
 
     lines = []
 
-    identity  = memory.get("identity", {})
+    identity = memory.get("identity", {})
     id_fields = ["name", "age", "birthday", "city", "job", "language", "school", "nationality"]
     for field in id_fields:
         entry = identity.get(field)
@@ -250,7 +251,7 @@ def remember(key: str, value: str, category: str = "notes") -> str:
 
 def forget(key: str, category: str = "notes") -> str:
     memory = load_memory()
-    cat    = memory.get(category, {})
+    cat = memory.get(category, {})
     if key in cat:
         del cat[key]
         memory[category] = cat
@@ -264,7 +265,7 @@ forget_memory = forget
 
 # ── Session memory ─────────────────────────────────────────────────────────────
 
-_SESSION_MAX = 3   # safety cap — in practice 0-1 entries after pop
+_SESSION_MAX = 3  # safety cap — in practice 0-1 entries after pop
 
 
 def save_session_summary(summary: str, language: str = "") -> None:
@@ -273,12 +274,12 @@ def save_session_summary(summary: str, language: str = "") -> None:
     if not summary:
         return
     with _lock:
-        memory   = load_memory()
+        memory = load_memory()
         sessions = memory.get("sessions", [])
         if not isinstance(sessions, list):
             sessions = []
         entry: dict = {
-            "date":    datetime.now().strftime("%Y-%m-%d"),
+            "date": datetime.now().strftime("%Y-%m-%d"),
             "summary": summary[:280],
         }
         if language:
@@ -302,11 +303,11 @@ def pop_last_session() -> dict | None:
         if not MEMORY_PATH.exists():
             return None
         try:
-            memory   = json.loads(MEMORY_PATH.read_text(encoding="utf-8"))
+            memory = json.loads(MEMORY_PATH.read_text(encoding="utf-8"))
             sessions = memory.get("sessions", [])
             if not isinstance(sessions, list) or not sessions:
                 return None
-            entry = sessions.pop()          # remove the last entry
+            entry = sessions.pop()  # remove the last entry
             memory["sessions"] = sessions
             MEMORY_PATH.write_text(
                 json.dumps(memory, indent=2, ensure_ascii=False),

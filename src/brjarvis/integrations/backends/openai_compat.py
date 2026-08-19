@@ -3,14 +3,16 @@
 OpenAI-compatible backend connector for BR Core.
 Delegates to the centralized ModelGateway pointing to Proxy Brain (default: http://localhost:8045/v1).
 """
+
 from __future__ import annotations
 
 import logging
 import os
 from typing import Generator
 
+from brjarvis.gateway.model_gateway import ModelGateway
+
 from .base import BaseBackend
-from brjarvis.gateway.model_gateway import ModelGateway, get_model_gateway
 
 logger = logging.getLogger("JARVIS.OpenAI")
 
@@ -23,6 +25,7 @@ class OpenAIBackend(BaseBackend):
         default_model = "gpt-4o-mini"
         try:
             from brjarvis.core.config import get_config
+
             default_model = get_config().models.gpt or default_model
         except Exception:
             pass
@@ -49,16 +52,14 @@ class OpenAIBackend(BaseBackend):
 
     def complete(self, messages: list, system: str = "", tools: list = None, max_tokens: int = None) -> str:
         # Fast fail if pointing to localhost proxy that is not running
-        if ("localhost:8045" in self._gateway.base_url or "127.0.0.1:8045" in self._gateway.base_url) and not bool(os.environ.get("OPENAI_API_KEY", "").startswith("sk-proj-")):
+        if ("localhost:8045" in self._gateway.base_url or "127.0.0.1:8045" in self._gateway.base_url) and not bool(
+            os.environ.get("OPENAI_API_KEY", "").startswith("sk-proj-")
+        ):
             if not self._gateway.ping(timeout=0.3):
                 return "ERROR: Local Proxy Brain (:8045) is offline. Bypassing proxy for cloud fallback."
         try:
             resp = self._gateway.complete(
-                messages=messages,
-                model=self.model,
-                system=system,
-                tools=tools,
-                max_tokens=max_tokens
+                messages=messages, model=self.model, system=system, tools=tools, max_tokens=max_tokens
             )
             return resp.text
         except Exception as e:
@@ -67,11 +68,6 @@ class OpenAIBackend(BaseBackend):
 
     def stream(self, messages: list, system: str = "", max_tokens: int = None) -> Generator[str, None, None]:
         try:
-            yield from self._gateway.stream(
-                messages=messages,
-                model=self.model,
-                system=system,
-                max_tokens=max_tokens
-            )
+            yield from self._gateway.stream(messages=messages, model=self.model, system=system, max_tokens=max_tokens)
         except Exception as e:
             yield f"[OpenAI Stream Error: {e}]"

@@ -4,14 +4,15 @@ Universal Automation Engine for BR-Jarvis.
 Enables application lifecycle control, mouse/keyboard macro automation,
 system command execution, and multi-step JSON workflow scripting.
 """
+
 from __future__ import annotations
 
+import logging
 import os
+import subprocess
 import sys
 import time
-import logging
-import subprocess
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 logger = logging.getLogger("JARVIS.AutomationEngine")
 
@@ -27,16 +28,19 @@ class UniversalAutomationEngine:
     def launch_app(self, app_name: str, url: str = "") -> str:
         """Launch an application or web URL."""
         from brjarvis.actions.open_app import open_app
+
         return open_app(parameters={"app_name": app_name, "url": url})
 
     def close_app(self, identifier: str) -> str:
         """Terminate or close an application by name or PID."""
         from brjarvis.tools.process_tools import kill_process
+
         return kill_process({"identifier": identifier})
 
     def focus_app(self, title: str) -> str:
         """Focus/bring application window to front by title."""
         from brjarvis.tools.window_manager import window_manager_action
+
         return window_manager_action({"action": "focus", "title": title})
 
     def execute_shell(self, command: str, timeout: int = 30) -> Dict[str, Any]:
@@ -60,13 +64,7 @@ class UniversalAutomationEngine:
 
         try:
             res = subprocess.run(
-                cmd,
-                shell=False,
-                capture_output=True,
-                text=True,
-                encoding="utf-8",
-                errors="replace",
-                timeout=timeout
+                cmd, shell=False, capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=timeout
             )
             stdout = res.stdout.strip()
             stderr = res.stderr.strip()
@@ -74,7 +72,7 @@ class UniversalAutomationEngine:
             return {
                 "success": res.returncode == 0,
                 "output": output or "Command completed with no output.",
-                "returncode": res.returncode
+                "returncode": res.returncode,
             }
         except subprocess.TimeoutExpired:
             return {"success": False, "output": f"Command timed out after {timeout} seconds.", "returncode": -1}
@@ -94,7 +92,7 @@ class UniversalAutomationEngine:
             "type": "smart_type",
             "type_text": "smart_type",
             "hotkey": "hotkey",
-            "press": "press"
+            "press": "press",
         }
         target_action = act_map.get(action.lower(), action)
         params = {"action": target_action}
@@ -148,21 +146,20 @@ class UniversalAutomationEngine:
 
                 elif act in ("click", "double_click", "move"):
                     ui_res = self.execute_ui_macro(
-                        act,
-                        x=step.get("x"),
-                        y=step.get("y"),
-                        button=step.get("button", "left")
+                        act, x=step.get("x"), y=step.get("y"), button=step.get("button", "left")
                     )
                     results.append({step_desc: ui_res})
 
                 elif act in ("whatsapp", "send_whatsapp"):
                     from brjarvis.actions.whatsapp_automation import get_whatsapp_automation
+
                     wa = get_whatsapp_automation()
                     wa_res = wa.send_message(step.get("recipient", ""), step.get("message", step.get("text", "")))
                     results.append({step_desc: wa_res})
 
                 elif act in ("calendar", "create_calendar_event", "calendar_event"):
                     from brjarvis.actions.calendar_engine import get_calendar_engine
+
                     cal = get_calendar_engine()
                     cal_res = cal.create_event(
                         title=step.get("title", ""),
@@ -170,18 +167,19 @@ class UniversalAutomationEngine:
                         description=step.get("description", ""),
                         location=step.get("location", ""),
                         attendees=step.get("attendees"),
-                        notify_whatsapp=step.get("notify_whatsapp", False)
+                        notify_whatsapp=step.get("notify_whatsapp", False),
                     )
                     results.append({step_desc: str(cal_res)})
 
                 elif act in ("email", "send_email"):
                     from brjarvis.actions.smart_email_sender import get_smart_email_sender
+
                     sender = get_smart_email_sender()
                     email_res = sender.send_email(
                         recipient=step.get("recipient", step.get("to", "")),
                         subject=step.get("subject", ""),
                         body=step.get("body", step.get("text", "")),
-                        attachment_paths=step.get("attachment_paths", step.get("attachments"))
+                        attachment_paths=step.get("attachment_paths", step.get("attachments")),
                     )
                     results.append({step_desc: email_res})
 
@@ -195,11 +193,7 @@ class UniversalAutomationEngine:
                 results.append({step_desc: err_msg})
                 overall_success = False
 
-        return {
-            "success": overall_success,
-            "step_count": len(steps),
-            "results": results
-        }
+        return {"success": overall_success, "step_count": len(steps), "results": results}
 
 
 # Global singleton instance

@@ -5,11 +5,12 @@ Maintains scroll offset, overscan buffer, line-by-line wheel scrolling,
 auto-follow state (automatically disabled when scrolling up, resumed at bottom),
 and compact scrollbar rendering.
 """
+
 from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import List, Tuple
+from typing import List
 
 logger = logging.getLogger("JARVIS.Viewport")
 
@@ -17,6 +18,7 @@ logger = logging.getLogger("JARVIS.Viewport")
 @dataclass
 class ViewportRange:
     """Calculated visible line range for virtual rendering."""
+
     start_index: int = 0
     end_index: int = 0
     total_lines: int = 0
@@ -32,8 +34,8 @@ class ScrollManager:
     def __init__(self, scroll_speed: int = 3, overscan: int = 5):
         self.scroll_speed: int = max(1, min(10, scroll_speed))
         self.overscan: int = overscan
-        self.scroll_offset: int = 0               # 0 = Scrolled to the top, >0 = offset down
-        self.auto_follow: bool = True              # When True, viewport follows newest bottom lines
+        self.scroll_offset: int = 0  # 0 = Scrolled to the top, >0 = offset down
+        self.auto_follow: bool = True  # When True, viewport follows newest bottom lines
         self.content_height: int = 0
         self.viewport_height: int = 24
 
@@ -91,7 +93,7 @@ class ScrollManager:
     def get_visible_range(self) -> ViewportRange:
         """Compute the virtual visible slice of lines including overscan."""
         max_offset = max(0, self.content_height - self.viewport_height)
-        is_bottom = (self.scroll_offset >= max_offset)
+        is_bottom = self.scroll_offset >= max_offset
 
         start = max(0, self.scroll_offset - self.overscan)
         end = min(self.content_height, self.scroll_offset + self.viewport_height + self.overscan)

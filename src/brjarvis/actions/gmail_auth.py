@@ -4,15 +4,15 @@ Gmail Login & Authentication Manager for BR-Jarvis.
 Supports interactive browser login to Google/Gmail, App Password configuration,
 OAuth2 token storage, and session status inspection.
 """
+
 from __future__ import annotations
 
-import os
 import json
 import logging
+import os
 import webbrowser
-import subprocess
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 logger = logging.getLogger("JARVIS.GmailAuth")
 
@@ -80,11 +80,7 @@ class GmailAuthManager:
             return "Error: Both email address and Google App Password are required."
 
         try:
-            config = {
-                "email": clean_email,
-                "app_password": clean_pwd,
-                "auth_method": "app_password"
-            }
+            config = {"email": clean_email, "app_password": clean_pwd, "auth_method": "app_password"}
             self.config_file.write_text(json.dumps(config, indent=2), encoding="utf-8")
             self._load_and_sync_env()
 
@@ -100,7 +96,7 @@ class GmailAuthManager:
             "logged_in": False,
             "email": None,
             "auth_method": "none",
-            "details": "No Gmail account configured or authenticated."
+            "details": "No Gmail account configured or authenticated.",
         }
 
         if self.config_file.exists():

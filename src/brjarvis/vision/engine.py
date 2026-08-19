@@ -3,13 +3,15 @@ from __future__ import annotations
 
 import logging
 from typing import Optional
+
 from brjarvis.core.runtime import get_runtime
 from brjarvis.events.bus import get_event_bus
 from brjarvis.events.types import BaseEvent
+
 from .hybrid_pipeline import get_hybrid_pipeline
 from .ocr_engine import OCREngine
 from .screen_analyst import ScreenAnalyst
-from .types import ScreenAnalysisReport, SemanticUIGraph
+from .types import ScreenAnalysisReport
 
 logger = logging.getLogger("JARVIS.VisionEngine")
 
@@ -53,14 +55,17 @@ class VisionEngine:
         self._cached_report = report
 
         # Publish Events
-        self.event_bus.publish(BaseEvent(
-            topic="screen.understood",
-            payload={"width": w, "height": h, "nodes_count": len(semantic_graph.nodes)}
-        ))
-        self.event_bus.publish(BaseEvent(
-            topic="graph.updated",
-            payload={"active_window": report.active_window_title, "nodes_count": len(semantic_graph.nodes)}
-        ))
+        self.event_bus.publish(
+            BaseEvent(
+                topic="screen.understood", payload={"width": w, "height": h, "nodes_count": len(semantic_graph.nodes)}
+            )
+        )
+        self.event_bus.publish(
+            BaseEvent(
+                topic="graph.updated",
+                payload={"active_window": report.active_window_title, "nodes_count": len(semantic_graph.nodes)},
+            )
+        )
 
         return report
 

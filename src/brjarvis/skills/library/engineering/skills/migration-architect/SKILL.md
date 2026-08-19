@@ -182,17 +182,14 @@ class MigrationFeatureFlag:
     def __init__(self, flag_name, rollout_percentage=0):
         self.flag_name = flag_name
         self.rollout_percentage = rollout_percentage
-    
+
     def is_enabled_for_user(self, user_id):
         hash_value = hash(f"{self.flag_name}:{user_id}")
         return (hash_value % 100) < self.rollout_percentage
-    
+
     def gradual_rollout(self, target_percentage, step_size=10):
         while self.rollout_percentage < target_percentage:
-            self.rollout_percentage = min(
-                self.rollout_percentage + step_size,
-                target_percentage
-            )
+            self.rollout_percentage = min(self.rollout_percentage + step_size, target_percentage)
             yield self.rollout_percentage
 ```
 
@@ -206,15 +203,15 @@ class MigrationCircuitBreaker:
         self.failure_threshold = failure_threshold
         self.timeout = timeout
         self.last_failure_time = None
-        self.state = 'CLOSED'  # CLOSED, OPEN, HALF_OPEN
-    
+        self.state = "CLOSED"  # CLOSED, OPEN, HALF_OPEN
+
     def call_new_service(self, request):
-        if self.state == 'OPEN':
+        if self.state == "OPEN":
             if self.should_attempt_reset():
-                self.state = 'HALF_OPEN'
+                self.state = "HALF_OPEN"
             else:
                 return self.fallback_to_legacy(request)
-        
+
         try:
             response = self.new_service.process(request)
             self.on_success()

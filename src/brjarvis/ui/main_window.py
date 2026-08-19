@@ -5,31 +5,31 @@ from __future__ import annotations
 
 import json
 import logging
-import math
 import os
 import platform
-import random
 import subprocess
 import sys
 import threading
 import time
 from pathlib import Path
+
 import psutil
 
-from brjarvis.core.version import CODENAME, VERSION
+from brjarvis.core.version import CODENAME
 
 logger = logging.getLogger("JARVIS.UI.MainWindow")
 
-from brjarvis.ui import _base_dir, _WIN_HIDE  # noqa: F401
+from brjarvis.ui import _WIN_HIDE, _base_dir  # noqa: F401
+
 from ._qt import *  # noqa: F401,F403
 
-BASE_DIR   = _base_dir()
+BASE_DIR = _base_dir()
 CONFIG_DIR = BASE_DIR / "config"
-API_FILE   = CONFIG_DIR / "api_keys.json"
+API_FILE = CONFIG_DIR / "api_keys.json"
 
 _DEFAULT_W, _DEFAULT_H = 980, 700
-_MIN_W,     _MIN_H     = 820, 580
-_LEFT_W  = 148
+_MIN_W, _MIN_H = 820, 580
+_LEFT_W = 148
 _RIGHT_W = 340
 
 _OS = platform.system()  # "Windows" | "Darwin" | "Linux"
@@ -43,21 +43,34 @@ def _read_full_config() -> dict:
         return {}
 
 
-from .colors import C, qcol, current_palette, retheme_all_widgets, DEFAULT_UI_COLOR, apply_ui_accent
-from .widgets import _SysMetrics, HudCanvas, MetricBar, LogWidget, SubAgentTaskPanel, FileDropZone, _CameraPreview, _metrics, _file_category, _FILE_ICONS, _fmt_size
-from .overlays import SetupOverlay, CustomizeOverlay, ClipboardPanel, RemoteKeyOverlay
+from .colors import DEFAULT_UI_COLOR, C, apply_ui_accent, current_palette, retheme_all_widgets
+from .overlays import ClipboardPanel, CustomizeOverlay, RemoteKeyOverlay, SetupOverlay
+from .widgets import (
+    _FILE_ICONS,
+    FileDropZone,
+    HudCanvas,
+    LogWidget,
+    MetricBar,
+    SubAgentTaskPanel,
+    _CameraPreview,
+    _file_category,
+    _fmt_size,
+    _metrics,
+)
+
+
 class MainWindow(QMainWindow):
-    _log_sig         = pyqtSignal(str)
-    _state_sig       = pyqtSignal(str)
-    _content_sig     = pyqtSignal(str, str)   # (title, text) — thread-safe content display
-    _reconfig_sig    = pyqtSignal()           # trigger setup overlay from any thread
-    _camera_sig      = pyqtSignal(bytes)      # show camera frame preview (small overlay)
-    _cam_stream_sig  = pyqtSignal(bool)       # True=start live stream, False=stop
-    _cam_frame_sig   = pyqtSignal(bytes)      # live camera frame → HUD area
-    _clipboard_sig   = pyqtSignal(str)        # clipboard text changed (thread-safe)
+    _log_sig = pyqtSignal(str)
+    _state_sig = pyqtSignal(str)
+    _content_sig = pyqtSignal(str, str)  # (title, text) — thread-safe content display
+    _reconfig_sig = pyqtSignal()  # trigger setup overlay from any thread
+    _camera_sig = pyqtSignal(bytes)  # show camera frame preview (small overlay)
+    _cam_stream_sig = pyqtSignal(bool)  # True=start live stream, False=stop
+    _cam_frame_sig = pyqtSignal(bytes)  # live camera frame → HUD area
+    _clipboard_sig = pyqtSignal(str)  # clipboard text changed (thread-safe)
     _task_update_sig = pyqtSignal(str, str, str, float, str)
     _task_remove_sig = pyqtSignal(str)
-    _task_clear_sig  = pyqtSignal()
+    _task_clear_sig = pyqtSignal()
 
     def __init__(self, face_path: str = "face.png"):
         super().__init__()
@@ -81,14 +94,14 @@ class MainWindow(QMainWindow):
         if prim_screen:
             screen = prim_screen.availableGeometry()
             self.move(
-                (screen.width()  - _DEFAULT_W) // 2,
+                (screen.width() - _DEFAULT_W) // 2,
                 (screen.height() - _DEFAULT_H) // 2,
             )
 
-        self.on_text_command   = None
-        self.on_remote_clicked = None   # callable: () -> (url, key) | None
-        self.on_interrupt      = None   # callable: () -> None — stop JARVIS mid-speech
-        self._muted            = False
+        self.on_text_command = None
+        self.on_remote_clicked = None  # callable: () -> (url, key) | None
+        self.on_interrupt = None  # callable: () -> None — stop JARVIS mid-speech
+        self._muted = False
         self._current_file: str | None = None
         self._remote_overlay: RemoteKeyOverlay | None = None
         self._customize_overlay: CustomizeOverlay | None = None
@@ -143,9 +156,7 @@ class MainWindow(QMainWindow):
         self._cam_live_lbl = QLabel()
         self._cam_live_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._cam_live_lbl.setStyleSheet("background: transparent;")
-        self._cam_live_lbl.setSizePolicy(
-            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
-        )
+        self._cam_live_lbl.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         _cam_v.addWidget(self._cam_live_lbl, stretch=1)
 
         # Stack: 0 = animated HUD, 1 = live camera
@@ -180,6 +191,7 @@ class MainWindow(QMainWindow):
         self._quick_drawer = self._build_quick_drawer()
         self._update_autostart_btn(self._check_autostart())
         from brjarvis.memory.config_manager import get_brief_enabled as _gbe
+
         self._update_brief_btn(_gbe())
 
         self._clock_tmr = QTimer(self)
@@ -246,7 +258,8 @@ class MainWindow(QMainWindow):
         self._cam_preview.setGeometry(
             cw.width() - _RIGHT_W - pw - 12,
             cw.height() - ph - 28,
-            pw, ph,
+            pw,
+            ph,
         )
 
     # --- Live camera stream in HUD area ------------------------------------
@@ -264,9 +277,7 @@ class MainWindow(QMainWindow):
             w, h = self._cam_live_lbl.width(), self._cam_live_lbl.height()
             if w > 1 and h > 1:
                 self._cam_live_lbl.setPixmap(
-                    px.scaled(w, h,
-                              Qt.AspectRatioMode.KeepAspectRatio,
-                              Qt.TransformationMode.SmoothTransformation)
+                    px.scaled(w, h, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
                 )
 
     def start_camera_stream(self) -> None:
@@ -278,10 +289,12 @@ class MainWindow(QMainWindow):
     def _cam_loop(self) -> None:
         try:
             import cv2
+
             # Reuse camera index detected by screen_processor (cached in api_keys.json)
             cam_idx = 0
             try:
                 import json as _j
+
                 cfg = _j.loads((CONFIG_DIR / "api_keys.json").read_text())
                 cam_idx = int(cfg.get("camera_index", 0))
             except Exception:
@@ -326,37 +339,36 @@ class MainWindow(QMainWindow):
         """
         try:
             import math
+
             import PIL.Image
             import PIL.ImageDraw
             import PIL.ImageFilter
         except ImportError:
             return False
 
-        CYAN   = (0, 212, 255)
-        DIM    = (0, 100, 140)
-        DARK   = (0, 6, 10)
-        GLOW   = (0, 160, 200)
-        WHITE  = (220, 240, 255)
+        CYAN = (0, 212, 255)
+        DIM = (0, 100, 140)
+        DARK = (0, 6, 10)
+        GLOW = (0, 160, 200)
+        WHITE = (220, 240, 255)
 
         def _render(sz: int) -> PIL.Image.Image:
-            S  = sz * 4                     # draw at 4× then downscale
+            S = sz * 4  # draw at 4× then downscale
             img = PIL.Image.new("RGBA", (S, S), (0, 0, 0, 0))
-            d   = PIL.ImageDraw.Draw(img)
+            d = PIL.ImageDraw.Draw(img)
             cx = cy = S // 2
 
             # ── filled background circle ──────────────────────────────────
             R = S // 2 - 2
-            d.ellipse([cx-R, cy-R, cx+R, cy+R], fill=(*DARK, 255))
+            d.ellipse([cx - R, cy - R, cx + R, cy + R], fill=(*DARK, 255))
 
             # ── outer border ring ─────────────────────────────────────────
             lw = max(2, S // 40)
-            d.ellipse([cx-R, cy-R, cx+R, cy+R],
-                      outline=(*CYAN, 220), width=lw)
+            d.ellipse([cx - R, cy - R, cx + R, cy + R], outline=(*CYAN, 220), width=lw)
 
             # ── mid decorative ring ───────────────────────────────────────
             R2 = int(R * 0.72)
-            d.ellipse([cx-R2, cy-R2, cx+R2, cy+R2],
-                      outline=(*DIM, 180), width=max(1, lw // 2))
+            d.ellipse([cx - R2, cy - R2, cx + R2, cy + R2], outline=(*DIM, 180), width=max(1, lw // 2))
 
             # ── 6 radial spokes (hex bolt) ────────────────────────────────
             R_inner = int(R * 0.30)
@@ -374,37 +386,34 @@ class MainWindow(QMainWindow):
             for i in range(6):
                 angle = math.radians(i * 60)
                 for dr in range(lw * 2):
-                    rx = (R - lw - dr)
+                    rx = R - lw - dr
                     d.point(
-                        [cx + int(rx * math.cos(angle)),
-                         cy + int(rx * math.sin(angle))],
+                        [cx + int(rx * math.cos(angle)), cy + int(rx * math.sin(angle))],
                         fill=(*WHITE, 220),
                     )
 
             # ── inner glowing ring ────────────────────────────────────────
             Ri = int(R * 0.26)
-            d.ellipse([cx-Ri, cy-Ri, cx+Ri, cy+Ri],
-                      outline=(*CYAN, 255), width=max(2, lw))
+            d.ellipse([cx - Ri, cy - Ri, cx + Ri, cy + Ri], outline=(*CYAN, 255), width=max(2, lw))
 
             # ── bright glow soft blur applied before core ─────────────────
             # (draw a slightly larger cyan circle on a separate layer)
             glow_layer = PIL.Image.new("RGBA", (S, S), (0, 0, 0, 0))
             gd = PIL.ImageDraw.Draw(glow_layer)
             Rc = int(R * 0.13)
-            gd.ellipse([cx-Rc*2, cy-Rc*2, cx+Rc*2, cy+Rc*2],
-                       fill=(*CYAN, 110))
+            gd.ellipse([cx - Rc * 2, cy - Rc * 2, cx + Rc * 2, cy + Rc * 2], fill=(*CYAN, 110))
             glow_layer = glow_layer.filter(PIL.ImageFilter.GaussianBlur(S // 14))
             img = PIL.Image.alpha_composite(img, glow_layer)
-            d   = PIL.ImageDraw.Draw(img)
+            d = PIL.ImageDraw.Draw(img)
 
             # ── core dot ──────────────────────────────────────────────────
-            d.ellipse([cx-Rc, cy-Rc, cx+Rc, cy+Rc], fill=(*WHITE, 255))
+            d.ellipse([cx - Rc, cy - Rc, cx + Rc, cy + Rc], fill=(*WHITE, 255))
 
             # ── downscale to target size ──────────────────────────────────
             return img.resize((sz, sz), PIL.Image.LANCZOS)
 
         try:
-            sizes  = [256, 128, 64, 48, 32, 16]
+            sizes = [256, 128, 64, 48, 32, 16]
             frames = [_render(s) for s in sizes]
             frames[0].save(
                 out_path,
@@ -418,8 +427,7 @@ class MainWindow(QMainWindow):
             return False
 
     @staticmethod
-    def _create_lnk_windows(lnk: str, target: str, args: str,
-                             work_dir: str, icon_loc: str) -> None:
+    def _create_lnk_windows(lnk: str, target: str, args: str, work_dir: str, icon_loc: str) -> None:
         """
         Create a Windows .lnk shortcut WITHOUT launching PowerShell or cmd.
         Tries win32com (pywin32) first; falls back to wscript.exe + VBScript.
@@ -427,14 +435,15 @@ class MainWindow(QMainWindow):
         """
         # ── Option 1: pywin32 (pure Python COM, zero subprocess) ──────────
         try:
-            from win32com.client import Dispatch   # type: ignore
+            from win32com.client import Dispatch  # type: ignore
+
             sh = Dispatch("WScript.Shell")
             sc = sh.CreateShortCut(lnk)
-            sc.TargetPath       = target
-            sc.Arguments        = f'"{args}"'
+            sc.TargetPath = target
+            sc.Arguments = f'"{args}"'
             sc.WorkingDirectory = work_dir
-            sc.Description      = "J.A.R.V.I.S AI Assistant"
-            sc.IconLocation     = icon_loc
+            sc.Description = "J.A.R.V.I.S AI Assistant"
+            sc.IconLocation = icon_loc
             sc.save()
             return
         except ImportError:
@@ -442,17 +451,20 @@ class MainWindow(QMainWindow):
 
         # ── Option 2: wscript.exe + VBScript (always available on Windows,
         #    GUI-mode executable — never opens a console window) ────────────
-        vbs = "\n".join([
-            'Set ws = CreateObject("WScript.Shell")',
-            f'Set sc = ws.CreateShortcut("{lnk}")',
-            f'sc.TargetPath = "{target}"',
-            f'sc.Arguments = Chr(34) & "{args}" & Chr(34)',
-            f'sc.WorkingDirectory = "{work_dir}"',
-            'sc.Description = "J.A.R.V.I.S AI Assistant"',
-            f'sc.IconLocation = "{icon_loc}"',
-            'sc.Save',
-        ])
+        vbs = "\n".join(
+            [
+                'Set ws = CreateObject("WScript.Shell")',
+                f'Set sc = ws.CreateShortcut("{lnk}")',
+                f'sc.TargetPath = "{target}"',
+                f'sc.Arguments = Chr(34) & "{args}" & Chr(34)',
+                f'sc.WorkingDirectory = "{work_dir}"',
+                'sc.Description = "J.A.R.V.I.S AI Assistant"',
+                f'sc.IconLocation = "{icon_loc}"',
+                "sc.Save",
+            ]
+        )
         import tempfile
+
         fd, tmp = tempfile.mkstemp(suffix=".vbs")
         try:
             with os.fdopen(fd, "w", encoding="utf-8") as f:
@@ -490,18 +502,19 @@ class MainWindow(QMainWindow):
                 from ctypes import wintypes
 
                 class _GUID(ctypes.Structure):
-                    _fields_ = [("Data1", wintypes.DWORD),
-                                ("Data2", wintypes.WORD),
-                                ("Data3", wintypes.WORD),
-                                ("Data4", ctypes.c_ubyte * 8)]
+                    _fields_ = [
+                        ("Data1", wintypes.DWORD),
+                        ("Data2", wintypes.WORD),
+                        ("Data3", wintypes.WORD),
+                        ("Data4", ctypes.c_ubyte * 8),
+                    ]
 
                 # FOLDERID_Desktop {B4BFCC3A-DB2C-424C-B029-7FE99A87C641}
-                fid = _GUID(0xB4BFCC3A, 0xDB2C, 0x424C,
-                            (ctypes.c_ubyte * 8)(0xB0, 0x29, 0x7F, 0xE9,
-                                                 0x9A, 0x87, 0xC6, 0x41))
+                fid = _GUID(
+                    0xB4BFCC3A, 0xDB2C, 0x424C, (ctypes.c_ubyte * 8)(0xB0, 0x29, 0x7F, 0xE9, 0x9A, 0x87, 0xC6, 0x41)
+                )
                 buf = ctypes.c_wchar_p()
-                if ctypes.windll.shell32.SHGetKnownFolderPath(
-                        ctypes.byref(fid), 0, None, ctypes.byref(buf)) == 0:
+                if ctypes.windll.shell32.SHGetKnownFolderPath(ctypes.byref(fid), 0, None, ctypes.byref(buf)) == 0:
                     p = Path(buf.value)
                     ctypes.windll.ole32.CoTaskMemFree(buf)
                     if p.is_dir():
@@ -512,10 +525,12 @@ class MainWindow(QMainWindow):
             # ── 2) Registry: User Shell Folders (may contain %VARS%) ──────
             try:
                 import winreg
+
                 with winreg.OpenKey(
-                        winreg.HKEY_CURRENT_USER,
-                        r"Software\Microsoft\Windows\CurrentVersion"
-                        r"\Explorer\User Shell Folders") as key:
+                    winreg.HKEY_CURRENT_USER,
+                    r"Software\Microsoft\Windows\CurrentVersion"
+                    r"\Explorer\User Shell Folders",
+                ) as key:
                     val, _t = winreg.QueryValueEx(key, "Desktop")
                 p = Path(os.path.expandvars(val))
                 if p.is_dir():
@@ -526,8 +541,7 @@ class MainWindow(QMainWindow):
         elif _os == "Linux":
             # ── xdg-user-dir honours localized names (~/Masaüstü, …) ──────
             try:
-                out = subprocess.run(["xdg-user-dir", "DESKTOP"],
-                                     capture_output=True, text=True, timeout=5)
+                out = subprocess.run(["xdg-user-dir", "DESKTOP"], capture_output=True, text=True, timeout=5)
                 p = Path(out.stdout.strip())
                 if out.stdout.strip() and p != home and p.is_dir():
                     return p
@@ -555,8 +569,9 @@ class MainWindow(QMainWindow):
         Never opens a terminal, console, or PowerShell window on any platform.
         """
         import stat as _stat
-        script  = BASE_DIR / "start.py"
-        python  = Path(sys.executable)
+
+        script = BASE_DIR / "start.py"
+        python = Path(sys.executable)
         desktop = self._get_desktop_dir()
 
         # Arc-reactor icon (.ico — also exported as .png for Linux/macOS)
@@ -569,16 +584,15 @@ class MainWindow(QMainWindow):
 
             # ── Windows ───────────────────────────────────────────────────────
             if _os == "Windows":
-                pythonw  = python.parent / "pythonw.exe"
-                target   = str(pythonw if pythonw.exists() else python)
-                lnk      = str(desktop / "J.A.R.V.I.S.lnk")
+                pythonw = python.parent / "pythonw.exe"
+                target = str(pythonw if pythonw.exists() else python)
+                lnk = str(desktop / "J.A.R.V.I.S.lnk")
                 icon_loc = str(ico_path) if ico_path.exists() else f"{target},0"
-                self._create_lnk_windows(lnk, target, str(script),
-                                         str(script.parent), icon_loc)
+                self._create_lnk_windows(lnk, target, str(script), str(script.parent), icon_loc)
 
             # ── macOS — proper .app bundle (no Terminal window) ───────────────
             elif _os == "Darwin":
-                app     = desktop / "J.A.R.V.I.S.app"
+                app = desktop / "J.A.R.V.I.S.app"
                 mac_dir = app / "Contents" / "MacOS"
                 res_dir = app / "Contents" / "Resources"
                 mac_dir.mkdir(parents=True, exist_ok=True)
@@ -587,13 +601,8 @@ class MainWindow(QMainWindow):
                 # Launcher executable (bash — runs as background process,
                 # macOS does NOT open Terminal for executables inside .app bundles)
                 launcher = mac_dir / "JARVIS"
-                launcher.write_text(
-                    "#!/usr/bin/env bash\n"
-                    f'cd "{script.parent}"\n'
-                    f'exec "{python}" "{script}"\n'
-                )
-                launcher.chmod(launcher.stat().st_mode
-                               | _stat.S_IEXEC | _stat.S_IXGRP | _stat.S_IXOTH)
+                launcher.write_text(f'#!/usr/bin/env bash\ncd "{script.parent}"\nexec "{python}" "{script}"\n')
+                launcher.chmod(launcher.stat().st_mode | _stat.S_IEXEC | _stat.S_IXGRP | _stat.S_IXOTH)
 
                 # Minimal Info.plist (required for .app recognition)
                 (app / "Contents" / "Info.plist").write_text(
@@ -601,18 +610,19 @@ class MainWindow(QMainWindow):
                     '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" '
                     '"http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n'
                     '<plist version="1.0"><dict>\n'
-                    '  <key>CFBundleExecutable</key><string>JARVIS</string>\n'
-                    '  <key>CFBundleIdentifier</key>'
-                    '<string>com.jarvis.assistant</string>\n'
-                    '  <key>CFBundleName</key><string>J.A.R.V.I.S</string>\n'
-                    '  <key>CFBundlePackageType</key><string>APPL</string>\n'
-                    '  <key>CFBundleVersion</key><string>1.0</string>\n'
-                    '</dict></plist>\n'
+                    "  <key>CFBundleExecutable</key><string>JARVIS</string>\n"
+                    "  <key>CFBundleIdentifier</key>"
+                    "<string>com.jarvis.assistant</string>\n"
+                    "  <key>CFBundleName</key><string>J.A.R.V.I.S</string>\n"
+                    "  <key>CFBundlePackageType</key><string>APPL</string>\n"
+                    "  <key>CFBundleVersion</key><string>1.0</string>\n"
+                    "</dict></plist>\n"
                 )
 
                 # Optional: copy icon as .icns (skip silently if Pillow is missing)
                 try:
                     import PIL.Image
+
                     icns = res_dir / "AppIcon.icns"
                     PIL.Image.open(ico_path).save(icns, format="ICNS")
                     # Inject icon reference into plist
@@ -620,9 +630,8 @@ class MainWindow(QMainWindow):
                     txt = plist.read_text()
                     plist.write_text(
                         txt.replace(
-                            '</dict></plist>',
-                            '  <key>CFBundleIconFile</key>'
-                            '<string>AppIcon</string>\n</dict></plist>\n',
+                            "</dict></plist>",
+                            "  <key>CFBundleIconFile</key><string>AppIcon</string>\n</dict></plist>\n",
                         )
                     )
                 except Exception:
@@ -635,9 +644,8 @@ class MainWindow(QMainWindow):
                 if not png_path.exists() and ico_path.exists():
                     try:
                         import PIL.Image
-                        PIL.Image.open(ico_path).resize(
-                            (256, 256), PIL.Image.LANCZOS
-                        ).save(png_path, format="PNG")
+
+                        PIL.Image.open(ico_path).resize((256, 256), PIL.Image.LANCZOS).save(png_path, format="PNG")
                     except Exception:
                         png_path = ico_path  # fallback to .ico
 
@@ -650,8 +658,7 @@ class MainWindow(QMainWindow):
                     f"Path={script.parent}\n"
                     "Type=Application\n"
                     "Terminal=false\n"
-                    "Categories=Utility;\n"
-                    + icon_line
+                    "Categories=Utility;\n" + icon_line
                 )
                 desk.chmod(desk.stat().st_mode | 0o755)
 
@@ -674,21 +681,24 @@ class MainWindow(QMainWindow):
             self._overlay.setGeometry(
                 max(10, (cw_w - ow) // 2),
                 max(10, (cw_h - oh) // 2),
-                max(100, ow), max(100, oh),
+                max(100, ow),
+                max(100, oh),
             )
         if self._remote_overlay and self._remote_overlay.isVisible():
             ow, oh = min(RemoteKeyOverlay._OW, cw_w - 20), min(RemoteKeyOverlay._OH, cw_h - 20)
             self._remote_overlay.setGeometry(
                 max(10, (cw_w - ow) // 2),
                 max(10, (cw_h - oh) // 2),
-                max(100, ow), max(100, oh),
+                max(100, ow),
+                max(100, oh),
             )
         if self._customize_overlay and self._customize_overlay.isVisible():
             ow, oh = min(CustomizeOverlay._OW, cw_w - 20), min(CustomizeOverlay._OH, cw_h - 20)
             self._customize_overlay.setGeometry(
                 max(10, (cw_w - ow) // 2),
                 max(10, (cw_h - oh) // 2),
-                max(100, ow), max(100, oh),
+                max(100, ow),
+                max(100, oh),
             )
         # Camera preview — bottom-right corner of the center/HUD area
         pw = _CameraPreview._W
@@ -696,13 +706,14 @@ class MainWindow(QMainWindow):
         self._cam_preview.setGeometry(
             cw.width() - _RIGHT_W - pw - 12,
             cw.height() - ph - 28,
-            pw, ph,
+            pw,
+            ph,
         )
         # Clipboard panel — bottom-center
-        if hasattr(self, '_clipboard_panel') and self._clipboard_panel.isVisible():
+        if hasattr(self, "_clipboard_panel") and self._clipboard_panel.isVisible():
             self._position_clipboard_panel()
         # Quick drawer — reposition if open
-        if hasattr(self, '_quick_drawer') and self._quick_drawer.isVisible():
+        if hasattr(self, "_quick_drawer") and self._quick_drawer.isVisible():
             self._position_quick_drawer()
 
     def _update_metrics(self):
@@ -720,7 +731,7 @@ class MainWindow(QMainWindow):
             # NET
             net = snap["net"]
             if net < 1.0:
-                net_str = f"{net*1024:.0f}KB/s"
+                net_str = f"{net * 1024:.0f}KB/s"
             else:
                 net_str = f"{net:.1f}MB/s"
             net_pct = min(100, net * 10)  # 10 MB/s = %100
@@ -761,7 +772,6 @@ class MainWindow(QMainWindow):
         except Exception:
             self._proc_lbl.setText("PROC  --")
 
-
     def _build_header(self) -> QWidget:
         w = QWidget()
         w.setFixedHeight(54)
@@ -794,7 +804,7 @@ class MainWindow(QMainWindow):
         self._drawer_btn.clicked.connect(self._toggle_drawer)
         lay.addWidget(self._drawer_btn)
         lay.addSpacing(6)
-        
+
         web_btn = QPushButton("🌐 DASHBOARD")
         web_btn.setFixedHeight(26)
         web_btn.setFont(QFont("Courier New", 7, QFont.Weight.Bold))
@@ -807,23 +817,26 @@ class MainWindow(QMainWindow):
             }}
             QPushButton:hover {{ background: {C.PRI_GHO}; border-color: {C.PRI}; }}
         """)
+
         def _open_dashboard():
             p = os.environ.get("BR_SERVER_PORT", os.environ.get("PORT", "8000"))
             subprocess.Popen([sys.executable, "-c", f"import webbrowser; webbrowser.open('http://127.0.0.1:{p}')"])
+
         web_btn.clicked.connect(_open_dashboard)
         lay.addWidget(web_btn)
         lay.addStretch()
 
-        mid = QVBoxLayout(); mid.setSpacing(1)
+        mid = QVBoxLayout()
+        mid.setSpacing(1)
         _disp = self._assistant_name.upper()
         self._title_lbl = QLabel(_disp)
         self._title_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._title_lbl.setFont(QFont("Courier New", 17, QFont.Weight.Bold))
         self._title_lbl.setStyleSheet(f"color: {C.PRI}; background: transparent;")
         mid.addWidget(self._title_lbl)
-        _sub_text = ("Just A Rather Very Intelligent System"
-                     if _disp in ("JARVIS", "J.A.R.V.I.S")
-                     else "Personal AI Assistant")
+        _sub_text = (
+            "Just A Rather Very Intelligent System" if _disp in ("JARVIS", "J.A.R.V.I.S") else "Personal AI Assistant"
+        )
         self._sub_lbl = QLabel(_sub_text)
         self._sub_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._sub_lbl.setFont(QFont("Courier New", 7))
@@ -832,7 +845,8 @@ class MainWindow(QMainWindow):
         lay.addLayout(mid)
         lay.addStretch()
 
-        right_col = QVBoxLayout(); right_col.setSpacing(2)
+        right_col = QVBoxLayout()
+        right_col.setSpacing(2)
         self._clock_lbl = QLabel("00:00:00")
         self._clock_lbl.setFont(QFont("Courier New", 14, QFont.Weight.Bold))
         self._clock_lbl.setStyleSheet(f"color: {C.PRI}; background: transparent;")
@@ -860,8 +874,9 @@ class MainWindow(QMainWindow):
 
         hdr = QLabel("◈ SYS MONITOR")
         hdr.setFont(QFont("Courier New", 7, QFont.Weight.Bold))
-        hdr.setStyleSheet(f"color: {C.PRI}; background: transparent; "
-                          f"border-bottom: 1px solid {C.BORDER}; padding-bottom: 4px;")
+        hdr.setStyleSheet(
+            f"color: {C.PRI}; background: transparent; border-bottom: 1px solid {C.BORDER}; padding-bottom: 4px;"
+        )
         lay.addWidget(hdr)
         lay.addSpacing(2)
 
@@ -871,16 +886,13 @@ class MainWindow(QMainWindow):
         self._bar_gpu = MetricBar("GPU", C.ACC)
         self._bar_tmp = MetricBar("TMP", "#ff6688")
 
-        for bar in [self._bar_cpu, self._bar_mem, self._bar_net,
-                    self._bar_gpu, self._bar_tmp]:
+        for bar in [self._bar_cpu, self._bar_mem, self._bar_net, self._bar_gpu, self._bar_tmp]:
             lay.addWidget(bar)
 
         lay.addSpacing(4)
 
         info_panel = QWidget()
-        info_panel.setStyleSheet(
-            f"background: {C.PANEL2}; border: 1px solid {C.BORDER}; border-radius: 4px;"
-        )
+        info_panel.setStyleSheet(f"background: {C.PANEL2}; border: 1px solid {C.BORDER}; border-radius: 4px;")
         ip_lay = QVBoxLayout(info_panel)
         ip_lay.setContentsMargins(6, 5, 6, 5)
         ip_lay.setSpacing(3)
@@ -907,9 +919,9 @@ class MainWindow(QMainWindow):
         lay.addStretch()
 
         for txt, col in [
-            ("AI CORE\nACTIVE",  C.GREEN),
-            ("SEC\nCLEARED",     C.PRI),
-            (f"PROTOCOL\n{CODENAME}",   C.TEXT_DIM),
+            ("AI CORE\nACTIVE", C.GREEN),
+            ("SEC\nCLEARED", C.PRI),
+            (f"PROTOCOL\n{CODENAME}", C.TEXT_DIM),
         ]:
             lbl = QLabel(txt)
             lbl.setFont(QFont("Courier New", 7, QFont.Weight.Bold))
@@ -921,6 +933,7 @@ class MainWindow(QMainWindow):
             lay.addWidget(lbl)
 
         return w
+
     def _build_right_panel(self) -> QWidget:
         w = QWidget()
         w.setFixedWidth(_RIGHT_W)
@@ -939,7 +952,8 @@ class MainWindow(QMainWindow):
         self._log = LogWidget()
         lay.addWidget(self._log, stretch=1)
 
-        sep0 = QFrame(); sep0.setFrameShape(QFrame.Shape.HLine)
+        sep0 = QFrame()
+        sep0.setFrameShape(QFrame.Shape.HLine)
         sep0.setStyleSheet(f"color: {C.BORDER}; margin: 2px 0;")
         lay.addWidget(sep0)
 
@@ -947,7 +961,8 @@ class MainWindow(QMainWindow):
         self._task_panel = SubAgentTaskPanel()
         lay.addWidget(self._task_panel)
 
-        sep = QFrame(); sep.setFrameShape(QFrame.Shape.HLine)
+        sep = QFrame()
+        sep.setFrameShape(QFrame.Shape.HLine)
         sep.setStyleSheet(f"color: {C.BORDER}; margin: 2px 0;")
         lay.addWidget(sep)
 
@@ -962,7 +977,8 @@ class MainWindow(QMainWindow):
         self._file_hint.setWordWrap(True)
         lay.addWidget(self._file_hint)
 
-        sep2 = QFrame(); sep2.setFrameShape(QFrame.Shape.HLine)
+        sep2 = QFrame()
+        sep2.setFrameShape(QFrame.Shape.HLine)
         sep2.setStyleSheet(f"color: {C.BORDER}; margin: 2px 0;")
         lay.addWidget(sep2)
 
@@ -1027,6 +1043,7 @@ class MainWindow(QMainWindow):
             try:
                 self._state_sig.emit("THINKING")
                 from brjarvis.actions.file_importer import import_file_to_knowledge
+
                 res = import_file_to_knowledge(path)
                 msg = res.get("message", f"Imported '{p.name}' successfully.")
                 self._log_sig.emit(f"SYS: {msg}")
@@ -1037,7 +1054,6 @@ class MainWindow(QMainWindow):
                 self._state_sig.emit("LISTENING")
 
         threading.Thread(target=_ingest_worker, daemon=True).start()
-
 
     def _build_quick_drawer(self) -> QWidget:
         """Floating overlay panel shown when the ⚙ header button is toggled."""
@@ -1076,8 +1092,9 @@ class MainWindow(QMainWindow):
 
         hdr = QLabel("◈ CONTROLS")
         hdr.setFont(QFont("Courier New", 7, QFont.Weight.Bold))
-        hdr.setStyleSheet(f"color: {C.PRI_DIM}; background: transparent; "
-                          f"border-bottom: 1px solid {C.BORDER}; padding-bottom: 4px;")
+        hdr.setStyleSheet(
+            f"color: {C.PRI_DIM}; background: transparent; border-bottom: 1px solid {C.BORDER}; padding-bottom: 4px;"
+        )
         lay.addWidget(hdr)
 
         remote_btn = QPushButton("◉  REMOTE CONTROL")
@@ -1138,7 +1155,7 @@ class MainWindow(QMainWindow):
             self._quick_drawer.hide()
 
     def _position_quick_drawer(self):
-        if not hasattr(self, '_quick_drawer'):
+        if not hasattr(self, "_quick_drawer"):
             return
         _W = 220
         self._quick_drawer.setFixedWidth(_W)
@@ -1146,7 +1163,8 @@ class MainWindow(QMainWindow):
         self._quick_drawer.setGeometry(12, 54, _W, self._quick_drawer.sizeHint().height())
 
     def _build_input_row(self) -> QHBoxLayout:
-        row = QHBoxLayout(); row.setSpacing(5)
+        row = QHBoxLayout()
+        row.setSpacing(5)
         self._input = QLineEdit()
         self._input.setPlaceholderText("Type a command or question…")
         self._input.setFont(QFont("Courier New", 9))
@@ -1196,7 +1214,8 @@ class MainWindow(QMainWindow):
         lay.setSpacing(5)
 
         # ── header row ───────────────────────────────────────────────────────
-        hdr = QHBoxLayout(); hdr.setSpacing(6)
+        hdr = QHBoxLayout()
+        hdr.setSpacing(6)
 
         dot = QLabel("◈")
         dot.setFont(QFont("Courier New", 9, QFont.Weight.Bold))
@@ -1205,9 +1224,7 @@ class MainWindow(QMainWindow):
 
         self._content_title_lbl = QLabel("BRIEFING")
         self._content_title_lbl.setFont(QFont("Courier New", 8, QFont.Weight.Bold))
-        self._content_title_lbl.setStyleSheet(
-            f"color: {C.PRI}; background: transparent; letter-spacing: 1px;"
-        )
+        self._content_title_lbl.setStyleSheet(f"color: {C.PRI}; background: transparent; letter-spacing: 1px;")
         hdr.addWidget(self._content_title_lbl)
         hdr.addStretch()
 
@@ -1232,17 +1249,17 @@ class MainWindow(QMainWindow):
         lay.addLayout(hdr)
 
         # ── separator ─────────────────────────────────────────────────────────
-        sep = QFrame(); sep.setFrameShape(QFrame.Shape.HLine)
-        sep.setStyleSheet(f"color: {C.BORDER};"); lay.addWidget(sep)
+        sep = QFrame()
+        sep.setFrameShape(QFrame.Shape.HLine)
+        sep.setStyleSheet(f"color: {C.BORDER};")
+        lay.addWidget(sep)
 
         # ── text display ──────────────────────────────────────────────────────
         self._content_display = QTextEdit()
         self._content_display.setReadOnly(True)
         self._content_display.setFont(QFont("Courier New", 8))
         self._content_display.setMinimumHeight(60)
-        self._content_display.setSizePolicy(
-            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
-        )
+        self._content_display.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self._content_display.setStyleSheet(f"""
             QTextEdit {{
                 background: {C.DARK};
@@ -1269,12 +1286,11 @@ class MainWindow(QMainWindow):
     def _show_content(self, title: str, text: str):
         """Slot — runs on Qt main thread. Updates and shows the content panel."""
         import time as _time
+
         self._content_title_lbl.setText(title.upper()[:48])
         self._content_ts_lbl.setText(_time.strftime("%H:%M:%S"))
         self._content_display.setPlainText(text)
-        self._content_display.moveCursor(
-            self._content_display.textCursor().MoveOperation.Start
-        )
+        self._content_display.moveCursor(self._content_display.textCursor().MoveOperation.Start)
         first_show = not self._content_panel.isVisible()
         self._content_panel.show()
         if first_show:
@@ -1285,19 +1301,18 @@ class MainWindow(QMainWindow):
         w = QWidget()
         w.setFixedHeight(22)
         w.setStyleSheet(f"background: {C.DARK}; border-top: 1px solid {C.BORDER};")
-        lay = QHBoxLayout(w); lay.setContentsMargins(14, 0, 14, 0)
+        lay = QHBoxLayout(w)
+        lay.setContentsMargins(14, 0, 14, 0)
 
         def _fl(txt, color=C.TEXT_MED):
-            l = QLabel(txt); l.setFont(QFont("Courier New", 7))
+            l = QLabel(txt)
+            l.setFont(QFont("Courier New", 7))
             l.setStyleSheet(f"color: {color}; background: transparent;")
             return l
 
         lay.addWidget(_fl("[F4] Mute  ·  [F11] Fullscreen  ·  [ESC] Interrupt"))
         lay.addStretch()
-        assistant_label = _fl(
-            f"BR JARVIS {CODENAME} · {(self._assistant_name or 'JARVIS').upper()}",
-            C.PRI_DIM
-        )
+        assistant_label = _fl(f"BR JARVIS {CODENAME} · {(self._assistant_name or 'JARVIS').upper()}", C.PRI_DIM)
         self._footer_brand_label = assistant_label
         lay.addWidget(assistant_label)
         return w
@@ -1314,23 +1329,23 @@ class MainWindow(QMainWindow):
         if not result:
             self._log.append_log("SYS: Could not generate remote key.")
             return
-        url    = result[0]
-        key    = result[1]
-        auto   = result[2] if len(result) >= 3 else ""
+        url = result[0]
+        key = result[1]
+        auto = result[2] if len(result) >= 3 else ""
         manual = result[3] if len(result) >= 4 else url
         if self._remote_overlay:
             self._remote_overlay._do_close()
-        cw  = self.centralWidget()
+        cw = self.centralWidget()
         ow, oh = RemoteKeyOverlay._OW, RemoteKeyOverlay._OH
-        ov  = RemoteKeyOverlay(url, key, auto_login_url=auto, manual_url=manual,
-                               expiry_secs=600, parent=cw)
+        ov = RemoteKeyOverlay(url, key, auto_login_url=auto, manual_url=manual, expiry_secs=600, parent=cw)
         ov.set_new_key_callback(self.on_remote_clicked)
         ov.setGeometry(
-            (cw.width()  - ow) // 2,
+            (cw.width() - ow) // 2,
             (cw.height() - oh) // 2,
-            ow, oh,
+            ow,
+            oh,
         )
-        ov.closed.connect(lambda: setattr(self, '_remote_overlay', None))
+        ov.closed.connect(lambda: setattr(self, "_remote_overlay", None))
         ov.show()
         self._remote_overlay = ov
         self._log.append_log(f"SYS: Remote key generated — manual: {manual or url}")
@@ -1342,8 +1357,10 @@ class MainWindow(QMainWindow):
         try:
             if _OS == "Windows":
                 import winreg
-                key = winreg.OpenKey(winreg.HKEY_CURRENT_USER,
-                    r"Software\Microsoft\Windows\CurrentVersion\Run", 0, winreg.KEY_READ)
+
+                key = winreg.OpenKey(
+                    winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Run", 0, winreg.KEY_READ
+                )
                 try:
                     winreg.QueryValueEx(key, "JARVIS_AI")
                     return True
@@ -1352,8 +1369,7 @@ class MainWindow(QMainWindow):
                 finally:
                     winreg.CloseKey(key)
             elif _OS == "Darwin":
-                return (Path.home() / "Library" / "LaunchAgents"
-                        / "com.jarvis.assistant.plist").exists()
+                return (Path.home() / "Library" / "LaunchAgents" / "com.jarvis.assistant.plist").exists()
             else:
                 return (Path.home() / ".config" / "autostart" / "jarvis.desktop").exists()
         except Exception:
@@ -1365,15 +1381,16 @@ class MainWindow(QMainWindow):
             script = str(BASE_DIR / "start.py")
             if _OS == "Windows":
                 import winreg
-                reg = winreg.OpenKey(winreg.HKEY_CURRENT_USER,
-                    r"Software\Microsoft\Windows\CurrentVersion\Run", 0, winreg.KEY_ALL_ACCESS)
+
+                reg = winreg.OpenKey(
+                    winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Run", 0, winreg.KEY_ALL_ACCESS
+                )
                 if currently_on:
                     winreg.DeleteValue(reg, "JARVIS_AI")
                 else:
                     pythonw = Path(sys.executable).parent / "pythonw.exe"
                     exe = str(pythonw if pythonw.exists() else sys.executable)
-                    winreg.SetValueEx(reg, "JARVIS_AI", 0, winreg.REG_SZ,
-                                      f'"{exe}" "{script}"')
+                    winreg.SetValueEx(reg, "JARVIS_AI", 0, winreg.REG_SZ, f'"{exe}" "{script}"')
                 winreg.CloseKey(reg)
             elif _OS == "Darwin":
                 plist_dir = Path.home() / "Library" / "LaunchAgents"
@@ -1387,13 +1404,13 @@ class MainWindow(QMainWindow):
                         '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" '
                         '"http://www.apple.com/DTDs/PropertyList-1.0.dtd">\n'
                         '<plist version="1.0"><dict>\n'
-                        '  <key>Label</key><string>com.jarvis.assistant</string>\n'
-                        '  <key>ProgramArguments</key><array>\n'
-                        f'    <string>{sys.executable}</string>\n'
-                        f'    <string>{script}</string>\n'
-                        '  </array>\n'
-                        '  <key>RunAtLoad</key><true/>\n'
-                        '</dict></plist>\n'
+                        "  <key>Label</key><string>com.jarvis.assistant</string>\n"
+                        "  <key>ProgramArguments</key><array>\n"
+                        f"    <string>{sys.executable}</string>\n"
+                        f"    <string>{script}</string>\n"
+                        "  </array>\n"
+                        "  <key>RunAtLoad</key><true/>\n"
+                        "</dict></plist>\n"
                     )
             else:
                 desk_dir = Path.home() / ".config" / "autostart"
@@ -1411,13 +1428,12 @@ class MainWindow(QMainWindow):
                     )
             enabled = not currently_on
             self._update_autostart_btn(enabled)
-            self._log.append_log(
-                f"SYS: Auto-start {'enabled' if enabled else 'disabled'}.")
+            self._log.append_log(f"SYS: Auto-start {'enabled' if enabled else 'disabled'}.")
         except Exception as e:
             self._log.append_log(f"ERR: Auto-start failed — {e}")
 
     def _update_autostart_btn(self, enabled: bool):
-        if not hasattr(self, '_autostart_btn'):
+        if not hasattr(self, "_autostart_btn"):
             return
         if enabled:
             self._autostart_btn.setText("◉  AUTO-START: ON")
@@ -1440,12 +1456,13 @@ class MainWindow(QMainWindow):
 
     def _toggle_brief(self):
         from brjarvis.memory.config_manager import get_brief_enabled, save_brief_enabled
+
         new_val = not get_brief_enabled()
         save_brief_enabled(new_val)
         self._update_brief_btn(new_val)
 
     def _update_brief_btn(self, enabled: bool):
-        if not hasattr(self, '_brief_btn'):
+        if not hasattr(self, "_brief_btn"):
             return
         if enabled:
             self._brief_btn.setText("☀  MORNING BRIEF: ON")
@@ -1484,9 +1501,10 @@ class MainWindow(QMainWindow):
         ow, oh = CustomizeOverlay._OW, CustomizeOverlay._OH
         oh = min(oh, cw.height() - 16)
         ov.setGeometry(
-            (cw.width()  - ow) // 2,
+            (cw.width() - ow) // 2,
             (cw.height() - oh) // 2,
-            ow, oh,
+            ow,
+            oh,
         )
         ov.on_preview = self._preview_ui_color
         ov.saved.connect(self._apply_name_update)
@@ -1599,16 +1617,19 @@ class MainWindow(QMainWindow):
 
     def _send(self):
         txt = self._input.text().strip()
-        if not txt: return
+        if not txt:
+            return
         self._input.clear()
         self._log.append_log(f"You: {txt}")
         if self.on_text_command:
             threading.Thread(target=self.on_text_command, args=(txt,), daemon=True).start()
         else:
+
             def _standalone_cmd(cmd_text: str):
                 try:
                     self._state_sig.emit("THINKING")
                     from brjarvis.core.bootstrap import build_assistant_runtime
+
                     runtime = build_assistant_runtime()
                     resp = runtime.orchestrator.chat(cmd_text)
                     self._log_sig.emit(f"JARVIS: {resp}")
@@ -1616,17 +1637,21 @@ class MainWindow(QMainWindow):
                     self._log_sig.emit(f"ERR: {e}")
                 finally:
                     self._state_sig.emit("LISTENING")
+
             threading.Thread(target=_standalone_cmd, args=(txt,), daemon=True).start()
 
     def _apply_state(self, state: str):
-        self.hud.state    = state
-        self.hud.speaking = (state == "SPEAKING")
+        self.hud.state = state
+        self.hud.speaking = state == "SPEAKING"
 
     def _check_config(self) -> bool:
-        if not API_FILE.exists(): return False
+        if not API_FILE.exists():
+            return False
         try:
             d = json.loads(API_FILE.read_text(encoding="utf-8"))
-            has_llm = bool(d.get("gemini_api_key")) or bool(d.get("openai_api_key")) or bool(os.environ.get("OPENAI_API_KEY"))
+            has_llm = (
+                bool(d.get("gemini_api_key")) or bool(d.get("openai_api_key")) or bool(os.environ.get("OPENAI_API_KEY"))
+            )
             return has_llm and bool(d.get("os_system"))
         except Exception:
             return False
@@ -1636,9 +1661,10 @@ class MainWindow(QMainWindow):
         cw = self.centralWidget()
         ow, oh = 460, 390
         ov.setGeometry(
-            (cw.width()  - ow) // 2,
+            (cw.width() - ow) // 2,
             (cw.height() - oh) // 2,
-            ow, oh,
+            ow,
+            oh,
         )
         ov.done.connect(self._on_setup_done)
         ov.show()
@@ -1661,16 +1687,16 @@ class MainWindow(QMainWindow):
         self._assistant_name = data.get("assistant_name", "JARVIS") or "JARVIS"
         # ISSUE-8 FIX: update footer label now that assistant name is resolved
         if hasattr(self, "_footer_brand_label") and self._footer_brand_label:
-            self._footer_brand_label.setText(
-                f"BR JARVIS MK49 · {self._assistant_name.upper()}"
-            )
+            self._footer_brand_label.setText(f"BR JARVIS MK49 · {self._assistant_name.upper()}")
         self._log.append_log(f"SYS: Initialised. OS={os_name.upper()}. {self._assistant_name} online.")
 
     def _setup_event_bus_subscription(self):
         """Subscribe to background task lifecycle events to update Sub-Agent Task panel."""
         try:
             from brjarvis.events.bus import get_event_bus
+
             bus = get_event_bus()
+
             def _on_task_event(event):
                 try:
                     task_id = str(getattr(event, "task_id", "") or "task_0")
@@ -1681,6 +1707,7 @@ class MainWindow(QMainWindow):
                     self._task_update_sig.emit(task_id, goal, status, progress, result)
                 except Exception:
                     pass
+
             bus.subscribe("task.*", _on_task_event)
         except Exception as e:
             logger.debug("EventBus task subscription note: %s", e)
@@ -1689,10 +1716,8 @@ class MainWindow(QMainWindow):
         QApplication.quit()
         event.accept()
 
+
 _GLOBAL_UI_INSTANCE: JarvisUI | None = None
 
 # Backward compatibility alias
 JARVISMainWindow = MainWindow
-
-
-

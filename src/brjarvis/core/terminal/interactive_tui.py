@@ -4,36 +4,29 @@ Fullscreen Interactive TUI Subsystem for BR JARVIS.
 Integrates virtualized viewport scrolling, spatial hit-testing, selection & clipboard,
 interactive permission choices, collapsible tool results, and terminal state guards.
 """
+
 from __future__ import annotations
 
 import logging
-import os
-import shutil
-import time
 from typing import Any, Callable, Dict, List, Optional
 
-from rich.console import Console, Group
-from rich.panel import Panel
-from rich.text import Text
+from rich.console import Console
 
-from .actions import ActionRegistry, FocusManager, FocusState
+from .actions import ActionRegistry, FocusManager
 from .events import (
-    MouseButton,
     MouseCaptureMode,
     MouseEvent,
     MouseEventType,
     TerminalInputDecoder,
 )
 from .guard import TerminalStateGuard
-from .hit_test import HitTestManager, InteractiveRegion, RegionType
-from .selection import ClipboardProvider, SelectionManager, SelectionMode
+from .hit_test import HitTestManager, RegionType
+from .selection import SelectionManager, SelectionMode
 from .theme import (
     COLOR_AMBER,
-    COLOR_CYAN,
     COLOR_GREEN,
     COLOR_RED,
     Glyphs,
-    MODE_COLORS,
 )
 from .viewport import ScrollManager
 
@@ -179,7 +172,7 @@ class InteractiveTUIController:
         """
         Render a collapsible tool result card and register its clickable region.
         """
-        is_expanded = (tool_id in self.expanded_tools)
+        is_expanded = tool_id in self.expanded_tools
         lines = content.strip().split("\n")
         rendered_output: List[str] = []
 

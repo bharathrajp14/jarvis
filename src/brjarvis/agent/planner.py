@@ -8,21 +8,19 @@ Features:
 - Enforces learned lessons to prevent repeating past mistakes
 - Deterministic plan validation, cycle detection, and structured JSON output
 """
+
 from __future__ import annotations
 
 import json
 import logging
 import re
-import time
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 
 from brjarvis.gateway.execution import get_execution_service
-from brjarvis.gateway.models_registry import TaskCapability
 from brjarvis.memory.experience_replay import get_experience_replay
 from brjarvis.memory.lessons import LessonStore
 from brjarvis.memory.unified_memory import get_unified_memory
 from brjarvis.reasoning.decision_engine import get_decision_engine
-from brjarvis.router.smart_router import get_smart_router
 from brjarvis.router.task_profile import TaskComplexity, TaskProfile
 from brjarvis.tools.registry import get_tool_prompt_block
 
@@ -66,15 +64,17 @@ def _validate_and_sanitize_plan(raw_plan: dict, goal: str) -> dict:
         # Cycle prevention: step cannot depend on itself or future steps
         valid_deps = [d for d in deps if isinstance(d, int) and d < step_num]
 
-        sanitized_steps.append({
-            "step": step_num,
-            "tool": tool_name,
-            "description": desc,
-            "parameters": params,
-            "depends_on": valid_deps,
-            "parallel": bool(s.get("parallel", False)),
-            "critical": bool(s.get("critical", True)),
-        })
+        sanitized_steps.append(
+            {
+                "step": step_num,
+                "tool": tool_name,
+                "description": desc,
+                "parameters": params,
+                "depends_on": valid_deps,
+                "parallel": bool(s.get("parallel", False)),
+                "critical": bool(s.get("critical", True)),
+            }
+        )
         seen_step_ids.add(step_num)
 
     if not sanitized_steps:
@@ -108,10 +108,17 @@ def create_plan(
 
         # 2. Retrieve past experiences (Successes and Pitfalls)
         experiences = exp_store.get_successful_patterns(goal, limit=2)
-        success_text = "\n".join([f"- For goal '{e['goal_query']}': used sequence {e['tool_sequence']}" for e in experiences])
+        success_text = "\n".join(
+            [f"- For goal '{e['goal_query']}': used sequence {e['tool_sequence']}" for e in experiences]
+        )
 
         failures = exp_store.get_similar_failures(goal, limit=2)
-        failure_text = "\n".join([f"- AVOID PITFALL: For '{f['goal_query']}', {f['tool_sequence']} failed because: {f['failure_reason']}" for f in failures])
+        failure_text = "\n".join(
+            [
+                f"- AVOID PITFALL: For '{f['goal_query']}', {f['tool_sequence']} failed because: {f['failure_reason']}"
+                for f in failures
+            ]
+        )
 
         # 3. Retrieve learned lessons
         lesson_hits = lessons_store.get_relevant_lessons(goal, limit=3)
@@ -161,7 +168,7 @@ Return ONLY valid JSON matching this schema:
         if failure_text:
             user_prompt += f"\nKnown Failure Pitfalls to Avoid:\n{failure_text}\n"
         if constraints:
-            user_prompt += f"\nStrict Constraints:\n" + "\n".join([f"- {c}" for c in constraints]) + "\n"
+            user_prompt += "\nStrict Constraints:\n" + "\n".join([f"- {c}" for c in constraints]) + "\n"
 
         exec_service = get_execution_service()
         profile = TaskProfile(
@@ -181,7 +188,11 @@ Return ONLY valid JSON matching this schema:
         raw_plan = json.loads(clean_text)
 
         plan = _validate_and_sanitize_plan(raw_plan, goal)
-        logger.info("[Planner] Generated plan with %d steps (parallel=%s)", len(plan["steps"]), plan.get("can_parallelize", False))
+        logger.info(
+            "[Planner] Generated plan with %d steps (parallel=%s)",
+            len(plan["steps"]),
+            plan.get("can_parallelize", False),
+        )
         return plan
 
     except Exception as exc:
@@ -201,10 +212,13 @@ def replan(
     Preserves all verified completed steps and generates steps for remaining work only.
     """
     try:
-        completed_summary = "\n".join(
-            f"  - Step {s.get('step')}: [{s.get('tool')}] {s.get('description')} — VERIFIED DONE"
-            for s in completed_steps
-        ) or "  (none yet)"
+        completed_summary = (
+            "\n".join(
+                f"  - Step {s.get('step')}: [{s.get('tool')}] {s.get('description')} — VERIFIED DONE"
+                for s in completed_steps
+            )
+            or "  (none yet)"
+        )
 
         tools_block = get_tool_prompt_block()
 
@@ -223,7 +237,7 @@ You must generate an alternative strategy for the REMAINING work only.
 Completed Verified Steps:
 {completed_summary}
 
-Failed Step: [{failed_step.get('tool')}] {failed_step.get('description')}
+Failed Step: [{failed_step.get("tool")}] {failed_step.get("description")}
 Error / Root Cause: {str(error)[:400]}
 
 Generate a revised plan to complete the remaining work using a different strategy for the failed operation."""

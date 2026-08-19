@@ -11,10 +11,8 @@
 #     )
 from __future__ import annotations
 
-import os
 import platform
 import subprocess
-import sys
 
 # ── Platform-specific subprocess flag ────────────────────────────────────────
 if platform.system() == "Windows":
@@ -27,11 +25,13 @@ _USE_PYSIDE6 = False
 _HAS_QT = False
 try:
     import PySide6  # type: ignore[import-not-found]  # noqa: F401
+
     _USE_PYSIDE6 = True
     _HAS_QT = True
 except ImportError:
     try:
         import PyQt6  # type: ignore[import-not-found]  # noqa: F401
+
         _HAS_QT = True
     except ImportError:
         _HAS_QT = False  # Headless mode — GUI not available
@@ -39,39 +39,108 @@ except ImportError:
 # ── Qt Imports ────────────────────────────────────────────────────────────────
 if _USE_PYSIDE6:
     from PySide6.QtCore import (  # type: ignore[import-not-found]
-        QEasingCurve, QMimeData, QObject, QPointF, QRectF, QSize, Qt,
-        QTimer, QUrl, Signal as pyqtSignal,
+        QEasingCurve,
+        QMimeData,
+        QObject,
+        QPointF,
+        QRectF,
+        QSize,
+        Qt,
+        QTimer,
+        QUrl,
+    )
+    from PySide6.QtCore import (
+        Signal as pyqtSignal,
     )
     from PySide6.QtGui import (  # type: ignore[import-not-found]
-        QBrush, QColor, QConicalGradient, QDragEnterEvent, QDropEvent, QFont,
-        QFontDatabase, QKeySequence, QLinearGradient, QPainter, QPainterPath,
-        QPen, QPixmap, QRadialGradient, QShortcut,
+        QBrush,
+        QColor,
+        QConicalGradient,
+        QDragEnterEvent,
+        QDropEvent,
+        QFont,
+        QFontDatabase,
+        QKeySequence,
+        QLinearGradient,
+        QPainter,
+        QPainterPath,
+        QPen,
+        QPixmap,
+        QRadialGradient,
+        QShortcut,
     )
     from PySide6.QtWidgets import (  # type: ignore[import-not-found]
-        QApplication, QFileDialog, QFrame, QHBoxLayout, QLabel, QLineEdit,
-        QMainWindow, QPushButton, QScrollArea, QSizePolicy, QSplitter,
-        QStackedWidget, QTextEdit, QVBoxLayout, QWidget, QProgressBar,
+        QApplication,
+        QFileDialog,
+        QFrame,
+        QHBoxLayout,
+        QLabel,
+        QLineEdit,
+        QMainWindow,
+        QProgressBar,
+        QPushButton,
+        QScrollArea,
+        QSizePolicy,
+        QSplitter,
+        QStackedWidget,
+        QTextEdit,
+        QVBoxLayout,
+        QWidget,
     )
 elif _HAS_QT:
     from PyQt6.QtCore import (  # type: ignore[import-not-found]
-        QEasingCurve, QMimeData, QObject, QPointF, QRectF, QSize, Qt,
-        QTimer, QUrl, pyqtSignal,
+        QEasingCurve,
+        QMimeData,
+        QObject,
+        QPointF,
+        QRectF,
+        QSize,
+        Qt,
+        QTimer,
+        QUrl,
+        pyqtSignal,
     )
     from PyQt6.QtGui import (  # type: ignore[import-not-found]
-        QBrush, QColor, QConicalGradient, QDragEnterEvent, QDropEvent, QFont,
-        QFontDatabase, QKeySequence, QLinearGradient, QPainter, QPainterPath,
-        QPen, QPixmap, QRadialGradient, QShortcut,
+        QBrush,
+        QColor,
+        QConicalGradient,
+        QDragEnterEvent,
+        QDropEvent,
+        QFont,
+        QFontDatabase,
+        QKeySequence,
+        QLinearGradient,
+        QPainter,
+        QPainterPath,
+        QPen,
+        QPixmap,
+        QRadialGradient,
+        QShortcut,
     )
     from PyQt6.QtWidgets import (  # type: ignore[import-not-found]
-        QApplication, QFileDialog, QFrame, QHBoxLayout, QLabel, QLineEdit,
-        QMainWindow, QPushButton, QScrollArea, QSizePolicy, QSplitter,
-        QStackedWidget, QTextEdit, QVBoxLayout, QWidget, QProgressBar,
+        QApplication,
+        QFileDialog,
+        QFrame,
+        QHBoxLayout,
+        QLabel,
+        QLineEdit,
+        QMainWindow,
+        QProgressBar,
+        QPushButton,
+        QScrollArea,
+        QSizePolicy,
+        QSplitter,
+        QStackedWidget,
+        QTextEdit,
+        QVBoxLayout,
+        QWidget,
     )
 else:
     # Minimal dummy stubs for headless mode without Qt installed
     class _DummyQt:
         def __getattr__(self, name: str):
             return self
+
         def __call__(self, *args, **kwargs):
             return self
 
@@ -86,17 +155,50 @@ else:
     QStackedWidget = QTextEdit = QVBoxLayout = QWidget = QProgressBar = _dummy
 
 __all__ = [
-    "_USE_PYSIDE6", "_WIN_HIDE",
+    "_USE_PYSIDE6",
+    "_WIN_HIDE",
     # Core
-    "QEasingCurve", "QMimeData", "QObject", "QPointF", "QRectF", "QSize",
-    "Qt", "QTimer", "QUrl", "pyqtSignal",
+    "QEasingCurve",
+    "QMimeData",
+    "QObject",
+    "QPointF",
+    "QRectF",
+    "QSize",
+    "Qt",
+    "QTimer",
+    "QUrl",
+    "pyqtSignal",
     # Gui
-    "QBrush", "QColor", "QConicalGradient", "QDragEnterEvent", "QDropEvent",
-    "QFont", "QFontDatabase", "QKeySequence", "QLinearGradient", "QPainter",
-    "QPainterPath", "QPen", "QPixmap", "QRadialGradient", "QShortcut",
+    "QBrush",
+    "QColor",
+    "QConicalGradient",
+    "QDragEnterEvent",
+    "QDropEvent",
+    "QFont",
+    "QFontDatabase",
+    "QKeySequence",
+    "QLinearGradient",
+    "QPainter",
+    "QPainterPath",
+    "QPen",
+    "QPixmap",
+    "QRadialGradient",
+    "QShortcut",
     # Widgets
-    "QApplication", "QFileDialog", "QFrame", "QHBoxLayout", "QLabel",
-    "QLineEdit", "QMainWindow", "QPushButton", "QScrollArea", "QSizePolicy",
-    "QSplitter", "QStackedWidget", "QTextEdit", "QVBoxLayout", "QWidget",
+    "QApplication",
+    "QFileDialog",
+    "QFrame",
+    "QHBoxLayout",
+    "QLabel",
+    "QLineEdit",
+    "QMainWindow",
+    "QPushButton",
+    "QScrollArea",
+    "QSizePolicy",
+    "QSplitter",
+    "QStackedWidget",
+    "QTextEdit",
+    "QVBoxLayout",
+    "QWidget",
     "QProgressBar",
 ]

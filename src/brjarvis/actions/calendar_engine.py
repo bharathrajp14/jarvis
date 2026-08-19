@@ -4,17 +4,18 @@ Mobile Gemini-Style Calendar & Task Engine for BR-Jarvis.
 Manages tasks and calendar events with natural language datetime parsing,
 SQLite persistence, iCalendar (.ics) exports, and contact attendee invitations.
 """
+
 from __future__ import annotations
 
-import re
 import json
+import logging
+import re
 import sqlite3
 import time
-import logging
-from pathlib import Path
-from datetime import datetime, timedelta
 from contextlib import contextmanager
-from typing import Any, Dict, List, Optional, Generator
+from datetime import datetime, timedelta
+from pathlib import Path
+from typing import Any, Dict, Generator, List, Optional
 
 logger = logging.getLogger("JARVIS.CalendarEngine")
 
@@ -121,10 +122,7 @@ class CalendarEngine:
             return dt.strftime("%Y-%m-%d %H:%M:%S"), dt.timestamp()
 
         # 3. Standard strptime format parsing fallbacks
-        for fmt in (
-            "%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M", "%Y-%m-%d",
-            "%d-%m-%Y %H:%M", "%d/%m/%Y %H:%M"
-        ):
+        for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d %H:%M", "%Y-%m-%d", "%d-%m-%Y %H:%M", "%d/%m/%Y %H:%M"):
             try:
                 dt = datetime.strptime(time_str, fmt)
                 return dt.strftime("%Y-%m-%d %H:%M:%S"), dt.timestamp()
@@ -144,7 +142,7 @@ class CalendarEngine:
         location: str = "",
         attendees: Optional[List[str]] = None,
         reminder_minutes: int = 15,
-        notify_whatsapp: bool = False
+        notify_whatsapp: bool = False,
     ) -> Dict[str, Any]:
         """
         Create a calendar event or task.
@@ -172,7 +170,17 @@ class CalendarEngine:
                     INSERT INTO calendar_events (title, description, start_time, start_timestamp, end_time, end_timestamp, location, attendees, reminder_minutes)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
-                    (title, description, formatted_start, start_ts, formatted_end, end_ts, location, attendees_json, reminder_minutes)
+                    (
+                        title,
+                        description,
+                        formatted_start,
+                        start_ts,
+                        formatted_end,
+                        end_ts,
+                        location,
+                        attendees_json,
+                        reminder_minutes,
+                    ),
                 )
                 conn.commit()
                 event_id = cursor.lastrowid
@@ -181,6 +189,7 @@ class CalendarEngine:
             if notify_whatsapp and attendees_list:
                 try:
                     from brjarvis.actions.whatsapp_automation import get_whatsapp_automation
+
                     wa = get_whatsapp_automation()
                     msg = f"📅 Calendar Event Invite: '{title}' on {formatted_start}. Location: {location or 'N/A'}"
                     for att in attendees_list:
@@ -195,13 +204,15 @@ class CalendarEngine:
                 "start_time": formatted_start,
                 "end_time": formatted_end,
                 "location": location,
-                "attendees": attendees_list
+                "attendees": attendees_list,
             }
         except Exception as e:
             logger.error(f"Error creating calendar event: {e}")
             return {"success": False, "error": str(e)}
 
-    def list_events(self, days_ahead: int = 7, days: int = 7, include_past: bool = False, **kwargs) -> List[Dict[str, Any]]:
+    def list_events(
+        self, days_ahead: int = 7, days: int = 7, include_past: bool = False, **kwargs
+    ) -> List[Dict[str, Any]]:
         """List upcoming events within specified number of days."""
         num_days = days_ahead if days_ahead != 7 else days
         results = []
@@ -219,7 +230,7 @@ class CalendarEngine:
                     WHERE start_timestamp >= ? AND start_timestamp <= ?
                     ORDER BY start_timestamp ASC
                     """,
-                    (min_ts, future_ts)
+                    (min_ts, future_ts),
                 )
                 rows = cursor.fetchall()
                 for r in rows:
@@ -229,17 +240,19 @@ class CalendarEngine:
                             att_list = json.loads(r["attendees"])
                         except Exception:
                             pass
-                    results.append({
-                        "id": r["id"],
-                        "title": r["title"],
-                        "description": r["description"],
-                        "start_time": r["start_time"],
-                        "end_time": r["end_time"],
-                        "location": r["location"],
-                        "attendees": att_list,
-                        "reminder_minutes": r["reminder_minutes"],
-                        "status": r["status"]
-                    })
+                    results.append(
+                        {
+                            "id": r["id"],
+                            "title": r["title"],
+                            "description": r["description"],
+                            "start_time": r["start_time"],
+                            "end_time": r["end_time"],
+                            "location": r["location"],
+                            "attendees": att_list,
+                            "reminder_minutes": r["reminder_minutes"],
+                            "status": r["status"],
+                        }
+                    )
         except Exception as e:
             logger.error(f"Error listing calendar events: {e}")
         return results
@@ -258,18 +271,20 @@ class CalendarEngine:
                     WHERE LOWER(title) LIKE ? OR LOWER(description) LIKE ? OR LOWER(location) LIKE ?
                     ORDER BY start_timestamp DESC
                     """,
-                    (q, q, q)
+                    (q, q, q),
                 )
                 rows = cursor.fetchall()
                 for r in rows:
-                    results.append({
-                        "id": r["id"],
-                        "title": r["title"],
-                        "description": r["description"],
-                        "start_time": r["start_time"],
-                        "end_time": r["end_time"],
-                        "location": r["location"]
-                    })
+                    results.append(
+                        {
+                            "id": r["id"],
+                            "title": r["title"],
+                            "description": r["description"],
+                            "start_time": r["start_time"],
+                            "end_time": r["end_time"],
+                            "location": r["location"],
+                        }
+                    )
         except Exception as e:
             logger.error(f"Error searching calendar events: {e}")
         return results

@@ -5,24 +5,25 @@ import time
 import uuid
 from dataclasses import asdict, dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Set, Union
-
+from typing import Any, Dict, List, Optional
 
 # ── Provenance & Confidence ──────────────────────────────────────────────────
 
+
 class FactSource(str, Enum):
-    USER_INPUT       = "user_input"
-    VERIFIED_DOC     = "verified_doc"
-    RESUME_IMPORT    = "resume_import"
-    LINKEDIN_IMPORT  = "linkedin_import"
-    GITHUB_IMPORT    = "github_import"
-    INFERRED         = "inferred"
-    UNKNOWN          = "unknown"
+    USER_INPUT = "user_input"
+    VERIFIED_DOC = "verified_doc"
+    RESUME_IMPORT = "resume_import"
+    LINKEDIN_IMPORT = "linkedin_import"
+    GITHUB_IMPORT = "github_import"
+    INFERRED = "inferred"
+    UNKNOWN = "unknown"
 
 
 @dataclass
 class ProfileFact:
     """Represents a discrete verified fact with strict provenance tracking."""
+
     value: Any
     source: FactSource = FactSource.USER_INPUT
     verified: bool = True
@@ -59,6 +60,7 @@ class ProfileFact:
 
 # ── Canonical Profile Components ─────────────────────────────────────────────
 
+
 @dataclass
 class ContactInfo:
     full_name: str = ""
@@ -81,7 +83,7 @@ class EducationEntry:
     degree: str = ""
     field_of_study: str = ""
     start_date: str = ""  # "YYYY-MM" or "YYYY"
-    end_date: str = ""    # "YYYY-MM" or "Present"
+    end_date: str = ""  # "YYYY-MM" or "Present"
     grade_or_gpa: str = ""
     location: str = ""
     highlights: List[str] = field(default_factory=list)
@@ -98,8 +100,8 @@ class ExperienceEntry:
     title: str = ""
     location: str = ""
     remote_type: str = "onsite"  # "remote", "hybrid", "onsite"
-    start_date: str = ""         # "YYYY-MM"
-    end_date: str = ""           # "YYYY-MM" or "Present"
+    start_date: str = ""  # "YYYY-MM"
+    end_date: str = ""  # "YYYY-MM" or "Present"
     is_current: bool = False
     responsibilities: List[str] = field(default_factory=list)
     achievements: List[str] = field(default_factory=list)
@@ -168,10 +170,13 @@ class AchievementEntry:
 
 # ── Target & Preferences ─────────────────────────────────────────────────────
 
+
 @dataclass
 class WorkPreferences:
     target_roles: List[str] = field(default_factory=lambda: ["AI Engineer", "Senior Software Engineer"])
-    target_industries: List[str] = field(default_factory=lambda: ["Artificial Intelligence", "Autonomous Systems", "Enterprise Software"])
+    target_industries: List[str] = field(
+        default_factory=lambda: ["Artificial Intelligence", "Autonomous Systems", "Enterprise Software"]
+    )
     target_locations: List[str] = field(default_factory=lambda: ["Remote", "Madurai", "Bengaluru", "Chennai"])
     remote_preference: str = "any"  # "remote_only", "hybrid_preferred", "onsite_ok", "any"
     employment_types: List[str] = field(default_factory=lambda: ["Full-time", "Contract"])
@@ -198,12 +203,14 @@ class SalaryPreferences:
 
 # ── Authoritative Master Career Profile ──────────────────────────────────────
 
+
 @dataclass
 class CareerProfile:
     """
     Authoritative Canonical Source of Truth for Career Identity and History.
     Master Profile is immutable against job-specific tailoring.
     """
+
     profile_id: str = "master_profile"
     version: int = 1
     summary: str = ""
@@ -274,11 +281,11 @@ class CareerProfile:
         pref = WorkPreferences(**{k: v for k, v in pref_data.items() if k in WorkPreferences.__dataclass_fields__})
 
         salary_data = data.get("salary", {})
-        salary = SalaryPreferences(**{k: v for k, v in salary_data.items() if k in SalaryPreferences.__dataclass_fields__})
+        salary = SalaryPreferences(
+            **{k: v for k, v in salary_data.items() if k in SalaryPreferences.__dataclass_fields__}
+        )
 
-        provenance_data = {
-            k: ProfileFact.from_dict(v) for k, v in data.get("provenance", {}).items()
-        }
+        provenance_data = {k: ProfileFact.from_dict(v) for k, v in data.get("provenance", {}).items()}
 
         return cls(
             profile_id=data.get("profile_id", "master_profile"),
@@ -302,10 +309,11 @@ class CareerProfile:
 
 # ── Job Engine Models ────────────────────────────────────────────────────────
 
+
 @dataclass
 class JobPosting:
     job_id: str
-    source: str                 # "greenhouse", "lever", "ashby", "company_portal", "linkedin", "browser_discovery"
+    source: str  # "greenhouse", "lever", "ashby", "company_portal", "linkedin", "browser_discovery"
     platform: str
     company: str
     title: str
@@ -332,12 +340,12 @@ class JobPosting:
 
 @dataclass
 class MatchBreakdown:
-    overall_score: float = 0.0          # 0 - 100%
-    skills_score: float = 0.0           # 0 - 100%
-    experience_score: float = 0.0       # 0 - 100%
-    education_score: float = 0.0        # 0 - 100%
-    location_score: float = 0.0         # 0 - 100%
-    role_fit_score: float = 0.0         # 0 - 100%
+    overall_score: float = 0.0  # 0 - 100%
+    skills_score: float = 0.0  # 0 - 100%
+    experience_score: float = 0.0  # 0 - 100%
+    education_score: float = 0.0  # 0 - 100%
+    location_score: float = 0.0  # 0 - 100%
+    role_fit_score: float = 0.0  # 0 - 100%
     matched_skills: List[str] = field(default_factory=list)
     missing_skills: List[str] = field(default_factory=list)
     key_strengths: List[str] = field(default_factory=list)
@@ -350,104 +358,105 @@ class MatchBreakdown:
 
 # ── Canonical Application CRM & Event Engine Models ──────────────────────────
 
+
 class ApplicationStatus(str, Enum):
-    DISCOVERED               = "DISCOVERED"
-    MATCHED                  = "MATCHED"
-    SHORTLISTED              = "SHORTLISTED"
-    PREPARING                = "PREPARING"
-    READY_FOR_REVIEW         = "READY_FOR_REVIEW"
-    APPLICATION_OPENED       = "APPLICATION_OPENED"
-    APPLICATION_IN_PROGRESS  = "APPLICATION_IN_PROGRESS"
-    SUBMISSION_REQUESTED     = "SUBMISSION_REQUESTED"
-    SUBMITTED                = "SUBMITTED"
-    SUBMISSION_VERIFIED      = "SUBMISSION_VERIFIED"
-    RECRUITER_CONTACTED      = "RECRUITER_CONTACTED"
-    SCREENING                = "SCREENING"
-    INTERVIEW_REQUESTED      = "INTERVIEW_REQUESTED"
-    INTERVIEW_SCHEDULED      = "INTERVIEW_SCHEDULED"
-    INTERVIEW_COMPLETED      = "INTERVIEW_COMPLETED"
-    TECHNICAL_ROUND          = "TECHNICAL_ROUND"
-    FINAL_ROUND              = "FINAL_ROUND"
-    OFFER_RECEIVED           = "OFFER_RECEIVED"
-    OFFER_ACCEPTED           = "OFFER_ACCEPTED"
-    OFFER_DECLINED           = "OFFER_DECLINED"
-    REJECTED                 = "REJECTED"
-    WITHDRAWN                = "WITHDRAWN"
-    FAILED                   = "FAILED"
-    MANUAL_ACTION_REQUIRED   = "MANUAL_ACTION_REQUIRED"
-    UNKNOWN                  = "UNKNOWN"
+    DISCOVERED = "DISCOVERED"
+    MATCHED = "MATCHED"
+    SHORTLISTED = "SHORTLISTED"
+    PREPARING = "PREPARING"
+    READY_FOR_REVIEW = "READY_FOR_REVIEW"
+    APPLICATION_OPENED = "APPLICATION_OPENED"
+    APPLICATION_IN_PROGRESS = "APPLICATION_IN_PROGRESS"
+    SUBMISSION_REQUESTED = "SUBMISSION_REQUESTED"
+    SUBMITTED = "SUBMITTED"
+    SUBMISSION_VERIFIED = "SUBMISSION_VERIFIED"
+    RECRUITER_CONTACTED = "RECRUITER_CONTACTED"
+    SCREENING = "SCREENING"
+    INTERVIEW_REQUESTED = "INTERVIEW_REQUESTED"
+    INTERVIEW_SCHEDULED = "INTERVIEW_SCHEDULED"
+    INTERVIEW_COMPLETED = "INTERVIEW_COMPLETED"
+    TECHNICAL_ROUND = "TECHNICAL_ROUND"
+    FINAL_ROUND = "FINAL_ROUND"
+    OFFER_RECEIVED = "OFFER_RECEIVED"
+    OFFER_ACCEPTED = "OFFER_ACCEPTED"
+    OFFER_DECLINED = "OFFER_DECLINED"
+    REJECTED = "REJECTED"
+    WITHDRAWN = "WITHDRAWN"
+    FAILED = "FAILED"
+    MANUAL_ACTION_REQUIRED = "MANUAL_ACTION_REQUIRED"
+    UNKNOWN = "UNKNOWN"
 
     # Backward-compatible aliases
-    APPLIED   = "SUBMITTED"
+    APPLIED = "SUBMITTED"
     INTERVIEW = "INTERVIEW_SCHEDULED"
-    OFFER     = "OFFER_RECEIVED"
+    OFFER = "OFFER_RECEIVED"
     TECHNICAL = "TECHNICAL_ROUND"
 
 
 class ApplicationEventType(str, Enum):
-    APPLICATION_CREATED      = "ApplicationCreated"
-    JOB_SHORTLISTED          = "JobShortlisted"
-    APPLICATION_PREPARED     = "ApplicationPrepared"
-    RESUME_GENERATED         = "ResumeGenerated"
-    COVER_LETTER_GENERATED   = "CoverLetterGenerated"
-    APPLICATION_OPENED       = "ApplicationOpened"
-    APPLICATION_SUBMITTED    = "ApplicationSubmitted"
-    SUBMISSION_VERIFIED      = "SubmissionVerified"
-    EMAIL_RECEIVED           = "EmailReceived"
-    RECRUITER_CONTACTED      = "RecruiterContacted"
-    INTERVIEW_REQUESTED      = "InterviewRequested"
-    INTERVIEW_SCHEDULED      = "InterviewScheduled"
-    INTERVIEW_COMPLETED      = "InterviewCompleted"
-    OFFER_DETECTED           = "OfferDetected"
-    OFFER_CONFIRMED          = "OfferConfirmed"
-    REJECTION_DETECTED       = "RejectionDetected"
-    FOLLOWUP_CREATED         = "FollowupCreated"
-    FOLLOWUP_COMPLETED       = "FollowupCompleted"
+    APPLICATION_CREATED = "ApplicationCreated"
+    JOB_SHORTLISTED = "JobShortlisted"
+    APPLICATION_PREPARED = "ApplicationPrepared"
+    RESUME_GENERATED = "ResumeGenerated"
+    COVER_LETTER_GENERATED = "CoverLetterGenerated"
+    APPLICATION_OPENED = "ApplicationOpened"
+    APPLICATION_SUBMITTED = "ApplicationSubmitted"
+    SUBMISSION_VERIFIED = "SubmissionVerified"
+    EMAIL_RECEIVED = "EmailReceived"
+    RECRUITER_CONTACTED = "RecruiterContacted"
+    INTERVIEW_REQUESTED = "InterviewRequested"
+    INTERVIEW_SCHEDULED = "InterviewScheduled"
+    INTERVIEW_COMPLETED = "InterviewCompleted"
+    OFFER_DETECTED = "OfferDetected"
+    OFFER_CONFIRMED = "OfferConfirmed"
+    REJECTION_DETECTED = "RejectionDetected"
+    FOLLOWUP_CREATED = "FollowupCreated"
+    FOLLOWUP_COMPLETED = "FollowupCompleted"
 
 
 class EmailClassification(str, Enum):
     APPLICATION_CONFIRMATION = "APPLICATION_CONFIRMATION"
-    APPLICATION_RECEIVED     = "APPLICATION_RECEIVED"
-    RECRUITER_CONTACT        = "RECRUITER_CONTACT"
-    SCREENING_REQUEST        = "SCREENING_REQUEST"
-    INTERVIEW_REQUEST        = "INTERVIEW_REQUEST"
-    INTERVIEW_CONFIRMATION   = "INTERVIEW_CONFIRMATION"
-    INTERVIEW_RESCHEDULE     = "INTERVIEW_RESCHEDULE"
-    INTERVIEW_REMINDER       = "INTERVIEW_REMINDER"
-    TECHNICAL_TEST           = "TECHNICAL_TEST"
-    ASSESSMENT               = "ASSESSMENT"
-    OFFER                    = "OFFER"
-    OFFER_UPDATE             = "OFFER_UPDATE"
-    REJECTION                = "REJECTION"
-    WITHDRAWAL               = "WITHDRAWAL"
-    FOLLOW_UP                = "FOLLOW_UP"
-    GENERAL_RECRUITING       = "GENERAL_RECRUITING"
-    IRRELEVANT               = "IRRELEVANT"
+    APPLICATION_RECEIVED = "APPLICATION_RECEIVED"
+    RECRUITER_CONTACT = "RECRUITER_CONTACT"
+    SCREENING_REQUEST = "SCREENING_REQUEST"
+    INTERVIEW_REQUEST = "INTERVIEW_REQUEST"
+    INTERVIEW_CONFIRMATION = "INTERVIEW_CONFIRMATION"
+    INTERVIEW_RESCHEDULE = "INTERVIEW_RESCHEDULE"
+    INTERVIEW_REMINDER = "INTERVIEW_REMINDER"
+    TECHNICAL_TEST = "TECHNICAL_TEST"
+    ASSESSMENT = "ASSESSMENT"
+    OFFER = "OFFER"
+    OFFER_UPDATE = "OFFER_UPDATE"
+    REJECTION = "REJECTION"
+    WITHDRAWAL = "WITHDRAWAL"
+    FOLLOW_UP = "FOLLOW_UP"
+    GENERAL_RECRUITING = "GENERAL_RECRUITING"
+    IRRELEVANT = "IRRELEVANT"
 
 
 class OfferStatus(str, Enum):
     OFFER_CANDIDATE = "OFFER_CANDIDATE"
-    OFFER_DETECTED  = "OFFER_DETECTED"
+    OFFER_DETECTED = "OFFER_DETECTED"
     OFFER_CONFIRMED = "OFFER_CONFIRMED"
-    OFFER_ACCEPTED  = "OFFER_ACCEPTED"
-    OFFER_DECLINED  = "OFFER_DECLINED"
-    OFFER_EXPIRED   = "OFFER_EXPIRED"
+    OFFER_ACCEPTED = "OFFER_ACCEPTED"
+    OFFER_DECLINED = "OFFER_DECLINED"
+    OFFER_EXPIRED = "OFFER_EXPIRED"
 
 
 class PriorityLevel(str, Enum):
     CRITICAL = "CRITICAL"
-    HIGH     = "HIGH"
-    MEDIUM   = "MEDIUM"
-    LOW      = "LOW"
+    HIGH = "HIGH"
+    MEDIUM = "MEDIUM"
+    LOW = "LOW"
 
 
 class PlatformPolicyState(str, Enum):
     AUTOMATION_ALLOWED = "AUTOMATION_ALLOWED"
-    API_ALLOWED        = "API_ALLOWED"
-    REVIEW_REQUIRED    = "REVIEW_REQUIRED"
-    MANUAL_REQUIRED    = "MANUAL_REQUIRED"
-    BLOCKED            = "BLOCKED"
-    UNKNOWN            = "UNKNOWN"
+    API_ALLOWED = "API_ALLOWED"
+    REVIEW_REQUIRED = "REVIEW_REQUIRED"
+    MANUAL_REQUIRED = "MANUAL_REQUIRED"
+    BLOCKED = "BLOCKED"
+    UNKNOWN = "UNKNOWN"
 
 
 @dataclass
@@ -507,11 +516,12 @@ class ApplicationPackage:
 @dataclass
 class ApplicationEvent:
     """Immutable audit record for every career state mutation or external signal."""
+
     event_id: str = field(default_factory=lambda: f"ev_{uuid.uuid4().hex[:10]}")
     application_id: str = ""
     timestamp: float = field(default_factory=time.time)
-    source: str = "JARVIS"           # JARVIS, User, Gmail, Outlook, Calendar, Greenhouse, Ashby, Lever, Browser
-    actor: str = "system"            # system, user, recruiter, provider
+    source: str = "JARVIS"  # JARVIS, User, Gmail, Outlook, Calendar, Greenhouse, Ashby, Lever, Browser
+    actor: str = "system"  # system, user, recruiter, provider
     event_type: ApplicationEventType = ApplicationEventType.APPLICATION_CREATED
     evidence: str = ""
     confidence: float = 1.0
@@ -527,7 +537,9 @@ class ApplicationEvent:
             "timestamp": self.timestamp,
             "source": self.source,
             "actor": self.actor,
-            "event_type": self.event_type.value if isinstance(self.event_type, ApplicationEventType) else str(self.event_type),
+            "event_type": self.event_type.value
+            if isinstance(self.event_type, ApplicationEventType)
+            else str(self.event_type),
             "evidence": self.evidence,
             "confidence": self.confidence,
             "previous_state": self.previous_state,
@@ -562,6 +574,7 @@ class ApplicationEvent:
 @dataclass(init=False)
 class Application:
     """Canonical 32-Field Authoritative Career Application Entity."""
+
     application_id: str = field(default_factory=lambda: f"APP-{uuid.uuid4().hex[:6].upper()}")
     task_id: Optional[str] = None
     candidate_id: str = "master_candidate"
@@ -580,9 +593,9 @@ class Application:
     resume_version: str = "master"
     cover_letter_version: str = ""
     application_package_id: Optional[str] = None
-    application_method: str = "web_form"    # official_api, web_form, email, manual
+    application_method: str = "web_form"  # official_api, web_form, email, manual
     application_status: ApplicationStatus = ApplicationStatus.DISCOVERED
-    submission_status: str = "PENDING"      # PENDING, SUBMITTED, VERIFIED, FAILED
+    submission_status: str = "PENDING"  # PENDING, SUBMITTED, VERIFIED, FAILED
     confirmation_id: Optional[str] = None
     confirmation_url: Optional[str] = None
     date_discovered: str = ""
@@ -629,7 +642,7 @@ class Application:
         next_followup: Optional[str] = None,
         priority: PriorityLevel = PriorityLevel.MEDIUM,
         notes: Optional[List[str]] = None,
-        **kwargs: Any
+        **kwargs: Any,
     ):
         self.application_id = application_id or f"APP-{uuid.uuid4().hex[:6].upper()}"
         self.task_id = task_id
@@ -716,7 +729,6 @@ class Application:
     def package_id(self) -> Optional[str]:
         return self.application_package_id
 
-
     @package_id.setter
     def package_id(self, val: Optional[str]) -> None:
         self.application_package_id = val
@@ -739,7 +751,11 @@ class Application:
 
     def to_dict(self) -> Dict[str, Any]:
         d = asdict(self)
-        d["application_status"] = self.application_status.value if isinstance(self.application_status, ApplicationStatus) else str(self.application_status)
+        d["application_status"] = (
+            self.application_status.value
+            if isinstance(self.application_status, ApplicationStatus)
+            else str(self.application_status)
+        )
         d["priority"] = self.priority.value if isinstance(self.priority, PriorityLevel) else str(self.priority)
         # Add legacy fields for backward compatibility
         d["status"] = d["application_status"]
@@ -811,6 +827,7 @@ ApplicationRecord = Application
 @dataclass
 class OfferCandidate:
     """Staged Offer record with conservative detection & human verification gating."""
+
     offer_id: str = field(default_factory=lambda: f"OFF-{uuid.uuid4().hex[:6].upper()}")
     application_id: str = ""
     company: str = ""
@@ -820,7 +837,7 @@ class OfferCandidate:
     bonus: str = ""
     benefits: List[str] = field(default_factory=list)
     location: str = ""
-    work_mode: str = "Remote"      # Remote, Hybrid, Onsite
+    work_mode: str = "Remote"  # Remote, Hybrid, Onsite
     joining_date: str = ""
     offer_date: str = field(default_factory=lambda: time.strftime("%Y-%m-%d"))
     expiry_date: str = ""
@@ -844,21 +861,22 @@ class OfferCandidate:
 @dataclass
 class InterviewSchedule:
     """Deterministic Interview Schedule record with explicit timezone handling."""
+
     interview_id: str = field(default_factory=lambda: f"INT-{uuid.uuid4().hex[:6].upper()}")
     application_id: str = ""
     company: str = ""
     role: str = ""
-    round: str = "Technical"        # Screening, Technical, System Design, HR, Final Round
-    date: str = ""                  # YYYY-MM-DD
-    time_str: str = ""              # HH:MM AM/PM
-    timezone: str = ""              # IST, UTC, EST, PST, etc.
+    round: str = "Technical"  # Screening, Technical, System Design, HR, Final Round
+    date: str = ""  # YYYY-MM-DD
+    time_str: str = ""  # HH:MM AM/PM
+    timezone: str = ""  # IST, UTC, EST, PST, etc.
     utc_timestamp: Optional[float] = None
     local_timestamp: Optional[float] = None
     duration_minutes: int = 45
     meeting_url: str = ""
-    platform: str = "Google Meet"   # Google Meet, Zoom, MS Teams, Phone
+    platform: str = "Google Meet"  # Google Meet, Zoom, MS Teams, Phone
     interviewer: str = ""
-    status: str = "SCHEDULED"       # REQUESTED, SCHEDULED, COMPLETED, RESCHEDULED, CANCELLED
+    status: str = "SCHEDULED"  # REQUESTED, SCHEDULED, COMPLETED, RESCHEDULED, CANCELLED
     preparation_status: str = "PENDING"  # PENDING, GENERATED, REVIEWED
     calendar_event_id: Optional[str] = None
     notes: List[str] = field(default_factory=list)
@@ -870,14 +888,15 @@ class InterviewSchedule:
 @dataclass
 class FollowupRecord:
     """Configurable Follow-up task with draft generation and approval gating."""
+
     followup_id: str = field(default_factory=lambda: f"FOL-{uuid.uuid4().hex[:6].upper()}")
     application_id: str = ""
     company: str = ""
     role: str = ""
     reason: str = "First follow-up after submission"
-    due_date: str = ""              # YYYY-MM-DD
+    due_date: str = ""  # YYYY-MM-DD
     priority: PriorityLevel = PriorityLevel.MEDIUM
-    status: str = "PENDING"         # PENDING, DRAFT_GENERATED, SENT, SKIPPED, CANCELLED
+    status: str = "PENDING"  # PENDING, DRAFT_GENERATED, SENT, SKIPPED, CANCELLED
     completed_date: Optional[str] = None
     draft_subject: str = ""
     draft_body: str = ""
@@ -892,10 +911,11 @@ class FollowupRecord:
 @dataclass
 class EmailEventRecord:
     """Processed Email Intelligence record with idempotency and privacy minimization."""
+
     email_event_id: str = field(default_factory=lambda: f"EML-{uuid.uuid4().hex[:8].upper()}")
     application_id: Optional[str] = None
     message_id_hash: str = ""
-    provider: str = "gmail"         # gmail, outlook, imap
+    provider: str = "gmail"  # gmail, outlook, imap
     sender: str = ""
     sender_domain: str = ""
     subject: str = ""
@@ -909,13 +929,18 @@ class EmailEventRecord:
 
     def to_dict(self) -> Dict[str, Any]:
         d = asdict(self)
-        d["classification"] = self.classification.value if isinstance(self.classification, EmailClassification) else str(self.classification)
+        d["classification"] = (
+            self.classification.value
+            if isinstance(self.classification, EmailClassification)
+            else str(self.classification)
+        )
         return d
 
 
 @dataclass
 class CareerContact:
     """Recruiter & Hiring Manager contact associated with an application."""
+
     contact_id: str = field(default_factory=lambda: f"CNT-{uuid.uuid4().hex[:6].upper()}")
     application_id: Optional[str] = None
     company: str = ""
@@ -933,4 +958,3 @@ class CareerContact:
 
 # Aliases for backward compatibility
 ApplicationRecord = Application
-

@@ -3,6 +3,7 @@
 Every JARVIS connector plugin implements this interface.
 Provides a unified API: authenticate, list_tools, call_tool, health_check.
 """
+
 from __future__ import annotations
 
 import logging

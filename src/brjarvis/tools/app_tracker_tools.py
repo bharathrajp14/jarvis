@@ -3,10 +3,11 @@
 Application Launch Tracker Tools Plugin for JARVIS.
 Exposes tools for querying application start history logs and usage statistics.
 """
+
 from __future__ import annotations
 
-from typing import Any, Dict
 from .registry import register_tool
+
 # NOTE: get_app_tracker is imported lazily inside each handler to prevent a
 # missing/broken actions.app_tracker from silently killing all tool registrations.
 
@@ -18,13 +19,14 @@ from .registry import register_tool
         "type": "object",
         "properties": {
             "limit": {"type": "integer", "description": "Number of recent start events to return (default: 30)"},
-            "app_name": {"type": "string", "description": "Optional application name filter"}
-        }
-    }
+            "app_name": {"type": "string", "description": "Optional application name filter"},
+        },
+    },
 )
 def tool_get_app_launch_history(args: dict) -> str:
     """Retrieve app launch history log."""
     from brjarvis.actions.app_tracker import get_app_tracker  # lazy import
+
     limit = args.get("limit", 30)
     app_name = str(args.get("app_name", "")).strip()
 
@@ -37,7 +39,7 @@ def tool_get_app_launch_history(args: dict) -> str:
 
     lines = [f"📜 APPLICATION LAUNCH HISTORY ({len(history)} events shown):"]
     for item in history:
-        pid_str = f" (PID {item['pid']})" if item['pid'] else ""
+        pid_str = f" (PID {item['pid']})" if item["pid"] else ""
         source_str = f"[{item['source']}]"
         lines.append(f" - #{item['id']} | {item['launch_time']} | {source_str} {item['app_name']}{pid_str}")
 
@@ -47,14 +49,12 @@ def tool_get_app_launch_history(args: dict) -> str:
 @register_tool(
     name="get_app_usage_statistics",
     description="Retrieve analytics on application starts, including total launches, most launched apps, and recent activity.",
-    parameters={
-        "type": "object",
-        "properties": {}
-    }
+    parameters={"type": "object", "properties": {}},
 )
 def tool_get_app_usage_statistics(args: dict) -> str:
     """Retrieve app usage statistics."""
     from brjarvis.actions.app_tracker import get_app_tracker  # lazy import
+
     tracker = get_app_tracker()
     stats = tracker.get_statistics()
 

@@ -6,11 +6,12 @@ All canonical implementations now live in ``reasoning.speculative``.
 Import from there directly:
     from brjarvis.reasoning.speculative import SpeculativeEngine, get_speculative_engine
 """
+
 from __future__ import annotations
 
 from brjarvis.reasoning.speculative import (  # noqa: F401
-    SpeculativeEngine,
     SpeculativeDraftStep,
+    SpeculativeEngine,
     SpeculativeExecutionEngine,
     get_speculative_engine,
 )

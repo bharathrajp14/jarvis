@@ -4,24 +4,24 @@ Smart Email Creation & Automated Sending Engine for BR-Jarvis.
 Supports sending emails to any recipient or saved contact name, file attachments,
 scheduled email queues, and web browser compose fallbacks.
 """
+
 from __future__ import annotations
 
-import os
-import re
 import json
-import time
+import logging
+import os
 import smtplib
+import threading
+import time
 import urllib.parse
 import webbrowser
-import threading
-import logging
-from pathlib import Path
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-from email.mime.base import MIMEBase
 from email import encoders
+from email.mime.base import MIMEBase
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger("JARVIS.SmartEmailSender")
 
@@ -90,6 +90,7 @@ class SmartEmailSender:
         # 1. Primary UnifiedContactStore lookup (vCard contacts, relationship synonyms "Appa", "Amma", "Dad", "Mom")
         try:
             from brjarvis.memory.contact_manager import get_contact_store
+
             store = get_contact_store()
             match = store.resolve_name(rec_clean)
             if match and match.get("email"):
@@ -114,6 +115,7 @@ class SmartEmailSender:
     def _sync_auth(self):
         try:
             from brjarvis.actions.gmail_auth import get_gmail_auth_manager
+
             get_gmail_auth_manager()
         except Exception:
             pass
@@ -124,7 +126,7 @@ class SmartEmailSender:
         subject: str,
         body: str,
         attachment_paths: Optional[List[str]] = None,
-        open_fallback: bool = True
+        open_fallback: bool = True,
     ) -> str:
         """
         Send an email to any recipient or contact name.
@@ -181,7 +183,9 @@ class SmartEmailSender:
 
             try:
                 webbrowser.open(gmail_compose_url)
-                return f"🌐 Drafted email to '{display_name}' ({target_email}) and opened Gmail Compose window in browser."
+                return (
+                    f"🌐 Drafted email to '{display_name}' ({target_email}) and opened Gmail Compose window in browser."
+                )
             except Exception as e:
                 return f"Error opening email compose window: {e}"
 
@@ -205,7 +209,7 @@ class SmartEmailSender:
             "body": body,
             "send_at_str": send_at,
             "target_ts": target_ts,
-            "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         }
         self._scheduled_queue.append(entry)
         self._save_scheduled()
@@ -261,7 +265,7 @@ class SmartEmailSender:
                 self._save_scheduled()
 
                 for item in due_items:
-                    logger.info("Triggering scheduled email to %s", item['recipient'])
+                    logger.info("Triggering scheduled email to %s", item["recipient"])
                     self.send_email(item["recipient"], item["subject"], item["body"])
 
             time.sleep(10)

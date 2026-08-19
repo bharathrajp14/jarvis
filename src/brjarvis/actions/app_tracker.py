@@ -4,16 +4,17 @@ Application Launch Tracker & Persistent SQLite Storage for BR-Jarvis.
 Records application start events, tracks application usage metrics,
 and provides analytics on app starts.
 """
+
 from __future__ import annotations
 
 import json
 import logging
 import sqlite3
 import time
-from datetime import datetime
 from contextlib import contextmanager
+from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Generator
+from typing import Any, Dict, Generator, List, Optional
 
 logger = logging.getLogger("JARVIS.AppTracker")
 
@@ -76,7 +77,7 @@ class AppStartTracker:
         exe_path: str = "",
         pid: int = 0,
         source: str = "system_watcher",
-        details: Optional[Dict[str, Any]] = None
+        details: Optional[Dict[str, Any]] = None,
     ) -> bool:
         """
         Record an application launch event into the SQLite database store.
@@ -95,7 +96,7 @@ class AppStartTracker:
                     INSERT INTO app_launches (app_name, exe_path, pid, launch_time, timestamp, source, details)
                     VALUES (?, ?, ?, ?, ?, ?, ?)
                     """,
-                    (app_name, exe_path, pid, dt_str, ts, source, details_json)
+                    (app_name, exe_path, pid, dt_str, ts, source, details_json),
                 )
                 conn.commit()
             logger.info(f"🚀 App Start Logged: '{app_name}' (PID {pid}) via [{source}]")
@@ -120,7 +121,7 @@ class AppStartTracker:
                         WHERE LOWER(app_name) LIKE ?
                         ORDER BY id DESC LIMIT ?
                         """,
-                        (f"%{app_name.lower()}%", limit)
+                        (f"%{app_name.lower()}%", limit),
                     )
                 else:
                     cursor.execute(
@@ -129,7 +130,7 @@ class AppStartTracker:
                         FROM app_launches
                         ORDER BY id DESC LIMIT ?
                         """,
-                        (limit,)
+                        (limit,),
                     )
                 rows = cursor.fetchall()
 
@@ -140,15 +141,17 @@ class AppStartTracker:
                             details_dict = json.loads(r["details"])
                         except Exception:
                             pass
-                    results.append({
-                        "id": r["id"],
-                        "app_name": r["app_name"],
-                        "exe_path": r["exe_path"],
-                        "pid": r["pid"],
-                        "launch_time": r["launch_time"],
-                        "source": r["source"],
-                        "details": details_dict
-                    })
+                    results.append(
+                        {
+                            "id": r["id"],
+                            "app_name": r["app_name"],
+                            "exe_path": r["exe_path"],
+                            "pid": r["pid"],
+                            "launch_time": r["launch_time"],
+                            "source": r["source"],
+                            "details": details_dict,
+                        }
+                    )
         except Exception as e:
             logger.error(f"Error fetching app launch history: {e}")
         return results
@@ -157,12 +160,7 @@ class AppStartTracker:
         """
         Compute usage statistics and launch frequency for applications.
         """
-        stats: Dict[str, Any] = {
-            "total_launches": 0,
-            "unique_apps": 0,
-            "most_launched": [],
-            "recent_launches": []
-        }
+        stats: Dict[str, Any] = {"total_launches": 0, "unique_apps": 0, "most_launched": [], "recent_launches": []}
         try:
             with self._db_session() as conn:
                 cursor = conn.cursor()
@@ -212,5 +210,11 @@ def get_app_tracker() -> AppStartTracker:
     return _tracker_instance
 
 
-def log_app_launch(app_name: str, exe_path: str = "", pid: int = 0, source: str = "system_watcher", details: Optional[Dict[str, Any]] = None) -> bool:
+def log_app_launch(
+    app_name: str,
+    exe_path: str = "",
+    pid: int = 0,
+    source: str = "system_watcher",
+    details: Optional[Dict[str, Any]] = None,
+) -> bool:
     return get_app_tracker().log_launch(app_name, exe_path=exe_path, pid=pid, source=source, details=details)

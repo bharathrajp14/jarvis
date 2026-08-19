@@ -11,13 +11,12 @@ Features:
   - Safe JSON argument truncation without decode syntax errors
   - Automatic log rotation (10 MB cap per log file, max 3 backups)
 """
+
 from __future__ import annotations
 
-import logging
 import json
-import os
+import logging
 import threading
-import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -46,7 +45,7 @@ def _rotate_if_needed(file_path: Path) -> None:
     try:
         if not file_path.exists() or file_path.stat().st_size < _MAX_LOG_BYTES:
             return
-        
+
         for i in range(_MAX_BACKUPS - 1, 0, -1):
             s_file = file_path.with_name(f"{file_path.name}.{i}")
             d_file = file_path.with_name(f"{file_path.name}.{i + 1}")
@@ -54,13 +53,15 @@ def _rotate_if_needed(file_path: Path) -> None:
                 if d_file.exists():
                     d_file.unlink()
                 s_file.rename(d_file)
-        
+
         target = file_path.with_name(f"{file_path.name}.1")
         if target.exists():
             target.unlink()
         file_path.rename(target)
     except Exception as e:
-        logger.debug('Suppressed exception: %s', e)
+        logger.debug("Suppressed exception: %s", e)
+
+
 def _truncate_args(args: Any, max_len: int = 500) -> Any:
     """Safely truncate arguments for audit storage without JSON syntax errors."""
     if args is None:
@@ -74,7 +75,7 @@ def _truncate_args(args: Any, max_len: int = 500) -> Any:
         return truncated
     if isinstance(args, list):
         return [_truncate_args(item, max_len=50) for item in args[:10]]
-    
+
     s = str(args)
     if len(s) > max_len:
         return s[:max_len] + "..."
@@ -146,4 +147,4 @@ def write_audit(
             with open(_PLAINTEXT_PATH, "a", encoding="utf-8") as f:
                 f.write(plain_line)
         except Exception as e:
-            logger.debug('Suppressed exception: %s', e)
+            logger.debug("Suppressed exception: %s", e)

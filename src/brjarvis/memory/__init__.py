@@ -6,8 +6,8 @@ from .cache import MemoryCache
 from .domain import (
     CanonicalMemory,
     FeedbackSignal,
-    HandoffStatus,
     Handoff,
+    HandoffStatus,
     MemoryFeedback,
     MemoryStatus,
     MemoryType,
@@ -17,8 +17,8 @@ from .domain import (
 )
 from .handoff import (
     HandoffStore,
-    create_handoff,
     claim_handoff,
+    create_handoff,
     deliver_handoff,
     get_handoff_store,
     get_latest_handoff_for_session,

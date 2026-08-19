@@ -7,6 +7,7 @@ and outputs recommended defaults without exposing credentials.
 Usage:
   python -m gateway.probe
 """
+
 from __future__ import annotations
 
 import concurrent.futures
@@ -21,11 +22,12 @@ if sys.stdout and hasattr(sys.stdout, "reconfigure"):
     except Exception:
         pass
 
-from .client import get_proxy_brain_client
-from .discovery import get_discovery_service
-from .health import HealthState, get_health_service
 from brjarvis.router.smart_router import get_smart_router
 from brjarvis.router.task_profile import TaskComplexity, TaskProfile
+
+from .client import get_proxy_brain_client
+from .discovery import get_discovery_service
+from .health import get_health_service
 
 # Configure minimal console logging for clean probe output
 logging.basicConfig(level=logging.WARNING, format="%(message)s")
@@ -40,7 +42,7 @@ def run_probe():
     print("Proxy Brain Gateway Probe")
     print("=" * 65)
     print(f"Base URL:           {client.base_url}")
-    print(f"Preferred Provider: Gemini (Primary Policy)")
+    print("Preferred Provider: Gemini (Primary Policy)")
     print("-" * 65)
 
     # 1. Discover Models
@@ -65,11 +67,16 @@ def run_probe():
                 model=m_id,
                 messages=[{"role": "user", "content": "respond with exactly: pong"}],
                 max_tokens=10,
-                temperature=0.1
+                temperature=0.1,
             )
             lat = int((time.monotonic() - t_start) * 1000)
             health.record_success(m_id, lat)
-            return {"model": m_id, "status": "ONLINE", "latency": lat, "reply": resp.text.strip().replace("\n", " ")[:30]}
+            return {
+                "model": m_id,
+                "status": "ONLINE",
+                "latency": lat,
+                "reply": resp.text.strip().replace("\n", " ")[:30],
+            }
         except Exception as exc:
             lat = int((time.monotonic() - t_start) * 1000)
             is_quota = "quota" in str(exc).lower() or "503" in str(exc)
@@ -95,12 +102,24 @@ def run_probe():
     print("-" * 65)
 
     categories = [
-        ("FAST (Low Latency)", TaskProfile(task_type="fast_chat", complexity=TaskComplexity.LOW, latency_sensitive=True)),
+        (
+            "FAST (Low Latency)",
+            TaskProfile(task_type="fast_chat", complexity=TaskComplexity.LOW, latency_sensitive=True),
+        ),
         ("GENERAL (Assistant)", TaskProfile(task_type="chat", complexity=TaskComplexity.MEDIUM)),
-        ("REASONING (Deep)", TaskProfile(task_type="reasoning", complexity=TaskComplexity.HIGH, requires_reasoning=True)),
+        (
+            "REASONING (Deep)",
+            TaskProfile(task_type="reasoning", complexity=TaskComplexity.HIGH, requires_reasoning=True),
+        ),
         ("CODE (Engineering)", TaskProfile(task_type="code", complexity=TaskComplexity.HIGH, requires_code=True)),
-        ("AGENT (Multi-Step)", TaskProfile(task_type="agent", complexity=TaskComplexity.HIGH, requires_tools=True, requires_agent=True)),
-        ("VISION (Screen/Image)", TaskProfile(task_type="vision", complexity=TaskComplexity.MEDIUM, requires_vision=True)),
+        (
+            "AGENT (Multi-Step)",
+            TaskProfile(task_type="agent", complexity=TaskComplexity.HIGH, requires_tools=True, requires_agent=True),
+        ),
+        (
+            "VISION (Screen/Image)",
+            TaskProfile(task_type="vision", complexity=TaskComplexity.MEDIUM, requires_vision=True),
+        ),
     ]
 
     for title, profile in categories:

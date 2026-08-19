@@ -2,14 +2,16 @@
 """
 Registered tool wrappers for Gmail and Microsoft 365 / Office Online interactions.
 """
+
 from __future__ import annotations
 
-from .registry import register_tool, _run_async
 from brjarvis.actions.web_app_controller import (
     gmail_compose_and_send_async,
     gmail_search_and_reply_async,
     ms365_open_app_async,
 )
+
+from .registry import _run_async, register_tool
 
 
 @register_tool(
@@ -20,10 +22,10 @@ from brjarvis.actions.web_app_controller import (
         "properties": {
             "to": {"type": "string", "description": "Recipient email address"},
             "subject": {"type": "string", "description": "Email subject line"},
-            "body": {"type": "string", "description": "Email body content"}
+            "body": {"type": "string", "description": "Email body content"},
         },
-        "required": ["to", "subject", "body"]
-    }
+        "required": ["to", "subject", "body"],
+    },
 )
 def gmail_send(args: dict) -> str:
     """Compose and send Gmail email."""
@@ -44,17 +46,19 @@ def gmail_send(args: dict) -> str:
         "type": "object",
         "properties": {
             "query": {"type": "string", "description": "Search term or sender name/subject to locate email"},
-            "reply_text": {"type": "string", "description": "Reply text message body"}
+            "reply_text": {"type": "string", "description": "Reply text message body"},
         },
-        "required": ["query", "reply_text"]
-    }
+        "required": ["query", "reply_text"],
+    },
 )
 def gmail_reply(args: dict) -> str:
     """Search Gmail thread and send reply."""
     if isinstance(args, str):
         return "ERROR: 'gmail_reply' expects a JSON dictionary."
     query = str(args.get("query") or args.get("q") or args.get("search") or args.get("target") or "").strip()
-    reply_text = str(args.get("reply_text") or args.get("message") or args.get("text") or args.get("body") or "").strip()
+    reply_text = str(
+        args.get("reply_text") or args.get("message") or args.get("text") or args.get("body") or ""
+    ).strip()
     if not query or not reply_text:
         return "ERROR: 'query' and 'reply_text' parameters are required for gmail_reply."
     return _run_async(gmail_search_and_reply_async(query, reply_text))
@@ -68,8 +72,8 @@ def gmail_reply(args: dict) -> str:
         "properties": {
             "app": {"type": "string", "description": "App name: 'word', 'excel', 'powerpoint', 'outlook', or 'home'"}
         },
-        "required": ["app"]
-    }
+        "required": ["app"],
+    },
 )
 def ms365_control(args: dict) -> str:
     """Open Microsoft 365 web app."""

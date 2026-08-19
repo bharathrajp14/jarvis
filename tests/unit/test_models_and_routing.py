@@ -1,17 +1,16 @@
 """Unit tests for Model Configuration & Semantic Complexity Routing."""
+
 from __future__ import annotations
 
 import pytest
-from brjarvis.config.models import get_model_config, get_model_for_task, get_model
+
 from brjarvis.config.complexity_router import (
     ComplexityAnalyzer,
-    calculate_complexity_score,
-    analyze_complexity,
     TaskComplexity,
-    select_model_for_prompt,
+    calculate_complexity_score,
     get_recommended_token_limit,
-    estimate_tokens,
 )
+from brjarvis.config.models import get_model_config, get_model_for_task
 
 
 @pytest.mark.unit
@@ -31,7 +30,13 @@ def test_get_model_for_task_routing():
     assert "claude" in code_model or "pro" in code_model or "gemini" in code_model
 
     reasoning_model = get_model_for_task("reasoning")
-    assert "opus" in reasoning_model or "pro" in reasoning_model or "gemini" in reasoning_model or "claude" in reasoning_model or "thinking" in reasoning_model
+    assert (
+        "opus" in reasoning_model
+        or "pro" in reasoning_model
+        or "gemini" in reasoning_model
+        or "claude" in reasoning_model
+        or "thinking" in reasoning_model
+    )
 
     vision_model = get_model_for_task("vision")
     assert "image" in vision_model or "flash" in vision_model

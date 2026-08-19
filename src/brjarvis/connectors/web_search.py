@@ -4,6 +4,7 @@ Multi-engine web search connector.
   - Tavily Search API: AI-optimized live search & content extraction (uses TAVILY_API_KEY from .env)
   - DuckDuckGo Instant Answers & search: zero-auth, zero-setup fallback
 """
+
 from __future__ import annotations
 
 import json
@@ -19,7 +20,6 @@ logger = logging.getLogger("JARVIS.Connectors.WebSearch")
 
 
 class WebSearchConnector(BaseConnector):
-
     @property
     def _tavily_key(self) -> str:
         return os.environ.get("TAVILY_API_KEY", "").strip()
@@ -133,7 +133,7 @@ class WebSearchConnector(BaseConnector):
             headers={
                 "User-Agent": "JARVIS-ConnectorHub/1.0 (compatible; research bot)",
                 **(headers or {}),
-            }
+            },
         )
         with urllib.request.urlopen(req, timeout=timeout) as r:
             return json.loads(r.read().decode())
@@ -147,13 +147,15 @@ class WebSearchConnector(BaseConnector):
     def _tavily_search(self, query: str, max_results: int = 5, depth: str = "advanced") -> str:
         """Tavily API — richer, source-attributed results."""
         try:
-            payload = json.dumps({
-                "api_key": self._tavily_key,
-                "query": query,
-                "max_results": max_results,
-                "search_depth": depth,
-                "include_answer": True,
-            }).encode("utf-8")
+            payload = json.dumps(
+                {
+                    "api_key": self._tavily_key,
+                    "query": query,
+                    "max_results": max_results,
+                    "search_depth": depth,
+                    "include_answer": True,
+                }
+            ).encode("utf-8")
             req = urllib.request.Request(
                 "https://api.tavily.com/search",
                 data=payload,
@@ -183,10 +185,12 @@ class WebSearchConnector(BaseConnector):
 
         if self._tavily_key:
             try:
-                payload = json.dumps({
-                    "api_key": self._tavily_key,
-                    "urls": urls[:5],
-                }).encode("utf-8")
+                payload = json.dumps(
+                    {
+                        "api_key": self._tavily_key,
+                        "urls": urls[:5],
+                    }
+                ).encode("utf-8")
                 req = urllib.request.Request(
                     "https://api.tavily.com/extract",
                     data=payload,
@@ -221,12 +225,14 @@ class WebSearchConnector(BaseConnector):
     def _ddg_search(self, query: str, max_results: int = 5) -> str:
         """DuckDuckGo Instant Answers API — zero auth."""
         try:
-            params = urllib.parse.urlencode({
-                "q": query,
-                "format": "json",
-                "no_html": 1,
-                "skip_disambig": 1,
-            })
+            params = urllib.parse.urlencode(
+                {
+                    "q": query,
+                    "format": "json",
+                    "no_html": 1,
+                    "skip_disambig": 1,
+                }
+            )
             data = self._fetch_json(f"https://api.duckduckgo.com/?{params}")
 
             lines = [f"🔍 **Search: '{query}'** (DuckDuckGo)\n"]
@@ -264,12 +270,14 @@ class WebSearchConnector(BaseConnector):
                 return res
 
         try:
-            params = urllib.parse.urlencode({
-                "q": query,
-                "format": "json",
-                "no_html": 1,
-                "skip_disambig": 1,
-            })
+            params = urllib.parse.urlencode(
+                {
+                    "q": query,
+                    "format": "json",
+                    "no_html": 1,
+                    "skip_disambig": 1,
+                }
+            )
             data = self._fetch_json(f"https://api.duckduckgo.com/?{params}")
 
             answer = data.get("Answer") or data.get("Abstract") or data.get("Definition")
@@ -287,13 +295,15 @@ class WebSearchConnector(BaseConnector):
         """Search news using Tavily if available, else DuckDuckGo news endpoint."""
         if self._tavily_key:
             try:
-                payload = json.dumps({
-                    "api_key": self._tavily_key,
-                    "query": query,
-                    "max_results": max_results,
-                    "topic": "news",
-                    "days": 7,
-                }).encode("utf-8")
+                payload = json.dumps(
+                    {
+                        "api_key": self._tavily_key,
+                        "query": query,
+                        "max_results": max_results,
+                        "topic": "news",
+                        "days": 7,
+                    }
+                ).encode("utf-8")
                 req = urllib.request.Request(
                     "https://api.tavily.com/search",
                     data=payload,

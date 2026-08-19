@@ -4,29 +4,22 @@ from __future__ import annotations
 import difflib
 import json
 import os
-import sys
-import time
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
 from .theme import (
     COLOR_AMBER,
     COLOR_BLUE,
     COLOR_CYAN,
-    COLOR_DARK,
-    COLOR_DIM,
     COLOR_GREEN,
     COLOR_MAGENTA,
-    COLOR_PANEL_BG,
     COLOR_RED,
     COLOR_TEAL,
-    COLOR_WHITE,
     Glyphs,
-    MODE_COLORS,
     get_terminal_theme,
 )
-from ..version import BUILD, CODENAME, VERSION
 
 try:
+    from rich.box import DOUBLE, HEAVY, ROUNDED, SIMPLE
     from rich.console import Console, Group
     from rich.markdown import Markdown
     from rich.panel import Panel
@@ -34,7 +27,7 @@ try:
     from rich.syntax import Syntax
     from rich.table import Table
     from rich.text import Text
-    from rich.box import ROUNDED, HEAVY, SIMPLE, DOUBLE
+
     HAS_RICH = True
 except ImportError:
     HAS_RICH = False
@@ -67,6 +60,7 @@ class TerminalRenderer:
     def render_header(self, session_info: Optional[Dict[str, Any]] = None) -> None:
         """Render top status header with metadata pills."""
         from .components import HeaderComponent
+
         info = session_info or {}
         mode = info.get("mode", "general")
         model = info.get("model", "Gemini 2.5 Flash")
@@ -86,6 +80,7 @@ class TerminalRenderer:
     def render_welcome(self, mode: str = "general", working_dir: str = "", model_name: str = "Gemini") -> None:
         """Render welcoming agent dashboard with shortcuts."""
         from .components import WelcomeCard
+
         WelcomeCard.render(
             console=self.console,
             mode=mode,
@@ -119,7 +114,7 @@ class TerminalRenderer:
             header_left = Text()
             header_left.append(f"{Glyphs.TOOL} Tool: ", style="dim")
             header_left.append(tool_name, style="bold cyan")
-            
+
             header_right = Text()
             if duration_ms > 0:
                 header_right.append(f"{duration_ms:.0f}ms │ ", style="dim")
@@ -232,22 +227,26 @@ class TerminalRenderer:
     def render_stage_progress(self, stages: List[Dict[str, Any]], current_idx: int, total_stages: int) -> None:
         """Render composite multi-stage task breakdown progress."""
         if HAS_RICH and self.console:
-            table = Table(title=f"Multi-Stage Task Plan ({current_idx}/{total_stages} Active)", border_style=COLOR_CYAN, box=ROUNDED)
+            table = Table(
+                title=f"Multi-Stage Task Plan ({current_idx}/{total_stages} Active)",
+                border_style=COLOR_CYAN,
+                box=ROUNDED,
+            )
             table.add_column("Stage", style="bold cyan", width=8)
             table.add_column("Goal / Subtask", style="white")
             table.add_column("Assigned Agent", style="dim")
             table.add_column("Status", justify="center", width=12)
 
             for i, st in enumerate(stages):
-                idx_str = f"#{i+1}"
-                name = st.get("name") or st.get("goal") or f"Stage {i+1}"
+                idx_str = f"#{i + 1}"
+                name = st.get("name") or st.get("goal") or f"Stage {i + 1}"
                 agent = st.get("agent_type", "general")
                 if i < current_idx - 1:
                     status_badge = f"[green]{Glyphs.CHECK} Done[/]"
                 elif i == current_idx - 1:
                     status_badge = f"[bold yellow]{Glyphs.PLAY} Running[/]"
                 else:
-                    status_badge = f"[dim]○ Pending[/]"
+                    status_badge = "[dim]○ Pending[/]"
                 table.add_row(idx_str, name[:60], agent, status_badge)
 
             self.console.print(table)
@@ -255,7 +254,7 @@ class TerminalRenderer:
             print(f"--- Task Stages ({current_idx}/{total_stages}) ---")
             for i, st in enumerate(stages):
                 status_char = "[X]" if i < current_idx - 1 else "[>]" if i == current_idx - 1 else "[ ]"
-                print(f"  {status_char} #{i+1}: {st.get('goal', '')[:50]}")
+                print(f"  {status_char} #{i + 1}: {st.get('goal', '')[:50]}")
 
     # ── Memory & Lessons Card ─────────────────────────────────────────────────
 
@@ -280,7 +279,7 @@ class TerminalRenderer:
         else:
             print(f"[{Glyphs.BRAIN} {title}]")
             for m in memories:
-                print(f"  • [{m.get('type','').upper()}] {m.get('content','')[:80]}")
+                print(f"  • [{m.get('type', '').upper()}] {m.get('content', '')[:80]}")
 
     # ── Tables (Status, Tasks, Tools) ─────────────────────────────────────────
 
@@ -321,7 +320,9 @@ class TerminalRenderer:
                 curr_step = getattr(t, "current_step", t.get("current_step", 0))
                 total_steps = getattr(t, "total_steps", t.get("total_steps", 1))
 
-                status_style = "green" if "complete" in status_str.lower() else "yellow" if "run" in status_str.lower() else "red"
+                status_style = (
+                    "green" if "complete" in status_str.lower() else "yellow" if "run" in status_str.lower() else "red"
+                )
                 table.add_row(t_id, goal, f"[{status_style}]{status_str.upper()}[/]", f"{curr_step}/{total_steps}")
 
             self.console.print(table)
@@ -359,7 +360,9 @@ class TerminalRenderer:
 
             self.console.print(table)
             if len(filtered) > 35:
-                self.console.print(f"[dim]... and {len(filtered) - 35} more tools. Use /tools <search> to refine.[/dim]")
+                self.console.print(
+                    f"[dim]... and {len(filtered) - 35} more tools. Use /tools <search> to refine.[/dim]"
+                )
         else:
             print(f"--- Registered Tools ({len(filtered)}) ---")
             for t in filtered[:20]:
@@ -413,19 +416,19 @@ class TerminalRenderer:
         """Render an interactive plan card before approval."""
         if HAS_RICH and self.console:
             text = Text()
-            text.append(f"Goal: ", style="bold white")
+            text.append("Goal: ", style="bold white")
             text.append(f"{goal}\n\n", style="cyan")
             for i, step in enumerate(steps, 1):
                 text.append(f"  {i:2d}. ", style="dim")
                 text.append(f"{step}\n", style="white")
-            text.append(f"\n  Risk: ", style="dim")
+            text.append("\n  Risk: ", style="dim")
             risk_style = "green" if risk.lower() == "low" else "yellow" if risk.lower() == "medium" else "red"
             text.append(f"{risk}", style=f"bold {risk_style}")
             if external_actions:
-                text.append(f"  │  External: ", style="dim")
+                text.append("  │  External: ", style="dim")
                 text.append(", ".join(external_actions), style="yellow")
             if plan_id:
-                text.append(f"\n  Plan ID: ", style="dim")
+                text.append("\n  Plan ID: ", style="dim")
                 text.append(plan_id, style="dim cyan")
             text.append("\n\n")
             text.append("  [Enter] Approve  ", style="bold green")
@@ -452,13 +455,18 @@ class TerminalRenderer:
         """Prompt user for plan approval. Returns: 'approve'|'edit'|'replan'|'cancel'."""
         if HAS_RICH and self.console:
             from rich.prompt import Prompt as RPrompt
+
             try:
-                choice = RPrompt.ask(
-                    "\n  [bold green]Approve plan?[/bold green]",
-                    choices=["", "y", "e", "r", "c", "q", "quit", "exit"],
-                    default="y",
-                    show_choices=False,
-                ).strip().lower()
+                choice = (
+                    RPrompt.ask(
+                        "\n  [bold green]Approve plan?[/bold green]",
+                        choices=["", "y", "e", "r", "c", "q", "quit", "exit"],
+                        default="y",
+                        show_choices=False,
+                    )
+                    .strip()
+                    .lower()
+                )
             except (KeyboardInterrupt, EOFError):
                 return "cancel"
         else:
@@ -488,16 +496,16 @@ class TerminalRenderer:
         """Render interactive permission request panel. Returns: 'allow'|'always'|'deny'|'show_plan'."""
         if HAS_RICH and self.console:
             text = Text()
-            text.append(f"  Tool:   ", style="dim")
+            text.append("  Tool:   ", style="dim")
             text.append(f"{tool_name}\n", style="bold cyan")
-            text.append(f"  Target: ", style="dim")
+            text.append("  Target: ", style="dim")
             text.append(f"{target}\n", style="white")
-            text.append(f"  Action: ", style="dim")
+            text.append("  Action: ", style="dim")
             text.append(f"{action}\n", style="white")
-            text.append(f"  Risk:   ", style="dim")
+            text.append("  Risk:   ", style="dim")
             text.append(f"{risk}\n", style="bold yellow")
             if task_context:
-                text.append(f"  Task:   ", style="dim")
+                text.append("  Task:   ", style="dim")
                 text.append(f"{task_context[:60]}\n", style="dim")
             text.append("\n")
             text.append("  [Y] Allow once   ", style="bold green")
@@ -514,13 +522,18 @@ class TerminalRenderer:
             )
             self.console.print(panel)
             from rich.prompt import Prompt as RPrompt
+
             try:
-                choice = RPrompt.ask(
-                    "  Decision",
-                    choices=["y", "Y", "a", "A", "n", "N", "s", "S", "q", "Q", "quit", "exit"],
-                    default="y",
-                    show_choices=False,
-                ).strip().upper()
+                choice = (
+                    RPrompt.ask(
+                        "  Decision",
+                        choices=["y", "Y", "a", "A", "n", "N", "s", "S", "q", "Q", "quit", "exit"],
+                        default="y",
+                        show_choices=False,
+                    )
+                    .strip()
+                    .upper()
+                )
             except (KeyboardInterrupt, EOFError):
                 return "deny"
         else:
@@ -573,13 +586,18 @@ class TerminalRenderer:
             )
             self.console.print(panel)
             from rich.prompt import Prompt as RPrompt
+
             try:
-                choice = RPrompt.ask(
-                    "  Action",
-                    choices=["r", "R", "a", "A", "c", "C", "x", "X", "q", "Q", "quit", "exit"],
-                    default="r",
-                    show_choices=False,
-                ).strip().upper()
+                choice = (
+                    RPrompt.ask(
+                        "  Action",
+                        choices=["r", "R", "a", "A", "c", "C", "x", "X", "q", "Q", "quit", "exit"],
+                        default="r",
+                        show_choices=False,
+                    )
+                    .strip()
+                    .upper()
+                )
             except (KeyboardInterrupt, EOFError):
                 return "cancel"
         else:
@@ -631,16 +649,18 @@ class TerminalRenderer:
                 elif any(step_lower in s.lower() or s.lower() in step_lower for s in failed_steps):
                     result = f"[red]{Glyphs.CROSS} Failed[/red]"
                 elif any(step_lower in s.lower() or s.lower() in step_lower for s in skipped_steps):
-                    result = f"[dim]○ Skipped[/dim]"
+                    result = "[dim]○ Skipped[/dim]"
                 else:
-                    result = f"[dim]○ Not executed[/dim]"
+                    result = "[dim]○ Not executed[/dim]"
                 table.add_row(str(i), step[:55], result)
 
             self.console.print(table)
 
             status_style = (
-                "bold green" if "success" in final_status.lower()
-                else "bold yellow" if "partial" in final_status.lower()
+                "bold green"
+                if "success" in final_status.lower()
+                else "bold yellow"
+                if "partial" in final_status.lower()
                 else "bold red"
             )
             self.console.print(f"\n[{status_style}]Final Status: {final_status}[/{status_style}]\n")
@@ -679,28 +699,31 @@ class TerminalRenderer:
 
         if HAS_RICH and self.console:
             import datetime
+
             text = Text()
-            text.append(f"Task ID: ", style="dim")
+            text.append("Task ID: ", style="dim")
             text.append(f"{task_id}\n", style="bold cyan")
-            text.append(f"Goal:    ", style="dim")
+            text.append("Goal:    ", style="dim")
             text.append(f"{goal[:80]}\n\n", style="bold white")
 
             status_style = (
-                "bold green" if "success" in status_str.lower()
-                else "bold yellow" if any(x in status_str.lower() for x in ["run", "plan", "wait"])
+                "bold green"
+                if "success" in status_str.lower()
+                else "bold yellow"
+                if any(x in status_str.lower() for x in ["run", "plan", "wait"])
                 else "bold red"
             )
-            text.append(f"Status:  ", style="dim")
+            text.append("Status:  ", style="dim")
             text.append(f"{status_str}\n", style=status_style)
 
             if created:
                 created_str = datetime.datetime.fromtimestamp(created).strftime("%Y-%m-%d %H:%M:%S")
-                text.append(f"Created: ", style="dim")
+                text.append("Created: ", style="dim")
                 text.append(f"{created_str}\n", style="dim")
 
             # Steps
             if planned or actions:
-                text.append(f"\nSteps:\n", style="bold white")
+                text.append("\nSteps:\n", style="bold white")
                 for i, act in enumerate(actions[:20], 1):
                     act_status = getattr(act, "status", act.get("status", "?") if isinstance(act, dict) else "?")
                     act_tool = getattr(act, "tool", act.get("tool", "?") if isinstance(act, dict) else "?")
@@ -721,7 +744,11 @@ class TerminalRenderer:
 
             # Error
             if error_info:
-                reason = error_info.get("reason", str(error_info))[:120] if isinstance(error_info, dict) else str(error_info)[:120]
+                reason = (
+                    error_info.get("reason", str(error_info))[:120]
+                    if isinstance(error_info, dict)
+                    else str(error_info)[:120]
+                )
                 text.append(f"\nError: {reason}\n", style="bold red")
                 text.append("Use /retry <task_id> to attempt recovery.\n", style="dim yellow")
 
@@ -751,9 +778,9 @@ class TerminalRenderer:
                 path = art.get("path", art.get("host_path", str(art)))
                 name = art.get("name", path.split("/")[-1] if "/" in path else path.split("\\")[-1])
                 v = art.get("verified", verified)
-                sym = f"[green]{Glyphs.CHECK}[/green]" if v else f"[yellow]○[/yellow]"
+                sym = f"[green]{Glyphs.CHECK}[/green]" if v else "[yellow]○[/yellow]"
                 text.append(f"  {sym} {name}\n")
-            text.append(f"\n  [O] Open   [V] Verify   [D] Diff   [S] Show path", style="dim")
+            text.append("\n  [O] Open   [V] Verify   [D] Diff   [S] Show path", style="dim")
 
             panel = Panel(
                 text,
@@ -793,6 +820,7 @@ class TerminalRenderer:
             )
             self.console.print(panel)
             from rich.prompt import Prompt as RPrompt
+
             try:
                 answer = RPrompt.ask("  Your answer").strip()
             except (KeyboardInterrupt, EOFError):
@@ -828,8 +856,10 @@ class TerminalRenderer:
                     text.append(f" — {detail}", style="dim")
                 text.append("\n")
 
-            text.append(f"\nOverall: ", style="bold white")
-            status_style = "bold green" if overall == "HEALTHY" else "bold yellow" if "DEGRADED" in overall else "bold red"
+            text.append("\nOverall: ", style="bold white")
+            status_style = (
+                "bold green" if overall == "HEALTHY" else "bold yellow" if "DEGRADED" in overall else "bold red"
+            )
             text.append(f"{overall}", style=status_style)
 
             panel = Panel(
@@ -869,11 +899,11 @@ class TerminalRenderer:
                 if status == "connected":
                     status_cell = f"[green]{Glyphs.CHECK} Connected[/green]"
                 elif status == "auth_required":
-                    status_cell = f"[yellow]⚠ Auth Required[/yellow]"
+                    status_cell = "[yellow]⚠ Auth Required[/yellow]"
                 elif status == "degraded":
-                    status_cell = f"[yellow]⚠ Degraded[/yellow]"
+                    status_cell = "[yellow]⚠ Degraded[/yellow]"
                 elif status == "disabled":
-                    status_cell = f"[dim]○ Disabled[/dim]"
+                    status_cell = "[dim]○ Disabled[/dim]"
                 else:
                     status_cell = f"[red]{Glyphs.CROSS} Unavailable[/red]"
                 table.add_row(name, status_cell, caps)
@@ -906,12 +936,12 @@ class TerminalRenderer:
                 status = m.get("status", "unknown")
                 context = m.get("context", "?")
                 caps = ", ".join(m.get("capabilities", []))[:40]
-                is_active = (name.lower() == active.lower())
+                is_active = name.lower() == active.lower()
 
                 if status == "available":
                     status_cell = f"[green]{Glyphs.CHECK} Online[/green]"
                 elif status == "no_key":
-                    status_cell = f"[yellow]⚠ No API Key[/yellow]"
+                    status_cell = "[yellow]⚠ No API Key[/yellow]"
                 else:
                     status_cell = f"[red]{Glyphs.CROSS} Unavailable[/red]"
 

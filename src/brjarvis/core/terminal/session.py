@@ -7,28 +7,25 @@ import os
 import sys
 import time
 import uuid
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
+
+from brjarvis.agent.agent_loop import AgentLoop
+from brjarvis.agent.session import AgentSession, get_or_create_session
+from brjarvis.security.permission_request import PermissionDecision, PermissionRequest
 
 from ..runtime import ApplicationRuntime, get_runtime
-from .commands import SlashCommandHandler, VALID_MODES
-from .components import HeaderComponent, PermissionPromptComponent
+from .commands import VALID_MODES, SlashCommandHandler
+from .components import PermissionPromptComponent
+from .events import MouseCaptureMode
+from .guard import TerminalStateGuard
+from .interactive_tui import InteractiveTUIController
 from .renderer import TerminalRenderer
 from .theme import (
     COLOR_AMBER,
     COLOR_CYAN,
-    COLOR_GREEN,
-    COLOR_MAGENTA,
-    COLOR_RED,
-    Glyphs,
     MODE_COLORS,
+    Glyphs,
 )
-from ..version import BUILD, CODENAME, VERSION
-from brjarvis.agent.session import AgentSession, get_or_create_session
-from brjarvis.agent.agent_loop import AgentLoop
-from brjarvis.security.permission_request import PermissionDecision, PermissionRequest
-from .events import MouseCaptureMode
-from .guard import TerminalStateGuard
-from .interactive_tui import InteractiveTUIController
 
 # ── autocomplete / prompt engine ─────────────────────────────────────────────
 try:
@@ -43,12 +40,13 @@ except Exception:
     get_history_path = lambda: None  # type: ignore
 
 try:
-    from rich.prompt import Prompt
     from rich.live import Live
-    from rich.text import Text
     from rich.markdown import Markdown
+    from rich.prompt import Prompt
     from rich.status import Status
     from rich.table import Table
+    from rich.text import Text
+
     HAS_RICH = True
 except ImportError:
     HAS_RICH = False
@@ -56,10 +54,10 @@ except ImportError:
 logger = logging.getLogger("JARVIS.TerminalSession")
 
 # ── Prompt context states ─────────────────────────────────────────────────────
-PROMPT_NORMAL       = "normal"
-PROMPT_TASK         = "task"
-PROMPT_APPROVAL     = "approval"
-PROMPT_NEEDS_INPUT  = "needs_input"
+PROMPT_NORMAL = "normal"
+PROMPT_TASK = "task"
+PROMPT_APPROVAL = "approval"
+PROMPT_NEEDS_INPUT = "needs_input"
 
 
 class TerminalSession:
@@ -95,8 +93,8 @@ class TerminalSession:
             self.session_id = getattr(self.orchestrator, "session_id", self.session_id)
 
         self.current_mode: str = mode if mode in VALID_MODES else "general"
-        self.session_name: str = ""            # user-assigned session label
-        self.output_style: str = "compact"     # compact | detailed | minimal | verbose
+        self.session_name: str = ""  # user-assigned session label
+        self.output_style: str = "compact"  # compact | detailed | minimal | verbose
         self.verbose: bool = False
 
         if self.orchestrator:
@@ -105,7 +103,7 @@ class TerminalSession:
         self._closed: bool = False
         self.auto_welcome: bool = auto_welcome
         self._is_running: bool = False
-        self._interrupt_count: int = 0         # Ctrl+C double-tap counter
+        self._interrupt_count: int = 0  # Ctrl+C double-tap counter
         self._last_interrupt: float = 0.0
         self._active_task_id: Optional[str] = None
         self._active_task_label: Optional[str] = None
@@ -158,7 +156,7 @@ class TerminalSession:
     def set_mouse_capture_mode(self, mode: MouseCaptureMode) -> None:
         """Set explicit mouse capture mode (off, scroll, interactive, full)."""
         self.mouse_capture_mode = mode
-        self.mouse_support = (mode != MouseCaptureMode.MOUSE_OFF)
+        self.mouse_support = mode != MouseCaptureMode.MOUSE_OFF
         os.environ["JARVIS_MOUSE_SUPPORT"] = "1" if self.mouse_support else "0"
         self.tui.mouse_mode = mode
         self.state_guard.enable_mouse_capture(mode)
@@ -194,9 +192,7 @@ class TerminalSession:
             goal = getattr(event, "goal", "")
             if goal and self._is_running and HAS_RICH and self.renderer.console:
                 if "fail" in str(status).lower():
-                    self.renderer.console.print(
-                        f"\n[bold red]{Glyphs.CROSS} Background task failed:[/] {goal[:60]}"
-                    )
+                    self.renderer.console.print(f"\n[bold red]{Glyphs.CROSS} Background task failed:[/] {goal[:60]}")
                 elif "complete" in str(status).lower():
                     self.renderer.console.print(
                         f"\n[bold green]{Glyphs.CHECK} Background task complete:[/] {goal[:60]}"
@@ -216,6 +212,7 @@ class TerminalSession:
             tool_count = 0
             try:
                 from brjarvis.tools.registry import TOOL_SCHEMAS
+
                 tool_count = len(TOOL_SCHEMAS)
             except Exception:
                 pass
@@ -291,37 +288,48 @@ class TerminalSession:
             return self._get_plain_prompt()
         try:
             from prompt_toolkit.formatted_text import FormattedText
+
             mode = self.current_mode.upper()
 
             if self._prompt_state == PROMPT_APPROVAL:
-                return FormattedText([
-                    ("class:prompt.approval", "\napproval required"),
-                    ("class:prompt.arrow", " › "),
-                ])
+                return FormattedText(
+                    [
+                        ("class:prompt.approval", "\napproval required"),
+                        ("class:prompt.arrow", " › "),
+                    ]
+                )
             if self._prompt_state == PROMPT_NEEDS_INPUT:
-                return FormattedText([
-                    ("class:prompt.needs", "\nJARVIS needs input"),
-                    ("class:prompt.arrow", " › "),
-                ])
+                return FormattedText(
+                    [
+                        ("class:prompt.needs", "\nJARVIS needs input"),
+                        ("class:prompt.arrow", " › "),
+                    ]
+                )
             if self._prompt_state == PROMPT_TASK and self._active_task_label:
                 raw_label = self._active_task_label.strip()
                 label = (raw_label[:20] + "…") if len(raw_label) > 20 else raw_label
-                return FormattedText([
-                    ("class:prompt.task", f"\ntask:{label}"),
-                    ("class:prompt.arrow", " › "),
-                ])
+                return FormattedText(
+                    [
+                        ("class:prompt.task", f"\ntask:{label}"),
+                        ("class:prompt.arrow", " › "),
+                    ]
+                )
             if mode == "GENERAL":
-                return FormattedText([
+                return FormattedText(
+                    [
+                        ("class:prompt.you", "\nyou"),
+                        ("class:prompt.arrow", " › "),
+                    ]
+                )
+            return FormattedText(
+                [
                     ("class:prompt.you", "\nyou"),
+                    ("class:prompt.bracket", " ["),
+                    ("class:prompt.mode", mode),
+                    ("class:prompt.bracket", "]"),
                     ("class:prompt.arrow", " › "),
-                ])
-            return FormattedText([
-                ("class:prompt.you", "\nyou"),
-                ("class:prompt.bracket", " ["),
-                ("class:prompt.mode", mode),
-                ("class:prompt.bracket", "]"),
-                ("class:prompt.arrow", " › "),
-            ])
+                ]
+            )
         except Exception:
             return self._get_plain_prompt()
 
@@ -337,12 +345,15 @@ class TerminalSession:
         # 1. Preserve active task state if present
         if self._active_task_id:
             try:
-                from brjarvis.agent.task_state import get_task_state_manager, TaskStatus
+                from brjarvis.agent.task_state import TaskStatus, get_task_state_manager
+
                 mgr = get_task_state_manager()
                 task = mgr.get_task(self._active_task_id)
                 if task and task.status in (TaskStatus.RUNNING, TaskStatus.CREATED):
                     mgr.update_status(self._active_task_id, TaskStatus.WAITING_FOR_USER)
-                    logger.info("Active task %s preserved with status WAITING_FOR_USER on session close", self._active_task_id)
+                    logger.info(
+                        "Active task %s preserved with status WAITING_FOR_USER on session close", self._active_task_id
+                    )
             except Exception as task_err:
                 logger.debug("Task state preservation note on close: %s", task_err)
 
@@ -386,7 +397,8 @@ class TerminalSession:
         self._prompt_state = PROMPT_NORMAL
         if self._active_task_id:
             try:
-                from brjarvis.agent.task_state import get_task_state_manager, TaskStatus
+                from brjarvis.agent.task_state import TaskStatus, get_task_state_manager
+
                 mgr = get_task_state_manager()
                 mgr.update_status(self._active_task_id, TaskStatus.CANCELLED)
                 self._active_task_id = None
@@ -395,7 +407,9 @@ class TerminalSession:
                 logger.debug("Task cancel on interrupt note: %s", e)
 
         if HAS_RICH and self.renderer and self.renderer.console:
-            self.renderer.console.print("\n[dim yellow]⚡ Interrupted. (Press Esc or Ctrl+C again to exit)[/dim yellow]")
+            self.renderer.console.print(
+                "\n[dim yellow]⚡ Interrupted. (Press Esc or Ctrl+C again to exit)[/dim yellow]"
+            )
         else:
             print("\n⚡ Interrupted. (Press Esc or Ctrl+C again to exit)")
         return ""
@@ -521,7 +535,9 @@ class TerminalSession:
         """Render interactive permission prompt card and capture decision."""
         PermissionPromptComponent.render(self.renderer.console, req)
         try:
-            choice = input("Authorize action [y=allow once, a/s=allow all/session, d=deny, c=cancel] › ").strip().lower()
+            choice = (
+                input("Authorize action [y=allow once, a/s=allow all/session, d=deny, c=cancel] › ").strip().lower()
+            )
             if choice in ("y", "yes", "allow", "1", "ok"):
                 return PermissionDecision.ALLOW_ONCE
             elif choice in ("s", "session", "always", "allow_session", "a", "all", "allow_all"):
@@ -557,7 +573,9 @@ class TerminalSession:
                             interactive_permission_cb=self.prompt_permission,
                         )
                     elif self.orchestrator is not None:
-                        handler_func = getattr(self.orchestrator, "handle_query", getattr(self.orchestrator, "chat", None))
+                        handler_func = getattr(
+                            self.orchestrator, "handle_query", getattr(self.orchestrator, "chat", None)
+                        )
                         if callable(handler_func):
                             response = handler_func(user_input)
                         else:
@@ -616,12 +634,12 @@ class TerminalSession:
     def _get_spinner_label(self) -> str:
         """Context-aware spinner label."""
         mode_labels = {
-            "coder":      "◆ Coding...",
-            "analyst":    "◆ Analyzing...",
+            "coder": "◆ Coding...",
+            "analyst": "◆ Analyzing...",
             "researcher": "◆ Researching...",
-            "planner":    "◆ Planning...",
+            "planner": "◆ Planning...",
             "automation": "◆ Automating...",
-            "recon":      "◆ Reconnoitering...",
+            "recon": "◆ Reconnoitering...",
         }
         return mode_labels.get(self.current_mode, "◆ Thinking...")
 
@@ -633,9 +651,7 @@ class TerminalSession:
         if HAS_RICH and self.renderer and self.renderer.console:
             try:
                 mode_color = MODE_COLORS.get(self.current_mode, "cyan")
-                self.renderer.console.print(
-                    f"\n[{mode_color} bold]jarvis[/] [dim]({elapsed_ms:.0f}ms)[/]:"
-                )
+                self.renderer.console.print(f"\n[{mode_color} bold]jarvis[/] [dim]({elapsed_ms:.0f}ms)[/]:")
                 self.renderer.render_markdown(resp_str)
                 self.renderer.console.print()
             except Exception:

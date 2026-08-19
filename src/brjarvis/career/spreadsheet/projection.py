@@ -8,7 +8,7 @@ import tempfile
 import threading
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 from ..crm.database import get_career_crm_db
 from .tracker_excel import CareerTrackerWorkbook
@@ -88,11 +88,27 @@ class CareerSpreadsheetProjection:
             contacts = self.db.list_contacts(limit=200)
             app_counts = self.db.count_applications_by_status()
 
-            submitted_cnt = sum(app_counts.get(st, 0) for st in ["SUBMITTED", "SUBMISSION_VERIFIED", "SCREENING", "INTERVIEW_REQUESTED", "INTERVIEW_SCHEDULED", "TECHNICAL_ROUND", "FINAL_ROUND", "OFFER_RECEIVED", "OFFER_ACCEPTED", "REJECTED"])
+            submitted_cnt = sum(
+                app_counts.get(st, 0)
+                for st in [
+                    "SUBMITTED",
+                    "SUBMISSION_VERIFIED",
+                    "SCREENING",
+                    "INTERVIEW_REQUESTED",
+                    "INTERVIEW_SCHEDULED",
+                    "TECHNICAL_ROUND",
+                    "FINAL_ROUND",
+                    "OFFER_RECEIVED",
+                    "OFFER_ACCEPTED",
+                    "REJECTED",
+                ]
+            )
             interviews_cnt = len(interviews)
             offers_cnt = len(offers)
 
-            resp_rate = round((len(interviews) + len(offers)) / max(1, submitted_cnt) * 100.0, 1) if submitted_cnt > 0 else 0.0
+            resp_rate = (
+                round((len(interviews) + len(offers)) / max(1, submitted_cnt) * 100.0, 1) if submitted_cnt > 0 else 0.0
+            )
             int_rate = round(interviews_cnt / max(1, submitted_cnt) * 100.0, 1) if submitted_cnt > 0 else 0.0
             off_rate = round(offers_cnt / max(1, interviews_cnt) * 100.0, 1) if interviews_cnt > 0 else 0.0
 
@@ -107,7 +123,10 @@ class CareerSpreadsheetProjection:
 
             # 2. Check File Lock
             if self.is_file_locked(self.workbook_path):
-                logger.warning("🔒 Target Excel file is currently locked/opened by user: %s. Queueing retry.", self.workbook_path.name)
+                logger.warning(
+                    "🔒 Target Excel file is currently locked/opened by user: %s. Queueing retry.",
+                    self.workbook_path.name,
+                )
                 return {
                     "status": "QUEUED_LOCKED",
                     "file_locked": True,
@@ -142,8 +161,13 @@ class CareerSpreadsheetProjection:
                 # 5. Atomic Replace
                 shutil.move(str(temp_path), str(self.workbook_path))
 
-                logger.info("📊 Excel Projection Succeeded: %s (Apps: %d, Interviews: %d, Offers: %d)",
-                            self.workbook_path.name, len(apps), len(interviews), len(offers))
+                logger.info(
+                    "📊 Excel Projection Succeeded: %s (Apps: %d, Interviews: %d, Offers: %d)",
+                    self.workbook_path.name,
+                    len(apps),
+                    len(interviews),
+                    len(offers),
+                )
 
                 return {
                     "status": "SUCCESS_VERIFIED",

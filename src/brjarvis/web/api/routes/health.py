@@ -15,6 +15,7 @@ async def health_check():
     """Return health metrics and hardware telemetry."""
     try:
         from core.health import get_health_report
+
         report = get_health_report()
         return {
             "status": "online",
@@ -39,6 +40,7 @@ async def get_status():
     cpu, ram, disk = 0.0, 0.0, 0.0
     try:
         import psutil
+
         cpu = psutil.cpu_percent()
         ram = psutil.virtual_memory().percent
         disk_path = "C:\\" if platform.system() == "Windows" else "/"
@@ -50,6 +52,7 @@ async def get_status():
     mode_str = "general"
     try:
         from server import ORCHESTRATOR
+
         if ORCHESTRATOR and ORCHESTRATOR.router:
             backend_str = ORCHESTRATOR.router.default.value
             mode_str = ORCHESTRATOR.current_mode
@@ -64,5 +67,5 @@ async def get_status():
         "backend": backend_str,
         "mode": mode_str,
         "time": time.strftime("%I:%M %p"),
-        "os": platform.system()
+        "os": platform.system(),
     }

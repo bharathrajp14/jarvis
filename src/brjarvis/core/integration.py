@@ -3,10 +3,12 @@ from __future__ import annotations
 
 import logging
 from typing import Optional
-from .runtime import get_runtime
+
 from brjarvis.events.bus import get_event_bus
 from brjarvis.orchestrator.core import JarvisOrchestrator
 from brjarvis.router import AgentRouter
+
+from .runtime import get_runtime
 
 logger = logging.getLogger("JARVIS.Integration")
 
@@ -36,11 +38,8 @@ class IntegrationBridge:
     def publish_system_notification(self, message: str, payload: Optional[dict] = None) -> None:
         """Helper to publish system notification events from legacy components."""
         from brjarvis.events.types import SystemEvent
-        event = SystemEvent(
-            topic="system.notification",
-            state="INFO",
-            payload={"message": message, **(payload or {})}
-        )
+
+        event = SystemEvent(topic="system.notification", state="INFO", payload={"message": message, **(payload or {})})
         self.event_bus.publish(event)
 
 

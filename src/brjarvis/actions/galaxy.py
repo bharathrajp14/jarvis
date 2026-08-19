@@ -3,6 +3,7 @@
 Scans markdown notes and long-term memory to build 3D force graph data (graph-data.js).
 Supports node search, camera fly-to-source indexing, and live node creation.
 """
+
 from __future__ import annotations
 
 import json
@@ -56,7 +57,7 @@ def build_galaxy_graph() -> dict[str, Any]:
         sample_note.write_text(
             "# Welcome to BR JARVIS 3D Knowledge Galaxy\n"
             "This is your personal knowledge brain. Ask JARVIS questions to fly through notes.\n",
-            encoding="utf-8"
+            encoding="utf-8",
         )
         files.append(sample_note)
 
@@ -99,7 +100,7 @@ def build_galaxy_graph() -> dict[str, Any]:
         src_web_js = paths.SOURCE_ROOT / "web" / "graph-data.js"
         if src_web_js.parent.exists():
             src_web_js.write_text(js_content, encoding="utf-8")
-    except Exception as e:
+    except Exception:
         pass
 
     return graph_data
@@ -107,6 +108,7 @@ def build_galaxy_graph() -> dict[str, Any]:
 
 _cached_galaxy_graph: dict[str, Any] | None = None
 _cached_galaxy_time: float = 0.0
+
 
 def query_galaxy(query: str, top_k: int = 6) -> dict[str, Any]:
     """
@@ -133,7 +135,7 @@ def query_galaxy(query: str, top_k: int = 6) -> dict[str, Any]:
         score = 0
         for word in query_words:
             if len(word) > 2:
-                if word in node['label'].lower():
+                if word in node["label"].lower():
                     score += 5
                 if word in text:
                     score += 1

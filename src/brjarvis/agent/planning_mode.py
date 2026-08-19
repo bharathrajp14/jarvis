@@ -4,19 +4,18 @@ Planning Mode Engine for BR JARVIS.
 Evaluates goal complexity, generates implementation_plan.md and walkthrough.md,
 and handles planning interlocks before major code mutations.
 """
+
 from __future__ import annotations
 
-import os
-import sys
-import time
 from pathlib import Path
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from .artifacts import ArtifactDocument, ArtifactMetadata, make_file_link
 
 
 def _get_planning_dir() -> Path:
     from brjarvis.core.paths import paths
+
     pdir = paths.PROJECT_ROOT / "scratch"
     pdir.mkdir(parents=True, exist_ok=True)
     return pdir
@@ -45,16 +44,34 @@ class PlanningEngine:
 
         # Non-planning tasks: simple queries, formatting, one-off commands, explanation
         simple_triggers = [
-            "explain", "what is", "where do we", "how does", "ping", "system status",
-            "take screenshot", "format table", "check ram", "read clipboard", "list files"
+            "explain",
+            "what is",
+            "where do we",
+            "how does",
+            "ping",
+            "system status",
+            "take screenshot",
+            "format table",
+            "check ram",
+            "read clipboard",
+            "list files",
         ]
         if any(t in clean for t in simple_triggers) and len(clean.split()) < 12:
             return False, "Simple query or one-off inspection command."
 
         # Planning triggers: multi-file changes, architectural shifts, dev features, refactoring
         plan_triggers = [
-            "implement", "build", "create feature", "refactor", "architect",
-            "redesign", "migrate", "integrate", "add support", "scratchpad", "planning"
+            "implement",
+            "build",
+            "create feature",
+            "refactor",
+            "architect",
+            "redesign",
+            "migrate",
+            "integrate",
+            "add support",
+            "scratchpad",
+            "planning",
         ]
         for t in plan_triggers:
             if t in clean:
@@ -83,7 +100,7 @@ class PlanningEngine:
             metadata=ArtifactMetadata(
                 summary=f"Implementation plan for: {goal}",
                 request_feedback=True,
-            )
+            ),
         )
 
         # Overview
@@ -111,7 +128,7 @@ class PlanningEngine:
                 desc = fitem.get("description", "")
                 link = make_file_link(fpath) if fpath else fitem.get("name", "file")
                 changes_body.append(f"#### [{action_tag}] {link}\n{desc}\n")
-        
+
         doc.add_section("Proposed Changes", "\n".join(changes_body) if changes_body else "No file changes proposed.")
 
         # Verification Plan
@@ -143,7 +160,7 @@ class PlanningEngine:
             metadata=ArtifactMetadata(
                 summary=f"Walkthrough summarizing accomplishments for: {goal}",
                 request_feedback=False,
-            )
+            ),
         )
 
         # Accomplishments

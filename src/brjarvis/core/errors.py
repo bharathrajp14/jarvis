@@ -5,6 +5,7 @@ Every error includes an optional trace_id and user_friendly_message,
 guaranteeing transparent debugging for developers and clear non-technical
 explanations for users.
 """
+
 from __future__ import annotations
 
 import time
@@ -46,78 +47,92 @@ class JarvisError(Exception):
 
 class ConfigurationError(JarvisError):
     """Raised when environment variables, config files, or settings are invalid."""
+
     pass
 
 
 class ProviderError(JarvisError):
     """Raised when an AI model provider backend encounters an error."""
+
     pass
 
 
 class ProviderTimeout(ProviderError):
     """Raised when a model completion request exceeds its allotted timeout."""
+
     pass
 
 
 class ProviderRateLimit(ProviderError):
     """Raised when a provider rejects requests due to rate or quota limits."""
+
     pass
 
 
 class ToolError(JarvisError):
     """Raised when a registered tool fails during execution."""
+
     pass
 
 
 class ToolTimeout(ToolError):
     """Raised when a tool execution exceeds its timeout limit."""
+
     pass
 
 
 class SecurityPolicyError(JarvisError):
     """Raised when an action violates security, permission, or path policy."""
+
     pass
 
 
 PermissionPolicyError = SecurityPolicyError
 
 
-
 class VerificationError(JarvisError):
     """Raised when an action postcondition verification check fails."""
+
     pass
 
 
 class ArtifactError(JarvisError):
     """Raised when artifact creation, export, or sandbox handoff fails."""
+
     pass
 
 
 class VisionError(JarvisError):
     """Raised when screen capture, OCR, DOM bridge, or VLM analysis fails."""
+
     pass
 
 
 class STTError(JarvisError):
     """Raised when audio capture or speech-to-text recognition fails."""
+
     pass
 
 
 class TTSError(JarvisError):
     """Raised when text-to-speech synthesis fails."""
+
     pass
 
 
 class MemoryError(JarvisError):
     """Raised when persistent memory storage, retrieval, or embedding fails."""
+
     pass
 
 
 class WorkflowError(JarvisError):
     """Raised when DAG scheduling, stage decomposition, or recovery fails."""
+
     pass
 
 
 class CancellationError(JarvisError):
     """Raised when a task or workflow is cancelled by user or timeout."""
+
     pass

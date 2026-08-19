@@ -5,26 +5,23 @@ import hashlib
 import logging
 import time
 import uuid
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 from ..crm.database import get_career_crm_db
 from ..crm.state_machine import ApplicationStateMachine
-from .classifier import CareerEmailClassifier, ClassificationResult
-from .injection_guard import PromptInjectionGuard
-from .interview_detector import InterviewDetector
-from .matcher import EmailApplicationMatcher
-from .offer_detector import OfferDetector
-from .rejection_detector import RejectionDetector
 from ..models import (
-    ApplicationEvent,
-    ApplicationEventType,
     ApplicationStatus,
     EmailClassification,
     EmailEventRecord,
     InterviewSchedule,
     OfferCandidate,
-    OfferStatus,
 )
+from .classifier import CareerEmailClassifier
+from .injection_guard import PromptInjectionGuard
+from .interview_detector import InterviewDetector
+from .matcher import EmailApplicationMatcher
+from .offer_detector import OfferDetector
+from .rejection_detector import RejectionDetector
 
 logger = logging.getLogger("JARVIS.EmailIntelligence.Service")
 
@@ -191,8 +188,13 @@ class EmailCareerIntelligence:
         )
         self.db.record_email_event(email_record)
 
-        logger.info("📧 Email Processed: [%s] -> %s (Conf: %.2f, Matched: %s)",
-                    email_record.email_event_id, classification_res.classification.value, classification_res.confidence, matched_app_id or "UNMATCHED")
+        logger.info(
+            "📧 Email Processed: [%s] -> %s (Conf: %.2f, Matched: %s)",
+            email_record.email_event_id,
+            classification_res.classification.value,
+            classification_res.confidence,
+            matched_app_id or "UNMATCHED",
+        )
 
         return {
             "status": "SUCCESS_VERIFIED",
@@ -215,6 +217,7 @@ class EmailCareerIntelligence:
 
         try:
             from brjarvis.connectors.gmail import GmailConnector
+
             gmail = GmailConnector()
             if gmail.is_configured:
                 # Read latest unread and recent emails

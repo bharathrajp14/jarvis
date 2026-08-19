@@ -4,11 +4,13 @@ Implements Ebbinghaus memory decay:
 RetentionScore = Importance * e^(-decay_rate * elapsed_time) * (1 + access_frequency)
 Automatically prunes or archives stale memory records and vector embeddings.
 """
+
 from __future__ import annotations
 
 import math
 import time
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
+
 from pydantic import BaseModel, Field
 
 
@@ -40,11 +42,11 @@ class MemoryDecayEngine:
         """
         now = current_time or time.time()
         elapsed_seconds = max(0.0, now - item.last_accessed_at)
-        
+
         # Exponential decay boosted by access frequency
         base_decay = math.exp(-self.decay_rate * elapsed_seconds)
         frequency_boost = 1.0 + math.log(max(1, item.access_count))
-        
+
         retention = item.importance * base_decay * frequency_boost
         return round(retention, 4)
 

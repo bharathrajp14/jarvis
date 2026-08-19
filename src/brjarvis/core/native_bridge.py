@@ -6,6 +6,7 @@ fast cosine vector distance calculations, and low-overhead system metrics.
 Includes robust pure-Python fallbacks when compiled native binary is unavailable.
 Never invokes a compiler at runtime startup.
 """
+
 from __future__ import annotations
 
 import ctypes
@@ -14,15 +15,12 @@ import logging
 import math
 import os
 import platform
-import sys
-from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union
 
 from brjarvis.core.paths import paths
 
 logger = logging.getLogger("JARVIS.NativeBridge")
 
-BASE_DIR   = paths.PROJECT_ROOT
+BASE_DIR = paths.PROJECT_ROOT
 NATIVE_DIR = paths.SOURCE_ROOT / "native"
 
 system = platform.system()
@@ -36,8 +34,8 @@ else:
 LIB_PATH = NATIVE_DIR / LIB_NAME
 
 _c_lib: ctypes.CDLL | None = None
-_native_loaded: bool       = False
-_native_version: str       = "Python Fallback"
+_native_loaded: bool = False
+_native_version: str = "Python Fallback"
 
 
 def _init_native():
@@ -49,38 +47,50 @@ def _init_native():
     if LIB_PATH.exists() and LIB_PATH.is_file():
         try:
             _c_lib = ctypes.CDLL(str(LIB_PATH))
-            
+
             # Setup Signatures
             if hasattr(_c_lib, "jarvis_fast_hash"):
                 _c_lib.jarvis_fast_hash.argtypes = [ctypes.POINTER(ctypes.c_uint8), ctypes.c_size_t]
-                _c_lib.jarvis_fast_hash.restype  = ctypes.c_uint64
+                _c_lib.jarvis_fast_hash.restype = ctypes.c_uint64
 
             if hasattr(_c_lib, "jarvis_audio_energy"):
                 _c_lib.jarvis_audio_energy.argtypes = [ctypes.POINTER(ctypes.c_float), ctypes.c_size_t]
-                _c_lib.jarvis_audio_energy.restype  = ctypes.c_float
+                _c_lib.jarvis_audio_energy.restype = ctypes.c_float
 
             if hasattr(_c_lib, "jarvis_vector_dot_product"):
-                _c_lib.jarvis_vector_dot_product.argtypes = [ctypes.POINTER(ctypes.c_float), ctypes.POINTER(ctypes.c_float), ctypes.c_size_t]
-                _c_lib.jarvis_vector_dot_product.restype  = ctypes.c_float
+                _c_lib.jarvis_vector_dot_product.argtypes = [
+                    ctypes.POINTER(ctypes.c_float),
+                    ctypes.POINTER(ctypes.c_float),
+                    ctypes.c_size_t,
+                ]
+                _c_lib.jarvis_vector_dot_product.restype = ctypes.c_float
 
             if hasattr(_c_lib, "jarvis_fast_cosine_distance"):
-                _c_lib.jarvis_fast_cosine_distance.argtypes = [ctypes.POINTER(ctypes.c_float), ctypes.POINTER(ctypes.c_float), ctypes.c_size_t]
-                _c_lib.jarvis_fast_cosine_distance.restype  = ctypes.c_float
+                _c_lib.jarvis_fast_cosine_distance.argtypes = [
+                    ctypes.POINTER(ctypes.c_float),
+                    ctypes.POINTER(ctypes.c_float),
+                    ctypes.c_size_t,
+                ]
+                _c_lib.jarvis_fast_cosine_distance.restype = ctypes.c_float
 
             if hasattr(_c_lib, "jarvis_grid_transform"):
                 _c_lib.jarvis_grid_transform.argtypes = [
-                    ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int,
-                    ctypes.POINTER(ctypes.c_int), ctypes.POINTER(ctypes.c_int)
+                    ctypes.c_int,
+                    ctypes.c_int,
+                    ctypes.c_int,
+                    ctypes.c_int,
+                    ctypes.POINTER(ctypes.c_int),
+                    ctypes.POINTER(ctypes.c_int),
                 ]
                 _c_lib.jarvis_grid_transform.restype = None
 
             if hasattr(_c_lib, "jarvis_sys_memory_avail_kb"):
                 _c_lib.jarvis_sys_memory_avail_kb.argtypes = []
-                _c_lib.jarvis_sys_memory_avail_kb.restype  = ctypes.c_uint64
+                _c_lib.jarvis_sys_memory_avail_kb.restype = ctypes.c_uint64
 
             if hasattr(_c_lib, "jarvis_native_version"):
                 _c_lib.jarvis_native_version.argtypes = []
-                _c_lib.jarvis_native_version.restype  = ctypes.c_char_p
+                _c_lib.jarvis_native_version.restype = ctypes.c_char_p
                 _native_version = _c_lib.jarvis_native_version().decode("utf-8")
             else:
                 _native_version = "1.0.0-native"
@@ -199,6 +209,7 @@ def get_sys_memory_avail_kb() -> int:
             logger.debug("Native memory avail exception: %s", e)
     try:
         import psutil
+
         return int(psutil.virtual_memory().available / 1024)
     except Exception:
         return 0
@@ -208,6 +219,7 @@ def proc_memory_kb(pid: int = 0) -> int:
     """Retrieve process memory usage in KB."""
     try:
         import psutil
+
         target_pid = pid if pid > 0 else os.getpid()
         proc = psutil.Process(target_pid)
         return int(proc.memory_info().rss / 1024)

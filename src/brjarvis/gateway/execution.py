@@ -3,18 +3,19 @@
 Executes LLM requests with bounded retries, failure-type-specific failovers,
 JSON schema validation/repair, and real-time health telemetry accounting.
 """
+
 from __future__ import annotations
 
 import json
 import logging
 import time
-from typing import Any, Generator, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Generator, Optional
+
+from brjarvis.router.task_profile import TaskProfile, TaskProfileClassifier
 
 from .client import (
     GatewayAuthenticationError,
     GatewayTimeoutError,
-    GatewayUnavailableError,
-    MalformedResponseError,
     ModelNotFoundError,
     ModelResponse,
     ProxyBrainClient,
@@ -24,7 +25,6 @@ from .client import (
     sanitize_error_msg,
 )
 from .health import ModelHealthService, get_health_service
-from brjarvis.router.task_profile import TaskProfile, TaskProfileClassifier
 
 if TYPE_CHECKING:
     from brjarvis.router.smart_router import ModelSelection, SmartModelRouter
@@ -42,10 +42,11 @@ class ModelExecutionService:
         router: Optional["SmartModelRouter"] = None,
         client: Optional[ProxyBrainClient] = None,
         health_service: Optional[ModelHealthService] = None,
-        max_attempts: int = 3
+        max_attempts: int = 3,
     ):
         if router is None:
             from brjarvis.router.smart_router import get_smart_router
+
             self.router = get_smart_router()
         else:
             self.router = router
@@ -61,17 +62,14 @@ class ModelExecutionService:
         max_tokens: Optional[int] = None,
         temperature: float = 0.7,
         json_mode: bool = False,
-        task_profile: Optional[TaskProfile] = None
+        task_profile: Optional[TaskProfile] = None,
     ) -> ModelResponse:
         """
         Execute completion with intelligent, bounded failover across candidates.
         """
         # 1. Profile Task
         profile = task_profile or TaskProfileClassifier.classify(
-            messages=messages,
-            system=system,
-            tools=tools,
-            json_mode=json_mode
+            messages=messages, system=system, tools=tools, json_mode=json_mode
         )
 
         # 2. Select Model Chain
@@ -80,8 +78,10 @@ class ModelExecutionService:
 
         last_error: Optional[Exception] = None
 
-        for attempt, model_id in enumerate(candidate_chain[:self.max_attempts], 1):
-            logger.info(f"[ModelExecution] Attempt {attempt}/{self.max_attempts} using model '{model_id}' (Reason: {selection.reason})")
+        for attempt, model_id in enumerate(candidate_chain[: self.max_attempts], 1):
+            logger.info(
+                f"[ModelExecution] Attempt {attempt}/{self.max_attempts} using model '{model_id}' (Reason: {selection.reason})"
+            )
             t_start = time.monotonic()
 
             try:
@@ -92,7 +92,7 @@ class ModelExecutionService:
                     tools=tools,
                     max_tokens=max_tokens,
                     temperature=temperature,
-                    json_mode=json_mode
+                    json_mode=json_mode,
                 )
 
                 latency_ms = (time.monotonic() - t_start) * 1000
@@ -103,18 +103,19 @@ class ModelExecutionService:
                     try:
                         json.loads(resp.text)
                     except Exception as json_err:
-                        logger.warning(f"[ModelExecution] Model '{model_id}' returned invalid JSON: {json_err}. Attempting repair...")
+                        logger.warning(
+                            f"[ModelExecution] Model '{model_id}' returned invalid JSON: {json_err}. Attempting repair..."
+                        )
                         # One repair attempt
                         repair_msg = messages + [
                             {"role": "assistant", "content": resp.text},
-                            {"role": "user", "content": "The previous output was not valid JSON. Fix it and output only the valid JSON."}
+                            {
+                                "role": "user",
+                                "content": "The previous output was not valid JSON. Fix it and output only the valid JSON.",
+                            },
                         ]
                         repair_resp = self.client.complete(
-                            messages=repair_msg,
-                            model=model_id,
-                            system=system,
-                            max_tokens=max_tokens,
-                            json_mode=True
+                            messages=repair_msg, model=model_id, system=system, max_tokens=max_tokens, json_mode=True
                         )
                         json.loads(repair_resp.text)
                         return repair_resp
@@ -140,7 +141,9 @@ class ModelExecutionService:
             except Exception as exc:
                 self.health.record_failure(model_id, str(exc))
                 last_error = exc
-                logger.warning(f"[ModelExecution] Error with '{model_id}': {sanitize_error_msg(str(exc))}. Failing over.")
+                logger.warning(
+                    f"[ModelExecution] Error with '{model_id}': {sanitize_error_msg(str(exc))}. Failing over."
+                )
 
         # If all candidates exhausted, raise structured failure
         err_msg = f"All {self.max_attempts} model attempts exhausted. Last error: {sanitize_error_msg(str(last_error))}"
@@ -154,14 +157,10 @@ class ModelExecutionService:
         tools: Optional[list[dict[str, Any]]] = None,
         max_tokens: Optional[int] = None,
         temperature: float = 0.7,
-        task_profile: Optional[TaskProfile] = None
+        task_profile: Optional[TaskProfile] = None,
     ) -> Generator[str, None, None]:
         """Stream chat completion using the optimal routed model."""
-        profile = task_profile or TaskProfileClassifier.classify(
-            messages=messages,
-            system=system,
-            tools=tools
-        )
+        profile = task_profile or TaskProfileClassifier.classify(messages=messages, system=system, tools=tools)
         selection = self.router.route(profile)
         yield from self.client.stream(
             messages=messages,
@@ -169,7 +168,7 @@ class ModelExecutionService:
             system=system,
             tools=tools,
             max_tokens=max_tokens,
-            temperature=temperature
+            temperature=temperature,
         )
 
 

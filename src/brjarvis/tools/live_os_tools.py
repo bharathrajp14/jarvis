@@ -3,6 +3,7 @@
 Live OS Vision Control tools plugin for JARVIS MK37.
 Exposes autonomous screen perception, fast reaction loop, and visual UI element tools.
 """
+
 from __future__ import annotations
 
 from .registry import register_tool
@@ -10,11 +11,13 @@ from .registry import register_tool
 
 def _get_live_os_control():
     from brjarvis.actions.live_os_control import live_os_control_action
+
     return live_os_control_action
 
 
 def _get_computer_control():
     from brjarvis.actions.computer_control import computer_control
+
     return computer_control
 
 
@@ -28,7 +31,7 @@ def _get_computer_control():
             "max_steps": {"type": "integer", "description": "Maximum step limit (default 20)."},
         },
         "required": ["goal"],
-    }
+    },
 )
 def tool_live_os_control(args: dict) -> str:
     loc = _get_live_os_control()
@@ -38,7 +41,7 @@ def tool_live_os_control(args: dict) -> str:
 @register_tool(
     name="live_screen_analyze",
     description="Analyze the current screen using vision AI and return a structured visual breakdown of open windows, interactive UI elements, and desktop state.",
-    parameters={}
+    parameters={},
 )
 def tool_live_screen_analyze(args: dict) -> str:
     cc = _get_computer_control()
@@ -51,10 +54,13 @@ def tool_live_screen_analyze(args: dict) -> str:
     parameters={
         "type": "object",
         "properties": {
-            "description": {"type": "string", "description": "Visual description of element (e.g., 'blue submit button', 'Chrome browser icon', 'search bar')."},
+            "description": {
+                "type": "string",
+                "description": "Visual description of element (e.g., 'blue submit button', 'Chrome browser icon', 'search bar').",
+            },
         },
         "required": ["description"],
-    }
+    },
 )
 def tool_visual_click(args: dict) -> str:
     cc = _get_computer_control()
@@ -71,7 +77,7 @@ def tool_visual_click(args: dict) -> str:
             "text": {"type": "string", "description": "Text to type into the field."},
         },
         "required": ["description", "text"],
-    }
+    },
 )
 def tool_visual_type(args: dict) -> str:
     cc = _get_computer_control()
@@ -88,7 +94,7 @@ def tool_visual_type(args: dict) -> str:
             "to_description": {"type": "string", "description": "Visual description of target destination."},
         },
         "required": ["from_description", "to_description"],
-    }
+    },
 )
 def tool_visual_drag(args: dict) -> str:
     cc = _get_computer_control()

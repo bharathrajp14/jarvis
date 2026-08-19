@@ -3,15 +3,14 @@
 Full mock Android Companion Device for testing mobile protocols, accessibility trees,
 application flows (WhatsApp, YouTube, Instagram, Camera, Settings), and lock screen states.
 """
+
 from __future__ import annotations
 
-import asyncio
-import json
 import logging
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
-from .protocol import AccessibilityNode, DeviceState, MobileMessage, MobileMessageType
+from .protocol import AccessibilityNode, DeviceState
 
 logger = logging.getLogger("JARVIS.MockAndroid")
 
@@ -34,7 +33,7 @@ class MockAndroidDevice:
             "com.instagram.android",
             "com.google.android.apps.photos",
             "com.android.settings",
-            "com.android.chrome"
+            "com.android.chrome",
         ]
         self.action_history: List[Dict[str, Any]] = []
 
@@ -57,7 +56,7 @@ class MockAndroidDevice:
             is_screen_on=True,
             is_locked=self.is_locked,
             requires_biometric_or_pin=self.is_locked,
-            installed_apps=self.installed_apps
+            installed_apps=self.installed_apps,
         )
 
     def get_accessibility_tree(self) -> AccessibilityNode:
@@ -70,9 +69,21 @@ class MockAndroidDevice:
                 text="",
                 view_id="lockscreen_root",
                 children=[
-                    AccessibilityNode(node_id=2, class_name="android.widget.TextView", package_name="com.android.systemui", text="Device Locked", view_id="status_text"),
-                    AccessibilityNode(node_id=3, class_name="android.widget.TextView", package_name="com.android.systemui", text="Enter PIN or Fingerprint", view_id="pin_hint")
-                ]
+                    AccessibilityNode(
+                        node_id=2,
+                        class_name="android.widget.TextView",
+                        package_name="com.android.systemui",
+                        text="Device Locked",
+                        view_id="status_text",
+                    ),
+                    AccessibilityNode(
+                        node_id=3,
+                        class_name="android.widget.TextView",
+                        package_name="com.android.systemui",
+                        text="Enter PIN or Fingerprint",
+                        view_id="pin_hint",
+                    ),
+                ],
             )
 
         if "whatsapp" in self.foreground_app.lower():
@@ -83,14 +94,70 @@ class MockAndroidDevice:
                 text="",
                 view_id="main_content",
                 children=[
-                    AccessibilityNode(node_id=11, class_name="android.widget.TextView", package_name="com.whatsapp", text="WhatsApp", view_id="action_bar_title"),
-                    AccessibilityNode(node_id=12, class_name="android.widget.EditText", package_name="com.whatsapp", text="", view_id="search_src_text", is_editable=True, bounds=[50, 100, 1000, 200]),
-                    AccessibilityNode(node_id=13, class_name="android.widget.TextView", package_name="com.whatsapp", text="Rahul", view_id="contact_name", is_clickable=True, bounds=[50, 250, 1000, 350]),
-                    AccessibilityNode(node_id=14, class_name="android.widget.TextView", package_name="com.whatsapp", text="Arun", view_id="contact_name", is_clickable=True, bounds=[50, 370, 1000, 470]),
-                    AccessibilityNode(node_id=15, class_name="android.widget.EditText", package_name="com.whatsapp", text="Type a message", view_id="entry", is_editable=True, bounds=[50, 2000, 900, 2150]),
-                    AccessibilityNode(node_id=16, class_name="android.widget.ImageButton", package_name="com.whatsapp", text="Send", content_description="Send", view_id="send", is_clickable=True, bounds=[920, 2000, 1050, 2150]),
-                    AccessibilityNode(node_id=17, class_name="android.widget.ImageButton", package_name="com.whatsapp", text="Attach", content_description="Attach document", view_id="attach", is_clickable=True, bounds=[800, 2000, 900, 2150]),
-                ]
+                    AccessibilityNode(
+                        node_id=11,
+                        class_name="android.widget.TextView",
+                        package_name="com.whatsapp",
+                        text="WhatsApp",
+                        view_id="action_bar_title",
+                    ),
+                    AccessibilityNode(
+                        node_id=12,
+                        class_name="android.widget.EditText",
+                        package_name="com.whatsapp",
+                        text="",
+                        view_id="search_src_text",
+                        is_editable=True,
+                        bounds=[50, 100, 1000, 200],
+                    ),
+                    AccessibilityNode(
+                        node_id=13,
+                        class_name="android.widget.TextView",
+                        package_name="com.whatsapp",
+                        text="Rahul",
+                        view_id="contact_name",
+                        is_clickable=True,
+                        bounds=[50, 250, 1000, 350],
+                    ),
+                    AccessibilityNode(
+                        node_id=14,
+                        class_name="android.widget.TextView",
+                        package_name="com.whatsapp",
+                        text="Arun",
+                        view_id="contact_name",
+                        is_clickable=True,
+                        bounds=[50, 370, 1000, 470],
+                    ),
+                    AccessibilityNode(
+                        node_id=15,
+                        class_name="android.widget.EditText",
+                        package_name="com.whatsapp",
+                        text="Type a message",
+                        view_id="entry",
+                        is_editable=True,
+                        bounds=[50, 2000, 900, 2150],
+                    ),
+                    AccessibilityNode(
+                        node_id=16,
+                        class_name="android.widget.ImageButton",
+                        package_name="com.whatsapp",
+                        text="Send",
+                        content_description="Send",
+                        view_id="send",
+                        is_clickable=True,
+                        bounds=[920, 2000, 1050, 2150],
+                    ),
+                    AccessibilityNode(
+                        node_id=17,
+                        class_name="android.widget.ImageButton",
+                        package_name="com.whatsapp",
+                        text="Attach",
+                        content_description="Attach document",
+                        view_id="attach",
+                        is_clickable=True,
+                        bounds=[800, 2000, 900, 2150],
+                    ),
+                ],
             )
 
         if "youtube" in self.foreground_app.lower():
@@ -101,10 +168,35 @@ class MockAndroidDevice:
                 text="",
                 view_id="youtube_root",
                 children=[
-                    AccessibilityNode(node_id=21, class_name="android.widget.ImageView", package_name="com.google.android.youtube", text="Search", content_description="Search YouTube", view_id="menu_search", is_clickable=True, bounds=[850, 80, 950, 180]),
-                    AccessibilityNode(node_id=22, class_name="android.widget.EditText", package_name="com.google.android.youtube", text="", view_id="search_edit_text", is_editable=True, bounds=[100, 80, 800, 180]),
-                    AccessibilityNode(node_id=23, class_name="android.widget.TextView", package_name="com.google.android.youtube", text="Python FastAPI Tutorial - Full Course", view_id="video_title", is_clickable=True, bounds=[50, 300, 1000, 600]),
-                ]
+                    AccessibilityNode(
+                        node_id=21,
+                        class_name="android.widget.ImageView",
+                        package_name="com.google.android.youtube",
+                        text="Search",
+                        content_description="Search YouTube",
+                        view_id="menu_search",
+                        is_clickable=True,
+                        bounds=[850, 80, 950, 180],
+                    ),
+                    AccessibilityNode(
+                        node_id=22,
+                        class_name="android.widget.EditText",
+                        package_name="com.google.android.youtube",
+                        text="",
+                        view_id="search_edit_text",
+                        is_editable=True,
+                        bounds=[100, 80, 800, 180],
+                    ),
+                    AccessibilityNode(
+                        node_id=23,
+                        class_name="android.widget.TextView",
+                        package_name="com.google.android.youtube",
+                        text="Python FastAPI Tutorial - Full Course",
+                        view_id="video_title",
+                        is_clickable=True,
+                        bounds=[50, 300, 1000, 600],
+                    ),
+                ],
             )
 
         # Default Launcher Home Screen
@@ -115,11 +207,39 @@ class MockAndroidDevice:
             text="",
             view_id="launcher_workspace",
             children=[
-                AccessibilityNode(node_id=2, class_name="android.widget.TextView", package_name="com.android.launcher", text="Google", is_clickable=True, bounds=[100, 200, 300, 350]),
-                AccessibilityNode(node_id=3, class_name="android.widget.TextView", package_name="com.android.launcher", text="WhatsApp", is_clickable=True, bounds=[350, 200, 550, 350]),
-                AccessibilityNode(node_id=4, class_name="android.widget.TextView", package_name="com.android.launcher", text="YouTube", is_clickable=True, bounds=[600, 200, 800, 350]),
-                AccessibilityNode(node_id=5, class_name="android.widget.TextView", package_name="com.android.launcher", text="Settings", is_clickable=True, bounds=[850, 200, 1050, 350]),
-            ]
+                AccessibilityNode(
+                    node_id=2,
+                    class_name="android.widget.TextView",
+                    package_name="com.android.launcher",
+                    text="Google",
+                    is_clickable=True,
+                    bounds=[100, 200, 300, 350],
+                ),
+                AccessibilityNode(
+                    node_id=3,
+                    class_name="android.widget.TextView",
+                    package_name="com.android.launcher",
+                    text="WhatsApp",
+                    is_clickable=True,
+                    bounds=[350, 200, 550, 350],
+                ),
+                AccessibilityNode(
+                    node_id=4,
+                    class_name="android.widget.TextView",
+                    package_name="com.android.launcher",
+                    text="YouTube",
+                    is_clickable=True,
+                    bounds=[600, 200, 800, 350],
+                ),
+                AccessibilityNode(
+                    node_id=5,
+                    class_name="android.widget.TextView",
+                    package_name="com.android.launcher",
+                    text="Settings",
+                    is_clickable=True,
+                    bounds=[850, 200, 1050, 350],
+                ),
+            ],
         )
 
     def execute_action(self, action_data: Dict[str, Any]) -> Dict[str, Any]:

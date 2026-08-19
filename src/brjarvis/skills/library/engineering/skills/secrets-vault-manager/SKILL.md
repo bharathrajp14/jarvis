@@ -160,6 +160,7 @@ path "sys/*" {
 # AWS Secrets Manager pattern
 import boto3, json
 
+
 def get_secret(secret_name, region="us-east-1"):
     client = boto3.client("secretsmanager", region_name=region)
     response = client.get_secret_value(SecretId=secret_name)
@@ -169,6 +170,7 @@ def get_secret(secret_name, region="us-east-1"):
 ```python
 # GCP Secret Manager pattern
 from google.cloud import secretmanager
+
 
 def get_secret(project_id, secret_id, version="latest"):
     client = secretmanager.SecretManagerServiceClient()
@@ -181,6 +183,7 @@ def get_secret(project_id, secret_id, version="latest"):
 # Azure Key Vault pattern
 from azure.identity import DefaultAzureCredential
 from azure.keyvault.secrets import SecretClient
+
 
 def get_secret(vault_url, secret_name):
     credential = DefaultAzureCredential()

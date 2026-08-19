@@ -4,6 +4,7 @@ Persistent task state machine and SQLite WAL checkpointing engine for Autonomous
 Tracks full lifecycle: Goal -> Planning -> Tool/Device Selection -> Execution -> Observe -> Verify -> Complete.
 Supports pause, resume, cancel, retry, checkpoints, recovery, and approval gates.
 """
+
 from __future__ import annotations
 
 import json
@@ -14,45 +15,48 @@ import uuid
 from dataclasses import asdict, dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from brjarvis.memory.canonical_db import get_canonical_db
 
 logger = logging.getLogger("JARVIS.TaskState")
+
+
 class TaskStatus(str, Enum):
-    CREATED                   = "CREATED"
-    UNDERSTANDING             = "UNDERSTANDING"
-    PLANNING                  = "PLANNING"
-    PREFLIGHT                 = "PREFLIGHT"
-    WAITING_FOR_USER          = "WAITING_FOR_USER"
-    WAITING_FOR_APPROVAL      = "WAITING_FOR_APPROVAL"
-    RUNNING                   = "RUNNING"
-    RECOVERING                = "RECOVERING"
-    PARTIAL_SUCCESS           = "PARTIAL_SUCCESS"
-    FAILED                    = "FAILED"
-    CANCELLED                 = "CANCELLED"
-    COMPLETED_UNVERIFIED      = "COMPLETED_UNVERIFIED"
-    SUCCESS_VERIFIED          = "SUCCESS_VERIFIED"
+    CREATED = "CREATED"
+    UNDERSTANDING = "UNDERSTANDING"
+    PLANNING = "PLANNING"
+    PREFLIGHT = "PREFLIGHT"
+    WAITING_FOR_USER = "WAITING_FOR_USER"
+    WAITING_FOR_APPROVAL = "WAITING_FOR_APPROVAL"
+    RUNNING = "RUNNING"
+    RECOVERING = "RECOVERING"
+    PARTIAL_SUCCESS = "PARTIAL_SUCCESS"
+    FAILED = "FAILED"
+    CANCELLED = "CANCELLED"
+    COMPLETED_UNVERIFIED = "COMPLETED_UNVERIFIED"
+    SUCCESS_VERIFIED = "SUCCESS_VERIFIED"
     # MK40.2 additions
-    REQUIRES_USER             = "REQUIRES_USER"              # needs human action to continue
+    REQUIRES_USER = "REQUIRES_USER"  # needs human action to continue
     TASK_FAILED_RESULT_MISMATCH = "TASK_FAILED_RESULT_MISMATCH"  # result does not match requested goal
 
     # Backwards-compatible aliases
-    PENDING              = "CREATED"
-    VALIDATING           = "PREFLIGHT"
-    PAUSED               = "WAITING_FOR_USER"
-    WAITING_APPROVAL     = "WAITING_FOR_APPROVAL"
-    WAITING_FOR_DEVICE   = "WAITING_FOR_APPROVAL"
-    WAITING_FOR_AUTH     = "WAITING_FOR_APPROVAL"
-    RETRYING             = "RECOVERING"
-    VERIFYING            = "RUNNING"
-    COMPLETED            = "SUCCESS_VERIFIED"
-    PARTIAL              = "PARTIAL_SUCCESS"
+    PENDING = "CREATED"
+    VALIDATING = "PREFLIGHT"
+    PAUSED = "WAITING_FOR_USER"
+    WAITING_APPROVAL = "WAITING_FOR_APPROVAL"
+    WAITING_FOR_DEVICE = "WAITING_FOR_APPROVAL"
+    WAITING_FOR_AUTH = "WAITING_FOR_APPROVAL"
+    RETRYING = "RECOVERING"
+    VERIFYING = "RUNNING"
+    COMPLETED = "SUCCESS_VERIFIED"
+    PARTIAL = "PARTIAL_SUCCESS"
 
 
 @dataclass
 class TaskCriterion:
     """Discrete requirement criterion (e.g. C1 = PDF generated, C6 = Application window verified)."""
+
     criterion_id: str
     description: str
     required: bool = True
@@ -99,7 +103,7 @@ class ApprovalRequest:
     description: str
     risk_level: str = "medium"  # low, medium, high, critical
     details: Dict[str, Any] = field(default_factory=dict)
-    status: str = "pending"     # pending, approved, rejected
+    status: str = "pending"  # pending, approved, rejected
     created_at: float = field(default_factory=time.time)
     resolved_at: Optional[float] = None
 
@@ -114,16 +118,17 @@ class ApprovalRequest:
 @dataclass
 class TaskState:
     """Authoritative Single Source of Truth for Autonomous Task State."""
+
     task_id: str
     session_id: str = ""
     # ── Immutable goal fields — set once, never overwritten (MK40.2 §1, §2) ──
-    user_request: str = ""          # IMMUTABLE: original user text verbatim
-    normalized_request: str = ""    # IMMUTABLE: cleaned/normalized version set at creation
-    goal: str = ""                  # alias for user_request (backward compat)
+    user_request: str = ""  # IMMUTABLE: original user text verbatim
+    normalized_request: str = ""  # IMMUTABLE: cleaned/normalized version set at creation
+    goal: str = ""  # alias for user_request (backward compat)
     # ── MK40.2 goal contract fields ───────────────────────────────────────────
-    required_operations: List[str] = field(default_factory=list)       # e.g. ["CREATE_PORTFOLIO", "PUSH_TO_GITHUB"]
+    required_operations: List[str] = field(default_factory=list)  # e.g. ["CREATE_PORTFOLIO", "PUSH_TO_GITHUB"]
     acceptance_criteria: List[Dict[str, Any]] = field(default_factory=list)  # serialized Criterion objects
-    goal_spec: Dict[str, Any] = field(default_factory=dict)            # full GoalSpec serialized
+    goal_spec: Dict[str, Any] = field(default_factory=dict)  # full GoalSpec serialized
     # ── Execution state ───────────────────────────────────────────────────────
     current_phase: str = "CREATED"
     current_step: int = 0
@@ -163,12 +168,18 @@ class TaskState:
     def to_dict(self) -> Dict[str, Any]:
         d = asdict(self)
         d["status"] = self.status.value if isinstance(self.status, TaskStatus) else str(self.status)
-        d["final_status"] = self.final_status.value if isinstance(self.final_status, TaskStatus) else str(self.final_status)
+        d["final_status"] = (
+            self.final_status.value if isinstance(self.final_status, TaskStatus) else str(self.final_status)
+        )
         d["actions"] = [a.to_dict() if isinstance(a, TaskAction) else a for a in self.actions]
         d["criteria"] = [c.to_dict() if isinstance(c, TaskCriterion) else c for c in self.criteria]
         d["approvals"] = [a.to_dict() if isinstance(a, ApprovalRequest) else a for a in self.approvals]
         if self.approval_request:
-            d["approval_request"] = self.approval_request.to_dict() if isinstance(self.approval_request, ApprovalRequest) else self.approval_request
+            d["approval_request"] = (
+                self.approval_request.to_dict()
+                if isinstance(self.approval_request, ApprovalRequest)
+                else self.approval_request
+            )
         return d
 
     @classmethod
@@ -176,12 +187,20 @@ class TaskState:
         raw = dict(data)
         if "status" in raw and isinstance(raw["status"], str):
             try:
-                raw["status"] = TaskStatus[raw["status"].upper()] if raw["status"].upper() in TaskStatus.__members__ else TaskStatus(raw["status"].upper())
+                raw["status"] = (
+                    TaskStatus[raw["status"].upper()]
+                    if raw["status"].upper() in TaskStatus.__members__
+                    else TaskStatus(raw["status"].upper())
+                )
             except Exception:
                 raw["status"] = TaskStatus.RUNNING if "RUN" in raw["status"].upper() else TaskStatus.CREATED
         if "final_status" in raw and isinstance(raw["final_status"], str):
             try:
-                raw["final_status"] = TaskStatus[raw["final_status"].upper()] if raw["final_status"].upper() in TaskStatus.__members__ else TaskStatus(raw["final_status"].upper())
+                raw["final_status"] = (
+                    TaskStatus[raw["final_status"].upper()]
+                    if raw["final_status"].upper() in TaskStatus.__members__
+                    else TaskStatus(raw["final_status"].upper())
+                )
             except Exception:
                 raw["final_status"] = TaskStatus.CREATED
         if "actions" in raw and isinstance(raw["actions"], list):
@@ -201,6 +220,7 @@ class TaskStateManager:
     def __init__(self, db_manager=None, db_path: Optional[Path | str] = None):
         if db_path is not None:
             from brjarvis.memory.canonical_db import CanonicalDatabaseManager
+
             self.db_manager = CanonicalDatabaseManager(db_path=Path(db_path))
         else:
             self.db_manager = db_manager or get_canonical_db()
@@ -238,9 +258,9 @@ class TaskStateManager:
 
         state = TaskState(
             task_id=tid,
-            user_request=goal,            # immutable — verbatim user text
-            normalized_request=normalized, # immutable — cleaned version
-            goal=goal,                    # backward-compat alias
+            user_request=goal,  # immutable — verbatim user text
+            normalized_request=normalized,  # immutable — cleaned version
+            goal=goal,  # backward-compat alias
             required_operations=required_ops,
             acceptance_criteria=acceptance,
             goal_spec=goal_spec or {},
@@ -267,8 +287,8 @@ class TaskStateManager:
                     json.dumps(state.active_devices),
                     json.dumps(state.to_dict()),
                     state.created_at,
-                    state.updated_at
-                )
+                    state.updated_at,
+                ),
             )
             conn.commit()
 
@@ -283,11 +303,15 @@ class TaskStateManager:
             task.current_step = max(task.current_step, action.step_index)
             self.save_task(task)
 
-    def update_status(self, task_id: str, status: TaskStatus, error_info: Optional[Dict[str, Any]] = None) -> Optional[TaskState]:
+    def update_status(
+        self, task_id: str, status: TaskStatus, error_info: Optional[Dict[str, Any]] = None
+    ) -> Optional[TaskState]:
         """Update overall task status with timestamp and optional error payload."""
         return self.update_task_status(task_id, status, error_info)
 
-    def update_task_status(self, task_id: str, status: TaskStatus, error_info: Optional[Dict[str, Any]] = None) -> Optional[TaskState]:
+    def update_task_status(
+        self, task_id: str, status: TaskStatus, error_info: Optional[Dict[str, Any]] = None
+    ) -> Optional[TaskState]:
         """Update overall task status with timestamp and optional error payload."""
         state = self.get_task(task_id)
         if not state:
@@ -299,7 +323,7 @@ class TaskStateManager:
             state.error_info = error_info
 
         self.save_task(state)
-        logger.info("Task [%s] transition -> %s", task_id, status.value if hasattr(status, 'value') else status)
+        logger.info("Task [%s] transition -> %s", task_id, status.value if hasattr(status, "value") else status)
         return state
 
     def save_task(self, state: TaskState) -> None:
@@ -321,8 +345,8 @@ class TaskStateManager:
                     json.dumps(state.active_devices),
                     json.dumps(state.to_dict()),
                     state.created_at,
-                    state.updated_at
-                )
+                    state.updated_at,
+                ),
             )
             conn.commit()
 
@@ -344,7 +368,9 @@ class TaskStateManager:
         """List active and historical tasks."""
         with self._get_conn() as conn:
             if status:
-                cursor = conn.execute("SELECT data_json FROM tasks WHERE status = ? ORDER BY updated_at DESC LIMIT ?", (status, limit))
+                cursor = conn.execute(
+                    "SELECT data_json FROM tasks WHERE status = ? ORDER BY updated_at DESC LIMIT ?", (status, limit)
+                )
             else:
                 cursor = conn.execute("SELECT data_json FROM tasks ORDER BY updated_at DESC LIMIT ?", (limit,))
             rows = cursor.fetchall()
@@ -366,7 +392,7 @@ class TaskStateManager:
         result: Optional[Any] = None,
         error: Optional[str] = None,
         duration: float = 0.0,
-        verified: bool = False
+        verified: bool = False,
     ) -> str:
         """Write-Ahead Log step transition to task_steps table before and after tool execution."""
         step_id = f"{task_id}_s{step_index}_{int(time.time() * 1000)}"
@@ -385,11 +411,11 @@ class TaskStateManager:
                     step_index,
                     0,
                     "[]",
-                    "[\"pc\"]",
+                    '["pc"]',
                     json.dumps({"task_id": task_id, "goal": f"Auto-task {task_id}", "status": "running"}),
                     now,
-                    now
-                )
+                    now,
+                ),
             )
             conn.execute(
                 """
@@ -408,8 +434,8 @@ class TaskStateManager:
                     1 if verified else 0,
                     duration,
                     now,
-                    now
-                )
+                    now,
+                ),
             )
             conn.commit()
         return step_id
@@ -426,7 +452,7 @@ class TaskStateManager:
         with self._get_conn() as conn:
             conn.execute(
                 "INSERT OR REPLACE INTO checkpoints (checkpoint_id, task_id, step_index, state_snapshot, created_at) VALUES (?, ?, ?, ?, ?)",
-                (chk_id, task_id, step_index, snapshot_json, time.time())
+                (chk_id, task_id, step_index, snapshot_json, time.time()),
             )
             conn.commit()
 
@@ -435,7 +461,14 @@ class TaskStateManager:
         logger.info("Saved Checkpoint [%s] at Step #%d for Task [%s]", chk_id, step_index, task_id)
         return chk_id
 
-    def request_approval(self, task_id: str, action_id: str, description: str, risk_level: str = "medium", details: Optional[Dict[str, Any]] = None) -> ApprovalRequest:
+    def request_approval(
+        self,
+        task_id: str,
+        action_id: str,
+        description: str,
+        risk_level: str = "medium",
+        details: Optional[Dict[str, Any]] = None,
+    ) -> ApprovalRequest:
         """Pause task execution and register an approval gate."""
         req_id = f"appr_{uuid.uuid4().hex[:8]}"
         req = ApprovalRequest(
@@ -444,7 +477,7 @@ class TaskStateManager:
             action_id=action_id,
             description=description,
             risk_level=risk_level,
-            details=details or {}
+            details=details or {},
         )
 
         task = self.get_task(task_id)

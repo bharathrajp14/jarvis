@@ -4,11 +4,11 @@ Registers global keyboard shortcuts using the 'keyboard' module.
 Allows users to trigger actions like toggling voice listening,
 running clipboard queries, or taking screenshots.
 """
+
 from __future__ import annotations
 
 import json
 import logging
-import os
 import threading
 import time
 import traceback
@@ -21,6 +21,7 @@ _CONFIG_PATH = Path("config/hotkeys.json")
 _HAS_KEYBOARD = False
 try:
     import keyboard
+
     _HAS_KEYBOARD = True
 except ImportError:
     pass
@@ -111,21 +112,26 @@ class HotkeyManager:
 
             elif action_name == "ask_clipboard":
                 from brjarvis.actions.clipboard_utils import get_clipboard_text
+
                 clip = get_clipboard_text().strip()
                 if clip:
-                    self.assistant.ui.write_log(f"Hotkey: Clipboard Query triggered.")
+                    self.assistant.ui.write_log("Hotkey: Clipboard Query triggered.")
                     # Process in helper thread
                     threading.Thread(
-                        target=lambda: self.assistant._on_text_command(f"Explain or process this clipboard content:\n\n{clip}"),
-                        daemon=True
+                        target=lambda: self.assistant._on_text_command(
+                            f"Explain or process this clipboard content:\n\n{clip}"
+                        ),
+                        daemon=True,
                     ).start()
 
             elif action_name == "screenshot_analyze":
-                self.assistant.ui.write_log(f"Hotkey: Screenshot Analysis triggered.")
+                self.assistant.ui.write_log("Hotkey: Screenshot Analysis triggered.")
                 # Run the screenshot fix or analysis skill/goal
                 threading.Thread(
-                    target=lambda: self.assistant._on_text_command("take screenshot and analyze the screen for any visible errors"),
-                    daemon=True
+                    target=lambda: self.assistant._on_text_command(
+                        "take screenshot and analyze the screen for any visible errors"
+                    ),
+                    daemon=True,
                 ).start()
 
         except Exception as e:

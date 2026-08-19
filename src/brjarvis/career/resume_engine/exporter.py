@@ -2,19 +2,16 @@
 from __future__ import annotations
 
 import logging
-import os
 import re
-import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, Optional
 
 from brjarvis.agent.artifacts import get_artifact_manager
-from .models import ResumeSchema, ResumeVersionRecord
-from .renderer import ResumeRenderer
-from brjarvis.core.execution.types import ExecutionStatus, VerificationOutcome
 from brjarvis.core.execution.verifier import get_universal_verifier
-
 from brjarvis.core.paths import paths
+
+from .models import ResumeSchema
+from .renderer import ResumeRenderer
 
 logger = logging.getLogger("JARVIS.ResumeExporter")
 
@@ -24,7 +21,7 @@ _DEFAULT_RESUME_DIR = paths.RESUMES_DIR
 class ResumeExportPipeline:
     """
     Authoritative Multi-Stage Verified Export Pipeline for Career Documents.
-    
+
     Stages:
     1. CREATE       - Render target formats (DOCX, PDF, HTML)
     2. EXISTS       - Verify file presence on host disk
@@ -52,7 +49,7 @@ class ResumeExportPipeline:
         Render and physically verify DOCX, PDF, and HTML versions of the resume.
         Returns a verified bundle report.
         """
-        clean_title = re.sub(r'[^\w\-]', '_', base_name or resume.title)
+        clean_title = re.sub(r"[^\w\-]", "_", base_name or resume.title)
         html_path = self.output_dir / f"{clean_title}.html"
         docx_path = self.output_dir / f"{clean_title}.docx"
         pdf_path = self.output_dir / f"{clean_title}.pdf"
@@ -109,11 +106,7 @@ class ResumeExportPipeline:
             results["pdf"]["details"] = f"PDF export error: {e}"
 
         # Overall Status
-        results["all_verified"] = all(
-            results[fmt]["verified"] for fmt in ("html", "docx", "pdf")
-        )
+        results["all_verified"] = all(results[fmt]["verified"] for fmt in ("html", "docx", "pdf"))
 
-        logger.info(
-            f"📦 Verified Resume Export Complete: '{clean_title}' (All Verified: {results['all_verified']})"
-        )
+        logger.info(f"📦 Verified Resume Export Complete: '{clean_title}' (All Verified: {results['all_verified']})")
         return results

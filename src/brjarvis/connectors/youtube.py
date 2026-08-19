@@ -8,6 +8,7 @@ Requires a free YouTube Data API v3 key:
 
 Bonus: Video transcript fetching works WITHOUT any API key (using youtube-transcript-api).
 """
+
 from __future__ import annotations
 
 import json
@@ -25,7 +26,6 @@ _API = "https://www.googleapis.com/youtube/v3"
 
 
 class YouTubeConnector(BaseConnector):
-
     def __init__(self):
         self._api_key = os.environ.get("YOUTUBE_API_KEY", "").strip()
 
@@ -74,7 +74,11 @@ class YouTubeConnector(BaseConnector):
                             "type": "string",
                             "description": "YouTube video ID or full URL (e.g. 'dQw4w9WgXcQ' or 'https://youtube.com/watch?v=dQw4w9WgXcQ')",
                         },
-                        "language": {"type": "string", "description": "Language code (e.g. 'en', 'hi')", "default": "en"},
+                        "language": {
+                            "type": "string",
+                            "description": "Language code (e.g. 'en', 'hi')",
+                            "default": "en",
+                        },
                     },
                     "required": ["video_id"],
                 },
@@ -90,7 +94,11 @@ class YouTubeConnector(BaseConnector):
                         "properties": {
                             "query": {"type": "string", "description": "Search query"},
                             "max_results": {"type": "integer", "default": 5},
-                            "order": {"type": "string", "enum": ["relevance", "date", "viewCount"], "default": "relevance"},
+                            "order": {
+                                "type": "string",
+                                "enum": ["relevance", "date", "viewCount"],
+                                "default": "relevance",
+                            },
                         },
                         "required": ["query"],
                     },
@@ -157,13 +165,16 @@ class YouTubeConnector(BaseConnector):
         if not self._api_key:
             return "YouTube search requires YOUTUBE_API_KEY in .env. Video transcript fetching works without it."
         try:
-            data = self._fetch("search", {
-                "part": "snippet",
-                "q": query,
-                "maxResults": min(max_results, 10),
-                "type": "video",
-                "order": order,
-            })
+            data = self._fetch(
+                "search",
+                {
+                    "part": "snippet",
+                    "q": query,
+                    "maxResults": min(max_results, 10),
+                    "type": "video",
+                    "order": order,
+                },
+            )
             items = data.get("items", [])
             if not items:
                 return f"No YouTube videos found for '{query}'."
@@ -184,10 +195,13 @@ class YouTubeConnector(BaseConnector):
         if not self._api_key:
             return "Video details require YOUTUBE_API_KEY in .env."
         try:
-            data = self._fetch("videos", {
-                "part": "snippet,statistics,contentDetails",
-                "id": video_id,
-            })
+            data = self._fetch(
+                "videos",
+                {
+                    "part": "snippet,statistics,contentDetails",
+                    "id": video_id,
+                },
+            )
             items = data.get("items", [])
             if not items:
                 return f"Video '{video_id}' not found."
@@ -259,6 +273,7 @@ class YouTubeConnector(BaseConnector):
             return "Please provide a video ID or URL."
         try:
             from youtube_transcript_api import YouTubeTranscriptApi  # type: ignore
+
             transcripts = YouTubeTranscriptApi.get_transcript(video_id, languages=[language, "en"])
             full_text = " ".join(t["text"] for t in transcripts)
             if len(full_text) > 5000:

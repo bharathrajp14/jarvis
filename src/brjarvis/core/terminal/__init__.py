@@ -1,15 +1,15 @@
 # core/terminal/__init__.py — Master Terminal Agent Package for BR JARVIS
 from __future__ import annotations
 
+import sys
 from typing import Optional
 
-import sys
 if __name__ in sys.modules:
     sys.modules.setdefault("core.terminal", sys.modules[__name__])
 
 from ..runtime import ApplicationRuntime
 from .actions import ActionRegistry, FocusManager, FocusState
-from .commands import SlashCommandHandler, VALID_MODES
+from .commands import VALID_MODES, SlashCommandHandler
 from .components import (
     CollapsibleOutputComponent,
     HeaderComponent,
@@ -40,7 +40,7 @@ from .selection import (
     SelectionRange,
 )
 from .session import TerminalSession
-from .theme import Glyphs, MODE_COLORS, get_terminal_theme
+from .theme import MODE_COLORS, Glyphs, get_terminal_theme
 from .viewport import ScrollManager, ViewportRange
 
 

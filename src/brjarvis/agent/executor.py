@@ -6,17 +6,15 @@ High-performance task executor with TRUE parallel execution.
 - Dependency tracking for sequential steps
 - Real-time progress reporting
 """
+
 from __future__ import annotations
 
 import concurrent.futures
 import json
 import logging
-import re
 import sys
-import time
 import threading
-import traceback
-from pathlib import Path
+import time
 from typing import Any, Callable, Optional
 
 logger = logging.getLogger("JARVIS.AgentExecutor")
@@ -27,47 +25,47 @@ from brjarvis.core.paths import paths
 if str(paths.PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(paths.PROJECT_ROOT))
 
+from .error_handler import ErrorDecision, analyze_error, generate_fix
 from .planner import create_plan, replan
-from .error_handler import analyze_error, generate_fix, ErrorDecision
-
 
 # ── Tool caller ────────────────────────────────────────────────────────────
 
+
 def _call_tool(tool: str, parameters: dict, speak: Callable | None = None) -> str:
     """Dispatch a tool call utilizing the centralized tool registry.
-    
+
     All tool name aliasing (e.g., browser_control → open_app) is handled
     centrally in tools/registry.execute_tool() to avoid duplication.
     """
     from brjarvis.tools.registry import execute_tool
-    
+
     params = dict(parameters or {})
-    
+
     # Run through centralized registry (handles all aliases internally)
     result = execute_tool(tool, params)
-    
+
     # Strict execution check — do NOT fabricate success via web search if tool is missing
     if result.startswith("ERROR: Unknown tool"):
         logger.error(f"❌ Unknown tool '{tool}' cannot be executed.")
         raise RuntimeError(f"Tool '{tool}' is not available on this system.")
-        
+
     return result
-
-
 
 
 # ── Result collector ───────────────────────────────────────────────────────
 
+
 class StepResult:
     def __init__(self, step_num: int):
         self.step_num = step_num
-        self.output   = ""
-        self.success  = False
-        self.error    = ""
+        self.output = ""
+        self.success = False
+        self.error = ""
         self.duration = 0.0
 
 
 # ── Main Executor ──────────────────────────────────────────────────────────
+
 
 class AgentExecutor:
     """
@@ -79,25 +77,25 @@ class AgentExecutor:
     - Failed critical steps trigger replan; non-critical steps are skipped
     """
 
-    MAX_WORKERS     = 4   # parallel threads
-    MAX_REPLAN      = 2   # max replan attempts
-    STEP_TIMEOUT    = 120 # seconds per step
+    MAX_WORKERS = 4  # parallel threads
+    MAX_REPLAN = 2  # max replan attempts
+    STEP_TIMEOUT = 120  # seconds per step
 
     def execute(
         self,
-        goal:        str,
-        speak:       Callable | None = None,
+        goal: str,
+        speak: Callable | None = None,
         cancel_flag: threading.Event | None = None,
-        task_id:     str | None = None,
+        task_id: str | None = None,
     ) -> str:
-        from brjarvis.agent.task_state import get_task_state_manager, TaskStatus
-        from brjarvis.agent.recovery_engine import get_recovery_engine
-        from brjarvis.agent.execution_ledger import get_execution_ledger, LedgerStatus
+        from brjarvis.agent.execution_ledger import get_execution_ledger
         from brjarvis.agent.goal_decomposer import decompose_goal
+        from brjarvis.agent.recovery_engine import get_recovery_engine
+        from brjarvis.agent.task_state import TaskStatus, get_task_state_manager
 
-        state_mgr  = get_task_state_manager()
-        recovery   = get_recovery_engine()
-        ledger     = get_execution_ledger()
+        state_mgr = get_task_state_manager()
+        recovery = get_recovery_engine()
+        ledger = get_execution_ledger()
 
         logger.info("🎯 Goal: %s", goal)
 
@@ -110,7 +108,7 @@ class AgentExecutor:
             logger.warning("[Executor] Goal decomposition failed (%s), continuing without spec", _gd_err)
             goal_spec_dict = {}
 
-        replan_count    = 0
+        replan_count = 0
         completed_steps = []
         step_results: dict[int, str] = {}
         plan = create_plan(goal)
@@ -134,7 +132,8 @@ class AgentExecutor:
             steps = plan.get("steps", [])
             if not steps:
                 msg = "I couldn't create a valid plan, sir."
-                if speak: speak(msg)
+                if speak:
+                    speak(msg)
                 state_mgr.update_status(task_id, TaskStatus.FAILED, {"error": msg})
                 return msg
 
@@ -142,8 +141,7 @@ class AgentExecutor:
 
             # Run the plan
             result = self._run_plan(
-                steps, step_results, completed_steps,
-                goal, speak, cancel_flag, can_parallelize, task_id, ledger
+                steps, step_results, completed_steps, goal, speak, cancel_flag, can_parallelize, task_id, ledger
             )
 
             if cancel_flag and cancel_flag.is_set():
@@ -152,6 +150,7 @@ class AgentExecutor:
 
             if result["success"]:
                 from brjarvis.core.execution.completion_gate import get_task_completion_gate
+
                 gate = get_task_completion_gate().evaluate_task(
                     goal=goal,
                     steps=completed_steps,
@@ -164,7 +163,11 @@ class AgentExecutor:
                     summary = self._summarize_from_ledger(goal, task_id, ledger, gate, speak)
                     state = state_mgr.get_task(task_id)
                     if state:
-                        state.status = TaskStatus.SUCCESS_VERIFIED if gate.final_status.value == "SUCCESS_VERIFIED" else TaskStatus.PARTIAL_SUCCESS
+                        state.status = (
+                            TaskStatus.SUCCESS_VERIFIED
+                            if gate.final_status.value == "SUCCESS_VERIFIED"
+                            else TaskStatus.PARTIAL_SUCCESS
+                        )
                         state.final_status = state.status
                         state.final_report = summary
                         state.completion_evidence = gate.evidence_summary
@@ -172,54 +175,61 @@ class AgentExecutor:
                     return summary
                 else:
                     msg = f"Task completion blocked by verification gate: {gate.evidence_summary}"
-                    if speak: speak(msg)
-                    state_mgr.update_status(task_id, TaskStatus.FAILED, {"error": msg, "reasons": gate.blocking_reasons})
+                    if speak:
+                        speak(msg)
+                    state_mgr.update_status(
+                        task_id, TaskStatus.FAILED, {"error": msg, "reasons": gate.blocking_reasons}
+                    )
                     return msg
 
             # Handle failure
-            failed_step  = result["failed_step"]
+            failed_step = result["failed_step"]
             failed_error = result["failed_error"]
 
             analysis = recovery.analyze_failure(
-                failed_step.get("tool", "") if isinstance(failed_step, dict) else "",
-                failed_error
+                failed_step.get("tool", "") if isinstance(failed_step, dict) else "", failed_error
             )
-            logger.warning("Recovery analysis: category=%s, suggested=%s", analysis.category.value, analysis.suggested_action)
+            logger.warning(
+                "Recovery analysis: category=%s, suggested=%s", analysis.category.value, analysis.suggested_action
+            )
 
             if replan_count >= self.MAX_REPLAN or not analysis.retry_allowed:
-                msg = f"Task failed after {replan_count} replan attempts ({analysis.category.value}): {analysis.message}"
-                if speak: speak(msg)
+                msg = (
+                    f"Task failed after {replan_count} replan attempts ({analysis.category.value}): {analysis.message}"
+                )
+                if speak:
+                    speak(msg)
                 state_mgr.update_status(task_id, TaskStatus.FAILED, {"error": msg, "category": analysis.category.value})
                 return msg
 
             logger.info("Replanning (attempt %d)...", replan_count + 1)
-            if speak: speak("Adjusting my approach, sir.")
+            if speak:
+                speak("Adjusting my approach, sir.")
             replan_count += 1
             plan = replan(goal, completed_steps, failed_step, failed_error)
 
     def _run_plan(
         self,
-        steps:           list,
-        step_results:    dict,
+        steps: list,
+        step_results: dict,
         completed_steps: list,
-        goal:            str,
-        speak:           Callable | None,
-        cancel_flag:     threading.Event | None,
+        goal: str,
+        speak: Callable | None,
+        cancel_flag: threading.Event | None,
         can_parallelize: bool,
-        task_id:         str | None = None,
-        ledger:          Any = None,
+        task_id: str | None = None,
+        ledger: Any = None,
     ) -> dict:
         """Execute all steps in a plan, respecting dependencies and parallelism.
 
         MK40.2: Before executing a step, checks the ExecutionLedger to see if
         it was already successfully completed (prevents step duplication on retry).
         """
-        from brjarvis.agent.execution_ledger import LedgerStatus
 
         # Group steps by dependency level for parallel execution
-        pending   = {s["step"]: s for s in steps}
+        pending = {s["step"]: s for s in steps}
         completed = set(step_results.keys())
-        failed_step  = None
+        failed_step = None
         failed_error = ""
 
         while pending:
@@ -227,10 +237,7 @@ class AgentExecutor:
                 return {"success": False, "failed_step": {}, "failed_error": "Cancelled"}
 
             # Find steps that are ready to run (dependencies met)
-            ready = [
-                s for s in pending.values()
-                if all(dep in completed for dep in s.get("depends_on", []))
-            ]
+            ready = [s for s in pending.values() if all(dep in completed for dep in s.get("depends_on", []))]
 
             if not ready:
                 # Deadlock — some dependency never completed
@@ -239,7 +246,7 @@ class AgentExecutor:
 
             # Separate parallel-capable from sequential
             parallel_steps = [s for s in ready if s.get("parallel") and can_parallelize]
-            seq_steps      = [s for s in ready if not s.get("parallel") or not can_parallelize]
+            seq_steps = [s for s in ready if not s.get("parallel") or not can_parallelize]
 
             # Run parallel steps together, then sequential one-by-one
             if parallel_steps:
@@ -260,7 +267,7 @@ class AgentExecutor:
                             completed.add(step_num)
                             pending.pop(step_num, None)
                         else:
-                            failed_step  = step
+                            failed_step = step
                             failed_error = result.error
                             return {"success": False, "failed_step": failed_step, "failed_error": failed_error}
 
@@ -274,7 +281,9 @@ class AgentExecutor:
                 # ── MK40.2 §8: Skip steps already verified in the ledger (retry safety) ──
                 step_id_str = f"step_{step_num}"
                 if ledger and task_id and ledger.step_is_verified(task_id, step_id_str):
-                    logger.info("[Executor] Step %s already VERIFIED in ledger — skipping to prevent duplication", step_num)
+                    logger.info(
+                        "[Executor] Step %s already VERIFIED in ledger — skipping to prevent duplication", step_num
+                    )
                     step_results[step_num] = "(skipped — already verified on previous attempt)"
                     completed.add(step_num)
                     completed_steps.append(step)
@@ -294,7 +303,7 @@ class AgentExecutor:
                     if rec["skip"]:
                         completed.add(step_num)
                     else:
-                        failed_step  = step
+                        failed_step = step
                         failed_error = result.error
                         return {"success": False, "failed_step": failed_step, "failed_error": failed_error}
 
@@ -305,10 +314,7 @@ class AgentExecutor:
         results = {}
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=self.MAX_WORKERS) as pool:
-            future_to_step = {
-                pool.submit(self._run_step, step, {}, goal, speak): step
-                for step in steps
-            }
+            future_to_step = {pool.submit(self._run_step, step, {}, goal, speak): step for step in steps}
             for future in concurrent.futures.as_completed(future_to_step, timeout=self.STEP_TIMEOUT * 2):
                 step = future_to_step[future]
                 try:
@@ -316,7 +322,7 @@ class AgentExecutor:
                 except Exception as e:
                     r = StepResult(step["step"])
                     r.success = False
-                    r.error   = str(e)
+                    r.error = str(e)
                     results[step["step"]] = r
 
         return results
@@ -332,11 +338,12 @@ class AgentExecutor:
     ) -> StepResult:
         """Execute a single step with retry logic and ledger recording."""
         from brjarvis.agent.execution_ledger import LedgerEntry, LedgerStatus
+
         step_num = step.get("step", "?")
-        tool     = step.get("tool", "web_search")
-        desc     = step.get("description", "")
-        params   = dict(step.get("parameters", {}))
-        result   = StepResult(step_num)
+        tool = step.get("tool", "web_search")
+        desc = step.get("description", "")
+        params = dict(step.get("parameters", {}))
+        result = StepResult(step_num)
 
         # Inject context from previous results
         params = self._inject_context(params, tool, context_results, goal)
@@ -346,6 +353,7 @@ class AgentExecutor:
 
         # Prevent repetitive stuck loops
         from brjarvis.agent.recovery_engine import get_recovery_engine
+
         recovery_eng = get_recovery_engine()
         if recovery_eng.check_loop_or_stuck(tool, json.dumps(params, sort_keys=True)):
             err = f"Aborted: Infinite loop detected with repeated tool '{tool}' calls."
@@ -354,20 +362,27 @@ class AgentExecutor:
             result.duration = time.time() - t_start
             # Record loop abort to ledger
             if ledger and task_id:
-                ledger.append(LedgerEntry(
-                    tool_name=tool, task_id=task_id, step_id=f"step_{step_num}",
-                    status=LedgerStatus.BLOCKED, evidence=err,
-                    verification_status=LedgerStatus.BLOCKED, error=err,
-                    duration_seconds=result.duration, parameters=params,
-                ))
+                ledger.append(
+                    LedgerEntry(
+                        tool_name=tool,
+                        task_id=task_id,
+                        step_id=f"step_{step_num}",
+                        status=LedgerStatus.BLOCKED,
+                        evidence=err,
+                        verification_status=LedgerStatus.BLOCKED,
+                        error=err,
+                        duration_seconds=result.duration,
+                        parameters=params,
+                    )
+                )
             return result
 
         max_attempts = 3 if step.get("critical") else 2
         for attempt in range(1, max_attempts + 1):
             try:
                 output = _call_tool(tool, params, speak)
-                result.output   = output or "Done."
-                result.success  = True
+                result.output = output or "Done."
+                result.success = True
                 result.duration = time.time() - t_start
 
                 # ── Phase 9: Post-execution verification + ledger record ──
@@ -375,6 +390,7 @@ class AgentExecutor:
                 evidence = ""
                 try:
                     from brjarvis.agent.verifier import get_action_verifier
+
                     verifier = get_action_verifier()
                     vres = verifier.verify_action(tool, params, result.output)
                     if not vres.verified:
@@ -390,6 +406,7 @@ class AgentExecutor:
                     # Record to operational memory (non-blocking)
                     try:
                         from brjarvis.memory.unified_memory import get_unified_memory
+
                         get_unified_memory().record_operational_lesson(
                             tool_name=tool,
                             goal=goal,
@@ -406,18 +423,20 @@ class AgentExecutor:
 
                 # ── MK40.2: Always write to ledger regardless of verification outcome ──
                 if ledger and task_id:
-                    ledger.append(LedgerEntry(
-                        tool_name=tool,
-                        task_id=task_id,
-                        step_id=f"step_{step_num}",
-                        status=LedgerStatus.SUCCESS if result.success else LedgerStatus.FAILED,
-                        stdout=result.output[:2000],
-                        duration_seconds=result.duration,
-                        evidence=evidence,
-                        verification_status=verification_status,
-                        parameters=params,
-                        error=result.error,
-                    ))
+                    ledger.append(
+                        LedgerEntry(
+                            tool_name=tool,
+                            task_id=task_id,
+                            step_id=f"step_{step_num}",
+                            status=LedgerStatus.SUCCESS if result.success else LedgerStatus.FAILED,
+                            stdout=result.output[:2000],
+                            duration_seconds=result.duration,
+                            evidence=evidence,
+                            verification_status=verification_status,
+                            parameters=params,
+                            error=result.error,
+                        )
+                    )
 
                 return result
 
@@ -432,25 +451,34 @@ class AgentExecutor:
                     decision = recovery.get("decision")
 
                     if decision == ErrorDecision.RETRY:
-                        time.sleep(2 ** attempt)  # exponential backoff
+                        time.sleep(2**attempt)  # exponential backoff
                         continue
                     elif decision == ErrorDecision.SKIP:
                         # MK40.2 FIX: Non-critical skip does NOT mean success
                         # We mark as UNVERIFIED so the gate can decide
                         result.success = not step.get("critical", True)  # only succeed if non-critical
-                        result.output  = f"Skipped ({'non-critical' if not step.get('critical', True) else 'CRITICAL'}): {err[:60]}"
+                        result.output = (
+                            f"Skipped ({'non-critical' if not step.get('critical', True) else 'CRITICAL'}): {err[:60]}"
+                        )
                         result.duration = time.time() - t_start
                         # Record skip to ledger
                         if ledger and task_id:
-                            ledger.append(LedgerEntry(
-                                tool_name=tool, task_id=task_id, step_id=f"step_{step_num}",
-                                status=LedgerStatus.PARTIAL if not step.get("critical", True) else LedgerStatus.FAILED,
-                                stdout=result.output,
-                                duration_seconds=result.duration,
-                                evidence=f"Step skipped: {err[:200]}",
-                                verification_status=LedgerStatus.UNVERIFIED,
-                                parameters=params, error=err,
-                            ))
+                            ledger.append(
+                                LedgerEntry(
+                                    tool_name=tool,
+                                    task_id=task_id,
+                                    step_id=f"step_{step_num}",
+                                    status=LedgerStatus.PARTIAL
+                                    if not step.get("critical", True)
+                                    else LedgerStatus.FAILED,
+                                    stdout=result.output,
+                                    duration_seconds=result.duration,
+                                    evidence=f"Step skipped: {err[:200]}",
+                                    verification_status=LedgerStatus.UNVERIFIED,
+                                    parameters=params,
+                                    error=err,
+                                )
+                            )
                         return result
                     elif decision == ErrorDecision.REPLAN:
                         # Try alternative tool
@@ -459,20 +487,23 @@ class AgentExecutor:
                             try:
                                 alt_step = generate_fix(step, err, fix_suggestion)
                                 output = _call_tool(alt_step["tool"], alt_step["parameters"], speak)
-                                result.output   = output or "Done (alternative approach)."
-                                result.success  = True
+                                result.output = output or "Done (alternative approach)."
+                                result.success = True
                                 result.duration = time.time() - t_start
                                 if ledger and task_id:
-                                    ledger.append(LedgerEntry(
-                                        tool_name=alt_step["tool"], task_id=task_id,
-                                        step_id=f"step_{step_num}",
-                                        status=LedgerStatus.SUCCESS,
-                                        stdout=result.output[:2000],
-                                        duration_seconds=result.duration,
-                                        evidence=f"Alternative tool succeeded: {alt_step['tool']}",
-                                        verification_status=LedgerStatus.UNVERIFIED,
-                                        parameters=alt_step["parameters"],
-                                    ))
+                                    ledger.append(
+                                        LedgerEntry(
+                                            tool_name=alt_step["tool"],
+                                            task_id=task_id,
+                                            step_id=f"step_{step_num}",
+                                            status=LedgerStatus.SUCCESS,
+                                            stdout=result.output[:2000],
+                                            duration_seconds=result.duration,
+                                            evidence=f"Alternative tool succeeded: {alt_step['tool']}",
+                                            verification_status=LedgerStatus.UNVERIFIED,
+                                            parameters=alt_step["parameters"],
+                                        )
+                                    )
                                 return result
                             except Exception as fix_err:
                                 logger.warning(f"[Executor] Fix also failed: {fix_err}")
@@ -483,21 +514,30 @@ class AgentExecutor:
                     result.error = err
                     # Record final failure to ledger
                     if ledger and task_id:
-                        ledger.append(LedgerEntry(
-                            tool_name=tool, task_id=task_id, step_id=f"step_{step_num}",
-                            status=LedgerStatus.FAILED,
-                            stderr=err[:2000],
-                            duration_seconds=result.duration,
-                            evidence=f"All {max_attempts} attempts failed.",
-                            verification_status=LedgerStatus.FAILED,
-                            parameters=params, error=err,
-                        ))
+                        ledger.append(
+                            LedgerEntry(
+                                tool_name=tool,
+                                task_id=task_id,
+                                step_id=f"step_{step_num}",
+                                status=LedgerStatus.FAILED,
+                                stderr=err[:2000],
+                                duration_seconds=result.duration,
+                                evidence=f"All {max_attempts} attempts failed.",
+                                verification_status=LedgerStatus.FAILED,
+                                parameters=params,
+                                error=err,
+                            )
+                        )
                     # Record failure to operational memory (non-blocking)
                     try:
                         from brjarvis.memory.unified_memory import get_unified_memory
+
                         get_unified_memory().record_operational_lesson(
-                            tool_name=tool, goal=goal, success=False,
-                            result_summary="", failure_reason=err[:200],
+                            tool_name=tool,
+                            goal=goal,
+                            success=False,
+                            result_summary="",
+                            failure_reason=err[:200],
                         )
                     except Exception:
                         pass
@@ -508,8 +548,8 @@ class AgentExecutor:
     def _handle_failure(self, step: dict, error: str, speak: Callable | None) -> dict:
         """Decide what to do after a step failure."""
         is_critical = step.get("critical", True)
-        tool        = step.get("tool", "")
-        msg         = f"Step {step.get('step')} failed: {error[:80]}"
+        tool = step.get("tool", "")
+        msg = f"Step {step.get('step')} failed: {error[:80]}"
 
         if not is_critical:
             logger.info("Skipping non-critical step: %s", msg)
@@ -530,13 +570,8 @@ class AgentExecutor:
 
         # For file write operations, inject collected content
         if tool == "file_write" and params.get("action") in ("write", "create_file"):
-
-
             if not params.get("content") or len(params.get("content", "")) < 30:
-                all_results = [
-                    v for v in step_results.values()
-                    if v and isinstance(v, str) and len(v) > 100
-                ]
+                all_results = [v for v in step_results.values() if v and isinstance(v, str) and len(v) > 100]
                 if all_results:
                     params["content"] = "\n\n---\n\n".join(all_results[:3])
                     logger.info(f"[Executor] 💉 Injected {len(params['content'])} chars of context")
@@ -569,27 +604,27 @@ class AgentExecutor:
 
         if not entries:
             # Absolute fallback — no ledger data
-            msg = (
-                f"Sir, task '{goal[:60]}' executed with no ledger evidence recorded."
-            )
+            msg = f"Sir, task '{goal[:60]}' executed with no ledger evidence recorded."
             if speak:
                 speak(msg)
             return msg
 
         # Count verified vs unverified vs failed
         from brjarvis.agent.execution_ledger import LedgerStatus
-        verified_count   = sum(1 for e in entries if e.status == LedgerStatus.SUCCESS and e.verification_status == LedgerStatus.SUCCESS)
-        failed_count     = sum(1 for e in entries if e.status == LedgerStatus.FAILED)
-        blocked_count    = sum(1 for e in entries if e.status == LedgerStatus.BLOCKED)
+
+        verified_count = sum(
+            1 for e in entries if e.status == LedgerStatus.SUCCESS and e.verification_status == LedgerStatus.SUCCESS
+        )
+        failed_count = sum(1 for e in entries if e.status == LedgerStatus.FAILED)
+        blocked_count = sum(1 for e in entries if e.status == LedgerStatus.BLOCKED)
         unverified_count = sum(1 for e in entries if e.status == LedgerStatus.UNVERIFIED)
-        total            = len(entries)
+        total = len(entries)
 
         # Build artifact evidence list
         artifact_evidence = []
         for e in entries:
             if e.evidence and any(
-                kw in e.evidence.lower()
-                for kw in ["verified", "bytes", "created", "pushed", "commit", "opened"]
+                kw in e.evidence.lower() for kw in ["verified", "bytes", "created", "pushed", "commit", "opened"]
             ):
                 artifact_evidence.append(f"• {e.evidence}")
 
@@ -627,12 +662,19 @@ class AgentExecutor:
 
     # Keep old _summarize as deprecated alias for any callers not yet updated
     def _summarize(
-        self, goal: str, completed_steps: list,
-        step_results: dict, speak: Callable | None,
+        self,
+        goal: str,
+        completed_steps: list,
+        step_results: dict,
+        speak: Callable | None,
         gate_result: Optional[Any] = None,
     ) -> str:
         """Deprecated: use _summarize_from_ledger. Kept for backward compatibility."""
-        is_verified = bool(gate_result and getattr(gate_result, "final_status", None) and gate_result.final_status.value == "SUCCESS_VERIFIED")
+        is_verified = bool(
+            gate_result
+            and getattr(gate_result, "final_status", None)
+            and gate_result.final_status.value == "SUCCESS_VERIFIED"
+        )
         gate_evidence = getattr(gate_result, "evidence_summary", "") if gate_result else ""
 
         fallback = (
@@ -646,6 +688,7 @@ class AgentExecutor:
 
 
 # ── Multi-goal parallel executor ──────────────────────────────────────────
+
 
 class ParallelGoalExecutor:
     """
@@ -669,10 +712,7 @@ class ParallelGoalExecutor:
         results = {}
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=self.max_concurrent) as pool:
-            future_to_goal = {
-                pool.submit(AgentExecutor().execute, goal, speak): goal
-                for goal in goals
-            }
+            future_to_goal = {pool.submit(AgentExecutor().execute, goal, speak): goal for goal in goals}
             for future in concurrent.futures.as_completed(future_to_goal):
                 goal = future_to_goal[future]
                 try:

@@ -2,11 +2,11 @@
 from __future__ import annotations
 
 from .classifier import CareerEmailClassifier
+from .injection_guard import PromptInjectionGuard
+from .interview_detector import InterviewDetector
 from .matcher import EmailApplicationMatcher
 from .offer_detector import OfferDetector
-from .interview_detector import InterviewDetector
 from .rejection_detector import RejectionDetector
-from .injection_guard import PromptInjectionGuard
 from .service import EmailCareerIntelligence, get_email_career_intelligence
 
 __all__ = [

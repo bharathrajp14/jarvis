@@ -2,9 +2,10 @@
 """
 Re-exports JarvisOrchestrator and speculative components for unified import.
 """
+
 from __future__ import annotations
 
-from .core import JarvisOrchestrator, MODES, SYSTEM_PROMPT
+from .core import MODES, SYSTEM_PROMPT, JarvisOrchestrator
 
 __all__ = [
     "JarvisOrchestrator",

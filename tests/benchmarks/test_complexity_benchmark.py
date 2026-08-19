@@ -1,8 +1,11 @@
 """Performance Benchmark: Semantic Complexity Router Latency."""
+
 from __future__ import annotations
 
 import time
+
 import pytest
+
 from brjarvis.config.complexity_router import ComplexityAnalyzer, calculate_complexity_score
 
 
@@ -10,7 +13,7 @@ from brjarvis.config.complexity_router import ComplexityAnalyzer, calculate_comp
 def test_complexity_router_throughput():
     """Verify semantic complexity classification executes in under 10ms per query."""
     query = "Build an end-to-end multi-agent system with ChromaDB vector search and FastAPI REST API."
-    
+
     start = time.perf_counter()
     for _ in range(100):
         ComplexityAnalyzer.compute_shannon_entropy(query)

@@ -12,6 +12,7 @@ Allows a new process to reconstruct:
 - What should happen next?
 - What constraints did the user specify?
 """
+
 from __future__ import annotations
 
 import json
@@ -29,6 +30,7 @@ logger = logging.getLogger("JARVIS.SessionLifecycle")
 @dataclass
 class SessionRecord:
     """Complete structured record of a single interactive or background session."""
+
     session_id: str = field(default_factory=lambda: f"sess_{uuid.uuid4().hex[:12]}")
     start_time: float = field(default_factory=time.time)
     end_time: Optional[float] = None
@@ -51,8 +53,13 @@ class SessionRecord:
     def from_dict(cls, data: Dict[str, Any]) -> SessionRecord:
         d = dict(data)
         for list_field in (
-            "goals", "decisions", "constraints", "unfinished_tasks",
-            "errors", "successful_actions", "next_actions",
+            "goals",
+            "decisions",
+            "constraints",
+            "unfinished_tasks",
+            "errors",
+            "successful_actions",
+            "next_actions",
         ):
             if list_field in d and isinstance(d[list_field], str):
                 try:
@@ -118,9 +125,7 @@ class SessionLifecycleManager:
         """Retrieve the most recent session that hasn't been acknowledged/briefed yet (non-destructive)."""
         with self.db.get_connection() as conn:
             cursor = conn.cursor()
-            cursor.execute(
-                "SELECT * FROM session_records WHERE consumed = 0 ORDER BY created_at DESC LIMIT 1"
-            )
+            cursor.execute("SELECT * FROM session_records WHERE consumed = 0 ORDER BY created_at DESC LIMIT 1")
             row = cursor.fetchone()
             if not row:
                 return None

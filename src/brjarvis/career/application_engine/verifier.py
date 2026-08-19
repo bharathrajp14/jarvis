@@ -2,10 +2,9 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from brjarvis.core.execution.types import ExecutionStatus, VerificationOutcome
-from brjarvis.core.execution.verifier import get_universal_verifier
 
 logger = logging.getLogger("JARVIS.SubmissionVerifier")
 
@@ -40,7 +39,12 @@ class ApplicationSubmissionVerifier:
         ]
         has_success_text = any(phrase in page_text for phrase in success_phrases)
 
-        if conf_id or (conf_url and ("confirm" in conf_url or "success" in conf_url or "thank" in conf_url)) or api_ok or has_success_text:
+        if (
+            conf_id
+            or (conf_url and ("confirm" in conf_url or "success" in conf_url or "thank" in conf_url))
+            or api_ok
+            or has_success_text
+        ):
             return VerificationOutcome(
                 verified=True,
                 verifier_name="ApplicationSubmissionVerifier",

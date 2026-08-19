@@ -16,6 +16,7 @@ Architecture:
 This module is intentionally stateless between calls — all state lives in
 the SQLite-backed memory subsystem, making it crash-safe and restartable.
 """
+
 from __future__ import annotations
 
 import logging
@@ -93,6 +94,7 @@ class SelfImprovementEngine:
         """Lazily import and return the LessonStore singleton."""
         try:
             from brjarvis.memory.lessons import LessonStore
+
             return LessonStore()
         except Exception as exc:
             logger.warning("LessonStore unavailable: %s", exc)
@@ -103,6 +105,7 @@ class SelfImprovementEngine:
         """Lazily import and return the ExperienceReplay store."""
         try:
             from brjarvis.memory.experience_replay import ExperienceReplay
+
             return ExperienceReplay()
         except Exception as exc:
             logger.debug("ExperienceReplay unavailable: %s", exc)
@@ -166,9 +169,7 @@ class SelfImprovementEngine:
         experience_store = self._load_experience_store()
         if experience_store:
             try:
-                failures = experience_store.get_failures(
-                    limit=self.MAX_EXPERIENCE_PER_CYCLE
-                )
+                failures = experience_store.get_failures(limit=self.MAX_EXPERIENCE_PER_CYCLE)
                 for failure in failures:
                     goal = failure.get("goal_query", "unknown goal")
                     reason = failure.get("failure_reason", "")
@@ -189,9 +190,7 @@ class SelfImprovementEngine:
         # Sort by confidence descending
         proposals.sort(key=lambda p: p.confidence, reverse=True)
 
-        logger.info(
-            "🧬 Evolution cycle complete: %d proposals generated", len(proposals)
-        )
+        logger.info("🧬 Evolution cycle complete: %d proposals generated", len(proposals))
         self._log_cycle(proposals)
         return proposals
 
@@ -224,6 +223,7 @@ class SelfImprovementEngine:
             return
         try:
             from brjarvis.guardian.audit_log import get_audit_log
+
             audit = get_audit_log()
             audit.log_event(
                 event_type="evolution.cycle",

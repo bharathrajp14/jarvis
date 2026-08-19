@@ -3,15 +3,12 @@
 Robust, multi-backend system clipboard interface for BR JARVIS.
 Provides fallbacks across pyperclip, Win32 API, Tkinter, PowerShell, and OS CLI commands.
 """
+
 from __future__ import annotations
 
 import logging
-import os
 import platform
 import subprocess
-import sys
-import time
-
 import threading
 
 logger = logging.getLogger("JARVIS.ClipboardUtils")
@@ -35,6 +32,7 @@ def get_clipboard_text() -> str:
         # Backend 1: pyperclip
         try:
             import pyperclip
+
             val = pyperclip.paste()
             if isinstance(val, str) and val:
                 return val
@@ -45,6 +43,7 @@ def get_clipboard_text() -> str:
     if _OS == "Windows":
         try:
             import ctypes
+
             user32 = ctypes.windll.user32
             kernel32 = ctypes.windll.kernel32
 
@@ -68,6 +67,7 @@ def get_clipboard_text() -> str:
     # Backend 3: Tkinter
     try:
         import tkinter as tk
+
         root = tk.Tk()
         root.withdraw()
         try:
@@ -84,7 +84,11 @@ def get_clipboard_text() -> str:
         try:
             res = subprocess.run(
                 ["powershell", "-NoProfile", "-Command", "Get-Clipboard"],
-                capture_output=True, text=True, timeout=3, encoding="utf-8", errors="replace"
+                capture_output=True,
+                text=True,
+                timeout=3,
+                encoding="utf-8",
+                errors="replace",
             )
             if res.returncode == 0:
                 out = res.stdout
@@ -135,6 +139,7 @@ def set_clipboard_text(text: str) -> bool:
     # Backend 1: pyperclip
     try:
         import pyperclip
+
         pyperclip.copy(text)
         return True
     except Exception as e:
@@ -144,6 +149,7 @@ def set_clipboard_text(text: str) -> bool:
     if _OS == "Windows":
         try:
             import ctypes
+
             user32 = ctypes.windll.user32
             kernel32 = ctypes.windll.kernel32
 
@@ -170,6 +176,7 @@ def set_clipboard_text(text: str) -> bool:
     # Backend 3: Tkinter
     try:
         import tkinter as tk
+
         root = tk.Tk()
         root.withdraw()
         try:
@@ -189,7 +196,8 @@ def set_clipboard_text(text: str) -> bool:
             escaped = text.replace("`", "``").replace('"', '`"')
             res = subprocess.run(
                 ["powershell", "-NoProfile", "-Command", f'Set-Clipboard -Value "{escaped}"'],
-                capture_output=True, timeout=3
+                capture_output=True,
+                timeout=3,
             )
             if res.returncode == 0:
                 return True

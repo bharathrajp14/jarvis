@@ -7,10 +7,11 @@ Unit tests validating:
 4. Decision consistency validation against proposed actions
 5. Execution ledger append-only semantics
 """
+
 from __future__ import annotations
 
-import time
 import pytest
+
 from brjarvis.agent.execution_ledger import ExecutionLedger, LedgerEntry, LedgerStatus
 from brjarvis.agent.planner import _validate_and_sanitize_plan
 from brjarvis.memory.canonical_db import CanonicalDatabaseManager
@@ -105,9 +106,7 @@ def test_decision_consistency_validation(decision_engine):
     )
 
     # Valid action
-    is_valid, reason = decision_engine.validate_action_against_decisions(
-        "Store API token in OS Keyring securely"
-    )
+    is_valid, reason = decision_engine.validate_action_against_decisions("Store API token in OS Keyring securely")
     assert is_valid is True
     assert reason is None
 

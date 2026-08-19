@@ -12,6 +12,7 @@ Dispatches timestamped, sequence-numbered PCM audio frames to subscribers:
 
 Includes Software Acoustic Echo Gating to prevent self-interruption during TTS playback.
 """
+
 from __future__ import annotations
 
 import collections
@@ -19,16 +20,16 @@ import dataclasses
 import logging
 import os
 import queue
-import sys
 import threading
 import time
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple
+from typing import Dict, Optional
 
 logger = logging.getLogger("JARVIS.Voice.AudioBus")
 
 _HAS_SD = False
 try:
     import sounddevice as sd  # type: ignore[import-not-found]
+
     _HAS_SD = True
 except ImportError:
     pass
@@ -36,6 +37,7 @@ except ImportError:
 _HAS_SR = False
 try:
     import speech_recognition as sr  # type: ignore[import-not-found]
+
     _HAS_SR = True
     _BaseAudioSource = sr.AudioSource
 except ImportError:
@@ -45,6 +47,7 @@ except ImportError:
 @dataclasses.dataclass(frozen=True)
 class AudioFrame:
     """Timestamped audio frame containing raw PCM bytes and metadata."""
+
     sequence_id: int
     timestamp: float
     data: bytes
@@ -117,28 +120,16 @@ class AudioBus:
 
     @classmethod
     def get_instance(
-        cls,
-        sample_rate: int = 16000,
-        chunk_size: int = 512,
-        device_index: Optional[int] = None
+        cls, sample_rate: int = 16000, chunk_size: int = 512, device_index: Optional[int] = None
     ) -> AudioBus:
         if cls._instance is not None:
             return cls._instance
         with cls._instance_lock:
             if cls._instance is None:
-                cls._instance = AudioBus(
-                    sample_rate=sample_rate,
-                    chunk_size=chunk_size,
-                    device_index=device_index
-                )
+                cls._instance = AudioBus(sample_rate=sample_rate, chunk_size=chunk_size, device_index=device_index)
         return cls._instance
 
-    def __init__(
-        self,
-        sample_rate: int = 16000,
-        chunk_size: int = 512,
-        device_index: Optional[int] = None
-    ):
+    def __init__(self, sample_rate: int = 16000, chunk_size: int = 512, device_index: Optional[int] = None):
         self.sample_rate = sample_rate
         self.chunk_size = chunk_size
         self.device_index = device_index
@@ -261,8 +252,8 @@ class AudioBus:
                             blocksize=self.chunk_size,
                             device=dev,
                             channels=1,
-                            dtype='int16',
-                            callback=self._audio_callback
+                            dtype="int16",
+                            callback=self._audio_callback,
                         )
                         self.device_sample_rate = rate
                         self.device_index = dev
@@ -271,7 +262,9 @@ class AudioBus:
                         self._last_audio_time = time.monotonic()
                         logger.info(
                             "[AudioBus] Audio capture started on device=%s, rate=%dHz, blocksize=%d",
-                            dev, rate, self.chunk_size
+                            dev,
+                            rate,
+                            self.chunk_size,
                         )
                         return True
                     except Exception as e:
@@ -337,7 +330,7 @@ class AudioBus:
             data=raw_bytes,
             sample_rate=self.sample_rate,
             duration_ms=duration_ms,
-            is_echo_gated=self._echo_gate_active
+            is_echo_gated=self._echo_gate_active,
         )
 
         with self._lock:
@@ -354,6 +347,7 @@ class AudioBus:
             return data_bytes
         try:
             import numpy as np
+
             samples = np.frombuffer(data_bytes, dtype=np.int16)
             if len(samples) == 0:
                 return b""

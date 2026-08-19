@@ -3,6 +3,7 @@
 Autonomous action for SQLite database schema inspection, vacuum optimization, table stats,
 and backup creation.
 """
+
 from __future__ import annotations
 
 import shutil
@@ -25,7 +26,7 @@ class SQLiteManagerAction:
             cur = conn.cursor()
             cur.execute("SELECT name FROM sqlite_master WHERE type='table';")
             tables = [r[0] for r in cur.fetchall()]
-            
+
             stats = []
             for t in tables:
                 cur.execute(f"SELECT COUNT(*) FROM {t};")
@@ -65,7 +66,7 @@ class SQLiteManagerAction:
         b_dir = Path(backup_dir).resolve()
         b_dir.mkdir(parents=True, exist_ok=True)
         target = b_dir / f"{self.db_path.stem}_backup{self.db_path.suffix}"
-        
+
         try:
             shutil.copy2(self.db_path, target)
             return f"✅ Database Backup Created: '{target}' ({target.stat().st_size / 1024:.1f} KB)"

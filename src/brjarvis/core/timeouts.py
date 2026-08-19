@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 
 class TimeoutConfig(BaseModel):
     """Timeout configuration settings for various subsystems and tools in BR JARVIS."""
-    
+
     ocr_timeout: float = Field(default=10.0, description="Timeout in seconds for OCR operations")
     tool_exec_timeout: float = Field(default=30.0, description="Default timeout in seconds for executing tool commands")
     voice_stt_timeout: float = Field(default=5.0, description="Speech-To-Text phrase listening timeout limit")

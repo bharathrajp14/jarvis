@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import sys
+
 from brjarvis.desktop.ui_mark import run_voice_ui
 
 

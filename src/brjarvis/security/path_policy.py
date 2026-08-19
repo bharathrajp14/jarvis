@@ -4,6 +4,7 @@ Deterministic path validation and sandbox boundary enforcement for BR JARVIS.
 Handles path normalization, symlink resolution, Windows junction points,
 UNC paths, and tiered boundary checks.
 """
+
 from __future__ import annotations
 
 import logging
@@ -15,24 +16,53 @@ from typing import FrozenSet, List, Optional, Union
 
 logger = logging.getLogger("JARVIS.PathPolicy")
 
-CRITICAL_RESOURCE_DENYLIST: FrozenSet[str] = frozenset({
-    "system32", "syswow64", "winsxs", "registry", "sam", "security",
-    "login data", ".ssh", ".gnupg", ".aws", "credentials", "id_rsa", "id_ed25519", "id_dsa",
-    "wallet.dat", ".pfx", "shadow", "passwd", "etc/shadow",
-    "etc/sudoers", "etc/passwd", "windows/system32", "windows/syswow64",
-    "windows/win.ini", "win.ini", "system.ini", "boot.ini",
-    ".env", ".env.local", ".env.production", ".git", ".npmrc", ".pypirc",
-    "secrets.json", "secrets.yaml", "secrets.env"
-})
+CRITICAL_RESOURCE_DENYLIST: FrozenSet[str] = frozenset(
+    {
+        "system32",
+        "syswow64",
+        "winsxs",
+        "registry",
+        "sam",
+        "security",
+        "login data",
+        ".ssh",
+        ".gnupg",
+        ".aws",
+        "credentials",
+        "id_rsa",
+        "id_ed25519",
+        "id_dsa",
+        "wallet.dat",
+        ".pfx",
+        "shadow",
+        "passwd",
+        "etc/shadow",
+        "etc/sudoers",
+        "etc/passwd",
+        "windows/system32",
+        "windows/syswow64",
+        "windows/win.ini",
+        "win.ini",
+        "system.ini",
+        "boot.ini",
+        ".env",
+        ".env.local",
+        ".env.production",
+        ".git",
+        ".npmrc",
+        ".pypirc",
+        "secrets.json",
+        "secrets.yaml",
+        "secrets.env",
+    }
+)
 
-DENIED_EXTENSIONS: FrozenSet[str] = frozenset({
-    ".pem", ".key", ".pfx", ".pkcs12", ".kdbx", ".wallet", ".crt", ".cer"
-})
+DENIED_EXTENSIONS: FrozenSet[str] = frozenset({".pem", ".key", ".pfx", ".pkcs12", ".kdbx", ".wallet", ".crt", ".cer"})
 
 
 class PathTier(int, Enum):
-    TIER_0_WORKSPACE        = 0  # Confined workspace directory (full access)
-    TIER_1_USER_PROFILE     = 1  # User home directory / documents (requires user privilege)
+    TIER_0_WORKSPACE = 0  # Confined workspace directory (full access)
+    TIER_1_USER_PROFILE = 1  # User home directory / documents (requires user privilege)
     TIER_2_CRITICAL_SECRETS = 2  # Denied system & secret paths (blocked permanently)
 
 
@@ -48,6 +78,7 @@ class PathSecurityPolicy:
             base = Path(workspace_root)
         else:
             from brjarvis.core.paths import paths
+
             base = paths.WORKSPACE_ROOT
         try:
             self.workspace_root = base.resolve()
@@ -173,9 +204,16 @@ class PathSecurityPolicy:
         if not path_input:
             return False
         p_str = str(path_input).replace("\\", "/").lower()
-        return "jarvis_sandbox_jails" in p_str or "sandbox_jails" in p_str or "/jail_" in p_str or "\\jail_" in str(path_input).lower()
+        return (
+            "jarvis_sandbox_jails" in p_str
+            or "sandbox_jails" in p_str
+            or "/jail_" in p_str
+            or "\\jail_" in str(path_input).lower()
+        )
 
-    def validate_artifact_export_path(self, source: Union[str, Path], destination: Union[str, Path], host_root: Union[str, Path]) -> bool:
+    def validate_artifact_export_path(
+        self, source: Union[str, Path], destination: Union[str, Path], host_root: Union[str, Path]
+    ) -> bool:
         try:
             dest_res = Path(destination).resolve(strict=False)
             root_res = Path(host_root).resolve(strict=False)
@@ -189,7 +227,12 @@ def is_sandbox_internal_path(path_input: Union[str, Path]) -> bool:
     if not path_input:
         return False
     p_str = str(path_input).replace("\\", "/").lower()
-    return "jarvis_sandbox_jails" in p_str or "sandbox_jails" in p_str or "/jail_" in p_str or "\\jail_" in str(path_input).lower()
+    return (
+        "jarvis_sandbox_jails" in p_str
+        or "sandbox_jails" in p_str
+        or "/jail_" in p_str
+        or "\\jail_" in str(path_input).lower()
+    )
 
 
 _GLOBAL_PATH_POLICY: Optional[PathSecurityPolicy] = None

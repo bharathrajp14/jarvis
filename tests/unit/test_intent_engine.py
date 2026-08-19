@@ -1,7 +1,9 @@
 """Unit tests for Intent Classification Engine."""
+
 from __future__ import annotations
 
 import pytest
+
 from brjarvis.core.intent_engine import DeterministicIntentEngine
 
 

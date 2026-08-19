@@ -7,17 +7,16 @@ Authoritative Data Access Store for BR JARVIS Workspace Entities:
 - System & Task Notifications
 - Unified Full-Text Search (FTS5)
 """
+
 from __future__ import annotations
 
 import json
 import logging
 import re
-import sqlite3
 import time
 import uuid
 from dataclasses import asdict, dataclass, field
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 from brjarvis.memory.canonical_db import CanonicalDatabaseManager, get_canonical_db
 
@@ -258,16 +257,18 @@ class WorkspaceStore:
                     st = json.loads(r["settings_json"] or "{}")
                 except Exception:
                     st = {}
-                results.append(ProjectRecord(
-                    project_id=r["project_id"],
-                    name=r["name"],
-                    description=r["description"] or "",
-                    instructions=r["instructions"] or "",
-                    settings=st,
-                    pinned=bool(r["pinned"]),
-                    created_at=r["created_at"],
-                    updated_at=r["updated_at"],
-                ))
+                results.append(
+                    ProjectRecord(
+                        project_id=r["project_id"],
+                        name=r["name"],
+                        description=r["description"] or "",
+                        instructions=r["instructions"] or "",
+                        settings=st,
+                        pinned=bool(r["pinned"]),
+                        created_at=r["created_at"],
+                        updated_at=r["updated_at"],
+                    )
+                )
             return results
 
     def update_project(
@@ -354,18 +355,21 @@ class WorkspaceStore:
                 "SELECT * FROM project_files WHERE project_id = ? ORDER BY created_at DESC",
                 (project_id,),
             ).fetchall()
-            return [ProjectFileRecord(
-                file_id=r["file_id"],
-                project_id=r["project_id"],
-                filename=r["filename"],
-                file_path=r["file_path"],
-                file_size=r["file_size"] or 0,
-                mime_type=r["mime_type"] or "application/octet-stream",
-                file_hash=r["file_hash"] or "",
-                status=r["status"] or "READY",
-                created_at=r["created_at"],
-                updated_at=r["updated_at"],
-            ) for r in rows]
+            return [
+                ProjectFileRecord(
+                    file_id=r["file_id"],
+                    project_id=r["project_id"],
+                    filename=r["filename"],
+                    file_path=r["file_path"],
+                    file_size=r["file_size"] or 0,
+                    mime_type=r["mime_type"] or "application/octet-stream",
+                    file_hash=r["file_hash"] or "",
+                    status=r["status"] or "READY",
+                    created_at=r["created_at"],
+                    updated_at=r["updated_at"],
+                )
+                for r in rows
+            ]
 
     def delete_project_file(self, file_id: str) -> bool:
         with self.db.get_connection() as conn:
@@ -459,17 +463,20 @@ class WorkspaceStore:
             params.append(limit)
 
             rows = conn.execute(query, tuple(params)).fetchall()
-            return [ConversationRecord(
-                conversation_id=r["conversation_id"],
-                title=r["title"],
-                project_id=r["project_id"],
-                pinned=bool(r["pinned"]),
-                archived=bool(r["archived"]),
-                active_branch_id=r["active_branch_id"] or "main",
-                summary=r["summary"] or "",
-                created_at=r["created_at"],
-                updated_at=r["updated_at"],
-            ) for r in rows]
+            return [
+                ConversationRecord(
+                    conversation_id=r["conversation_id"],
+                    title=r["title"],
+                    project_id=r["project_id"],
+                    pinned=bool(r["pinned"]),
+                    archived=bool(r["archived"]),
+                    active_branch_id=r["active_branch_id"] or "main",
+                    summary=r["summary"] or "",
+                    created_at=r["created_at"],
+                    updated_at=r["updated_at"],
+                )
+                for r in rows
+            ]
 
     def update_conversation(
         self,
@@ -596,7 +603,20 @@ class WorkspaceStore:
                 INSERT INTO messages (message_id, conversation_id, branch_id, parent_message_id, role, content, tool_calls_json, linked_task_id, linked_artifacts_json, backend, latency_ms, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
-                (mid, conversation_id, actual_branch, parent_message_id, role, content, tc_json, linked_task_id, art_json, backend, latency_ms, now),
+                (
+                    mid,
+                    conversation_id,
+                    actual_branch,
+                    parent_message_id,
+                    role,
+                    content,
+                    tc_json,
+                    linked_task_id,
+                    art_json,
+                    backend,
+                    latency_ms,
+                    now,
+                ),
             )
             conn.execute(
                 "UPDATE conversations SET updated_at = ? WHERE conversation_id = ?",
@@ -606,7 +626,9 @@ class WorkspaceStore:
 
         # FTS index for user and assistant messages
         proj_id = conv.project_id if conv else None
-        self._index_fts("message", mid, f"{role.upper()} in {conv.title if conv else conversation_id}", content, proj_id)
+        self._index_fts(
+            "message", mid, f"{role.upper()} in {conv.title if conv else conversation_id}", content, proj_id
+        )
 
         # Auto-title conversation on first meaningful user message if title is default
         if role.lower() == "user" and conv and conv.title in ("New Chat", "New Conversation"):
@@ -652,28 +674,35 @@ class WorkspaceStore:
                     art = json.loads(r["linked_artifacts_json"] or "[]")
                 except Exception:
                     art = []
-                messages.append(MessageRecord(
-                    message_id=r["message_id"],
-                    conversation_id=r["conversation_id"],
-                    branch_id=r["branch_id"] or "main",
-                    parent_message_id=r["parent_message_id"],
-                    role=r["role"],
-                    content=r["content"] or "",
-                    tool_calls=tc,
-                    linked_task_id=r["linked_task_id"],
-                    linked_artifacts=art,
-                    backend=r["backend"] or "gemini",
-                    latency_ms=r["latency_ms"] or 0,
-                    created_at=r["created_at"],
-                ))
+                messages.append(
+                    MessageRecord(
+                        message_id=r["message_id"],
+                        conversation_id=r["conversation_id"],
+                        branch_id=r["branch_id"] or "main",
+                        parent_message_id=r["parent_message_id"],
+                        role=r["role"],
+                        content=r["content"] or "",
+                        tool_calls=tc,
+                        linked_task_id=r["linked_task_id"],
+                        linked_artifacts=art,
+                        backend=r["backend"] or "gemini",
+                        latency_ms=r["latency_ms"] or 0,
+                        created_at=r["created_at"],
+                    )
+                )
             return messages
 
     @staticmethod
     def generate_title(first_prompt: str) -> str:
         """Derive a concise, content-aware title from the initial prompt."""
-        text = re.sub(r'[\r\n\t]+', ' ', first_prompt).strip()
+        text = re.sub(r"[\r\n\t]+", " ", first_prompt).strip()
         # Clean common prefixes
-        text = re.sub(r'^(please|can you|help me|jarvis|hey jarvis|i want to|create a|build a|write a)\s+', '', text, flags=re.IGNORECASE)
+        text = re.sub(
+            r"^(please|can you|help me|jarvis|hey jarvis|i want to|create a|build a|write a)\s+",
+            "",
+            text,
+            flags=re.IGNORECASE,
+        )
         words = text.split()
         if not words:
             return "Conversation"
@@ -710,7 +739,23 @@ class WorkspaceStore:
                 INSERT INTO artifacts (artifact_id, conversation_id, task_id, project_id, message_id, filename, host_path, sandbox_path, mime_type, file_size, sha256, version, provider, verification_status, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
-                (aid, conversation_id, task_id, project_id, message_id, filename, host_path, sandbox_path, mime_type, file_size, sha256, version, provider, verification_status, now),
+                (
+                    aid,
+                    conversation_id,
+                    task_id,
+                    project_id,
+                    message_id,
+                    filename,
+                    host_path,
+                    sandbox_path,
+                    mime_type,
+                    file_size,
+                    sha256,
+                    version,
+                    provider,
+                    verification_status,
+                    now,
+                ),
             )
             conn.commit()
 
@@ -781,23 +826,26 @@ class WorkspaceStore:
             params.append(limit)
 
             rows = conn.execute(query, tuple(params)).fetchall()
-            return [ArtifactItem(
-                artifact_id=r["artifact_id"],
-                conversation_id=r["conversation_id"],
-                task_id=r["task_id"],
-                project_id=r["project_id"],
-                message_id=r["message_id"],
-                filename=r["filename"],
-                host_path=r["host_path"],
-                sandbox_path=r["sandbox_path"],
-                mime_type=r["mime_type"] or "application/octet-stream",
-                file_size=r["file_size"] or 0,
-                sha256=r["sha256"] or "",
-                version=r["version"] or 1,
-                provider=r["provider"] or "jarvis",
-                verification_status=r["verification_status"] or "PENDING",
-                created_at=r["created_at"],
-            ) for r in rows]
+            return [
+                ArtifactItem(
+                    artifact_id=r["artifact_id"],
+                    conversation_id=r["conversation_id"],
+                    task_id=r["task_id"],
+                    project_id=r["project_id"],
+                    message_id=r["message_id"],
+                    filename=r["filename"],
+                    host_path=r["host_path"],
+                    sandbox_path=r["sandbox_path"],
+                    mime_type=r["mime_type"] or "application/octet-stream",
+                    file_size=r["file_size"] or 0,
+                    sha256=r["sha256"] or "",
+                    version=r["version"] or 1,
+                    provider=r["provider"] or "jarvis",
+                    verification_status=r["verification_status"] or "PENDING",
+                    created_at=r["created_at"],
+                )
+                for r in rows
+            ]
 
     def verify_artifact(self, artifact_id: str, verified: bool = True) -> bool:
         st = "VERIFIED" if verified else "FAILED"
@@ -843,7 +891,9 @@ class WorkspaceStore:
             created_at=now,
         )
 
-    def list_notifications(self, category: Optional[str] = None, unread_only: bool = False, limit: int = 50) -> List[NotificationRecord]:
+    def list_notifications(
+        self, category: Optional[str] = None, unread_only: bool = False, limit: int = 50
+    ) -> List[NotificationRecord]:
         with self.db.get_connection() as conn:
             query = "SELECT * FROM notifications WHERE 1=1"
             params: List[Any] = []
@@ -864,17 +914,19 @@ class WorkspaceStore:
                     dt = json.loads(r["data_json"] or "{}")
                 except Exception:
                     dt = {}
-                results.append(NotificationRecord(
-                    notification_id=r["notification_id"],
-                    title=r["title"],
-                    message=r["message"],
-                    category=r["category"] or "ALL",
-                    severity=r["severity"] or "info",
-                    is_read=bool(r["is_read"]),
-                    action_link=r["action_link"],
-                    data=dt,
-                    created_at=r["created_at"],
-                ))
+                results.append(
+                    NotificationRecord(
+                        notification_id=r["notification_id"],
+                        title=r["title"],
+                        message=r["message"],
+                        category=r["category"] or "ALL",
+                        severity=r["severity"] or "info",
+                        is_read=bool(r["is_read"]),
+                        action_link=r["action_link"],
+                        data=dt,
+                        created_at=r["created_at"],
+                    )
+                )
             return results
 
     def mark_notification_read(self, notification_id: str) -> bool:
@@ -912,12 +964,14 @@ class WorkspaceStore:
                     (f"{clean_q}*", limit),
                 ).fetchall()
                 for r in fts_rows:
-                    results.append({
-                        "entity_type": r["entity_type"],
-                        "entity_id": r["entity_id"],
-                        "title": r["title"],
-                        "snippet": r["snippet"] or "",
-                    })
+                    results.append(
+                        {
+                            "entity_type": r["entity_type"],
+                            "entity_id": r["entity_id"],
+                            "title": r["title"],
+                            "snippet": r["snippet"] or "",
+                        }
+                    )
             except Exception:
                 pass
 
@@ -930,12 +984,14 @@ class WorkspaceStore:
                 ).fetchall()
                 for c in conv_rows:
                     if not any(r["entity_id"] == c["conversation_id"] for r in results):
-                        results.append({
-                            "entity_type": "conversation",
-                            "entity_id": c["conversation_id"],
-                            "title": c["title"],
-                            "snippet": f"Conversation: {c['title']}",
-                        })
+                        results.append(
+                            {
+                                "entity_type": "conversation",
+                                "entity_id": c["conversation_id"],
+                                "title": c["title"],
+                                "snippet": f"Conversation: {c['title']}",
+                            }
+                        )
 
                 # Search projects
                 proj_rows = conn.execute(
@@ -944,12 +1000,14 @@ class WorkspaceStore:
                 ).fetchall()
                 for p in proj_rows:
                     if not any(r["entity_id"] == p["project_id"] for r in results):
-                        results.append({
-                            "entity_type": "project",
-                            "entity_id": p["project_id"],
-                            "title": p["name"],
-                            "snippet": p["description"] or "Project Workspace",
-                        })
+                        results.append(
+                            {
+                                "entity_type": "project",
+                                "entity_id": p["project_id"],
+                                "title": p["name"],
+                                "snippet": p["description"] or "Project Workspace",
+                            }
+                        )
 
                 # Search artifacts
                 art_rows = conn.execute(
@@ -958,12 +1016,14 @@ class WorkspaceStore:
                 ).fetchall()
                 for a in art_rows:
                     if not any(r["entity_id"] == a["artifact_id"] for r in results):
-                        results.append({
-                            "entity_type": "artifact",
-                            "entity_id": a["artifact_id"],
-                            "title": a["filename"],
-                            "snippet": a["host_path"] or "Artifact File",
-                        })
+                        results.append(
+                            {
+                                "entity_type": "artifact",
+                                "entity_id": a["artifact_id"],
+                                "title": a["filename"],
+                                "snippet": a["host_path"] or "Artifact File",
+                            }
+                        )
 
                 # Search tasks
                 task_rows = conn.execute(
@@ -972,12 +1032,14 @@ class WorkspaceStore:
                 ).fetchall()
                 for t in task_rows:
                     if not any(r["entity_id"] == t["task_id"] for r in results):
-                        results.append({
-                            "entity_type": "task",
-                            "entity_id": t["task_id"],
-                            "title": t["goal"],
-                            "snippet": f"Task ({t['status']}): {t['goal']}",
-                        })
+                        results.append(
+                            {
+                                "entity_type": "task",
+                                "entity_id": t["task_id"],
+                                "title": t["goal"],
+                                "snippet": f"Task ({t['status']}): {t['goal']}",
+                            }
+                        )
 
         return results[:limit]
 

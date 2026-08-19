@@ -1,11 +1,11 @@
 # tests/unit/test_terminal_guard.py — Unit Tests for Terminal State Guard
 from __future__ import annotations
 
-import pytest
 from unittest.mock import patch
+
 from brjarvis.core.terminal.guard import (
-    TerminalStateGuard,
     MouseCaptureMode,
+    TerminalStateGuard,
 )
 
 

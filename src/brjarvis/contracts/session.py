@@ -3,6 +3,7 @@
 Canonical Session and Handoff contracts for BR JARVIS operating runtime.
 Defines SessionState, SessionTurn, SessionCheckpoint, Session, and Handoff.
 """
+
 from __future__ import annotations
 
 import time
@@ -15,6 +16,7 @@ from pydantic import BaseModel, Field
 
 class SessionState(str, Enum):
     """Canonical Session Lifecycle States."""
+
     NEW = "NEW"
     ACTIVE = "ACTIVE"
     WAITING = "WAITING"
@@ -28,6 +30,7 @@ class SessionState(str, Enum):
 
 class SessionTurn(BaseModel):
     """A single interaction turn within an agent session."""
+
     turn_id: str = Field(default_factory=lambda: f"turn-{uuid.uuid4().hex[:8]}")
     role: str = Field(default="user", description="user, assistant, system, tool")
     content: str = ""
@@ -43,6 +46,7 @@ class SessionTurn(BaseModel):
 
 class SessionCheckpoint(BaseModel):
     """Point-in-time snapshot for session recovery, rollback, or resume."""
+
     checkpoint_id: str = Field(default_factory=lambda: f"ckpt-{uuid.uuid4().hex[:8]}")
     session_id: str
     state: SessionState = SessionState.ACTIVE
@@ -54,6 +58,7 @@ class SessionCheckpoint(BaseModel):
 
 class Session(BaseModel):
     """Canonical First-Class Session Entity."""
+
     session_id: str = Field(default_factory=lambda: f"sess-{uuid.uuid4().hex[:10]}")
     session_name: str = ""
     user_id: str = "default_user"
@@ -79,6 +84,7 @@ class Session(BaseModel):
 
 class Handoff(BaseModel):
     """Structured Agent/Session/Provider Handoff Packet."""
+
     handoff_id: str = Field(default_factory=lambda: f"hoff-{uuid.uuid4().hex[:8]}")
     session_id: str
     source_agent: str = "jarvis-general"

@@ -3,10 +3,10 @@
 Analyzes inbound user prompts, system instructions, and execution context to
 generate a comprehensive 13-dimensional TaskProfile for model routing.
 """
+
 from __future__ import annotations
 
 import logging
-import re
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Optional
@@ -24,6 +24,7 @@ class TaskComplexity(str, Enum):
 @dataclass
 class TaskProfile:
     """13-dimensional semantic profile for model selection and scoring."""
+
     task_type: str = "chat"
     complexity: TaskComplexity = TaskComplexity.MEDIUM
     requires_reasoning: bool = False
@@ -44,28 +45,90 @@ class TaskProfile:
 
 # Lexical detection patterns
 _CODE_KEYWORDS = {
-    "def ", "class ", "function", "import ", "const ", "let ", "var ",
-    "return ", "async ", "await ", "lambda", "print(", "console.log",
-    "dockerfile", "sql", "select ", "insert ", "update ", "delete ",
-    "refactor", "bug", "traceback", "exception", "error", "nullpointer",
-    "algorithm", "regex", "api", "endpoint", "pull request", "github"
+    "def ",
+    "class ",
+    "function",
+    "import ",
+    "const ",
+    "let ",
+    "var ",
+    "return ",
+    "async ",
+    "await ",
+    "lambda",
+    "print(",
+    "console.log",
+    "dockerfile",
+    "sql",
+    "select ",
+    "insert ",
+    "update ",
+    "delete ",
+    "refactor",
+    "bug",
+    "traceback",
+    "exception",
+    "error",
+    "nullpointer",
+    "algorithm",
+    "regex",
+    "api",
+    "endpoint",
+    "pull request",
+    "github",
 }
 
 _REASONING_KEYWORDS = {
-    "analyze", "architecture", "tradeoff", "evaluate", "compare", "proof",
-    "step-by-step", "why", "implication", "root cause", "deduce", "strategy",
-    "philosophical", "deep reasoning", "audit", "security review", "vulnerability"
+    "analyze",
+    "architecture",
+    "tradeoff",
+    "evaluate",
+    "compare",
+    "proof",
+    "step-by-step",
+    "why",
+    "implication",
+    "root cause",
+    "deduce",
+    "strategy",
+    "philosophical",
+    "deep reasoning",
+    "audit",
+    "security review",
+    "vulnerability",
 }
 
 _AGENT_KEYWORDS = {
-    "browse", "click", "open app", "automate", "navigate", "extract table",
-    "download", "run script", "type", "press key", "search and summarize",
-    "multi-step", "workflow", "execute task"
+    "browse",
+    "click",
+    "open app",
+    "automate",
+    "navigate",
+    "extract table",
+    "download",
+    "run script",
+    "type",
+    "press key",
+    "search and summarize",
+    "multi-step",
+    "workflow",
+    "execute task",
 }
 
 _FAST_GREETINGS = {
-    "hi", "hello", "hey", "ping", "pong", "status", "test", "ok", "cool",
-    "good morning", "good evening", "how are you", "who are you"
+    "hi",
+    "hello",
+    "hey",
+    "ping",
+    "pong",
+    "status",
+    "test",
+    "ok",
+    "cool",
+    "good morning",
+    "good evening",
+    "how are you",
+    "who are you",
 }
 
 
@@ -79,7 +142,7 @@ class TaskProfileClassifier:
         tools: Optional[list[dict[str, Any]]] = None,
         requires_vision: bool = False,
         requires_image_gen: bool = False,
-        json_mode: bool = False
+        json_mode: bool = False,
     ) -> TaskProfile:
         # Extract combined text
         all_text = " ".join([str(m.get("content", "")) for m in messages if isinstance(m, dict)] + [system])

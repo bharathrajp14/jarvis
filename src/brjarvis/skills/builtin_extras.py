@@ -8,10 +8,10 @@ Registers:
   - project_scaffold — Scaffold full multi-tier projects from prompt architecture
   - site_monitor     — Monitor website uptime, latency, and alert on outages
 """
+
 from __future__ import annotations
 
 from .loader import SkillDef, register_builtin_skill
-
 
 _GITHUB_SCAN_PROMPT = """\
 Analyze and summarize an open-source GitHub repository.
@@ -80,70 +80,80 @@ $ARGUMENTS
 
 
 def _register_extras() -> None:
-    register_builtin_skill(SkillDef(
-        name="github_scan",
-        description="Scan, extract, and summarize any GitHub repository architecture and issues",
-        triggers=["/github-scan", "/repo-scan", "scan github repo"],
-        tools=["fetch_page", "fetch_raw", "browser_auto_navigate_and_extract", "web_search"],
-        prompt=_GITHUB_SCAN_PROMPT,
-        file_path="builtin:github_scan",
-        category="engineering",
-        domain="Open Source Intelligence",
-        user_invocable=True,
-        source="builtin"
-    ))
+    register_builtin_skill(
+        SkillDef(
+            name="github_scan",
+            description="Scan, extract, and summarize any GitHub repository architecture and issues",
+            triggers=["/github-scan", "/repo-scan", "scan github repo"],
+            tools=["fetch_page", "fetch_raw", "browser_auto_navigate_and_extract", "web_search"],
+            prompt=_GITHUB_SCAN_PROMPT,
+            file_path="builtin:github_scan",
+            category="engineering",
+            domain="Open Source Intelligence",
+            user_invocable=True,
+            source="builtin",
+        )
+    )
 
-    register_builtin_skill(SkillDef(
-        name="screenshot_fix",
-        description="Capture screen, visually diagnose on-screen error, and patch source code",
-        triggers=["/screenshot-fix", "/visual-debug", "fix screen error"],
-        tools=["take_screenshot", "file_read", "file_write", "batch_file_ops", "run_code"],
-        prompt=_SCREENSHOT_FIX_PROMPT,
-        file_path="builtin:screenshot_fix",
-        category="engineering",
-        domain="Visual Debugging",
-        user_invocable=True,
-        source="builtin"
-    ))
+    register_builtin_skill(
+        SkillDef(
+            name="screenshot_fix",
+            description="Capture screen, visually diagnose on-screen error, and patch source code",
+            triggers=["/screenshot-fix", "/visual-debug", "fix screen error"],
+            tools=["take_screenshot", "file_read", "file_write", "batch_file_ops", "run_code"],
+            prompt=_SCREENSHOT_FIX_PROMPT,
+            file_path="builtin:screenshot_fix",
+            category="engineering",
+            domain="Visual Debugging",
+            user_invocable=True,
+            source="builtin",
+        )
+    )
 
-    register_builtin_skill(SkillDef(
-        name="docker_deploy",
-        description="Build Dockerfiles, containerize applications, and manage containers",
-        triggers=["/docker", "/containerize", "deploy docker"],
-        tools=["run_code", "file_read", "file_write"],
-        prompt=_DOCKER_DEPLOY_PROMPT,
-        file_path="builtin:docker_deploy",
-        category="engineering",
-        domain="DevOps & Infrastructure",
-        user_invocable=True,
-        source="builtin"
-    ))
+    register_builtin_skill(
+        SkillDef(
+            name="docker_deploy",
+            description="Build Dockerfiles, containerize applications, and manage containers",
+            triggers=["/docker", "/containerize", "deploy docker"],
+            tools=["run_code", "file_read", "file_write"],
+            prompt=_DOCKER_DEPLOY_PROMPT,
+            file_path="builtin:docker_deploy",
+            category="engineering",
+            domain="DevOps & Infrastructure",
+            user_invocable=True,
+            source="builtin",
+        )
+    )
 
-    register_builtin_skill(SkillDef(
-        name="project_scaffold",
-        description="Scaffold a production-grade full-stack codebase architecture from a prompt",
-        triggers=["/scaffold", "/new-project", "create project structure"],
-        tools=["init_project_workspace", "batch_file_ops", "file_write", "run_code"],
-        prompt=_PROJECT_SCAFFOLD_PROMPT,
-        file_path="builtin:project_scaffold",
-        category="engineering",
-        domain="Software Architecture",
-        user_invocable=True,
-        source="builtin"
-    ))
+    register_builtin_skill(
+        SkillDef(
+            name="project_scaffold",
+            description="Scaffold a production-grade full-stack codebase architecture from a prompt",
+            triggers=["/scaffold", "/new-project", "create project structure"],
+            tools=["init_project_workspace", "batch_file_ops", "file_write", "run_code"],
+            prompt=_PROJECT_SCAFFOLD_PROMPT,
+            file_path="builtin:project_scaffold",
+            category="engineering",
+            domain="Software Architecture",
+            user_invocable=True,
+            source="builtin",
+        )
+    )
 
-    register_builtin_skill(SkillDef(
-        name="site_monitor",
-        description="Check website uptime, response latency, and configure health monitoring",
-        triggers=["/monitor-site", "/ping-site", "check website uptime"],
-        tools=["fetch_raw", "headers_audit", "add_background_monitor", "web_search"],
-        prompt=_SITE_MONITOR_PROMPT,
-        file_path="builtin:site_monitor",
-        category="productivity",
-        domain="Site Reliability",
-        user_invocable=True,
-        source="builtin"
-    ))
+    register_builtin_skill(
+        SkillDef(
+            name="site_monitor",
+            description="Check website uptime, response latency, and configure health monitoring",
+            triggers=["/monitor-site", "/ping-site", "check website uptime"],
+            tools=["fetch_raw", "headers_audit", "add_background_monitor", "web_search"],
+            prompt=_SITE_MONITOR_PROMPT,
+            file_path="builtin:site_monitor",
+            category="productivity",
+            domain="Site Reliability",
+            user_invocable=True,
+            source="builtin",
+        )
+    )
 
 
 _register_extras()

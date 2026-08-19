@@ -3,6 +3,7 @@
 Canonical Model, Provider, and Routing contracts for BR JARVIS operating runtime.
 Defines ModelCapability, ModelRequest, ModelResponse, ModelHealth, and ModelSelection.
 """
+
 from __future__ import annotations
 
 import time
@@ -15,6 +16,7 @@ from pydantic import BaseModel, Field
 
 class ModelCapability(str, Enum):
     """Model feature and capability taxonomy."""
+
     TEXT = "text"
     VISION = "vision"
     FUNCTION_CALLING = "function_calling"
@@ -27,6 +29,7 @@ class ModelCapability(str, Enum):
 
 class ModelRequest(BaseModel):
     """Normalized completion request payload."""
+
     request_id: str = Field(default_factory=lambda: f"mreq-{uuid.uuid4().hex[:10]}")
     model_id: str
     messages: List[Dict[str, Any]] = Field(default_factory=list)
@@ -43,13 +46,16 @@ class ModelRequest(BaseModel):
 
 class ModelResponse(BaseModel):
     """Normalized response envelope returned from model providers/gateways."""
+
     request_id: str = Field(default_factory=lambda: f"mresp-{uuid.uuid4().hex[:10]}")
     text: str = ""
     tool_calls: List[Dict[str, Any]] = Field(default_factory=list)
     finish_reason: str = "stop"
     model: str = ""
     provider: str = "default"
-    usage: Dict[str, int] = Field(default_factory=lambda: {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0})
+    usage: Dict[str, int] = Field(
+        default_factory=lambda: {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+    )
     latency_ms: float = 0.0
     raw: Optional[Any] = None
     created_at: float = Field(default_factory=time.time)
@@ -60,6 +66,7 @@ class ModelResponse(BaseModel):
 
 class ModelHealth(BaseModel):
     """Live health and availability tracking for a model candidate."""
+
     model_id: str
     provider: str
     available: bool = True
@@ -76,6 +83,7 @@ class ModelHealth(BaseModel):
 
 class ModelSelection(BaseModel):
     """Explainable model routing decision record."""
+
     model_id: str
     provider: str
     score: float

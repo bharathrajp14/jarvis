@@ -12,20 +12,20 @@ from brjarvis.events.types import PermissionEvent
 
 
 class RiskLevel(str, Enum):
-    SAFE     = "SAFE"
-    LOW      = "LOW"
-    MEDIUM   = "MEDIUM"
-    HIGH     = "HIGH"
+    SAFE = "SAFE"
+    LOW = "LOW"
+    MEDIUM = "MEDIUM"
+    HIGH = "HIGH"
     CRITICAL = "CRITICAL"
 
 
 class PermissionDecision(str, Enum):
-    ALLOW_ONCE    = "allow_once"
+    ALLOW_ONCE = "allow_once"
     ALLOW_SESSION = "allow_session"
-    ALLOW_TOOL    = "allow_tool"
-    ALLOW_TARGET  = "allow_target"
-    DENY          = "deny"
-    CANCEL        = "cancel"
+    ALLOW_TOOL = "allow_tool"
+    ALLOW_TARGET = "allow_target"
+    DENY = "deny"
+    CANCEL = "cancel"
 
 
 # Tool classifications by inherent risk
@@ -97,6 +97,7 @@ SAFE_TOOLS: Set[str] = {
 @dataclass
 class PermissionRequest:
     """First-class permission request presented to user or evaluated by policy."""
+
     request_id: str = field(default_factory=lambda: f"perm-{uuid.uuid4().hex[:8]}")
     session_id: str = "default"
     task_id: str = "default"
@@ -135,7 +136,12 @@ class PermissionRequest:
     def resolve(self, decision: PermissionDecision) -> None:
         """Resolve the permission request with a decision."""
         self.decision = decision
-        if decision in (PermissionDecision.ALLOW_ONCE, PermissionDecision.ALLOW_SESSION, PermissionDecision.ALLOW_TOOL, PermissionDecision.ALLOW_TARGET):
+        if decision in (
+            PermissionDecision.ALLOW_ONCE,
+            PermissionDecision.ALLOW_SESSION,
+            PermissionDecision.ALLOW_TOOL,
+            PermissionDecision.ALLOW_TARGET,
+        ):
             self.status = "granted"
         elif decision == PermissionDecision.CANCEL:
             self.status = "cancelled"
@@ -144,18 +150,22 @@ class PermissionRequest:
 
         # Emit permission lifecycle event
         try:
-            get_event_bus().publish(PermissionEvent(
-                topic=f"permission.{self.status}",
-                request_id=self.request_id,
-                session_id=self.session_id,
-                task_id=self.task_id,
-                tool_name=self.tool,
-                action=self.action,
-                target=self.target,
-                risk_level=self.risk_level.value if isinstance(self.risk_level, RiskLevel) else str(self.risk_level),
-                decision=self.status,
-                reason=self.reason,
-            ))
+            get_event_bus().publish(
+                PermissionEvent(
+                    topic=f"permission.{self.status}",
+                    request_id=self.request_id,
+                    session_id=self.session_id,
+                    task_id=self.task_id,
+                    tool_name=self.tool,
+                    action=self.action,
+                    target=self.target,
+                    risk_level=self.risk_level.value
+                    if isinstance(self.risk_level, RiskLevel)
+                    else str(self.risk_level),
+                    decision=self.status,
+                    reason=self.reason,
+                )
+            )
         except Exception:
             pass
 
@@ -164,9 +174,9 @@ class PermissionManager:
     """Manages session-level approval cache and evaluates incoming requests."""
 
     def __init__(self):
-        self._session_allowed_tools: Dict[str, Set[str]] = {}       # session_id -> {tool_names}
-        self._session_allowed_targets: Dict[str, Set[str]] = {}     # session_id -> {target_paths/urls}
-        self._session_allow_all: Set[str] = set()                   # session_ids where allow_session is active
+        self._session_allowed_tools: Dict[str, Set[str]] = {}  # session_id -> {tool_names}
+        self._session_allowed_targets: Dict[str, Set[str]] = {}  # session_id -> {target_paths/urls}
+        self._session_allow_all: Set[str] = set()  # session_ids where allow_session is active
         self._interactive_resolver: Optional[Callable[[PermissionRequest], PermissionDecision]] = None
 
     def set_interactive_resolver(self, resolver: Callable[[PermissionRequest], PermissionDecision]) -> None:
@@ -240,18 +250,20 @@ class PermissionManager:
 
         # Publish request event
         try:
-            get_event_bus().publish(PermissionEvent(
-                topic="permission.requested",
-                request_id=req.request_id,
-                session_id=session_id,
-                task_id=task_id,
-                tool_name=tool,
-                action=action,
-                target=target,
-                risk_level=risk.value,
-                decision="pending",
-                reason=req.reason,
-            ))
+            get_event_bus().publish(
+                PermissionEvent(
+                    topic="permission.requested",
+                    request_id=req.request_id,
+                    session_id=session_id,
+                    task_id=task_id,
+                    tool_name=tool,
+                    action=action,
+                    target=target,
+                    risk_level=risk.value,
+                    decision="pending",
+                    reason=req.reason,
+                )
+            )
         except Exception:
             pass
 
@@ -263,7 +275,11 @@ class PermissionManager:
             return True
         if session_id in self._session_allowed_tools and tool in self._session_allowed_tools[session_id]:
             return True
-        if target and session_id in self._session_allowed_targets and target in self._session_allowed_targets[session_id]:
+        if (
+            target
+            and session_id in self._session_allowed_targets
+            and target in self._session_allowed_targets[session_id]
+        ):
             return True
         return False
 

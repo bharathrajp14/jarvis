@@ -23,6 +23,7 @@ Goal preservation rule (§2 of MK40.2 spec):
         or "open browser"
     as completion of this goal.
 """
+
 from __future__ import annotations
 
 import json
@@ -36,15 +37,17 @@ logger = logging.getLogger("JARVIS.GoalDecomposer")
 
 # ── Data contracts ─────────────────────────────────────────────────────────────
 
+
 @dataclass
 class Criterion:
     """A single discrete, verifiable acceptance criterion."""
-    criterion_id:      str    # e.g. "C1", "C2"
-    description:       str    # human-readable
-    required:          bool = True
-    tool_categories:   List[str] = field(default_factory=list)  # e.g. ["git", "filesystem"]
+
+    criterion_id: str  # e.g. "C1", "C2"
+    description: str  # human-readable
+    required: bool = True
+    tool_categories: List[str] = field(default_factory=list)  # e.g. ["git", "filesystem"]
     verification_method: str = "tool_output"  # "file_exists" | "process_running" | "tool_output" | "remote_verified"
-    status:            str = "PENDING"  # PENDING | VERIFIED | FAILED | UNVERIFIED
+    status: str = "PENDING"  # PENDING | VERIFIED | FAILED | UNVERIFIED
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)
@@ -62,11 +65,12 @@ class GoalSpec:
     This is computed ONCE before execution and stored immutably in TaskState.
     It is the contract against which the CompletionGate measures actual results.
     """
-    original_request:    str
-    required_operations: List[str]           # e.g. ["CREATE_PORTFOLIO", "PUSH_TO_GITHUB"]
+
+    original_request: str
+    required_operations: List[str]  # e.g. ["CREATE_PORTFOLIO", "PUSH_TO_GITHUB"]
     acceptance_criteria: List[Criterion]
-    tool_dag:            Dict[str, List[str]] = field(default_factory=dict)
-    decomposed_by:       str = "llm"         # "llm" | "deterministic"
+    tool_dag: Dict[str, List[str]] = field(default_factory=dict)
+    decomposed_by: str = "llm"  # "llm" | "deterministic"
 
     def to_dict(self) -> Dict[str, Any]:
         d = asdict(self)
@@ -77,8 +81,7 @@ class GoalSpec:
     def from_dict(cls, d: Dict[str, Any]) -> "GoalSpec":
         raw = dict(d)
         raw["acceptance_criteria"] = [
-            Criterion.from_dict(c) if isinstance(c, dict) else c
-            for c in raw.get("acceptance_criteria", [])
+            Criterion.from_dict(c) if isinstance(c, dict) else c for c in raw.get("acceptance_criteria", [])
         ]
         return cls(**{k: v for k, v in raw.items() if k in cls.__dataclass_fields__})
 
@@ -119,11 +122,11 @@ IMPORTANT:
 
 def _strip_json(text: str) -> str:
     text = text.strip()
-    m = re.search(r'```(?:json)?\s*([\s\S]*?)\s*```', text)
+    m = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", text)
     if m:
         return m.group(1).strip()
     # Try to find first { ... }
-    m = re.search(r'\{[\s\S]+\}', text)
+    m = re.search(r"\{[\s\S]+\}", text)
     return m.group(0) if m else text
 
 
@@ -150,7 +153,7 @@ def _decompose_via_llm(goal: str) -> Optional[GoalSpec]:
 
         criteria = [
             Criterion(
-                criterion_id=c.get("criterion_id", f"C{i+1}"),
+                criterion_id=c.get("criterion_id", f"C{i + 1}"),
                 description=c.get("description", ""),
                 required=bool(c.get("required", True)),
                 tool_categories=list(c.get("tool_categories", [])),
@@ -192,7 +195,9 @@ _KEYWORD_RULES: List[tuple] = [
             Criterion("C_GIT_2", "Files staged and committed", True, ["git"], "tool_output"),
             Criterion("C_GIT_3", "GitHub authentication available", True, ["git", "github"], "tool_output"),
             Criterion("C_GIT_4", "Push command executed with returncode 0", True, ["git"], "tool_output"),
-            Criterion("C_GIT_5", "Remote branch updated (verified via ls-remote)", True, ["git", "github"], "remote_verified"),
+            Criterion(
+                "C_GIT_5", "Remote branch updated (verified via ls-remote)", True, ["git", "github"], "remote_verified"
+            ),
         ],
     ),
     (
@@ -200,7 +205,9 @@ _KEYWORD_RULES: List[tuple] = [
         "OPEN_PORTFOLIO",
         [
             Criterion("C_OPEN_1", "Correct application launched", True, ["browser", "system"], "process_running"),
-            Criterion("C_OPEN_2", "Correct document is active in application", True, ["browser", "system"], "process_running"),
+            Criterion(
+                "C_OPEN_2", "Correct document is active in application", True, ["browser", "system"], "process_running"
+            ),
         ],
     ),
     (
@@ -271,6 +278,7 @@ def _decompose_deterministic(goal: str) -> GoalSpec:
 
 # ── Public API ─────────────────────────────────────────────────────────────────
 
+
 def decompose_goal(goal: str) -> GoalSpec:
     """
     Convert a user goal string into a structured GoalSpec.
@@ -291,11 +299,17 @@ def decompose_goal(goal: str) -> GoalSpec:
 
     spec = _decompose_via_llm(goal)
     if spec and spec.required_operations:
-        logger.info("[GoalDecomposer] LLM decomposed goal into %d operations: %s",
-                    len(spec.required_operations), spec.required_operations)
+        logger.info(
+            "[GoalDecomposer] LLM decomposed goal into %d operations: %s",
+            len(spec.required_operations),
+            spec.required_operations,
+        )
         return spec
 
     spec = _decompose_deterministic(goal)
-    logger.info("[GoalDecomposer] Deterministic decomposed goal into %d operations: %s",
-                len(spec.required_operations), spec.required_operations)
+    logger.info(
+        "[GoalDecomposer] Deterministic decomposed goal into %d operations: %s",
+        len(spec.required_operations),
+        spec.required_operations,
+    )
     return spec

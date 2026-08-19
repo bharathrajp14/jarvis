@@ -1,11 +1,13 @@
 """Unit tests for Native C Bridge and Pure-Python Fallbacks."""
+
 from __future__ import annotations
 
 import pytest
+
 from brjarvis.core.native_bridge import (
-    fast_hash,
-    fast_cosine_distance,
     audio_energy,
+    fast_cosine_distance,
+    fast_hash,
     grid_transform,
 )
 

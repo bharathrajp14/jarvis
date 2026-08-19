@@ -1,7 +1,9 @@
 """Non-Destructive Startup Smoke Invariant Suite for BR JARVIS MK40.2+."""
+
 from __future__ import annotations
 
 import pytest
+
 from scripts.smoke_startup import main as run_smoke_checks
 
 

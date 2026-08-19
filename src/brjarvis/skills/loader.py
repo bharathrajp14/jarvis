@@ -9,6 +9,7 @@ Skills can be loaded from:
   - ~/.jarvis/skills/       (user-level)
   - Built-in skills         (lowest priority)
 """
+
 from __future__ import annotations
 
 import logging
@@ -19,6 +20,7 @@ from typing import Any, Optional
 
 try:
     import yaml
+
     _HAS_YAML = True
 except ImportError:
     _HAS_YAML = False
@@ -29,25 +31,27 @@ logger = logging.getLogger(__name__)
 @dataclass
 class SkillDef:
     """Definition of a single skill (reusable prompt template)."""
+
     name: str
     description: str
-    triggers: list[str]          # ["/commit", "commit changes"]
-    tools: list[str]             # ["Bash", "Read"]  (allowed-tools)
-    prompt: str                  # full prompt body after frontmatter
+    triggers: list[str]  # ["/commit", "commit changes"]
+    tools: list[str]  # ["Bash", "Read"]  (allowed-tools)
+    prompt: str  # full prompt body after frontmatter
     file_path: str
     # Enhanced fields
-    category: str = "general"    # e.g. "engineering", "c-level-advisor", "marketing"
-    domain: str = ""             # e.g. "Security", "Code Audit", "Legal"
-    when_to_use: str = ""        # when JARVIS should auto-invoke this skill
-    argument_hint: str = ""      # e.g. "[branch] [description]"
+    category: str = "general"  # e.g. "engineering", "c-level-advisor", "marketing"
+    domain: str = ""  # e.g. "Security", "Code Audit", "Legal"
+    when_to_use: str = ""  # when JARVIS should auto-invoke this skill
+    argument_hint: str = ""  # e.g. "[branch] [description]"
     arguments: list[str] = field(default_factory=list)  # named arg names
-    model: str = ""              # model override
+    model: str = ""  # model override
     user_invocable: bool = True  # appears in /skills list
-    context: str = "inline"      # "inline" or "fork" (fork = sub-agent)
-    source: str = "user"         # "user", "project", "builtin"
+    context: str = "inline"  # "inline" or "fork" (fork = sub-agent)
+    source: str = "user"  # "user", "project", "builtin"
 
 
 # ── Directory paths ────────────────────────────────────────────────────────
+
 
 def _get_skill_paths() -> list[Path]:
     """Return skill directories ordered from lowest to highest priority."""
@@ -59,19 +63,20 @@ def _get_skill_paths() -> list[Path]:
     pkg_skills = Path(__file__).resolve().parent
 
     return [
-        pkg_skills,                                   # package built-in dir (skills/)
-        pkg_skills / "library",                       # domain skills library (skills/library/)
+        pkg_skills,  # package built-in dir (skills/)
+        pkg_skills / "library",  # domain skills library (skills/library/)
         *extra_dirs,
-        Path.home() / ".gemini" / "config" / "skills", # global customization root
-        Path.home() / ".jarvis" / "skills",           # user-level
-        Path.cwd() / ".agents" / "skills",            # workspace customization root
-        Path.cwd() / "skills",                        # project-level skills/
-        Path.cwd() / "skills" / "library",            # project-level skills/library/
-        Path.cwd() / ".jarvis" / "skills",            # project-level .jarvis/skills/
+        Path.home() / ".gemini" / "config" / "skills",  # global customization root
+        Path.home() / ".jarvis" / "skills",  # user-level
+        Path.cwd() / ".agents" / "skills",  # workspace customization root
+        Path.cwd() / "skills",  # project-level skills/
+        Path.cwd() / "skills" / "library",  # project-level skills/library/
+        Path.cwd() / ".jarvis" / "skills",  # project-level .jarvis/skills/
     ]
 
 
 # ── List field parser ──────────────────────────────────────────────────────
+
 
 def _parse_list_field(value: Any) -> list[str]:
     """Parse YAML-like list: ``[a, b, c]``, ``"a, b, c"``, or list object."""
@@ -86,6 +91,7 @@ def _parse_list_field(value: Any) -> list[str]:
 
 
 # ── Single-file parser ─────────────────────────────────────────────────────
+
 
 def _parse_skill_file(path: Path, source: str = "user") -> Optional[SkillDef]:
     """Parse a markdown file with ``---`` frontmatter into a SkillDef.
@@ -117,7 +123,7 @@ def _parse_skill_file(path: Path, source: str = "user") -> Optional[SkillDef]:
             if isinstance(parsed_yaml, dict):
                 fields = {str(k).lower(): v for k, v in parsed_yaml.items()}
         except Exception as e:
-            logger.debug('Suppressed exception: %s', e)
+            logger.debug("Suppressed exception: %s", e)
     # Fallback to key-value string parsing if PyYAML fails or isn't available
     if not fields:
         for line in frontmatter_raw.splitlines():
@@ -127,7 +133,7 @@ def _parse_skill_file(path: Path, source: str = "user") -> Optional[SkillDef]:
             key, _, val = line.partition(":")
             fields[key.strip().lower()] = val.strip()
 
-    name = str(fields.get("name", "")).strip().strip('"\'')
+    name = str(fields.get("name", "")).strip().strip("\"'")
     if not name:
         return None
 
@@ -190,6 +196,7 @@ def register_builtin_skill(skill: SkillDef) -> None:
 
 # ── Load all skills ────────────────────────────────────────────────────────
 
+
 def load_skills(include_builtins: bool = True) -> list[SkillDef]:
     """Return skills from disk + builtins, deduplicated (project > user > builtin)."""
     seen: dict[str, SkillDef] = {}
@@ -206,8 +213,12 @@ def load_skills(include_builtins: bool = True) -> list[SkillDef]:
     for skill_dir in skill_paths:
         if not skill_dir.is_dir():
             continue
-        src = "project" if str(skill_dir).startswith(str(Path.cwd())) else ("builtin" if str(skill_dir).startswith(pkg_skills_str) else "user")
-        
+        src = (
+            "project"
+            if str(skill_dir).startswith(str(Path.cwd()))
+            else ("builtin" if str(skill_dir).startswith(pkg_skills_str) else "user")
+        )
+
         # 1. Scan direct *.md files
         for md_file in sorted(skill_dir.glob("*.md")):
             skill = _parse_skill_file(md_file, source=src)
@@ -243,6 +254,7 @@ def find_skill(query: str) -> Optional[SkillDef]:
 
 
 # ── Argument substitution ─────────────────────────────────────────────────
+
 
 def substitute_arguments(prompt: str, args: str, arg_names: list[str]) -> str:
     """Replace $ARGUMENTS (whole args string) and $ARG_NAME placeholders."""

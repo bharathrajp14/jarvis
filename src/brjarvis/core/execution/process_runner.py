@@ -4,14 +4,12 @@ from __future__ import annotations
 import logging
 import os
 import platform
-import shutil
 import signal
 import subprocess
-import sys
 import threading
 import time
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Set, Union
+from typing import Any, Dict, List, Optional, Set
 
 from .environment_resolver import get_environment_resolver
 from .types import EnvironmentProfile, ExecutionResult, ExecutionStatus
@@ -23,10 +21,24 @@ _DEFAULT_TIMEOUT = 30
 _MAX_MEMORY_BYTES = 512 * 1024 * 1024  # 512 MB ceiling
 
 _SAFE_ENV_KEYS: Set[str] = {
-    "PATH", "SYSTEMROOT", "WINDIR", "COMSPEC", "PATHEXT",
-    "TEMP", "TMP", "PYTHONIOENCODING", "PYTHONUTF8", "PYTHONDONTWRITEBYTECODE",
-    "LANG", "LC_ALL", "TERM", "HOMEDRIVE", "HOMEPATH", "USERPROFILE",
-    "VIRTUAL_ENV", "PYTHONPATH"
+    "PATH",
+    "SYSTEMROOT",
+    "WINDIR",
+    "COMSPEC",
+    "PATHEXT",
+    "TEMP",
+    "TMP",
+    "PYTHONIOENCODING",
+    "PYTHONUTF8",
+    "PYTHONDONTWRITEBYTECODE",
+    "LANG",
+    "LC_ALL",
+    "TERM",
+    "HOMEDRIVE",
+    "HOMEPATH",
+    "USERPROFILE",
+    "VIRTUAL_ENV",
+    "PYTHONPATH",
 }
 
 
@@ -40,6 +52,7 @@ class WindowsJobObject:
             try:
                 import ctypes
                 import ctypes.wintypes
+
                 kernel32 = ctypes.windll.kernel32
                 self.handle = kernel32.CreateJobObjectW(None, None)
                 if self.handle:
@@ -48,48 +61,47 @@ class WindowsJobObject:
 
                     class IO_COUNTERS(ctypes.Structure):
                         _fields_ = [
-                            ('ReadOperationCount', ctypes.c_uint64),
-                            ('WriteOperationCount', ctypes.c_uint64),
-                            ('OtherOperationCount', ctypes.c_uint64),
-                            ('ReadTransferCount', ctypes.c_uint64),
-                            ('WriteTransferCount', ctypes.c_uint64),
-                            ('OtherTransferCount', ctypes.c_uint64)
+                            ("ReadOperationCount", ctypes.c_uint64),
+                            ("WriteOperationCount", ctypes.c_uint64),
+                            ("OtherOperationCount", ctypes.c_uint64),
+                            ("ReadTransferCount", ctypes.c_uint64),
+                            ("WriteTransferCount", ctypes.c_uint64),
+                            ("OtherTransferCount", ctypes.c_uint64),
                         ]
 
                     class JOBOBJECT_BASIC_LIMIT_INFORMATION(ctypes.Structure):
                         _fields_ = [
-                            ('PerProcessUserTimeLimit', ctypes.c_int64),
-                            ('PerJobUserTimeLimit', ctypes.c_int64),
-                            ('LimitFlags', ctypes.wintypes.DWORD),
-                            ('MinimumWorkingSetSize', ctypes.c_size_t),
-                            ('MaximumWorkingSetSize', ctypes.c_size_t),
-                            ('ActiveProcessLimit', ctypes.wintypes.DWORD),
-                            ('Affinity', ctypes.c_size_t),
-                            ('PriorityClass', ctypes.wintypes.DWORD),
-                            ('SchedulingClass', ctypes.wintypes.DWORD)
+                            ("PerProcessUserTimeLimit", ctypes.c_int64),
+                            ("PerJobUserTimeLimit", ctypes.c_int64),
+                            ("LimitFlags", ctypes.wintypes.DWORD),
+                            ("MinimumWorkingSetSize", ctypes.c_size_t),
+                            ("MaximumWorkingSetSize", ctypes.c_size_t),
+                            ("ActiveProcessLimit", ctypes.wintypes.DWORD),
+                            ("Affinity", ctypes.c_size_t),
+                            ("PriorityClass", ctypes.wintypes.DWORD),
+                            ("SchedulingClass", ctypes.wintypes.DWORD),
                         ]
 
                     class JOBOBJECT_EXTENDED_LIMIT_INFORMATION(ctypes.Structure):
                         _fields_ = [
-                            ('BasicLimitInformation', JOBOBJECT_BASIC_LIMIT_INFORMATION),
-                            ('IoInfo', IO_COUNTERS),
-                            ('ProcessMemoryLimit', ctypes.c_size_t),
-                            ('JobMemoryLimit', ctypes.c_size_t),
-                            ('PeakProcessMemoryLimit', ctypes.c_size_t),
-                            ('PeakJobMemoryLimit', ctypes.c_size_t)
+                            ("BasicLimitInformation", JOBOBJECT_BASIC_LIMIT_INFORMATION),
+                            ("IoInfo", IO_COUNTERS),
+                            ("ProcessMemoryLimit", ctypes.c_size_t),
+                            ("JobMemoryLimit", ctypes.c_size_t),
+                            ("PeakProcessMemoryLimit", ctypes.c_size_t),
+                            ("PeakJobMemoryLimit", ctypes.c_size_t),
                         ]
 
                     info = JOBOBJECT_EXTENDED_LIMIT_INFORMATION()
-                    info.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE | JOB_OBJECT_LIMIT_PROCESS_MEMORY
+                    info.BasicLimitInformation.LimitFlags = (
+                        JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE | JOB_OBJECT_LIMIT_PROCESS_MEMORY
+                    )
                     info.ProcessMemoryLimit = max_memory_bytes
                     info.JobMemoryLimit = max_memory_bytes
 
                     JobObjectExtendedLimitInformation = 9
                     kernel32.SetInformationJobObject(
-                        self.handle,
-                        JobObjectExtendedLimitInformation,
-                        ctypes.byref(info),
-                        ctypes.sizeof(info)
+                        self.handle, JobObjectExtendedLimitInformation, ctypes.byref(info), ctypes.sizeof(info)
                     )
             except Exception as e:
                 logger.debug("Windows Job Object setup notice: %s", e)
@@ -98,6 +110,7 @@ class WindowsJobObject:
         if self.handle and _OS == "Windows":
             try:
                 import ctypes
+
                 kernel32 = ctypes.windll.kernel32
                 return bool(kernel32.AssignProcessToJobObject(self.handle, process_handle))
             except Exception as e:
@@ -108,6 +121,7 @@ class WindowsJobObject:
         if self.handle and _OS == "Windows":
             try:
                 import ctypes
+
                 kernel32 = ctypes.windll.kernel32
                 kernel32.CloseHandle(self.handle)
             except Exception:
@@ -138,10 +152,12 @@ class ProcessRunner:
     ) -> ExecutionResult:
         """Execute a command synchronously with full lifecycle management and process tree containment."""
         t0 = time.perf_counter()
-        
+
         # 1. Resolve runtime environment
         profile = env_profile or self.env_resolver.resolve_python()
-        working_dir = Path(cwd).resolve() if cwd else Path(profile.working_directory or self.env_resolver.default_project_root)
+        working_dir = (
+            Path(cwd).resolve() if cwd else Path(profile.working_directory or self.env_resolver.default_project_root)
+        )
         working_dir.mkdir(parents=True, exist_ok=True)
 
         # 2. Build sanitized environment
@@ -189,7 +205,7 @@ class ProcessRunner:
             duration_ms = (time.perf_counter() - t0) * 1000.0
 
             status = ExecutionStatus.SUCCESS_UNVERIFIED if proc.returncode == 0 else ExecutionStatus.FAILED
-            
+
             # Check for silent errors in stderr
             error_msg = None
             if proc.returncode != 0:
@@ -270,11 +286,7 @@ class ProcessRunner:
 
         try:
             if _OS == "Windows":
-                subprocess.run(
-                    ["taskkill", "/F", "/T", "/PID", str(proc.pid)],
-                    capture_output=True,
-                    timeout=5
-                )
+                subprocess.run(["taskkill", "/F", "/T", "/PID", str(proc.pid)], capture_output=True, timeout=5)
             else:
                 os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
         except Exception as e:

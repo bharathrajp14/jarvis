@@ -1,19 +1,16 @@
 # guardian/core.py — Master Guardian Core Safety Engine
 from __future__ import annotations
 
-import hmac
 import hashlib
+import hmac
 import json
 import logging
 import os
 import time
-from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from .audit_log import AuditLog
 from .kill_switch import KillSwitch
-from .rollback import RollbackEngine
-from .snapshot import SnapshotManager
 
 logger = logging.getLogger("JARVIS.GuardianCore")
 
@@ -79,11 +76,7 @@ class GuardianCore:
 
         if self._TRUST_MANIFEST.exists():
             try:
-                manifest_data = {
-                    "manifest_version": "40.2",
-                    "file_hashes": hashes,
-                    "version": "MK40.2-CERTIFIED"
-                }
+                manifest_data = {"manifest_version": "40.2", "file_hashes": hashes, "version": "MK40.2-CERTIFIED"}
                 self._TRUST_MANIFEST.write_text(json.dumps(manifest_data, indent=2), encoding="utf-8")
             except Exception as e:
                 logger.warning("Failed to update release manifest: %s", e)
@@ -149,7 +142,10 @@ class GuardianCore:
     def check_secrets_safety(self, text_content: str) -> tuple[bool, str]:
         """Scan string content for exposed API keys or secret tokens."""
         import re
-        if re.search(r"""(?:api[_-]?key|secret|password)\s*=\s*['"][a-zA-Z0-9_\-]{25,}['"]""", text_content, re.IGNORECASE):
+
+        if re.search(
+            r"""(?:api[_-]?key|secret|password)\s*=\s*['"][a-zA-Z0-9_\-]{25,}['"]""", text_content, re.IGNORECASE
+        ):
             return False, "Potential hardcoded API key or secret token detected in execution payload."
         return True, ""
 

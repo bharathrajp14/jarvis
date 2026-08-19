@@ -5,6 +5,7 @@ Raw secrets are never written to project JSON files. The JSON vault contains
 metadata only; secret values live in the platform credential store exposed by
 ``keyring``. A backend may be injected for deterministic tests.
 """
+
 from __future__ import annotations
 
 import json

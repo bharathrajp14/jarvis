@@ -4,12 +4,11 @@ Checks DDG news once per day per topic; alerts JARVIS when a new headline appear
 No crypto, no finance, no uninvited tracking.
 """
 
-import logging
 import hashlib
 import json
+import logging
 import re
 from datetime import datetime
-from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -18,12 +17,29 @@ logger = logging.getLogger(__name__)
 
 _BLOCKED = {
     # Marka / varlık adları — her dilde aynı yazılır
-    "bitcoin", "ethereum", "dogecoin", "solana", "binance",
-    "nft", "blockchain", "defi", "altcoin", "memecoin", "coin", "token",
+    "bitcoin",
+    "ethereum",
+    "dogecoin",
+    "solana",
+    "binance",
+    "nft",
+    "blockchain",
+    "defi",
+    "altcoin",
+    "memecoin",
+    "coin",
+    "token",
     # "kripto" kökünün farklı dillerdeki yazılışları
-    "crypto", "kripto", "cripto", "krypto", "крипто", "仮想通貨", "暗号資産",
+    "crypto",
+    "kripto",
+    "cripto",
+    "krypto",
+    "крипто",
+    "仮想通貨",
+    "暗号資産",
     "cryptocurrency",
 }
+
 
 def _is_blocked(topic: str) -> bool:
     t = topic.lower()
@@ -32,8 +48,10 @@ def _is_blocked(topic: str) -> bool:
 
 # ── Slug / hash helpers ────────────────────────────────────────────────────────
 
+
 def _slug(topic: str) -> str:
     return re.sub(r"[^a-z0-9]+", "_", topic.lower().strip())[:40].strip("_")
+
 
 def _title_hash(title: str) -> str:
     return hashlib.md5(title.encode("utf-8", errors="ignore")).hexdigest()[:12]
@@ -41,25 +59,31 @@ def _title_hash(title: str) -> str:
 
 # ── Memory I/O ─────────────────────────────────────────────────────────────────
 
+
 def _load() -> dict:
     try:
         from brjarvis.memory.canonical_db import get_canonical_db
+
         val = get_canonical_db().get_preference("monitors:active")
         if val:
             return json.loads(val)
     except Exception:
         pass
     from brjarvis.memory.memory_manager import load_memory
+
     data = load_memory().get("monitors", {})
     return data if isinstance(data, dict) else {}
+
 
 def _save(monitors: dict) -> None:
     try:
         from brjarvis.memory.canonical_db import get_canonical_db
+
         get_canonical_db().set_preference("monitors:active", json.dumps(monitors))
     except Exception:
         pass
-    from brjarvis.memory.memory_manager import load_memory, MEMORY_PATH, _lock
+    from brjarvis.memory.memory_manager import MEMORY_PATH, _lock, load_memory
+
     memory = load_memory()
     memory["monitors"] = monitors
     with _lock:
@@ -72,6 +96,7 @@ def _save(monitors: dict) -> None:
 
 # ── Public API ─────────────────────────────────────────────────────────────────
 
+
 def add_monitor(topic: str) -> str:
     topic = topic.strip()
     if not topic:
@@ -83,10 +108,10 @@ def add_monitor(topic: str) -> str:
     if slug in monitors:
         return f"Already monitoring: {monitors[slug]['topic']}"
     monitors[slug] = {
-        "topic":      topic,
-        "added":      datetime.now().strftime("%Y-%m-%d"),
+        "topic": topic,
+        "added": datetime.now().strftime("%Y-%m-%d"),
         "last_check": "",
-        "last_hash":  "",
+        "last_hash": "",
     }
     _save(monitors)
     logger.info(f"[Monitor] ➕ Added: {topic}")
@@ -126,13 +151,13 @@ def check_all() -> list[str]:
     if not monitors:
         return []
 
-    today   = datetime.now().strftime("%Y-%m-%d")
-    alerts  = []
+    today = datetime.now().strftime("%Y-%m-%d")
+    alerts = []
     changed = False
 
     for slug, data in monitors.items():
         if data.get("last_check") == today:
-            continue                     # already checked today
+            continue  # already checked today
 
         topic = data.get("topic", slug)
         try:
@@ -142,7 +167,7 @@ def check_all() -> list[str]:
                 changed = True
                 continue
 
-            top   = results[0]
+            top = results[0]
             title = top.get("title", "").strip()
             if not title:
                 continue
@@ -152,13 +177,13 @@ def check_all() -> list[str]:
             changed = True
 
             if h == data.get("last_hash"):
-                continue                 # same headline as last check — no alert
+                continue  # same headline as last check — no alert
 
             monitors[slug]["last_hash"] = h
 
             snippet = top.get("snippet", "")[:150]
-            source  = top.get("source", "")
-            parts   = [f"[MONITOR_ALERT] {topic}", f"Headline: {title}"]
+            source = top.get("source", "")
+            parts = [f"[MONITOR_ALERT] {topic}", f"Headline: {title}"]
             if snippet:
                 parts.append(snippet)
             if source:

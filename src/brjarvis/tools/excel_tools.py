@@ -4,22 +4,21 @@ Automated Excel Spreadsheet Generation & Codebase Analysis Suite.
 Uses openpyxl for building styled, multi-tab .xlsx workbooks with automatic layout formatting,
 custom header themes, auto-column sizing, summary formulas, and automatic Excel launching.
 """
+
 from __future__ import annotations
 
 import logging
-import json
-import os
-import sys
 import subprocess
+import sys
 from pathlib import Path
-from typing import Any
 
 from .registry import register_tool
 
 try:
     import openpyxl
-    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
     from openpyxl.utils import get_column_letter
+
     _OPENPYXL_AVAILABLE = True
 except ImportError:
     _OPENPYXL_AVAILABLE = False
@@ -28,6 +27,7 @@ logger = logging.getLogger(__name__)
 
 
 from brjarvis.core.paths import paths
+
 
 def _get_workspace_dir() -> Path:
     return paths.DOCUMENTS_DIR
@@ -43,10 +43,13 @@ def _get_workspace_dir() -> Path:
             "headers": {"type": "array", "items": {"type": "string"}, "description": "List of column header names"},
             "rows": {"type": "array", "description": "List of data rows (each row is a list of cell values)"},
             "filename": {"type": "string", "description": "Output filename ending in .xlsx (e.g. report.xlsx)"},
-            "auto_open": {"type": "boolean", "description": "Whether to launch Microsoft Excel automatically after creation"}
+            "auto_open": {
+                "type": "boolean",
+                "description": "Whether to launch Microsoft Excel automatically after creation",
+            },
         },
-        "required": ["headers", "rows", "filename"]
-    }
+        "required": ["headers", "rows", "filename"],
+    },
 )
 def create_excel_sheet(args: dict) -> str:
     """Create a styled Excel spreadsheet."""
@@ -60,15 +63,39 @@ def create_excel_sheet(args: dict) -> str:
     auto_open = args.get("auto_open", True)
 
     if not headers:
-        headers = ["S.No", "Category / Location", "Total Incidents (2025)", "Fatalities", "Injuries", "Primary Cause", "Status"]
+        headers = [
+            "S.No",
+            "Category / Location",
+            "Total Incidents (2025)",
+            "Fatalities",
+            "Injuries",
+            "Primary Cause",
+            "Status",
+        ]
 
     if not rows:
         rows = [
             [1, "Highways & Expressways", 45210, 12850, 38400, "Overspeeding / Lane Violation", "Verified"],
-            [2, "Urban Junctions & Arterial Roads", 38900, 8920, 32100, "Signal Bypassing / Pedestrian Crossing", "Verified"],
+            [
+                2,
+                "Urban Junctions & Arterial Roads",
+                38900,
+                8920,
+                32100,
+                "Signal Bypassing / Pedestrian Crossing",
+                "Verified",
+            ],
             [3, "Rural / State Highways", 31200, 9400, 26800, "Unlit Segments / Potholes", "Verified"],
             [4, "Commercial & School Zones", 18997, 3137, 16200, "Distracted Driving / Congestion", "Verified"],
-            ["Total", "All India Cumulative 2025", 134307, 34307, 113500, "Official Multi-Agency Survey", "Final Report"],
+            [
+                "Total",
+                "All India Cumulative 2025",
+                134307,
+                34307,
+                113500,
+                "Official Multi-Agency Survey",
+                "Final Report",
+            ],
         ]
 
     if not filename.endswith(".xlsx"):
@@ -88,7 +115,7 @@ def create_excel_sheet(args: dict) -> str:
         left=Side(style="thin", color="D9D9D9"),
         right=Side(style="thin", color="D9D9D9"),
         top=Side(style="thin", color="D9D9D9"),
-        bottom=Side(style="thin", color="D9D9D9")
+        bottom=Side(style="thin", color="D9D9D9"),
     )
 
     # 1. Write Headers
@@ -123,7 +150,7 @@ def create_excel_sheet(args: dict) -> str:
         try:
             subprocess.Popen(["cmd", "/c", "start", "", str(out_path)], shell=False)
         except Exception as e:
-            logger.debug('Suppressed exception: %s', e)
+            logger.debug("Suppressed exception: %s", e)
     return f"Successfully created Excel spreadsheet: {out_path} ({len(rows)} rows written)."
 
 
@@ -133,10 +160,13 @@ def create_excel_sheet(args: dict) -> str:
     parameters={
         "type": "object",
         "properties": {
-            "project_path": {"type": "string", "description": "Root path of codebase to analyze (default: current workspace)"},
-            "output_filename": {"type": "string", "description": "Output Excel file name"}
-        }
-    }
+            "project_path": {
+                "type": "string",
+                "description": "Root path of codebase to analyze (default: current workspace)",
+            },
+            "output_filename": {"type": "string", "description": "Output Excel file name"},
+        },
+    },
 )
 def analyze_project_to_excel(args: dict) -> str:
     if not _OPENPYXL_AVAILABLE:
@@ -166,7 +196,7 @@ def analyze_project_to_excel(args: dict) -> str:
                         content = path.read_text(encoding="utf-8", errors="ignore")
                         lines = len(content.splitlines())
                     except Exception as e:
-                        logger.debug('Suppressed exception: %s', e)
+                        logger.debug("Suppressed exception: %s", e)
                 # Categorize Subsystem
                 category = "Other Root Files"
                 if rel_path.startswith("core/"):
@@ -184,20 +214,13 @@ def analyze_project_to_excel(args: dict) -> str:
                 elif rel_path.startswith("skills/"):
                     category = "7. Skills Engine"
 
-                file_records.append([
-                    rel_path,
-                    ext,
-                    lines,
-                    round(size_b / 1024, 2),
-                    category,
-                    "Verified Active"
-                ])
+                file_records.append([rel_path, ext, lines, round(size_b / 1024, 2), category, "Verified Active"])
 
                 total_loc += lines
                 total_bytes += size_b
                 category_counts[category] = category_counts.get(category, 0) + 1
             except Exception as e:
-                logger.debug('Suppressed exception: %s', e)
+                logger.debug("Suppressed exception: %s", e)
     wb = openpyxl.Workbook()
 
     # Style Tokens
@@ -206,8 +229,12 @@ def analyze_project_to_excel(args: dict) -> str:
     title_font = Font(name="Calibri", size=14, bold=True, color="1F497D")
     data_font = Font(name="Calibri", size=10)
     stat_font = Font(name="Calibri", size=11, bold=True)
-    thin_border = Border(left=Side(style="thin", color="D9D9D9"), right=Side(style="thin", color="D9D9D9"),
-                         top=Side(style="thin", color="D9D9D9"), bottom=Side(style="thin", color="D9D9D9"))
+    thin_border = Border(
+        left=Side(style="thin", color="D9D9D9"),
+        right=Side(style="thin", color="D9D9D9"),
+        top=Side(style="thin", color="D9D9D9"),
+        bottom=Side(style="thin", color="D9D9D9"),
+    )
 
     # ── Sheet 1: Executive Summary ──────────────────────────────────────────
     ws1 = wb.active
@@ -226,7 +253,7 @@ def analyze_project_to_excel(args: dict) -> str:
     summary_data = [
         ["Total Project Source Files", len(file_records), "Active codebase source files"],
         ["Total Lines of Code (LOC)", f"{total_loc:,}", "Cumulative lines across Python, MD, JSON, C"],
-        ["Total Repository Size", f"{round(total_bytes / (1024*1024), 2)} MB", "Uncompressed total workspace size"],
+        ["Total Repository Size", f"{round(total_bytes / (1024 * 1024), 2)} MB", "Uncompressed total workspace size"],
         ["Primary Language", "Python 3.14 + C Native Extension", "Core execution platform"],
         ["AI Operating Systems Version", "37.5.0 (Antigravity Mode)", "Ultra-Low Token Architecture"],
         ["Local Gateway Endpoint", "http://localhost:8045/v1", "Active unlimited model proxy"],
@@ -241,7 +268,14 @@ def analyze_project_to_excel(args: dict) -> str:
 
     # ── Sheet 2: File Inventory Matrix ─────────────────────────────────────
     ws2 = wb.create_sheet(title="File Inventory Matrix")
-    matrix_headers = ["File Relative Path", "Extension", "Lines of Code (LOC)", "Size (KB)", "Subsystem Category", "Status"]
+    matrix_headers = [
+        "File Relative Path",
+        "Extension",
+        "Lines of Code (LOC)",
+        "Size (KB)",
+        "Subsystem Category",
+        "Status",
+    ]
     ws2.append(matrix_headers)
 
     for c in range(1, len(matrix_headers) + 1):
@@ -301,6 +335,7 @@ def analyze_project_to_excel(args: dict) -> str:
         wb.save(out_path)
     except PermissionError:
         import time
+
         ts = time.strftime("%H%M%S")
         out_path = root_dir / f"JARVIS_Project_Full_Analysis_{ts}.xlsx"
         wb.save(out_path)
@@ -310,5 +345,5 @@ def analyze_project_to_excel(args: dict) -> str:
         try:
             subprocess.Popen(["cmd", "/c", "start", "", str(out_path)], shell=False)
         except Exception as e:
-            logger.debug('Suppressed exception: %s', e)
+            logger.debug("Suppressed exception: %s", e)
     return f"⚡ [JARVIS Excel Analysis Complete]: Exported {len(file_records)} files ({total_loc:,} total lines of code) to '{out_path}'."

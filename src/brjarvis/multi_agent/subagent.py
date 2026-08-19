@@ -4,12 +4,13 @@ Sub-Agent Registry and Manager for BR-Jarvis.
 Manages specialized multi-agent sub-delegation (Code Engineer, Security Auditor,
 Data Analyst, Web Researcher, System Diagnostics) with depth limits and tool scoping.
 """
+
 from __future__ import annotations
 
 import logging
 import queue
-import uuid
 import traceback
+import uuid
 from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -21,6 +22,7 @@ logger = logging.getLogger("JARVIS.MultiAgent")
 @dataclass
 class AgentDefinition:
     """Definition schema for a specialized sub-agent type."""
+
     name: str
     role: str
     description: str
@@ -40,7 +42,7 @@ def _parse_agent_md(path: Path, source: str = "user") -> AgentDefinition:
         end = content.find("---", 3)
         if end != -1:
             fm_text = content[3:end].strip()
-            system_prompt_body = content[end + 3:].strip()
+            system_prompt_body = content[end + 3 :].strip()
             for line in fm_text.splitlines():
                 if ":" in line:
                     key, val = line.split(":", 1)
@@ -60,7 +62,7 @@ def _parse_agent_md(path: Path, source: str = "user") -> AgentDefinition:
         system_prompt=system_prompt_body,
         model=fm.get("model", ""),
         tools=allowed_tools,
-        source=source
+        source=source,
     )
 
 
@@ -120,7 +122,7 @@ def load_agent_definitions() -> Dict[str, AgentDefinition]:
                 d = _parse_agent_md(p, source="user")
                 defs[d.name] = d
             except Exception as e:
-                logger.debug('Suppressed exception: %s', e)
+                logger.debug("Suppressed exception: %s", e)
     # Project-level (overrides user)
     proj_dir = Path.cwd() / ".jarvis" / "agents"
     if proj_dir.is_dir():
@@ -129,7 +131,7 @@ def load_agent_definitions() -> Dict[str, AgentDefinition]:
                 d = _parse_agent_md(p, source="project")
                 defs[d.name] = d
             except Exception as e:
-                logger.debug('Suppressed exception: %s', e)
+                logger.debug("Suppressed exception: %s", e)
     return defs
 
 
@@ -140,9 +142,11 @@ def get_agent_definition(name: str) -> Optional[AgentDefinition]:
 
 # ── SubAgentTask ───────────────────────────────────────────────────────────
 
+
 @dataclass
 class SubAgentTask:
     """Represents a sub-agent task with lifecycle tracking."""
+
     id: str
     prompt: str
     status: str = "pending"
@@ -155,6 +159,7 @@ class SubAgentTask:
 
 
 # ── SubAgentManager ────────────────────────────────────────────────────────
+
 
 class SubAgentManager:
     """Manages concurrent sub-agent tasks using a thread pool."""
@@ -173,7 +178,7 @@ class SubAgentManager:
         depth: int = 0,
         agent_def: Optional[AgentDefinition] = None,
         name: str = "",
-        agent_type: str = "",   # convenience alias used by voice handler
+        agent_type: str = "",  # convenience alias used by voice handler
     ) -> SubAgentTask:
         """Spawn a new sub-agent task.
 
@@ -210,14 +215,11 @@ class SubAgentManager:
             task.status = "running"
             try:
                 from brjarvis.memory.working import WorkingMemory
+
                 sub_memory = WorkingMemory()
 
                 base_system = orchestrator._build_system()
-                full_system = (
-                    eff_system_extra.rstrip() + "\n\n" + base_system
-                    if eff_system_extra
-                    else base_system
-                )
+                full_system = eff_system_extra.rstrip() + "\n\n" + base_system if eff_system_extra else base_system
 
                 sub_memory.add("user", prompt)
 
@@ -226,8 +228,9 @@ class SubAgentManager:
                 if profile not in orchestrator.router.backends:
                     profile = orchestrator.router.default
 
-                from brjarvis.tools.registry import parse_tool_call, execute_tool
                 import re
+
+                from brjarvis.tools.registry import execute_tool, parse_tool_call
 
                 final_response = ""
                 sub_tool_counts: dict[str, int] = {}  # Sub-agent-local cyclic guard
@@ -235,11 +238,8 @@ class SubAgentManager:
                     if task._cancel_flag:
                         break
 
-
                     try:
-                        response = orchestrator.router.run(
-                            profile, sub_memory.get(), full_system
-                        )
+                        response = orchestrator.router.run(profile, sub_memory.get(), full_system)
                     except Exception as e:
                         final_response = f"Backend error: {e}"
                         break
@@ -249,6 +249,7 @@ class SubAgentManager:
                     if tool_name:
                         # ── Sub-agent cyclic loop guard ──
                         import json as _json
+
                         _sub_sig = f"{tool_name}:{_json.dumps(tool_args or {}, sort_keys=True)}"
                         sub_tool_counts[_sub_sig] = sub_tool_counts.get(_sub_sig, 0) + 1
                         _sub_limit = 4  # Sub-agents are short-lived; 4 identical calls = loop
@@ -263,13 +264,13 @@ class SubAgentManager:
 
                         tool_result = execute_tool(tool_name, tool_args)
                         clean_response = re.sub(
-                            r'```tool_call\s*\n\s*\{.*?\}\s*\n\s*```',
-                            '', response, flags=re.DOTALL
+                            r"```tool_call\s*\n\s*\{.*?\}\s*\n\s*```", "", response, flags=re.DOTALL
                         ).strip()
                         if clean_response:
                             sub_memory.add("assistant", clean_response)
                         else:
                             import json
+
                             args_str = json.dumps(tool_args or {}, sort_keys=True)
                             sub_memory.add("assistant", f"[Executed Tool: {tool_name}({args_str})]")
                         sub_memory.add("user", f"[Tool Result for '{tool_name}']:\n{tool_result}")
@@ -291,9 +292,7 @@ class SubAgentManager:
                     task.status = "running"
                     sub_memory.add("user", inbox_msg)
                     try:
-                        response = orchestrator.router.run(
-                            profile, sub_memory.get(), full_system
-                        )
+                        response = orchestrator.router.run(profile, sub_memory.get(), full_system)
                         sub_memory.add("assistant", response)
                         task.result = response
                         task.status = "completed"
@@ -308,27 +307,20 @@ class SubAgentManager:
         return task
 
     def spawn_subagent(
-        self,
-        agent_type: str,
-        prompt: str,
-        current_depth: int = 1,
-        parent_id: Optional[str] = None
+        self, agent_type: str, prompt: str, current_depth: int = 1, parent_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """Spawn a sub-agent task unit if depth constraints are satisfied (Compatibility API)."""
         if current_depth > self.max_depth:
             return {
                 "status": "error",
-                "message": f"Sub-agent depth limit ({self.max_depth}) reached. Cannot spawn deeper sub-agent."
+                "message": f"Sub-agent depth limit ({self.max_depth}) reached. Cannot spawn deeper sub-agent.",
             }
 
         agent_def = get_agent_definition(agent_type)
         if not agent_def:
             defs = load_agent_definitions()
             available = ", ".join(defs.keys())
-            return {
-                "status": "error",
-                "message": f"Unknown agent type '{agent_type}'. Available types: {available}"
-            }
+            return {"status": "error", "message": f"Unknown agent type '{agent_type}'. Available types: {available}"}
 
         try:
             from brjarvis.tools.registry import get_orchestrator_ref
@@ -345,10 +337,7 @@ class SubAgentManager:
         )
 
         if task.status == "failed":
-            return {
-                "status": "error",
-                "message": task.result or "Failed to spawn subagent"
-            }
+            return {"status": "error", "message": task.result or "Failed to spawn subagent"}
 
         return {
             "status": "success",
@@ -357,7 +346,7 @@ class SubAgentManager:
             "role": agent_def.role,
             "depth": current_depth,
             "allowed_tools": agent_def.allowed_tools,
-            "message": f"Sub-agent '{agent_def.name}' initialized for task: '{prompt[:60]}...'"
+            "message": f"Sub-agent '{agent_def.name}' initialized for task: '{prompt[:60]}...'",
         }
 
     def wait(self, task_id: str, timeout: Optional[float] = None) -> Optional[SubAgentTask]:
@@ -369,7 +358,7 @@ class SubAgentManager:
             try:
                 task._future.result(timeout=timeout)
             except Exception as e:
-                logger.debug('Suppressed exception: %s', e)
+                logger.debug("Suppressed exception: %s", e)
         return task
 
     def get_result(self, task_id: str) -> Optional[str]:

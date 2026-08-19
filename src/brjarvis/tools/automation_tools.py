@@ -3,11 +3,13 @@
 Automation Engine Tools Plugin for JARVIS.
 Exposes application automation, workflow macro scripting, and system command automation tools.
 """
+
 from __future__ import annotations
 
 import json
-from typing import Any, Dict, List
+
 from .registry import register_tool
+
 # NOTE: get_automation_engine is imported lazily inside each handler to prevent a
 # missing/broken actions.automation_engine from silently killing all tool registrations.
 
@@ -20,14 +22,15 @@ from .registry import register_tool
         "properties": {
             "action": {"type": "string", "enum": ["launch", "close", "focus"], "description": "Action to perform"},
             "app_name": {"type": "string", "description": "Application name, executable name, PID, or window title"},
-            "url": {"type": "string", "description": "Optional web URL if opening a browser app"}
+            "url": {"type": "string", "description": "Optional web URL if opening a browser app"},
         },
-        "required": ["action", "app_name"]
-    }
+        "required": ["action", "app_name"],
+    },
 )
 def tool_automate_app(args: dict) -> str:
     """Perform application control action."""
     from brjarvis.actions.automation_engine import get_automation_engine  # lazy import
+
     action = str(args.get("action", "")).strip().lower()
     app_name = str(args.get("app_name", "")).strip()
     url = str(args.get("url", "")).strip()
@@ -56,15 +59,16 @@ def tool_automate_app(args: dict) -> str:
             "steps": {
                 "type": "array",
                 "description": "List of step dictionary objects. Example: [{'action': 'launch_app', 'app_name': 'notepad'}, {'action': 'sleep', 'seconds': 1}, {'action': 'type_text', 'text': 'Hello World'}]",
-                "items": {"type": "object"}
+                "items": {"type": "object"},
             }
         },
-        "required": ["steps"]
-    }
+        "required": ["steps"],
+    },
 )
 def tool_run_automation_workflow(args: dict) -> str:
     """Execute a multi-step macro workflow script."""
     from brjarvis.actions.automation_engine import get_automation_engine  # lazy import
+
     raw_steps = args.get("steps", [])
 
     if isinstance(raw_steps, str):
@@ -95,14 +99,15 @@ def tool_run_automation_workflow(args: dict) -> str:
         "type": "object",
         "properties": {
             "command": {"type": "string", "description": "Shell command line or PowerShell snippet to execute"},
-            "timeout": {"type": "integer", "description": "Maximum execution time in seconds (default: 30)"}
+            "timeout": {"type": "integer", "description": "Maximum execution time in seconds (default: 30)"},
         },
-        "required": ["command"]
-    }
+        "required": ["command"],
+    },
 )
 def tool_execute_system_automation(args: dict) -> str:
     """Execute system command automation."""
     from brjarvis.actions.automation_engine import get_automation_engine  # lazy import
+
     command = str(args.get("command", "")).strip()
     timeout = args.get("timeout", 30)
 

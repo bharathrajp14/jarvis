@@ -3,6 +3,7 @@
 Universal tool registry and executor for JARVIS MK37.
 Uses a decorator-based plugin system to register and execute tools.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -23,19 +24,21 @@ _REGISTRATION_ERRORS: dict[str, str] = {}
 # Thread-safe lock protecting TOOL_SCHEMAS and TOOL_REGISTRY mutations
 _REGISTRY_LOCK = threading.RLock()
 
+
 def get_tool_registry() -> dict[str, Callable[[dict], Any]]:
     """Return dictionary of all registered tools."""
     return TOOL_REGISTRY
+
 
 # Cache references
 _orchestrator_ref: Any = None
 
 
-_TOOL_CALL_CODEBLOCK_RE = re.compile(r'```tool_call\s*\n\s*(\{.*?\})\s*\n\s*```', re.DOTALL)
+_TOOL_CALL_CODEBLOCK_RE = re.compile(r"```tool_call\s*\n\s*(\{.*?\})\s*\n\s*```", re.DOTALL)
 _TOOL_CALL_JSON_RE = re.compile(r'(\{\s*"tool"\s*:\s*"[^"]+"\s*,\s*"args"\s*:\s*\{.*?\}\s*\})', re.DOTALL)
 _CODE_JSON_RE = re.compile(r'(\{\s*"code"\s*:\s*"[^"]+"\s*,\s*"lang"\s*:\s*"[^"]+"\s*\})', re.DOTALL)
-_OSS_MESSAGE_RE = re.compile(r'<\|message\|>\s*(\{.*?\})', re.DOTALL)
-_OSS_TOOL_HINT_RE = re.compile(r'(?:to|call)=?([\w\.\-]+)')
+_OSS_MESSAGE_RE = re.compile(r"<\|message\|>\s*(\{.*?\})", re.DOTALL)
+_OSS_TOOL_HINT_RE = re.compile(r"(?:to|call)=?([\w\.\-]+)")
 
 
 def register_tool(
@@ -53,15 +56,12 @@ def register_tool(
     **kwargs: Any,
 ) -> Callable:
     """Decorator to register a tool function in the JARVIS registry and ToolRuntime (thread-safe)."""
+
     def decorator(func: Callable[[dict], Any]) -> Callable[[dict], Any]:
         resolved_risk = risk_level or ("low" if is_read_only else "high")
         resolved_permission = permission_required or ("PUBLIC_READ" if is_read_only else "LOCAL_SYSTEM")
         resolved_approval = approval_required if approval_required is not None else not is_read_only
-        schema = {
-            "name": name,
-            "description": description,
-            "parameters": parameters or {}
-        }
+        schema = {"name": name, "description": description, "parameters": parameters or {}}
         with _REGISTRY_LOCK:
             existing = TOOL_REGISTRY.get(name)
             if existing is not None and existing is not func:
@@ -70,8 +70,8 @@ def register_tool(
                 if "_lazy_wrapper" in existing_name or "_lazy_register_tool" in existing_name:
                     logger.debug(f"[ToolRegistry] Resolved lazy tool '{name}' -> {func.__module__}.{func.__qualname__}")
                 else:
-                    same_module = getattr(existing, '__module__', None) == getattr(func, '__module__', None)
-                    same_name = getattr(existing, '__qualname__', None) == getattr(func, '__qualname__', None)
+                    same_module = getattr(existing, "__module__", None) == getattr(func, "__module__", None)
+                    same_name = getattr(existing, "__qualname__", None) == getattr(func, "__qualname__", None)
                     if same_module and same_name:
                         logger.debug(
                             f"[ToolRegistry] Tool '{name}' already registered by same impl "
@@ -95,6 +95,7 @@ def register_tool(
         try:
             from .domain import RiskLevel, ToolCategory, VerificationStrategy
             from .runtime import get_canonical_tool_runtime
+
             cat_enum = ToolCategory.GENERAL
             try:
                 cat_enum = ToolCategory(category.lower())
@@ -129,6 +130,7 @@ def register_tool(
             logger.debug("[ToolRegistry] Canonical ToolRuntime registration note: %s", exc)
 
         return func
+
     return decorator
 
 
@@ -139,6 +141,7 @@ def _get_worker_pool():
     global _WORKER_POOL
     if _WORKER_POOL is None:
         import concurrent.futures
+
         _WORKER_POOL = concurrent.futures.ThreadPoolExecutor(max_workers=4, thread_name_prefix="jarvis_tool_worker")
     return _WORKER_POOL
 
@@ -158,6 +161,7 @@ def _run_async(coro):
         # Running loop is active on this thread. To prevent blocking/deadlocking it,
         # run the coroutine in a separate background thread with its own loop.
         import threading
+
         result_holder = []
         exception_holder = []
 
@@ -192,8 +196,6 @@ def _run_async(coro):
         return result_holder[0] if result_holder else None
     else:
         return asyncio.run(coro)
-
-
 
 
 def get_tool_prompt_block() -> str:
@@ -261,18 +263,38 @@ def get_pruned_tool_prompt_block(user_prompt: str = "") -> str:
             ("email", "gmail", "mail"): ["tools.gmail_auth_tools", "tools.smart_email_tools"],
             ("excel", "xlsx", "sheet", "spreadsheet"): ["tools.excel_tools"],
             ("git", "repo", "github", "codebase", "repository"): ["tools.git_repo_tool"],
-            ("doc", "document", "docx", "word", "pdf", "report", "walkthrough", "paper", "presentation", "manual"): ["tools.doc_tools", "tools.pdf_tools"],
-            ("diagnostic", "diagnostic_tool", "health", "system_health"): ["tools.system_diagnostic_tool", "tools.system_health"],
+            ("doc", "document", "docx", "word", "pdf", "report", "walkthrough", "paper", "presentation", "manual"): [
+                "tools.doc_tools",
+                "tools.pdf_tools",
+            ],
+            ("diagnostic", "diagnostic_tool", "health", "system_health"): [
+                "tools.system_diagnostic_tool",
+                "tools.system_health",
+            ],
             ("screen", "see", "look", "click", "capture"): ["tools.image_tools"],
             ("flight", "ticket", "airline", "fly"): ["tools.legacy_actions_tools"],
             ("contact", "contacts", "vcf", "phone", "addressbook"): ["tools.contact_tools"],
             ("connector", "hub", "notion", "slack", "rss", "wikipedia"): ["tools.connector_tools"],
             ("reminder", "alarm", "schedule_reminder"): ["tools.reminder_tools"],
             ("scratchpad", "scratch", "snippet", "eval"): ["tools.scratchpad_tools"],
-            ("background_monitor", "monitor_topic", "topic_monitor", "news_monitor"): ["tools.background_monitor_tools"],
+            ("background_monitor", "monitor_topic", "topic_monitor", "news_monitor"): [
+                "tools.background_monitor_tools"
+            ],
             ("import_file", "ingest", "file_processor"): ["tools.file_import_tools", "tools.file_processor_tools"],
             ("remember_that", "recall"): ["tools.recall_tools"],
-            ("career", "job", "jobs", "resume", "interview", "offer", "application", "ats", "recruiter", "hiring", "cv"): ["career.tools"],
+            (
+                "career",
+                "job",
+                "jobs",
+                "resume",
+                "interview",
+                "offer",
+                "application",
+                "ats",
+                "recruiter",
+                "hiring",
+                "cv",
+            ): ["career.tools"],
         }
         for keywords, plugins in keyword_to_plugins.items():
             if any(kw in low for kw in keywords):
@@ -284,47 +306,260 @@ def get_pruned_tool_prompt_block(user_prompt: str = "") -> str:
 
     low = user_prompt.lower()
 
-
     # Core high-frequency tools always available
     essential_tools = {
-        "open_app", "web_search", "file_read", "file_write", "run_code", "computer_settings", "window_manager",
-        "computer_control", "list_installed_applications", "list_running_applications", "send_whatsapp",
-        "create_calendar_event", "list_calendar_events", "send_email", "gmail_login", "automate_app",
-        "run_automation_workflow", "create_word_document", "create_pdf_document", "document_creator"
+        "open_app",
+        "web_search",
+        "file_read",
+        "file_write",
+        "run_code",
+        "computer_settings",
+        "window_manager",
+        "computer_control",
+        "list_installed_applications",
+        "list_running_applications",
+        "send_whatsapp",
+        "create_calendar_event",
+        "list_calendar_events",
+        "send_email",
+        "gmail_login",
+        "automate_app",
+        "run_automation_workflow",
+        "create_word_document",
+        "create_pdf_document",
+        "document_creator",
     }
 
     # Domain keyword matching for targeted tool inclusion
     domain_map = {
         ("search", "google", "find", "who is", "what is", "news", "price", "weather"): {"web_search", "fetch_page"},
-        ("file", "read", "write", "save", "folder", "directory", "txt", "csv", "json"): {"file_read", "file_write", "file_list", "file_delete", "file_search"},
-        ("doc", "docx", "word", "document", "report", "pdf", "walkthrough", "paper", "compare", "comparison", "recommendation", "letter", "greeting"): {"create_word_document", "create_pdf_document", "document_creator", "generate_walkthrough", "file_read", "file_write"},
-        ("git", "repo", "github", "repository", "codebase", "branch", "commit"): {"git_repo_mgr", "file_read", "file_write", "file_list"},
-        ("app", "open", "launch", "close", "brave", "chrome", "edge", "notepad", "calculator", "window", "process", "installed", "running"): {"open_app", "computer_settings", "window_manager", "list_installed_applications", "list_running_applications", "search_applications", "get_app_launch_history", "get_app_usage_statistics", "automate_app"},
-        ("whatsapp", "watsapp", "whats app", "wats app", "wapp", "wp", "chat", "message", "contact", "text", "send", "say", "tell", "hii", "hiii", "hello"): {"send_whatsapp", "schedule_whatsapp_message", "manage_whatsapp_contacts"},
-        ("calendar", "event", "schedule", "task", "meeting", "reminder"): {"create_calendar_event", "list_calendar_events", "search_calendar_events", "delete_calendar_event"},
-        ("email", "gmail", "g-mail", "mail", "inbox", "compose", "letter", "greeting", "greetings", "smtp", "login", "send", "say", "tell", "draft"): {"send_email", "schedule_email", "manage_email_contacts", "gmail_login", "get_gmail_auth_status", "gmail_logout", "open_app", "automate_app", "computer_control"},
-        ("screen", "see", "look", "click", "clik", "button", "tap", "press", "type", "mouse", "keyboard", "vision", "ocr", "capture", "display"): {"screen_find", "screen_click", "smart_click", "computer_control", "automate_app", "window_manager"},
-        ("code", "python", "script", "execute", "eval", "debug", "run"): {"run_code", "scratchpad_write", "scratchpad_eval"},
-        ("system", "volume", "brightness", "wifi", "battery", "restart", "shutdown", "diagnostic", "health", "cpu", "ram", "audit"): {"computer_settings", "system_diagnostic", "system_health"},
+        ("file", "read", "write", "save", "folder", "directory", "txt", "csv", "json"): {
+            "file_read",
+            "file_write",
+            "file_list",
+            "file_delete",
+            "file_search",
+        },
+        (
+            "doc",
+            "docx",
+            "word",
+            "document",
+            "report",
+            "pdf",
+            "walkthrough",
+            "paper",
+            "compare",
+            "comparison",
+            "recommendation",
+            "letter",
+            "greeting",
+        ): {
+            "create_word_document",
+            "create_pdf_document",
+            "document_creator",
+            "generate_walkthrough",
+            "file_read",
+            "file_write",
+        },
+        ("git", "repo", "github", "repository", "codebase", "branch", "commit"): {
+            "git_repo_mgr",
+            "file_read",
+            "file_write",
+            "file_list",
+        },
+        (
+            "app",
+            "open",
+            "launch",
+            "close",
+            "brave",
+            "chrome",
+            "edge",
+            "notepad",
+            "calculator",
+            "window",
+            "process",
+            "installed",
+            "running",
+        ): {
+            "open_app",
+            "computer_settings",
+            "window_manager",
+            "list_installed_applications",
+            "list_running_applications",
+            "search_applications",
+            "get_app_launch_history",
+            "get_app_usage_statistics",
+            "automate_app",
+        },
+        (
+            "whatsapp",
+            "watsapp",
+            "whats app",
+            "wats app",
+            "wapp",
+            "wp",
+            "chat",
+            "message",
+            "contact",
+            "text",
+            "send",
+            "say",
+            "tell",
+            "hii",
+            "hiii",
+            "hello",
+        ): {"send_whatsapp", "schedule_whatsapp_message", "manage_whatsapp_contacts"},
+        ("calendar", "event", "schedule", "task", "meeting", "reminder"): {
+            "create_calendar_event",
+            "list_calendar_events",
+            "search_calendar_events",
+            "delete_calendar_event",
+        },
+        (
+            "email",
+            "gmail",
+            "g-mail",
+            "mail",
+            "inbox",
+            "compose",
+            "letter",
+            "greeting",
+            "greetings",
+            "smtp",
+            "login",
+            "send",
+            "say",
+            "tell",
+            "draft",
+        ): {
+            "send_email",
+            "schedule_email",
+            "manage_email_contacts",
+            "gmail_login",
+            "get_gmail_auth_status",
+            "gmail_logout",
+            "open_app",
+            "automate_app",
+            "computer_control",
+        },
+        (
+            "screen",
+            "see",
+            "look",
+            "click",
+            "clik",
+            "button",
+            "tap",
+            "press",
+            "type",
+            "mouse",
+            "keyboard",
+            "vision",
+            "ocr",
+            "capture",
+            "display",
+        ): {"screen_find", "screen_click", "smart_click", "computer_control", "automate_app", "window_manager"},
+        ("code", "python", "script", "execute", "eval", "debug", "run"): {
+            "run_code",
+            "scratchpad_write",
+            "scratchpad_eval",
+        },
+        (
+            "system",
+            "volume",
+            "brightness",
+            "wifi",
+            "battery",
+            "restart",
+            "shutdown",
+            "diagnostic",
+            "health",
+            "cpu",
+            "ram",
+            "audit",
+        ): {"computer_settings", "system_diagnostic", "system_health"},
         ("youtube", "video", "play"): {"youtube_video"},
         ("flight", "ticket", "airline", "fly"): {"flight_finder"},
         ("game", "steam", "epic"): {"game_updater"},
         ("agent", "task", "subagent", "multi"): {"agent_task"},
-        ("memory", "remember", "forget", "recall", "preference", "fact", "note"): {"memory_save", "memory_get", "memory_search", "memory_delete", "memory_forget", "memory_list", "memory_stats", "memory_reindex", "remember_that"},
-        ("contact", "contacts", "vcf", "phone", "addressbook", "call"): {"import_contacts", "manage_contacts", "resolve_contact"},
-        ("connector", "connectors", "hub", "notion", "slack", "rss", "wikipedia"): {"connector_status", "connector_call", "connector_search", "connector_add_mcp", "connector_list_tools"},
+        ("memory", "remember", "forget", "recall", "preference", "fact", "note"): {
+            "memory_save",
+            "memory_get",
+            "memory_search",
+            "memory_delete",
+            "memory_forget",
+            "memory_list",
+            "memory_stats",
+            "memory_reindex",
+            "remember_that",
+        },
+        ("contact", "contacts", "vcf", "phone", "addressbook", "call"): {
+            "import_contacts",
+            "manage_contacts",
+            "resolve_contact",
+        },
+        ("connector", "connectors", "hub", "notion", "slack", "rss", "wikipedia"): {
+            "connector_status",
+            "connector_call",
+            "connector_search",
+            "connector_add_mcp",
+            "connector_list_tools",
+        },
         ("reminder", "alarm", "schedule_reminder"): {"schedule_reminder", "manage_reminders", "reminder"},
-        ("scratchpad", "scratch", "snippet"): {"scratchpad_write", "scratchpad_read", "scratchpad_eval", "scratchpad_list", "scratchpad_clear"},
-        ("monitor", "background_monitor", "topic"): {"add_background_monitor", "remove_background_monitor", "list_monitored_topics", "check_monitored_topics"},
-        ("import_file", "ingest", "file_processor", "ocr", "convert"): {"import_file_to_knowledge", "process_universal_file"},
-        ("career", "job", "jobs", "resume", "interview", "offer", "application", "ats", "recruiter", "hiring", "cv", "tailor", "apply"): {
-            "career_email_process", "career_offer_confirm", "career_spreadsheet_sync",
-            "career_followup_generate_draft", "career_learning_insights", "career_profile_get",
-            "career_profile_update", "career_job_search", "career_job_match", "career_resume_build",
-            "career_resume_tailor", "career_resume_export", "career_ats_evaluate",
-            "career_cover_letter_generate", "career_application_prepare", "career_application_submit",
-            "career_application_verify", "career_application_track", "career_interview_prep",
-            "career_analytics_report"
+        ("scratchpad", "scratch", "snippet"): {
+            "scratchpad_write",
+            "scratchpad_read",
+            "scratchpad_eval",
+            "scratchpad_list",
+            "scratchpad_clear",
+        },
+        ("monitor", "background_monitor", "topic"): {
+            "add_background_monitor",
+            "remove_background_monitor",
+            "list_monitored_topics",
+            "check_monitored_topics",
+        },
+        ("import_file", "ingest", "file_processor", "ocr", "convert"): {
+            "import_file_to_knowledge",
+            "process_universal_file",
+        },
+        (
+            "career",
+            "job",
+            "jobs",
+            "resume",
+            "interview",
+            "offer",
+            "application",
+            "ats",
+            "recruiter",
+            "hiring",
+            "cv",
+            "tailor",
+            "apply",
+        ): {
+            "career_email_process",
+            "career_offer_confirm",
+            "career_spreadsheet_sync",
+            "career_followup_generate_draft",
+            "career_learning_insights",
+            "career_profile_get",
+            "career_profile_update",
+            "career_job_search",
+            "career_job_match",
+            "career_resume_build",
+            "career_resume_tailor",
+            "career_resume_export",
+            "career_ats_evaluate",
+            "career_cover_letter_generate",
+            "career_application_prepare",
+            "career_application_submit",
+            "career_application_verify",
+            "career_application_track",
+            "career_interview_prep",
+            "career_analytics_report",
         },
     }
 
@@ -418,6 +653,7 @@ def execute_tool(
         _import_plugins(plugin_name=tool_to_module[name])
 
     from .runtime import get_canonical_tool_runtime
+
     runtime = get_canonical_tool_runtime()
 
     # If not registered in ToolRuntime yet but in legacy TOOL_REGISTRY, bridge it
@@ -451,6 +687,7 @@ def execute_tool_raw(
     _import_plugins(full=False)
     args_dict = dict(args) if isinstance(args, dict) else {}
     from .runtime import get_canonical_tool_runtime
+
     return get_canonical_tool_runtime().execute_tool(
         name=name,
         args=args_dict,
@@ -460,10 +697,10 @@ def execute_tool_raw(
     )
 
 
-
 def inspect_is_coroutine(obj) -> bool:
     """Check if object is a coroutine or future."""
     import inspect
+
     return inspect.iscoroutine(obj) or asyncio.iscoroutine(obj)
 
 
@@ -490,6 +727,7 @@ def _lazy_register_tool(name: str, description: str, module_path: str, func_name
             return target_func(args or {})
         except Exception as exc:
             return f"ERROR: Failed to load tool handler '{name}' from {module_path}: {exc}"
+
     register_tool(name=name, description=description, parameters=parameters)(_lazy_wrapper)
 
 
@@ -507,7 +745,7 @@ _lazy_register_tool(
             "delay_seconds": {"type": "integer", "description": "Delay in seconds"},
         },
         "required": ["action"],
-    }
+    },
 )
 
 _lazy_register_tool(
@@ -524,7 +762,7 @@ _lazy_register_tool(
             "extension": {"type": "string", "description": "File extension filter"},
         },
         "required": ["action", "query"],
-    }
+    },
 )
 
 _lazy_register_tool(
@@ -541,10 +779,8 @@ _lazy_register_tool(
             "folder_name": {"type": "string", "description": "Output folder name inside ./workspace/"},
         },
         "required": ["title", "description"],
-    }
+    },
 )
-
-
 
 
 def parse_tool_call(text: str) -> tuple[str | None, dict | None]:
@@ -555,7 +791,7 @@ def parse_tool_call(text: str) -> tuple[str | None, dict | None]:
         msg_match = _OSS_MESSAGE_RE.search(text)
         if msg_match:
             try:
-                cleaned_json = re.sub(r'//.*', '', msg_match.group(1))
+                cleaned_json = re.sub(r"//.*", "", msg_match.group(1))
                 data = json.loads(cleaned_json)
 
                 tool_name = None
@@ -570,10 +806,10 @@ def parse_tool_call(text: str) -> tuple[str | None, dict | None]:
                         args = data.get("args", {})
 
                 if not tool_name:
-                    preceding = text[:msg_match.start()]
+                    preceding = text[: msg_match.start()]
                     tool_match = _OSS_TOOL_HINT_RE.search(preceding)
                     if tool_match:
-                        matched_name = tool_match.group(1).split('.')[-1]
+                        matched_name = tool_match.group(1).split(".")[-1]
                         if matched_name != "tool_call":
                             tool_name = matched_name
                             args = data
@@ -584,7 +820,7 @@ def parse_tool_call(text: str) -> tuple[str | None, dict | None]:
                         args = {"code": data.get("code"), "lang": data.get("lang", "python")}
 
                 if tool_name:
-                    tool_name = str(tool_name).strip().split('.')[-1]
+                    tool_name = str(tool_name).strip().split(".")[-1]
                     return tool_name, args
             except json.JSONDecodeError:
                 pass
@@ -594,7 +830,7 @@ def parse_tool_call(text: str) -> tuple[str | None, dict | None]:
     if match:
         try:
             # Clean comments or trailing commas if any
-            cleaned_json = re.sub(r'//.*', '', match.group(1))
+            cleaned_json = re.sub(r"//.*", "", match.group(1))
             data = json.loads(cleaned_json)
             if "tool" in data:
                 return data.get("tool"), data.get("args", {})
@@ -655,16 +891,16 @@ def _import_plugins(*, full: bool = False, plugin_name: str | None = None):
         "tools.system_tools",
         # FIX: these plugins define tools listed in essential_tools / the system
         # prompt, so they must load at startup — not lazily on first use.
-        "tools.legacy_actions_tools",   # open_app, computer_settings, agent_task,
-                                         # code_helper, dev_agent, youtube_video,
-                                         # flight_finder, file_controller, screen_process
-        "tools.automation_tools",        # automate_app, run_automation_workflow,
-                                         # execute_system_automation
-        "tools.app_analyzer_tools",      # list_installed_applications,
-                                         # list_running_applications
-        "tools.app_tracker_tools",       # get_app_launch_history,
-                                         # get_app_usage_statistics
-        "tools.skills_tools",             # run_skill, list_skills
+        "tools.legacy_actions_tools",  # open_app, computer_settings, agent_task,
+        # code_helper, dev_agent, youtube_video,
+        # flight_finder, file_controller, screen_process
+        "tools.automation_tools",  # automate_app, run_automation_workflow,
+        # execute_system_automation
+        "tools.app_analyzer_tools",  # list_installed_applications,
+        # list_running_applications
+        "tools.app_tracker_tools",  # get_app_launch_history,
+        # get_app_usage_statistics
+        "tools.skills_tools",  # run_skill, list_skills
     ]
 
     # Extended plugins loaded on demand or after core.
@@ -718,8 +954,6 @@ def _import_plugins(*, full: bool = False, plugin_name: str | None = None):
         "tools.reminder_tools",
         "tools.scratchpad_tools",
     ]
-
-
 
     def _import_single(mod_name: str) -> None:
         try:
@@ -781,6 +1015,7 @@ def _import_plugins(*, full: bool = False, plugin_name: str | None = None):
             # Load custom plugins
             try:
                 from brjarvis.plugins import load_custom_plugins
+
                 load_custom_plugins()
             except Exception as exc:
                 logger.debug("[ToolRegistry] Custom plugins load notice: %s", exc)
@@ -799,5 +1034,3 @@ def get_registry_status() -> dict[str, Any]:
         "failed": dict(_REGISTRATION_ERRORS),
         "tool_names": sorted(list(TOOL_REGISTRY.keys())),
     }
-
-

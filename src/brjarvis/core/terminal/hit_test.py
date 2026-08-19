@@ -4,12 +4,13 @@ Spatial Hit-Testing Engine for the Terminal Interaction Layer.
 Maps 2D terminal coordinates (x=col, y=row) to semantic InteractiveRegion objects
 for clicks, double-clicks, drags, and hover states.
 """
+
 from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger("JARVIS.HitTest")
 
@@ -31,16 +32,17 @@ class RegionType(str, Enum):
 @dataclass
 class InteractiveRegion:
     """Represents a clickable or hoverable rectangular bounding box in terminal coordinates."""
+
     id: str
     region_type: RegionType
-    x: int                                      # Left column (0-indexed)
-    y: int                                      # Top row (0-indexed)
-    width: int                                  # Width in characters
-    height: int = 1                             # Height in rows
-    priority: int = 10                          # Higher priority captures first in overlaps
+    x: int  # Left column (0-indexed)
+    y: int  # Top row (0-indexed)
+    width: int  # Width in characters
+    height: int = 1  # Height in rows
+    priority: int = 10  # Higher priority captures first in overlaps
     enabled: bool = True
     hovered: bool = False
-    action_name: str = ""                       # Semantic action (e.g. "tool:toggle", "link:open")
+    action_name: str = ""  # Semantic action (e.g. "tool:toggle", "link:open")
     action_args: Dict[str, Any] = field(default_factory=dict)
     tooltip: str = ""
 
@@ -115,12 +117,12 @@ class HitTestManager:
         """
         target = self.hit_test(x, y)
         new_id = target.id if target else None
-        changed = (new_id != self._hovered_region_id)
+        changed = new_id != self._hovered_region_id
 
         if changed:
             # Unhover previous
             for r in self._regions:
-                r.hovered = (r.id == new_id)
+                r.hovered = r.id == new_id
             self._hovered_region_id = new_id
 
         return target, changed

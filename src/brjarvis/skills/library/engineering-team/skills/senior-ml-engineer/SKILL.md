@@ -154,10 +154,12 @@ Integrate LLM APIs into production applications:
 from abc import ABC, abstractmethod
 from tenacity import retry, stop_after_attempt, wait_exponential
 
+
 class LLMProvider(ABC):
     @abstractmethod
     def complete(self, prompt: str, **kwargs) -> str:
         pass
+
 
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(min=1, max=10))
 def call_llm_with_retry(provider: LLMProvider, prompt: str) -> str:
@@ -227,13 +229,10 @@ Monitor production models for drift and degradation:
 ```python
 from scipy.stats import ks_2samp
 
+
 def detect_drift(reference, current, threshold=0.05):
     statistic, p_value = ks_2samp(reference, current)
-    return {
-        "drift_detected": p_value < threshold,
-        "ks_statistic": statistic,
-        "p_value": p_value
-    }
+    return {"drift_detected": p_value < threshold, "ks_statistic": statistic, "p_value": p_value}
 ```
 
 ### Alert Thresholds

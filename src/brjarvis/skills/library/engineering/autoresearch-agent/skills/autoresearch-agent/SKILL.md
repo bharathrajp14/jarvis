@@ -238,6 +238,7 @@ If no built-in evaluator fits, the user writes their own `evaluate.py`. Only req
 #!/usr/bin/env python3
 # My custom evaluator — DO NOT MODIFY after experiment starts
 import subprocess
+
 result = subprocess.run(["my-benchmark", "--json"], capture_output=True, text=True)
 # Parse and output
 print(f"my_metric: {parse_score(result.stdout)}")

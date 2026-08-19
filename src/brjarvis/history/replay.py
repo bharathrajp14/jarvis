@@ -5,6 +5,7 @@ Session replay and export utilities for JARVIS MK37.
 Reconstructs WorkingMemory objects from stored turns and exports
 sessions as formatted Markdown or standalone HTML documents.
 """
+
 from __future__ import annotations
 
 import html
@@ -25,6 +26,7 @@ def load_session(session_id: str, store: Any = None) -> Any:
     """
     if store is None:
         from brjarvis.history.session_store import SessionStore
+
         store = SessionStore()
 
     session = store.get_session(session_id)
@@ -32,6 +34,7 @@ def load_session(session_id: str, store: Any = None) -> Any:
         raise ValueError(f"Session '{session_id}' not found")
 
     from brjarvis.memory.working import WorkingMemory
+
     wm = WorkingMemory()
 
     for turn in session.get("turns", []):
@@ -56,6 +59,7 @@ def replay_as_context(session_id: str, store: Any = None) -> str:
     """Return a formatted string block of a session suitable for system prompt injection."""
     if store is None:
         from brjarvis.history.session_store import SessionStore
+
         store = SessionStore()
 
     session = store.get_session(session_id)
@@ -97,6 +101,7 @@ def export_markdown(session_id: str, output_path: str | Path, store: Any = None)
     """Export a session as a readable Markdown file with timestamps and collapsible tool calls."""
     if store is None:
         from brjarvis.history.session_store import SessionStore
+
         store = SessionStore()
 
     session = store.get_session(session_id)
@@ -107,7 +112,7 @@ def export_markdown(session_id: str, output_path: str | Path, store: Any = None)
     out.parent.mkdir(parents=True, exist_ok=True)
 
     lines: list[str] = []
-    lines.append(f"# JARVIS MK37 — Session Export")
+    lines.append("# JARVIS MK37 — Session Export")
     lines.append("")
     lines.append(f"**Session ID:** `{session_id}`")
     lines.append(f"**Mode:** {session.get('mode', 'general')}")
@@ -190,6 +195,7 @@ def export_html(session_id: str, output_path: str | Path, store: Any = None) -> 
     """Export a session as a self-contained HTML report with dark/light themes."""
     if store is None:
         from brjarvis.history.session_store import SessionStore
+
         store = SessionStore()
 
     session = store.get_session(session_id)
@@ -245,7 +251,7 @@ def export_html(session_id: str, output_path: str | Path, store: Any = None) -> 
 </head>
 <body>
     <h1>JARVIS Session {session_id}</h1>
-    <p><b>Mode:</b> {session.get('mode')} | <b>Backend:</b> {session.get('backend')} | <b>Turns:</b> {session.get('turn_count')}</p>
+    <p><b>Mode:</b> {session.get("mode")} | <b>Backend:</b> {session.get("backend")} | <b>Turns:</b> {session.get("turn_count")}</p>
     <hr style="border-color:#334155;">
     {body_content}
 </body>

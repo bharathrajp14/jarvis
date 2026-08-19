@@ -9,24 +9,20 @@ import os
 import platform
 import subprocess
 import sys
-import threading
 import time
-from pathlib import Path
-
-import psutil
 
 logger = logging.getLogger("JARVIS.UI.App")
 
-from brjarvis.ui import _base_dir, _WIN_HIDE  # noqa: F401
+from brjarvis.ui import _WIN_HIDE, _base_dir  # noqa: F401
 from brjarvis.ui._qt import *  # noqa: F401,F403
 
-BASE_DIR   = _base_dir()
+BASE_DIR = _base_dir()
 CONFIG_DIR = BASE_DIR / "config"
-API_FILE   = CONFIG_DIR / "api_keys.json"
+API_FILE = CONFIG_DIR / "api_keys.json"
 
 _DEFAULT_W, _DEFAULT_H = 980, 700
-_MIN_W,     _MIN_H     = 820, 580
-_LEFT_W  = 148
+_MIN_W, _MIN_H = 820, 580
+_LEFT_W = 148
 _RIGHT_W = 340
 
 _OS = platform.system()  # "Windows" | "Darwin" | "Linux"
@@ -40,22 +36,28 @@ def _read_full_config() -> dict:
         return {}
 
 
-from .colors import C, qcol, current_palette
 from .main_window import MainWindow
+
+
 class _RootShim:
     def __init__(self, app: QApplication):
         self._app = app
+
     def mainloop(self):
         exec_fn = getattr(self._app, "exec", None) or getattr(self._app, "exec_", None)
         if exec_fn:
+
             def _gui_excepthook(tp, val, tb):
                 import traceback
+
                 logger.error("UNHANDLED GUI EXCEPTION:\n%s", "".join(traceback.format_exception(tp, val, tb)))
+
             sys.excepthook = _gui_excepthook
             logger.info("Starting Qt Event Loop...")
             res = exec_fn()
             logger.info("Qt Event Loop exited with code: %s", res)
             sys.exit(res)
+
     def protocol(self, *_):
         pass
 
@@ -64,8 +66,9 @@ def is_gui_available() -> bool:
     """Check if graphical display is available and PyQt/PySide can initialize a window."""
     import os
     import sys
-    import subprocess
+
     from brjarvis.ui._qt import _HAS_QT, _USE_PYSIDE6
+
     if not _HAS_QT:
         return False
     if os.environ.get("JARVIS_HEADLESS", "").lower() in ("true", "1"):
@@ -93,6 +96,7 @@ def is_gui_available() -> bool:
 
 class HeadlessJarvisUI:
     """Headless drop-in replacement for JarvisUI when display window system is unavailable."""
+
     def __init__(self):
         self._muted = False
         self._speaking = False
@@ -187,13 +191,10 @@ class HeadlessJarvisUI:
     def stop_speaking(self):
         self._speaking = False
 
-    def update_agent_task(self, task_id: str, name: str = "", status: str = "running", progress: float = 0.0, result: str = "") -> None:
-        self._agent_tasks[task_id] = {
-            "name": name or task_id,
-            "status": status,
-            "progress": progress,
-            "result": result
-        }
+    def update_agent_task(
+        self, task_id: str, name: str = "", status: str = "running", progress: float = 0.0, result: str = ""
+    ) -> None:
+        self._agent_tasks[task_id] = {"name": name or task_id, "status": status, "progress": progress, "result": result}
         logger.debug("[UI Task] %s: %s (%.0f%%) %s", name or task_id, status, progress * 100, result)
 
     def remove_agent_task(self, task_id: str) -> None:
@@ -241,7 +242,7 @@ class JarvisUI:
         self._app.setQuitOnLastWindowClosed(True)
         self._win = MainWindow(face_path)
         self._app._main_window = self._win  # Retain strong reference on app object
-        _GLOBAL_UI_INSTANCE = self          # Retain global reference
+        _GLOBAL_UI_INSTANCE = self  # Retain global reference
         self._win.show()
         self._win.raise_()
         self._win.activateWindow()
@@ -345,12 +346,7 @@ class JarvisUI:
         """Thread-safe update or add an agent task."""
         if not hasattr(self, "_agent_tasks"):
             self._agent_tasks = {}
-        self._agent_tasks[task_id] = {
-            "name": name,
-            "status": status,
-            "progress": progress,
-            "result": result
-        }
+        self._agent_tasks[task_id] = {"name": name, "status": status, "progress": progress, "result": result}
         if hasattr(self, "_win") and self._win:
             self._win._task_update_sig.emit(task_id, name, status, progress, result)
 
@@ -369,11 +365,11 @@ class JarvisUI:
             self._win._task_clear_sig.emit()
 
 
-
 def run_voice_ui() -> None:
     """Launch the Cyberpunk Voice HUD UI."""
     try:
         from brjarvis.desktop.ui_mark import run_voice_ui as _run
+
         _run()
     except Exception as e:
         logger.error("Failed to run voice UI: %s", e)
@@ -383,9 +379,11 @@ if __name__ == "__main__":
     # When run directly, defer to the canonical launcher in ui_mark.py
     try:
         from ui_mark import run_voice_ui
+
         run_voice_ui()
     except BaseException as e:
         import traceback
+
         try:
             _crash = _base_dir() / "scratch" / "ui_crash.log"
             _crash.parent.mkdir(parents=True, exist_ok=True)

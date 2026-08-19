@@ -29,6 +29,7 @@ Usage:
       # resume from hnd.goal, hnd.next_steps, etc.
       deliver_handoff(hnd.handoff_id)
 """
+
 from __future__ import annotations
 
 import json

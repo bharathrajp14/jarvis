@@ -4,15 +4,15 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-import sqlite3
 import time
 import uuid
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
+
+from brjarvis.core.paths import paths
+from brjarvis.memory.canonical_db import get_canonical_db
 
 from .models import ResumeSchema, ResumeVersionRecord
-from brjarvis.memory.canonical_db import get_canonical_db
-from brjarvis.core.paths import paths
 
 logger = logging.getLogger("JARVIS.ResumeVersionManager")
 
@@ -118,7 +118,7 @@ class ResumeVersionManager:
                         rec.provider,
                         json.dumps(rec.to_dict()),
                         rec.created_at,
-                    )
+                    ),
                 )
                 conn.commit()
         except Exception as e:
@@ -133,11 +133,17 @@ class ResumeVersionManager:
         try:
             db = get_canonical_db()
             with db.get_connection() as conn:
-                cursor = conn.execute("SELECT data_json FROM resume_versions ORDER BY created_at DESC LIMIT ?", (limit,))
+                cursor = conn.execute(
+                    "SELECT data_json FROM resume_versions ORDER BY created_at DESC LIMIT ?", (limit,)
+                )
                 for row in cursor.fetchall():
                     try:
                         d = json.loads(row["data_json"])
-                        versions.append(ResumeVersionRecord(**{k: v for k, v in d.items() if k in ResumeVersionRecord.__dataclass_fields__}))
+                        versions.append(
+                            ResumeVersionRecord(
+                                **{k: v for k, v in d.items() if k in ResumeVersionRecord.__dataclass_fields__}
+                            )
+                        )
                     except Exception:
                         pass
         except Exception as e:
@@ -161,4 +167,3 @@ def get_instance(storage_dir: Optional[Path | str] = None) -> ResumeVersionManag
 
 
 get_version_manager = get_instance
-

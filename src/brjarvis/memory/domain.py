@@ -7,6 +7,7 @@ source provenance hierarchy, and trust weighting.
 This is the SINGLE canonical source for all memory types, enums, and entities.
 All other modules must import from here — never define competing schemas.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -17,12 +18,13 @@ import time
 import uuid
 from dataclasses import asdict, dataclass, field
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger("JARVIS.MemoryDomain")
 
 
 # ── Secret Redaction Sentinel (CANONICAL — do NOT duplicate elsewhere) ─────────
+
 
 def redact_secrets(text: str) -> str:
     """Scan and redact API keys, tokens, passwords, and secrets before persistence.
@@ -81,8 +83,10 @@ def redact_secrets(text: str) -> str:
 
 # ── Memory Types ──────────────────────────────────────────────────────────────
 
+
 class MemoryType(str, Enum):
     """Explicit Memory Taxonomy for BR JARVIS."""
+
     WORKING = "WORKING"
     EPISODIC = "EPISODIC"
     SEMANTIC = "SEMANTIC"
@@ -127,22 +131,25 @@ class MemoryType(str, Enum):
 
 # ── Memory Lifecycle State Machine ────────────────────────────────────────────
 
+
 class MemoryStatus(str, Enum):
     """
     State machine for memory lifecycle:
       CANDIDATE -> VALIDATED -> ACTIVE -> (UPDATED | SUPERSEDED | INVALID | ARCHIVED | CONFLICTED)
     """
-    CANDIDATE = "CANDIDATE"      # Newly extracted, pending validation/conflict resolution
-    VALIDATED = "VALIDATED"      # Checked against rules and constraints
-    ACTIVE = "ACTIVE"            # Authoritative current state
-    UPDATED = "UPDATED"          # Modified with new version
-    SUPERSEDED = "SUPERSEDED"    # Replaced by newer authoritative state; retained for history
-    INVALID = "INVALID"          # Disproven or marked erroneous
-    ARCHIVED = "ARCHIVED"        # Cold storage / compacted
-    CONFLICTED = "CONFLICTED"    # Ambiguous collision requiring user resolution
+
+    CANDIDATE = "CANDIDATE"  # Newly extracted, pending validation/conflict resolution
+    VALIDATED = "VALIDATED"  # Checked against rules and constraints
+    ACTIVE = "ACTIVE"  # Authoritative current state
+    UPDATED = "UPDATED"  # Modified with new version
+    SUPERSEDED = "SUPERSEDED"  # Replaced by newer authoritative state; retained for history
+    INVALID = "INVALID"  # Disproven or marked erroneous
+    ARCHIVED = "ARCHIVED"  # Cold storage / compacted
+    CONFLICTED = "CONFLICTED"  # Ambiguous collision requiring user resolution
 
 
 # ── Retention Classes (controls decay behavior) ───────────────────────────────
+
 
 class RetentionClass(str, Enum):
     """Durable retention policy for memory lifecycle and decay.
@@ -151,21 +158,22 @@ class RetentionClass(str, Enum):
     The MemoryDecayEngine must respect these classes — PERMANENT memories are
     exempt from decay; EPHEMERAL memories expire within the same session.
     """
-    EPHEMERAL = "EPHEMERAL"      # Session-scoped; expires at session end
-    SHORT_TERM = "SHORT_TERM"    # Expires after ~1 day without access
-    NORMAL = "NORMAL"            # Standard 7-day half-life (default)
-    LONG_TERM = "LONG_TERM"      # 90-day half-life; survives infrequent access
-    PERMANENT = "PERMANENT"      # Never decayed; immune to automated pruning
+
+    EPHEMERAL = "EPHEMERAL"  # Session-scoped; expires at session end
+    SHORT_TERM = "SHORT_TERM"  # Expires after ~1 day without access
+    NORMAL = "NORMAL"  # Standard 7-day half-life (default)
+    LONG_TERM = "LONG_TERM"  # 90-day half-life; survives infrequent access
+    PERMANENT = "PERMANENT"  # Never decayed; immune to automated pruning
 
     @property
     def half_life_days(self) -> Optional[float]:
         """Return the half-life in days for decay calculation (None = exempt)."""
         mapping = {
-            RetentionClass.EPHEMERAL: 0.0417,   # ~1 hour
+            RetentionClass.EPHEMERAL: 0.0417,  # ~1 hour
             RetentionClass.SHORT_TERM: 1.0,
             RetentionClass.NORMAL: 7.0,
             RetentionClass.LONG_TERM: 90.0,
-            RetentionClass.PERMANENT: None,      # Exempt from decay
+            RetentionClass.PERMANENT: None,  # Exempt from decay
         }
         return mapping.get(self, 7.0)
 
@@ -173,23 +181,23 @@ class RetentionClass(str, Enum):
     def for_memory_type(cls, memory_type: "MemoryType") -> "RetentionClass":
         """Return the default retention class for a given memory type."""
         type_map = {
-            MemoryType.WORKING:         cls.EPHEMERAL,
-            MemoryType.EPISODIC:        cls.NORMAL,
-            MemoryType.SEMANTIC:        cls.LONG_TERM,
-            MemoryType.FACT:            cls.LONG_TERM,
-            MemoryType.PROCEDURAL:      cls.LONG_TERM,
-            MemoryType.PREFERENCE:      cls.PERMANENT,
-            MemoryType.CONSTRAINT:      cls.PERMANENT,
-            MemoryType.GOAL:            cls.LONG_TERM,
-            MemoryType.DECISION:        cls.LONG_TERM,
-            MemoryType.PROJECT_STATE:   cls.LONG_TERM,
-            MemoryType.USER_PROFILE:    cls.PERMANENT,
-            MemoryType.RELATIONSHIP:    cls.LONG_TERM,
-            MemoryType.LESSON:          cls.LONG_TERM,
-            MemoryType.EXPERIENCE:      cls.NORMAL,
-            MemoryType.OBSERVATION:     cls.SHORT_TERM,
-            MemoryType.EVENT:           cls.SHORT_TERM,
-            MemoryType.REFERENCE:       cls.NORMAL,
+            MemoryType.WORKING: cls.EPHEMERAL,
+            MemoryType.EPISODIC: cls.NORMAL,
+            MemoryType.SEMANTIC: cls.LONG_TERM,
+            MemoryType.FACT: cls.LONG_TERM,
+            MemoryType.PROCEDURAL: cls.LONG_TERM,
+            MemoryType.PREFERENCE: cls.PERMANENT,
+            MemoryType.CONSTRAINT: cls.PERMANENT,
+            MemoryType.GOAL: cls.LONG_TERM,
+            MemoryType.DECISION: cls.LONG_TERM,
+            MemoryType.PROJECT_STATE: cls.LONG_TERM,
+            MemoryType.USER_PROFILE: cls.PERMANENT,
+            MemoryType.RELATIONSHIP: cls.LONG_TERM,
+            MemoryType.LESSON: cls.LONG_TERM,
+            MemoryType.EXPERIENCE: cls.NORMAL,
+            MemoryType.OBSERVATION: cls.SHORT_TERM,
+            MemoryType.EVENT: cls.SHORT_TERM,
+            MemoryType.REFERENCE: cls.NORMAL,
             MemoryType.SYSTEM_KNOWLEDGE: cls.LONG_TERM,
         }
         return type_map.get(memory_type, cls.NORMAL)
@@ -197,16 +205,18 @@ class RetentionClass(str, Enum):
 
 # ── Provenance & Trust Hierarchy ──────────────────────────────────────────────
 
+
 class SourceType(str, Enum):
     """Source authority hierarchy with associated reliability scores."""
-    EXPLICIT_USER_CORRECTION = "explicit_user_correction"    # Reliability: 1.00
-    EXPLICIT_USER_STATEMENT = "explicit_user_statement"      # Reliability: 0.95
-    VERIFIED_TOOL_RESULT = "verified_tool_result"            # Reliability: 0.90
-    VERIFIED_EXTERNAL_SOURCE = "verified_external_source"    # Reliability: 0.85
-    SYSTEM_OBSERVATION = "system_observation"                # Reliability: 0.75
-    STRONG_INFERENCE = "strong_inference"                    # Reliability: 0.60
-    MODEL_INFERENCE = "model_inference"                      # Reliability: 0.40
-    UNVERIFIED_ASSUMPTION = "unverified_assumption"          # Reliability: 0.20
+
+    EXPLICIT_USER_CORRECTION = "explicit_user_correction"  # Reliability: 1.00
+    EXPLICIT_USER_STATEMENT = "explicit_user_statement"  # Reliability: 0.95
+    VERIFIED_TOOL_RESULT = "verified_tool_result"  # Reliability: 0.90
+    VERIFIED_EXTERNAL_SOURCE = "verified_external_source"  # Reliability: 0.85
+    SYSTEM_OBSERVATION = "system_observation"  # Reliability: 0.75
+    STRONG_INFERENCE = "strong_inference"  # Reliability: 0.60
+    MODEL_INFERENCE = "model_inference"  # Reliability: 0.40
+    UNVERIFIED_ASSUMPTION = "unverified_assumption"  # Reliability: 0.20
 
     @property
     def default_reliability(self) -> float:
@@ -242,36 +252,38 @@ class SourceType(str, Enum):
 
 # ── Canonical Memory Entity ───────────────────────────────────────────────────
 
+
 @dataclass
 class CanonicalMemory:
     """
     The Single Canonical Memory Entity for BR JARVIS.
     All storage backends (SQLite, ChromaDB, caches) are subordinate to this schema.
     """
+
     memory_id: str = field(default_factory=lambda: f"mem_{uuid.uuid4().hex[:12]}")
     user_id: str = "default_user"
     project_id: str = "global"
-    scope: str = "user"                           # "user" | "project" | "session" | "task" | "system"
+    scope: str = "user"  # "user" | "project" | "session" | "task" | "system"
     namespace: str = "default"
     memory_type: MemoryType = MemoryType.SEMANTIC
 
-    entity: str = ""                              # e.g., "python_version", "favorite_editor"
-    attribute: str = ""                           # e.g., "primary_language", "theme"
-    value: Any = ""                               # e.g., "Python 3.12", "dark_neon"
-    content: str = ""                             # Human & model readable statement
+    entity: str = ""  # e.g., "python_version", "favorite_editor"
+    attribute: str = ""  # e.g., "primary_language", "theme"
+    value: Any = ""  # e.g., "Python 3.12", "dark_neon"
+    content: str = ""  # Human & model readable statement
 
     source_type: SourceType = SourceType.EXPLICIT_USER_STATEMENT
-    source_id: str = ""                           # Identifier of message/tool/event
-    evidence: str = ""                            # Ground-truth evidence or proof
+    source_id: str = ""  # Identifier of message/tool/event
+    evidence: str = ""  # Ground-truth evidence or proof
 
-    confidence: float = 1.0                       # 0.0 to 1.0
-    reliability: float = 1.0                      # Derived from SourceType
-    importance: float = 0.5                       # 0.0 to 1.0 (retrieval multiplier)
+    confidence: float = 1.0  # 0.0 to 1.0
+    reliability: float = 1.0  # Derived from SourceType
+    importance: float = 0.5  # 0.0 to 1.0 (retrieval multiplier)
 
     created_at: float = field(default_factory=time.time)
     observed_at: float = field(default_factory=time.time)
     effective_from: float = field(default_factory=time.time)
-    effective_until: Optional[float] = None       # None means currently active/open-ended
+    effective_until: Optional[float] = None  # None means currently active/open-ended
     updated_at: float = field(default_factory=time.time)
     last_accessed_at: float = field(default_factory=time.time)
     last_validated_at: float = field(default_factory=time.time)
@@ -279,9 +291,9 @@ class CanonicalMemory:
     status: MemoryStatus = MemoryStatus.ACTIVE
     version: int = 1
 
-    supersedes_memory_id: Optional[str] = None    # ID of previous memory this record replaces
+    supersedes_memory_id: Optional[str] = None  # ID of previous memory this record replaces
     superseded_by_memory_id: Optional[str] = None  # ID of newer memory that replaced this record
-    conflict_group_id: Optional[str] = None       # Group ID for clustered conflicting records
+    conflict_group_id: Optional[str] = None  # Group ID for clustered conflicting records
 
     session_id: str = ""
     task_id: str = ""
@@ -401,13 +413,15 @@ class CanonicalMemory:
 
 # ── Memory Feedback Signal ────────────────────────────────────────────────────
 
+
 class FeedbackSignal(str, Enum):
     """Quality feedback signals for memory retrieval tuning."""
-    HELPFUL = "helpful"          # Memory was correctly retrieved and useful
+
+    HELPFUL = "helpful"  # Memory was correctly retrieved and useful
     NOT_HELPFUL = "not_helpful"  # Memory was retrieved but irrelevant
-    STALE = "stale"              # Memory content is outdated
-    WRONG = "wrong"              # Memory content is factually incorrect
-    IRRELEVANT = "irrelevant"    # Memory matched query but did not help
+    STALE = "stale"  # Memory content is outdated
+    WRONG = "wrong"  # Memory content is factually incorrect
+    IRRELEVANT = "irrelevant"  # Memory matched query but did not help
 
 
 @dataclass
@@ -417,12 +431,13 @@ class MemoryFeedback:
     Used to adjust retrieval quality scores over time.
     Persisted in the `memory_feedback` table in canonical DB.
     """
+
     feedback_id: str = field(default_factory=lambda: f"fb_{uuid.uuid4().hex[:10]}")
-    memory_id: str = ""              # The memory that was retrieved
-    session_id: str = ""             # Session in which retrieval occurred
-    query: str = ""                  # The query that triggered retrieval
+    memory_id: str = ""  # The memory that was retrieved
+    session_id: str = ""  # Session in which retrieval occurred
+    query: str = ""  # The query that triggered retrieval
     signal: FeedbackSignal = FeedbackSignal.HELPFUL
-    note: str = ""                   # Optional free-text explanation
+    note: str = ""  # Optional free-text explanation
     created_at: float = field(default_factory=time.time)
 
     def to_dict(self) -> Dict[str, Any]:
@@ -439,12 +454,14 @@ class MemoryFeedback:
 
 # ── Handoff Object ────────────────────────────────────────────────────────────
 
+
 class HandoffStatus(str, Enum):
     """Lifecycle states for a cross-session or cross-agent handoff."""
-    OPEN = "OPEN"            # Created, not yet claimed by any agent
-    CLAIMED = "CLAIMED"      # Claimed by a receiving agent
+
+    OPEN = "OPEN"  # Created, not yet claimed by any agent
+    CLAIMED = "CLAIMED"  # Claimed by a receiving agent
     DELIVERED = "DELIVERED"  # Successfully consumed and acknowledged
-    EXPIRED = "EXPIRED"      # Passed expiry time without being claimed
+    EXPIRED = "EXPIRED"  # Passed expiry time without being claimed
     CANCELLED = "CANCELLED"  # Explicitly cancelled by source
 
 
@@ -457,29 +474,30 @@ class Handoff:
 
     Persisted in the `handoffs` table in canonical DB.
     """
+
     handoff_id: str = field(default_factory=lambda: f"hnd_{uuid.uuid4().hex[:10]}")
-    session_id: str = ""              # Source session that created this handoff
+    session_id: str = ""  # Source session that created this handoff
     project_id: str = "global"
-    source_agent: str = "jarvis"      # Agent or model that created this
-    target_agent: str = ""            # Intended recipient (empty = any)
+    source_agent: str = "jarvis"  # Agent or model that created this
+    target_agent: str = ""  # Intended recipient (empty = any)
     created_at: float = field(default_factory=time.time)
     expires_at: Optional[float] = None  # None = no expiry
 
     # Semantic content of the handoff
-    goal: str = ""                    # The primary goal being handed off
+    goal: str = ""  # The primary goal being handed off
     completed: List[str] = field(default_factory=list)  # What was finished
-    current_state: str = ""           # Snapshot of where things stand
+    current_state: str = ""  # Snapshot of where things stand
     failed_attempts: List[str] = field(default_factory=list)  # What was tried and failed
     decisions: List[str] = field(default_factory=list)  # Decisions made
     open_questions: List[str] = field(default_factory=list)  # Unresolved questions
     next_steps: List[str] = field(default_factory=list)  # Recommended actions
     important_files: List[str] = field(default_factory=list)  # Key files changed or relevant
     risks: List[str] = field(default_factory=list)  # Known risks or blockers
-    confidence: float = 1.0          # Confidence in handoff completeness (0.0-1.0)
+    confidence: float = 1.0  # Confidence in handoff completeness (0.0-1.0)
 
     status: HandoffStatus = HandoffStatus.OPEN
-    reusable: bool = False            # If True, handoff is not consumed on first claim
-    claimed_by: str = ""              # Agent that claimed this handoff
+    reusable: bool = False  # If True, handoff is not consumed on first claim
+    claimed_by: str = ""  # Agent that claimed this handoff
     claimed_at: Optional[float] = None
     delivered_at: Optional[float] = None
 
@@ -542,8 +560,15 @@ class Handoff:
                 d["status"] = HandoffStatus(d["status"])
             except ValueError:
                 d["status"] = HandoffStatus.OPEN
-        for list_field in ("completed", "failed_attempts", "decisions",
-                           "open_questions", "next_steps", "important_files", "risks"):
+        for list_field in (
+            "completed",
+            "failed_attempts",
+            "decisions",
+            "open_questions",
+            "next_steps",
+            "important_files",
+            "risks",
+        ):
             if list_field in d and isinstance(d[list_field], str):
                 try:
                     d[list_field] = json.loads(d[list_field])

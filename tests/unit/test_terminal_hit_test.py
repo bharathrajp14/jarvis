@@ -1,7 +1,6 @@
 # tests/unit/test_terminal_hit_test.py — Unit Tests for Spatial Hit-Testing
 from __future__ import annotations
 
-import pytest
 from brjarvis.core.terminal.hit_test import (
     HitTestManager,
     InteractiveRegion,

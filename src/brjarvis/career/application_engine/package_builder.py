@@ -7,16 +7,16 @@ import re
 import time
 import uuid
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from brjarvis.agent.artifacts import get_artifact_manager
+from brjarvis.core.paths import paths
+
 from ..cover_letter.generator import CoverLetterGenerator
 from ..models import ApplicationPackage, CareerProfile, JobPosting
 from ..resume_engine.exporter import ResumeExportPipeline
 from ..resume_engine.models import TemplateType, ThemeConfig
 from ..resume_engine.tailoring import ResumeTailoringEngine
-
-from brjarvis.core.paths import paths
 
 logger = logging.getLogger("JARVIS.PackageBuilder")
 
@@ -52,8 +52,8 @@ class ApplicationPackageBuilder:
         pkg_dir = self.base_dir / pkg_id
         pkg_dir.mkdir(parents=True, exist_ok=True)
 
-        clean_co = re.sub(r'[^\w\-]', '_', job.company)
-        clean_role = re.sub(r'[^\w\-]', '_', job.title)
+        clean_co = re.sub(r"[^\w\-]", "_", job.company)
+        clean_role = re.sub(r"[^\w\-]", "_", job.title)
 
         # 1. Tailor and Export Resume
         tailored_resume, _ = ResumeTailoringEngine.tailor_resume(

@@ -2,11 +2,11 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 
-from .base import BasePlatformAdapter
+from ...models import ApplicationQuestion, JobPosting, PlatformPolicy, PlatformPolicyState
 from ..models import SearchFilters
-from ...models import ApplicationPackage, ApplicationQuestion, JobPosting, PlatformPolicy, PlatformPolicyState
+from .base import BasePlatformAdapter
 
 logger = logging.getLogger("JARVIS.CompanySiteAdapter")
 

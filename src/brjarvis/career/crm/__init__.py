@@ -2,9 +2,9 @@
 from __future__ import annotations
 
 from .database import CareerCRMDatabase, get_career_crm_db
-from .state_machine import ApplicationStateMachine
 from .event_pipeline import CareerEventPipeline, get_career_pipeline
 from .followup_engine import FollowupEngine, get_followup_engine
+from .state_machine import ApplicationStateMachine
 
 __all__ = [
     "CareerCRMDatabase",

@@ -5,6 +5,7 @@ Requires a free GitHub Personal Access Token (PAT):
   github.com → Settings → Developer Settings → Personal Access Tokens → Tokens (classic)
   Scopes: repo (read), issues (read) — takes 2 minutes
 """
+
 from __future__ import annotations
 
 import json
@@ -22,7 +23,6 @@ _API = "https://api.github.com"
 
 
 class GitHubConnector(BaseConnector):
-
     def __init__(self):
         self._token = os.environ.get("GITHUB_TOKEN", "").strip()
 
@@ -233,6 +233,7 @@ class GitHubConnector(BaseConnector):
     def _get_file(self, owner: str, repo: str, path: str, branch: str = "main") -> str:
         try:
             import base64
+
             data = self._fetch(f"/repos/{owner}/{repo}/contents/{path}", {"ref": branch})
             if data.get("type") != "file":
                 return f"'{path}' is not a file."

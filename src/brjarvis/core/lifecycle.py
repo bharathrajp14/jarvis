@@ -5,7 +5,6 @@ import asyncio
 import enum
 import logging
 import signal
-import sys
 from typing import Awaitable, Callable, List, Optional
 
 logger = logging.getLogger("JARVIS.Lifecycle")
@@ -59,13 +58,9 @@ class LifecycleManager:
             try:
                 await asyncio.wait_for(hook(), timeout=15.0)
             except asyncio.TimeoutError:
-                logger.error(
-                    f"⏱️ Startup hook '{hook_name}' timed out after 15s — continuing"
-                )
+                logger.error(f"⏱️ Startup hook '{hook_name}' timed out after 15s — continuing")
             except Exception as exc:
-                logger.error(
-                    f"❌ Startup hook '{hook_name}' raised: {exc}", exc_info=True
-                )
+                logger.error(f"❌ Startup hook '{hook_name}' raised: {exc}", exc_info=True)
 
         self.state = SystemState.RUNNING
         logger.info("✅ System State: RUNNING")
@@ -82,9 +77,7 @@ class LifecycleManager:
             try:
                 await asyncio.wait_for(hook(), timeout=10.0)
             except asyncio.TimeoutError:
-                logger.warning(
-                    f"⏱️ Shutdown hook '{hook_name}' timed out after 10s — skipping"
-                )
+                logger.warning(f"⏱️ Shutdown hook '{hook_name}' timed out after 10s — skipping")
             except Exception as exc:
                 logger.error(f"⚠️ Shutdown hook '{hook_name}' raised: {exc}")
 
@@ -103,16 +96,12 @@ class LifecycleManager:
         except RuntimeError:
             # No running loop — signal handlers cannot be attached now.
             # They will be registered when the server/event-loop starts.
-            logger.debug(
-                "attach_signal_handlers() called outside a running loop — skipping"
-            )
+            logger.debug("attach_signal_handlers() called outside a running loop — skipping")
             return
 
         for sig in (signal.SIGINT, signal.SIGTERM):
             try:
-                loop.add_signal_handler(
-                    sig, lambda: asyncio.create_task(self.shutdown())
-                )
+                loop.add_signal_handler(sig, lambda: asyncio.create_task(self.shutdown()))
             except (NotImplementedError, AttributeError):
                 # Signal handlers not supported on Windows sub-threads
                 pass

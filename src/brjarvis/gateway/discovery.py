@@ -5,6 +5,7 @@ Maintains a thread-safe, TTL-cached inventory of DiscoveredModel entities.
 Supports startup discovery, periodic background sync, manual refresh (/model refresh),
 and on-routing-failure refresh.
 """
+
 from __future__ import annotations
 
 import logging
@@ -23,6 +24,7 @@ logger = logging.getLogger("JARVIS.ModelDiscovery")
 @dataclass
 class DiscoveredModel:
     """Represents a model dynamically discovered from the gateway."""
+
     id: str
     object: str = "model"
     created: int = 0
@@ -50,11 +52,7 @@ class ModelDiscoveryService:
     Manages live model discovery from Proxy Brain.
     """
 
-    def __init__(
-        self,
-        client: Optional[ProxyBrainClient] = None,
-        cache_ttl_seconds: float = 300.0
-    ):
+    def __init__(self, client: Optional[ProxyBrainClient] = None, cache_ttl_seconds: float = 300.0):
         self.client = client or get_proxy_brain_client()
         self.cache_ttl = cache_ttl_seconds
         self._models: dict[str, DiscoveredModel] = {}
@@ -72,10 +70,7 @@ class ModelDiscoveryService:
                 return list(self._models.values())
 
             url = f"{self.client.base_url}/models"
-            headers = {
-                "Authorization": f"Bearer {self.client.api_key}",
-                "Content-Type": "application/json"
-            }
+            headers = {"Authorization": f"Bearer {self.client.api_key}", "Content-Type": "application/json"}
 
             try:
                 r = requests.get(url, headers=headers, timeout=self.client.timeout)
@@ -93,7 +88,7 @@ class ModelDiscoveryService:
                                 created=int(item.get("created", 0) or 0),
                                 owned_by=str(item.get("owned_by", "")),
                                 raw_metadata=item,
-                                discovered_at=now
+                                discovered_at=now,
                             )
 
                     if new_models:
@@ -102,7 +97,9 @@ class ModelDiscoveryService:
                         logger.info(f"[Discovery] Discovered {len(self._models)} live models from {url}")
                         return list(self._models.values())
                 else:
-                    logger.warning(f"[Discovery] GET /v1/models returned HTTP {r.status_code}: {sanitize_error_msg(r.text[:100])}")
+                    logger.warning(
+                        f"[Discovery] GET /v1/models returned HTTP {r.status_code}: {sanitize_error_msg(r.text[:100])}"
+                    )
             except Exception as exc:
                 logger.warning(f"[Discovery] Failed to reach /v1/models: {sanitize_error_msg(str(exc))}")
 
@@ -139,7 +136,7 @@ class ModelDiscoveryService:
                 "total_models": len(models),
                 "last_discovery_time": self._last_discovery_time,
                 "providers": {p: len(m_list) for p, m_list in by_provider.items()},
-                "model_ids": [m.id for m in models]
+                "model_ids": [m.id for m in models],
             }
 
 

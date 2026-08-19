@@ -30,14 +30,16 @@ async def list_agent_devices():
 
     out = []
     # Primary PC device
-    out.append({
-        "device_id": "pc_primary",
-        "display_name": "Host PC Controller",
-        "platform": platform.system().lower(),
-        "trust_state": "trusted",
-        "status": "online",
-        "capabilities": ["desktop_control", "filesystem", "browser", "voice", "vision"]
-    })
+    out.append(
+        {
+            "device_id": "pc_primary",
+            "display_name": "Host PC Controller",
+            "platform": platform.system().lower(),
+            "trust_state": "trusted",
+            "status": "online",
+            "capabilities": ["desktop_control", "filesystem", "browser", "voice", "vision"],
+        }
+    )
     for d in devices:
         item = d.to_dict()
         item["status"] = "online" if d.device_id in active_ids else "offline"

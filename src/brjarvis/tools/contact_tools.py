@@ -6,16 +6,17 @@ Exposes tools to:
 - Add, search, and list stored contacts
 - Resolve contact names/aliases ("Mom", "Boss") to phone numbers and email addresses.
 """
+
 from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Optional
 
-from .domain import RiskLevel, SideEffectLevel, ToolCategory, ToolErrorCode, VerificationStrategy
+from brjarvis.memory.contact_manager import get_contact_store
+
+from .domain import ToolErrorCode
 from .registry import register_tool
 from .tool_result import ToolResult
-from brjarvis.memory.contact_manager import get_contact_store
 
 
 @register_tool(
@@ -24,7 +25,10 @@ from brjarvis.memory.contact_manager import get_contact_store
     parameters={
         "type": "object",
         "properties": {
-            "file_path": {"type": "string", "description": "Absolute or workspace-relative path to .vcf or .csv contact file"},
+            "file_path": {
+                "type": "string",
+                "description": "Absolute or workspace-relative path to .vcf or .csv contact file",
+            },
             "content": {"type": "string", "description": "Raw vCard or CSV text content"},
             "format": {"type": "string", "enum": ["vcf", "csv", "auto"], "description": "Format specification"},
         },
@@ -144,7 +148,9 @@ def tool_manage_contacts(args: dict) -> ToolResult:
             aliases = [str(a).strip() for a in raw_aliases if str(a).strip()] if isinstance(raw_aliases, list) else []
 
             if not name:
-                return ToolResult.failed("manage_contacts", ToolErrorCode.INVALID_ARGUMENT, "'name' is required for adding a contact.")
+                return ToolResult.failed(
+                    "manage_contacts", ToolErrorCode.INVALID_ARGUMENT, "'name' is required for adding a contact."
+                )
 
             data = store.add_contact(name=name, phone_number=phone, email=email, aliases=aliases)
             evidence = f"Contact saved: '{data['name']}' (Phone: '{data['phone_number']}', Email: '{data['email']}')."
@@ -216,7 +222,9 @@ def tool_resolve_contact(args: dict) -> ToolResult:
     """Resolve a contact name to target info."""
     name_str = args if isinstance(args, str) else str(args.get("name") or args.get("query") or "").strip()
     if not name_str:
-        return ToolResult.failed("resolve_contact", ToolErrorCode.INVALID_ARGUMENT, "Provide a contact name to resolve.")
+        return ToolResult.failed(
+            "resolve_contact", ToolErrorCode.INVALID_ARGUMENT, "Provide a contact name to resolve."
+        )
 
     try:
         store = get_contact_store()

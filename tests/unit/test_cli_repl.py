@@ -5,24 +5,18 @@ import os
 import unittest
 from unittest.mock import MagicMock, patch
 
+from brjarvis.agent.task_state import TaskAction, TaskState, TaskStatus
 from brjarvis.core.terminal.autocomplete import (
-    JarvisCompleter,
     SLASH_COMMANDS,
-    VALID_MODES,
-    VALID_MODELS,
-    VALID_PERMISSIONS,
-    VALID_STYLES,
+    JarvisCompleter,
 )
-from brjarvis.core.terminal.commands import SlashCommandHandler, PERMISSION_ALIASES
+from brjarvis.core.terminal.commands import SlashCommandHandler
 from brjarvis.core.terminal.renderer import TerminalRenderer
 from brjarvis.core.terminal.session import (
-    TerminalSession,
-    PROMPT_NORMAL,
-    PROMPT_TASK,
     PROMPT_APPROVAL,
-    PROMPT_NEEDS_INPUT,
+    PROMPT_NORMAL,
+    TerminalSession,
 )
-from brjarvis.agent.task_state import TaskState, TaskStatus, TaskAction
 
 
 class TestJarvisCompleter(unittest.TestCase):
@@ -161,7 +155,13 @@ class TestTerminalRenderer(unittest.TestCase):
 
     def test_render_model_table(self):
         models = [
-            {"name": "gemini", "model": "gemini-2.5-flash", "status": "available", "context": "1M", "capabilities": ["vision", "code"]},
+            {
+                "name": "gemini",
+                "model": "gemini-2.5-flash",
+                "status": "available",
+                "context": "1M",
+                "capabilities": ["vision", "code"],
+            },
             {"name": "gpt", "model": "gpt-4o", "status": "available", "context": "128K", "capabilities": ["code"]},
         ]
         self.renderer.render_model_table(models, active="gemini")
@@ -346,6 +346,7 @@ class TestTerminalSessionPrompts(unittest.TestCase):
         self.assertIn("approval required", prompt)
         self.assertIn("›", prompt)
 
+
 class TestTerminalSafeExit(unittest.TestCase):
     """Test safe exit handling, Ctrl+D (EOFError), exit aliases, and state preservation."""
 
@@ -362,16 +363,20 @@ class TestTerminalSafeExit(unittest.TestCase):
                 mock_close.assert_called_with(consolidate=True)
 
     def test_repl_eof_error_triggers_safe_close(self):
-        with patch.object(self.session, "_read_input", side_effect=EOFError), \
-             patch.object(self.session, "close", wraps=self.session.close) as mock_close:
+        with (
+            patch.object(self.session, "_read_input", side_effect=EOFError),
+            patch.object(self.session, "close", wraps=self.session.close) as mock_close,
+        ):
             self.session.run_repl()
             mock_close.assert_called_with(consolidate=True)
             self.assertTrue(self.session._closed)
             self.assertFalse(self.session._is_running)
 
     def test_repl_keyboard_interrupt_force_quit(self):
-        with patch.object(self.session, "_read_input", side_effect=KeyboardInterrupt), \
-             patch.object(self.session, "close", wraps=self.session.close) as mock_close:
+        with (
+            patch.object(self.session, "_read_input", side_effect=KeyboardInterrupt),
+            patch.object(self.session, "close", wraps=self.session.close) as mock_close,
+        ):
             self.session.run_repl()
             mock_close.assert_called_with(consolidate=True)
             self.assertTrue(self.session._closed)
@@ -401,8 +406,8 @@ class TestTerminalSafeExit(unittest.TestCase):
 
     def test_cli_main_catches_eof_and_returns_zero(self):
         from brjarvis.core.cli import main as cli_main
-        with patch("sys.argv", ["cli"]), \
-             patch.object(TerminalSession, "run_repl", side_effect=EOFError):
+
+        with patch("sys.argv", ["cli"]), patch.object(TerminalSession, "run_repl", side_effect=EOFError):
             ret = cli_main()
             self.assertEqual(ret, 0)
 

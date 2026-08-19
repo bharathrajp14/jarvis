@@ -3,12 +3,12 @@
 Provides python code analysis, AST parsing, syntax validation, refactoring suggestions,
 and code formatting tools.
 """
+
 from __future__ import annotations
 
 import ast
-import sys
-import traceback
 from pathlib import Path
+
 from .registry import register_tool
 
 
@@ -21,13 +21,13 @@ from .registry import register_tool
             "action": {
                 "type": "string",
                 "enum": ["check_syntax", "analyze_ast", "format_imports", "suggest_refactor"],
-                "description": "Refactoring action to perform"
+                "description": "Refactoring action to perform",
             },
             "file_path": {"type": "string", "description": "Target source code file path"},
-            "code": {"type": "string", "description": "Optional inline code snippet to check"}
+            "code": {"type": "string", "description": "Optional inline code snippet to check"},
         },
-        "required": ["action"]
-    }
+        "required": ["action"],
+    },
 )
 def code_refactor(args: dict) -> str:
     action = args.get("action", "check_syntax")
@@ -51,11 +51,7 @@ def code_refactor(args: dict) -> str:
             ast.parse(code)
             return "✅ Syntax Check Passed: Code is syntactically valid."
         except SyntaxError as se:
-            return (
-                f"❌ Syntax Error on Line {se.lineno}, Col {se.offset}:\n"
-                f"Line: {se.text}\n"
-                f"Detail: {se.msg}"
-            )
+            return f"❌ Syntax Error on Line {se.lineno}, Col {se.offset}:\nLine: {se.text}\nDetail: {se.msg}"
 
     elif action == "analyze_ast":
         try:
@@ -87,7 +83,7 @@ def code_refactor(args: dict) -> str:
             others = [l for l in lines if not (l.startswith("import ") or l.startswith("from "))]
             sorted_imports = sorted(list(set(imports)))
             formatted_code = "\n".join(sorted_imports) + "\n\n" + "\n".join(others)
-            
+
             if file_path:
                 Path(file_path).write_text(formatted_code, encoding="utf-8")
                 return f"✅ Formatted and sorted imports in '{file_path}'."
@@ -102,13 +98,19 @@ def code_refactor(args: dict) -> str:
             for node in ast.walk(tree):
                 if isinstance(node, ast.FunctionDef):
                     if len(node.body) > 50:
-                        suggestions.append(f"⚠️ Function '{node.name}' is too long ({len(node.body)} statements). Consider breaking it down.")
+                        suggestions.append(
+                            f"⚠️ Function '{node.name}' is too long ({len(node.body)} statements). Consider breaking it down."
+                        )
                     if len(node.args.args) > 6:
-                        suggestions.append(f"⚠️ Function '{node.name}' has too many arguments ({len(node.args.args)}). Consider using a dataclass or dict.")
+                        suggestions.append(
+                            f"⚠️ Function '{node.name}' has too many arguments ({len(node.args.args)}). Consider using a dataclass or dict."
+                        )
                 elif isinstance(node, ast.ExceptHandler):
                     if node.type is None:
-                        suggestions.append(f"⚠️ Bare 'except:' clause found near line {node.lineno}. Catch specific exceptions.")
-            
+                        suggestions.append(
+                            f"⚠️ Bare 'except:' clause found near line {node.lineno}. Catch specific exceptions."
+                        )
+
             if not suggestions:
                 return "✅ No obvious code smells or refactoring flags found."
             return "💡 Refactoring Suggestions:\n" + "\n".join(suggestions)

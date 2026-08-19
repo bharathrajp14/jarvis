@@ -1,10 +1,12 @@
 # src/brjarvis/config/__init__.py
 """Configuration management and system settings for BR JARVIS."""
+
 from __future__ import annotations
 
 import json
 import os
 from pathlib import Path
+
 from brjarvis.core.paths import paths
 
 _CONFIG_PATH = paths.CONFIG_ROOT / "api_keys.json"
@@ -34,8 +36,7 @@ def get_gemini_api_key(required: bool = False) -> str:
 
     if required:
         raise ValueError(
-            "No Gemini API key found.\n"
-            "Set GEMINI_API_KEY env var OR add 'gemini_api_key' to config/api_keys.json"
+            "No Gemini API key found.\nSet GEMINI_API_KEY env var OR add 'gemini_api_key' to config/api_keys.json"
         )
     return ""
 

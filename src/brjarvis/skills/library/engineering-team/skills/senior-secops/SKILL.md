@@ -372,10 +372,12 @@ API_KEY = "sk-1234567890abcdef"
 
 # GOOD: Environment variable
 import os
+
 API_KEY = os.environ.get("API_KEY")
 
 # BETTER: Secrets manager
 from your_vault_client import get_secret
+
 API_KEY = get_secret("api/key")
 ```
 

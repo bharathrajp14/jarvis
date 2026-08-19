@@ -4,11 +4,12 @@ from __future__ import annotations
 import logging
 import time
 from dataclasses import asdict, dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict
+
+from brjarvis.memory.canonical_db import get_canonical_db
 
 from .application_engine.tracker import ApplicationTracker
-from .models import ApplicationRecord, ApplicationStatus
-from brjarvis.memory.canonical_db import get_canonical_db
+from .models import ApplicationStatus
 
 logger = logging.getLogger("JARVIS.CareerAnalytics")
 
@@ -25,12 +26,12 @@ class CareerFunnelAnalytics:
     total_technical_rounds: int = 0
     total_offers: int = 0
     total_rejected: int = 0
-    
+
     # Conversion Rates (%)
-    response_rate: float = 0.0          # (Screenings + Interviews + Offers) / Submitted
-    interview_rate: float = 0.0         # Interviews / Submitted
-    offer_rate: float = 0.0             # Offers / Interviews
-    
+    response_rate: float = 0.0  # (Screenings + Interviews + Offers) / Submitted
+    interview_rate: float = 0.0  # Interviews / Submitted
+    offer_rate: float = 0.0  # Offers / Interviews
+
     # Breakdowns
     platform_distribution: Dict[str, int] = field(default_factory=dict)
     status_counts: Dict[str, int] = field(default_factory=dict)
@@ -79,25 +80,26 @@ class CareerAnalyticsEngine:
             total_discovered = len(applications)
 
         submitted_cnt = (
-            status_counts.get(ApplicationStatus.SUBMITTED.value, 0) +
-            status_counts.get(ApplicationStatus.SUBMISSION_VERIFIED.value, 0) +
-            status_counts.get(ApplicationStatus.SCREENING.value, 0) +
-            status_counts.get(ApplicationStatus.INTERVIEW.value, 0) +
-            status_counts.get(ApplicationStatus.TECHNICAL.value, 0) +
-            status_counts.get(ApplicationStatus.OFFER.value, 0) +
-            status_counts.get(ApplicationStatus.REJECTED.value, 0)
+            status_counts.get(ApplicationStatus.SUBMITTED.value, 0)
+            + status_counts.get(ApplicationStatus.SUBMISSION_VERIFIED.value, 0)
+            + status_counts.get(ApplicationStatus.SCREENING.value, 0)
+            + status_counts.get(ApplicationStatus.INTERVIEW.value, 0)
+            + status_counts.get(ApplicationStatus.TECHNICAL.value, 0)
+            + status_counts.get(ApplicationStatus.OFFER.value, 0)
+            + status_counts.get(ApplicationStatus.REJECTED.value, 0)
         )
 
         screenings_cnt = status_counts.get(ApplicationStatus.SCREENING.value, 0)
-        interviews_cnt = (
-            status_counts.get(ApplicationStatus.INTERVIEW.value, 0) +
-            status_counts.get(ApplicationStatus.TECHNICAL.value, 0)
+        interviews_cnt = status_counts.get(ApplicationStatus.INTERVIEW.value, 0) + status_counts.get(
+            ApplicationStatus.TECHNICAL.value, 0
         )
         tech_cnt = status_counts.get(ApplicationStatus.TECHNICAL.value, 0)
         offers_cnt = status_counts.get(ApplicationStatus.OFFER.value, 0)
         rejected_cnt = status_counts.get(ApplicationStatus.REJECTED.value, 0)
         shortlisted_cnt = status_counts.get(ApplicationStatus.SHORTLISTED.value, 0)
-        prepared_cnt = status_counts.get(ApplicationStatus.PREPARING.value, 0) + status_counts.get(ApplicationStatus.READY_FOR_REVIEW.value, 0)
+        prepared_cnt = status_counts.get(ApplicationStatus.PREPARING.value, 0) + status_counts.get(
+            ApplicationStatus.READY_FOR_REVIEW.value, 0
+        )
 
         # Rates
         responses_cnt = screenings_cnt + interviews_cnt + offers_cnt + rejected_cnt

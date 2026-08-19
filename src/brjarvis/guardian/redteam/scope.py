@@ -1,11 +1,10 @@
 # redteam/scope.py — Authorized Pentest Scope Enforcer
 from __future__ import annotations
 
-import logging
 import json
-import os
+import logging
+from ipaddress import ip_address, ip_network
 from pathlib import Path
-from ipaddress import ip_network, ip_address
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +28,8 @@ class ScopeEnforcer:
                 with open(scope_file, encoding="utf-8") as f:
                     self.scope.update(json.load(f))
             except Exception as e:
-                logger.debug('Suppressed exception: %s', e)
+                logger.debug("Suppressed exception: %s", e)
+
     def is_authorized(self, target: str) -> bool:
         """Check if target host/domain is within authorized scope."""
         if not target:
@@ -60,4 +60,4 @@ class ScopeEnforcer:
             with open(log_path, "a", encoding="utf-8") as f:
                 f.write(json.dumps(entry) + "\n")
         except Exception as e:
-            logger.debug('Suppressed exception: %s', e)
+            logger.debug("Suppressed exception: %s", e)

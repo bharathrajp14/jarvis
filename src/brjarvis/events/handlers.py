@@ -12,8 +12,10 @@ def subscribe(topic_pattern: str):
         async def on_startup(event: BaseEvent):
             logger.info("System booted!")
     """
+
     def decorator(fn: EventHandler):
         bus = get_event_bus()
         bus.subscribe(topic_pattern, fn)
         return fn
+
     return decorator

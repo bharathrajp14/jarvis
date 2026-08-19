@@ -4,6 +4,7 @@ Deterministic Fail-Closed Policy Engine for BR JARVIS.
 Evaluates 6-tuple context: (User, Session, Device, Target/Resource, Capability, Risk) -> ActionDecision.
 Guarantees that policy evaluation failure fails CLOSED (DENY).
 """
+
 from __future__ import annotations
 
 import logging
@@ -20,106 +21,111 @@ logger = logging.getLogger("JARVIS.PolicyEngine")
 
 
 class PermissionMode(str, Enum):
-    ALLOW_ALL           = "allow_all"
+    ALLOW_ALL = "allow_all"
     CONFIRM_DESTRUCTIVE = "confirm_destructive"
-    CONFIRM_ALL         = "confirm_all"
-    DENY_ALL            = "deny_all"
+    CONFIRM_ALL = "confirm_all"
+    DENY_ALL = "deny_all"
 
 
 class ActionDecision(str, Enum):
-    ALLOW                 = "allow"
-    DENY                  = "deny"
-    CONFIRM               = "confirm"
-    ALLOW_FOR_SESSION     = "allow_for_session"
-    ALLOW_FOR_DEVICE      = "allow_for_device"
+    ALLOW = "allow"
+    DENY = "deny"
+    CONFIRM = "confirm"
+    ALLOW_FOR_SESSION = "allow_for_session"
+    ALLOW_FOR_DEVICE = "allow_for_device"
     ALLOW_FOR_APPLICATION = "allow_for_application"
 
 
 # Default dangerous tools requiring explicit user confirmation under CONFIRM_DESTRUCTIVE mode
-DESTRUCTIVE_TOOLS: FrozenSet[str] = frozenset({
-    "file_delete",
-    "file_write",
-    "run_code",
-    "scratchpad_eval",
-    "computer_settings",
-    "system_cleanup",
-    "system_optimizer",
-    "process_kill",
-    "run_automation_workflow",
-    "execute_system_automation",
-    "game_updater",
-    "mobile_send_message",
-    "mobile_delete_files",
-    "application_submit",
-    "submit_job_application",
-    "career_application_submit",
-    "career_offer_confirm",
-    "career_spreadsheet_sync",
-    "career_followup_generate_draft",
-    "canva_oauth_connect",
-})
+DESTRUCTIVE_TOOLS: FrozenSet[str] = frozenset(
+    {
+        "file_delete",
+        "file_write",
+        "run_code",
+        "scratchpad_eval",
+        "computer_settings",
+        "system_cleanup",
+        "system_optimizer",
+        "process_kill",
+        "run_automation_workflow",
+        "execute_system_automation",
+        "game_updater",
+        "mobile_send_message",
+        "mobile_delete_files",
+        "application_submit",
+        "submit_job_application",
+        "career_application_submit",
+        "career_offer_confirm",
+        "career_spreadsheet_sync",
+        "career_followup_generate_draft",
+        "canva_oauth_connect",
+    }
+)
 
 # Safe, read-only informative tools that carry zero side-effects
-ALWAYS_ALLOWED_SAFE: FrozenSet[str] = frozenset({
-    "help",
-    "status",
-    "doctor",
-    "system_health",
-    "get_system_status",
-    "get_workspace_tree",
-    "list_directory",
-    "read_file",
-    "file_read",
-    "file_list",
-    "grep_search",
-    "find_by_name",
-    "fetch_url",
-    "fetch_page",
-    "fetch_raw",
-    "web_search",
-    "take_screenshot",
-    "get_cursor_position",
-    "list_windows",
-    "get_active_window",
-    "get_window_bounds",
-    "get_accessibility_tree",
-    "ocr_screen",
-    "locate_on_screen",
-    "query_memory",
-    "get_recent_context",
-    "list_tools",
-    "memory_list",
-    "memory_search",
-    "artifact_export",
-    "artifact_list",
-    "career_profile_get",
-    "career_job_search",
-    "career_job_match",
-    "career_ats_evaluate",
-    "career_analytics_report",
-    "career_interview_prep",
-    "career_learning_insights",
-    "career_application_verify",
-    "career_application_track",
-    "career_resume_build",
-    "career_resume_tailor",
-    "career_resume_export",
-    "career_cover_letter_generate",
-    "job_search",
-    "job_match",
-    "job_details",
-    "resume_list_templates",
-    "resume_preview",
-    "resume_render",
-    "ats_score_resume",
-    "career_analytics_summary",
-    "interview_prep_generate",
-})
+ALWAYS_ALLOWED_SAFE: FrozenSet[str] = frozenset(
+    {
+        "help",
+        "status",
+        "doctor",
+        "system_health",
+        "get_system_status",
+        "get_workspace_tree",
+        "list_directory",
+        "read_file",
+        "file_read",
+        "file_list",
+        "grep_search",
+        "find_by_name",
+        "fetch_url",
+        "fetch_page",
+        "fetch_raw",
+        "web_search",
+        "take_screenshot",
+        "get_cursor_position",
+        "list_windows",
+        "get_active_window",
+        "get_window_bounds",
+        "get_accessibility_tree",
+        "ocr_screen",
+        "locate_on_screen",
+        "query_memory",
+        "get_recent_context",
+        "list_tools",
+        "memory_list",
+        "memory_search",
+        "artifact_export",
+        "artifact_list",
+        "career_profile_get",
+        "career_job_search",
+        "career_job_match",
+        "career_ats_evaluate",
+        "career_analytics_report",
+        "career_interview_prep",
+        "career_learning_insights",
+        "career_application_verify",
+        "career_application_track",
+        "career_resume_build",
+        "career_resume_tailor",
+        "career_resume_export",
+        "career_cover_letter_generate",
+        "job_search",
+        "job_match",
+        "job_details",
+        "resume_list_templates",
+        "resume_preview",
+        "resume_render",
+        "ats_score_resume",
+        "career_analytics_summary",
+        "interview_prep_generate",
+    }
+)
 
 
 @dataclass(slots=True)
 class PolicyContext:
     """Represents the complete 6-tuple context for a security policy check."""
+
     user: str = "default_user"
     session_id: str = "default_session"
     device: str = "pc_primary"
@@ -236,14 +242,13 @@ class PolicyEngine:
         if ctx.risk == RiskLevel.CRITICAL and self.mode != PermissionMode.ALLOW_ALL:
             return ActionDecision.CONFIRM
 
-
         # 5. Dangerous capabilities (Code Execution, System Control, Destructive)
         high_risk_caps = {
             Capability.CODE_EXECUTION,
             Capability.SYSTEM_CONTROL,
             Capability.DESTRUCTIVE,
             Capability.FINANCIAL,
-            Capability.CREDENTIAL_ACCESS
+            Capability.CREDENTIAL_ACCESS,
         }
         if any(cap in high_risk_caps for cap in ctx.capabilities):
             if self.mode == PermissionMode.DENY_ALL and action not in self.allow_names:
@@ -276,7 +281,9 @@ class PolicyEngine:
         """Alias for check_tool_permission."""
         return self.check_tool_permission(tool_name, args, session_id)
 
-    def check_tool_permission(self, tool_name: str, args: Optional[Dict[str, Any]] = None, session_id: str = "default_session") -> bool:
+    def check_tool_permission(
+        self, tool_name: str, args: Optional[Dict[str, Any]] = None, session_id: str = "default_session"
+    ) -> bool:
         """Fast helper to check if tool execution is authorized under active policy.
         Fails CLOSED on any error.
         """
@@ -307,7 +314,12 @@ class PolicyEngine:
             elif name in ("computer_settings", "process_kill", "system_cleanup"):
                 caps.add(Capability.SYSTEM_CONTROL)
                 risk = RiskLevel.HIGH
-            elif name.startswith("keyboard_") or name.startswith("cursor_") or name.startswith("mouse_") or name == "open_app":
+            elif (
+                name.startswith("keyboard_")
+                or name.startswith("cursor_")
+                or name.startswith("mouse_")
+                or name == "open_app"
+            ):
                 caps.add(Capability.DESKTOP_CONTROL)
                 risk = RiskLevel.MEDIUM
             elif name in ALWAYS_ALLOWED_SAFE:
@@ -315,12 +327,7 @@ class PolicyEngine:
                 risk = RiskLevel.LOW
 
             ctx = PolicyContext(
-                session_id=session_id,
-                action=name,
-                resource=resource,
-                capabilities=caps,
-                risk=risk,
-                metadata=args or {}
+                session_id=session_id, action=name, resource=resource, capabilities=caps, risk=risk, metadata=args or {}
             )
 
             decision = self.evaluate(ctx)

@@ -4,19 +4,18 @@ Gmail & Email Connector for BR JARVIS.
 Enables sending automated emails, checking inboxes, and searching emails via SMTP/IMAP.
 Uses GMAIL_ADDRESS and GMAIL_APP_PASSWORD from environment or .jarvis/gmail_config.json.
 """
+
 from __future__ import annotations
 
 import email
 import imaplib
-import json
 import logging
 import os
 import smtplib
 from email.header import decode_header
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from .base import BaseConnector, ConnectorTool
 
@@ -24,14 +23,10 @@ logger = logging.getLogger("JARVIS.Connectors.Gmail")
 
 
 class GmailConnector(BaseConnector):
-
     @property
     def _email(self) -> str:
         return (
-            os.environ.get("GMAIL_ADDRESS")
-            or os.environ.get("SMTP_USER")
-            or os.environ.get("IMAP_USER")
-            or ""
+            os.environ.get("GMAIL_ADDRESS") or os.environ.get("SMTP_USER") or os.environ.get("IMAP_USER") or ""
         ).strip()
 
     @property
@@ -97,7 +92,11 @@ class GmailConnector(BaseConnector):
                     "type": "object",
                     "properties": {
                         "limit": {"type": "integer", "description": "Number of recent emails to fetch", "default": 5},
-                        "unread_only": {"type": "boolean", "description": "Only fetch unread messages", "default": True},
+                        "unread_only": {
+                            "type": "boolean",
+                            "description": "Only fetch unread messages",
+                            "default": True,
+                        },
                     },
                 },
                 requires_auth=True,

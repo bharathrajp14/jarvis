@@ -1,7 +1,6 @@
 # tests/unit/test_terminal_viewport_scroll.py — Unit Tests for Virtual Viewport & Scrolling
 from __future__ import annotations
 
-import pytest
 from brjarvis.core.terminal.viewport import ScrollManager
 
 

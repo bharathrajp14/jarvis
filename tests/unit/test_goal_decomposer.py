@@ -7,16 +7,16 @@ Verifies:
   - Unrelated goal cannot produce portfolio criteria
   - Empty/None goal produces a safe fallback
 """
+
 from __future__ import annotations
 
 import pytest
-from unittest.mock import patch
 
 
 @pytest.mark.unit
 def test_portfolio_github_goal_decomposition():
     """Portfolio creation + GitHub push goal must decompose to both operations."""
-    from brjarvis.agent.goal_decomposer import decompose_goal, _decompose_deterministic
+    from brjarvis.agent.goal_decomposer import _decompose_deterministic
 
     # Use deterministic to avoid LLM dependency in unit tests
     spec = _decompose_deterministic("Create a portfolio and push it to GitHub, then open it.")
@@ -63,7 +63,7 @@ def test_git_commit_goal_decomposition():
 @pytest.mark.unit
 def test_goal_spec_serialization_roundtrip():
     """GoalSpec must survive to_dict() → from_dict() roundtrip."""
-    from brjarvis.agent.goal_decomposer import _decompose_deterministic, GoalSpec
+    from brjarvis.agent.goal_decomposer import GoalSpec, _decompose_deterministic
 
     spec = _decompose_deterministic("Create a portfolio and push to GitHub.")
     d = spec.to_dict()

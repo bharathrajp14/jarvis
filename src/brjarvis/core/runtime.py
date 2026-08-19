@@ -1,10 +1,12 @@
 # core/runtime.py — Master ApplicationRuntime for BR JARVIS
 from __future__ import annotations
 
-import asyncio
 import logging
 import threading
-from typing import Any, Dict, Optional
+from typing import Any, Optional
+
+from brjarvis.events.bus import EventBus, get_event_bus
+from brjarvis.events.types import SystemEvent
 
 from .config import JarvisConfig, get_config
 from .di import Container, get_container
@@ -12,15 +14,13 @@ from .health import HealthMonitor
 from .lifecycle import LifecycleManager
 from .logging import setup_logger
 from .process import ProcessSupervisor
-from brjarvis.events.bus import EventBus, get_event_bus
-from brjarvis.events.types import SystemEvent
 
 logger = logging.getLogger("JARVIS.Runtime")
 
 
 class ApplicationRuntime:
     """Master Canonical Application Runtime for BR JARVIS.
-    
+
     Coordinates the entire AI operating system runtime:
     - Configuration (JarvisConfig)
     - EventBus (system telemetry and async pub/sub)
@@ -73,6 +73,7 @@ class ApplicationRuntime:
     def router(self) -> Any:
         if self._router is None:
             from brjarvis.router import AgentRouter, load_available_backends
+
             backends = load_available_backends()
             self._router = AgentRouter(backends)
             self.container.register_instance(AgentRouter, self._router)
@@ -82,9 +83,10 @@ class ApplicationRuntime:
     def orchestrator(self) -> Any:
         if self._orchestrator is None:
             from brjarvis.orchestrator import JarvisOrchestrator
+
             self._orchestrator = JarvisOrchestrator(self.router, use_vector_memory=self._use_vector_memory)
             self.container.register_instance(JarvisOrchestrator, self._orchestrator)
-            
+
             # Register orchestrator shutdown hook
             async def _orch_shutdown():
                 try:
@@ -92,6 +94,7 @@ class ApplicationRuntime:
                         self._orchestrator.shutdown()
                 except Exception as exc:
                     self.logger.warning("Error during orchestrator shutdown: %s", exc)
+
             self.lifecycle.add_shutdown_hook(_orch_shutdown)
         return self._orchestrator
 
@@ -100,6 +103,7 @@ class ApplicationRuntime:
         if self._gateway is None:
             try:
                 from brjarvis.gateway.model_gateway import ModelGateway
+
                 self._gateway = ModelGateway()
             except Exception as e:
                 self.logger.debug("ModelGateway init notice: %s", e)
@@ -110,6 +114,7 @@ class ApplicationRuntime:
         if self._tool_runtime is None:
             try:
                 from brjarvis.tools.tool_runtime import ToolRuntime
+
                 self._tool_runtime = ToolRuntime()
             except Exception as e:
                 self.logger.debug("ToolRuntime init notice: %s", e)
@@ -120,6 +125,7 @@ class ApplicationRuntime:
         if self._memory is None:
             try:
                 from brjarvis.memory.unified_memory import UnifiedMemoryManager
+
                 self._memory = UnifiedMemoryManager()
             except Exception as e:
                 self.logger.debug("UnifiedMemoryManager init notice: %s", e)
@@ -130,6 +136,7 @@ class ApplicationRuntime:
         if self._security is None:
             try:
                 from brjarvis.security.policy_engine import SecurityPolicyEngine
+
                 self._security = SecurityPolicyEngine()
             except Exception as e:
                 self.logger.debug("SecurityPolicyEngine init notice: %s", e)
@@ -140,6 +147,7 @@ class ApplicationRuntime:
         if self._guardian is None:
             try:
                 from brjarvis.guardian.core import GuardianCore
+
                 self._guardian = GuardianCore()
             except Exception as e:
                 self.logger.debug("GuardianCore init notice: %s", e)
@@ -149,6 +157,7 @@ class ApplicationRuntime:
     def voice(self) -> Any:
         try:
             from brjarvis.voice.assistant import get_voice_assistant
+
             return get_voice_assistant()
         except Exception as e:
             self.logger.debug("VoiceAssistant init notice: %s", e)
@@ -158,6 +167,7 @@ class ApplicationRuntime:
     def vision(self) -> Any:
         try:
             from brjarvis.vision.engine import get_vision_engine
+
             return get_vision_engine()
         except Exception as e:
             self.logger.debug("VisionEngine init notice: %s", e)
@@ -178,25 +188,19 @@ class ApplicationRuntime:
             "event_bus": self.event_bus,
         }
 
-
     async def boot(self) -> None:
         """Boot the master runtime and publish system startup event."""
         _ = self.orchestrator
         await self.lifecycle.startup()
         from brjarvis.core.version import VERSION
-        self.event_bus.publish(SystemEvent(
-            topic="system.startup",
-            state="RUNNING",
-            payload={"version": VERSION, "status": "ONLINE"}
-        ))
+
+        self.event_bus.publish(
+            SystemEvent(topic="system.startup", state="RUNNING", payload={"version": VERSION, "status": "ONLINE"})
+        )
 
     async def shutdown(self) -> None:
         """Cleanly shutdown all subsystems."""
-        self.event_bus.publish(SystemEvent(
-            topic="system.shutdown",
-            state="STOPPING",
-            payload={}
-        ))
+        self.event_bus.publish(SystemEvent(topic="system.shutdown", state="STOPPING", payload={}))
         await self.lifecycle.shutdown()
 
 

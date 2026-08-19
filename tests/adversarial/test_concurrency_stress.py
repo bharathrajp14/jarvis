@@ -1,8 +1,11 @@
 """Adversarial Concurrency Stress Tests for SQLite Lock."""
+
 from __future__ import annotations
 
 import asyncio
+
 import pytest
+
 from brjarvis.memory.sqlite_lock import async_run_sqlite_write
 
 

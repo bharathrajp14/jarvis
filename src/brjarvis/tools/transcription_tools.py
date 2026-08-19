@@ -2,9 +2,11 @@
 """
 Registers offline audio/video transcription tools in the JARVIS tool registry.
 """
+
 from __future__ import annotations
 
 import json
+
 from .registry import register_tool
 
 
@@ -15,14 +17,21 @@ from .registry import register_tool
         "type": "object",
         "properties": {
             "file_path": {"type": "string", "description": "Path to the audio or video file"},
-            "language": {"type": "string", "description": "Language code (e.g., 'en', 'hi') or 'auto' for detection (default: auto)"},
-            "output_format": {"type": "string", "description": "Output format: 'txt', 'srt', 'vtt', 'json' (default: txt)"},
+            "language": {
+                "type": "string",
+                "description": "Language code (e.g., 'en', 'hi') or 'auto' for detection (default: auto)",
+            },
+            "output_format": {
+                "type": "string",
+                "description": "Output format: 'txt', 'srt', 'vtt', 'json' (default: txt)",
+            },
         },
         "required": ["file_path"],
-    }
+    },
 )
 def tool_transcribe_file(args: dict) -> str:
     from brjarvis.actions.transcriber import transcribe_file
+
     result = transcribe_file(
         args["file_path"],
         args.get("language", "auto"),
@@ -46,10 +55,11 @@ def tool_transcribe_file(args: dict) -> str:
             "output_format": {"type": "string", "description": "Output format (default: txt)"},
         },
         "required": ["file_paths"],
-    }
+    },
 )
 def tool_transcribe_batch(args: dict) -> str:
     from brjarvis.actions.transcriber import transcribe_batch
+
     results = transcribe_batch(
         args["file_paths"],
         args.get("language", "auto"),

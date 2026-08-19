@@ -3,6 +3,7 @@
 Canonical Task contracts for BR JARVIS operating runtime.
 Defines TaskStatus, TaskCriterion, TaskAction, ApprovalRequest, Task, and TaskState.
 """
+
 from __future__ import annotations
 
 import time
@@ -15,6 +16,7 @@ from pydantic import BaseModel, Field
 
 class TaskStatus(str, Enum):
     """Canonical Task Lifecycle Statuses."""
+
     PENDING = "PENDING"
     READY = "READY"
     RUNNING = "RUNNING"
@@ -31,6 +33,7 @@ class TaskStatus(str, Enum):
 
 class TaskCriterion(BaseModel):
     """Discrete requirement criterion (e.g. C1 = File created, C2 = Window focused)."""
+
     criterion_id: str = Field(default_factory=lambda: f"crit-{uuid.uuid4().hex[:6]}")
     description: str
     required: bool = True
@@ -40,6 +43,7 @@ class TaskCriterion(BaseModel):
 
 class TaskAction(BaseModel):
     """Discrete executable step or tool call within a task."""
+
     action_id: str = Field(default_factory=lambda: f"act-{uuid.uuid4().hex[:8]}")
     step_index: int = 0
     tool: str
@@ -57,6 +61,7 @@ class TaskAction(BaseModel):
 
 class ApprovalRequest(BaseModel):
     """Interactive permission or security approval request."""
+
     request_id: str = Field(default_factory=lambda: f"appr-{uuid.uuid4().hex[:8]}")
     task_id: str
     action_id: str = ""
@@ -73,6 +78,7 @@ class ApprovalRequest(BaseModel):
 
 class Task(BaseModel):
     """Canonical Task Model for BR JARVIS."""
+
     task_id: str = Field(default_factory=lambda: f"task-{uuid.uuid4().hex[:10]}")
     goal_id: Optional[str] = None
     parent_task_id: Optional[str] = None
@@ -104,6 +110,7 @@ class Task(BaseModel):
 
 class TaskState(BaseModel):
     """Durable state representation of an executing or suspended task."""
+
     task_id: str
     session_id: str
     goal: str

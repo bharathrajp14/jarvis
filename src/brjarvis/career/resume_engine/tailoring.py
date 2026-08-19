@@ -6,10 +6,10 @@ import difflib
 import logging
 import re
 import uuid
-from dataclasses import asdict, dataclass, field
-from typing import Any, Dict, List, Optional, Set, Tuple
+from dataclasses import asdict, dataclass
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
-from ..models import CareerProfile, JobPosting, SkillCategory
+from ..models import CareerProfile, SkillCategory
 from .models import ResumeSchema, TemplateType, ThemeConfig
 from .renderer import ResumeRenderer
 
@@ -22,9 +22,9 @@ class ResumeDiff:
     tailored_title: str
     target_role: str
     target_company: str
-    summary_diff: Dict[str, str]        # {"original": str, "tailored": str, "diff_lines": List[str]}
-    emphasized_skills: List[str]        # Skills promoted or prioritized
-    relevant_projects: List[str]        # Projects selected for role relevance
+    summary_diff: Dict[str, str]  # {"original": str, "tailored": str, "diff_lines": List[str]}
+    emphasized_skills: List[str]  # Skills promoted or prioritized
+    relevant_projects: List[str]  # Projects selected for role relevance
     tailored_bullet_count: int
     keyword_matches_added: List[str]
 
@@ -46,14 +46,50 @@ class ResumeTailoringEngine:
         """Extract significant technical keywords from text."""
         low = text.lower()
         # Clean non-alphanumeric except common tech characters (+, #, -, .)
-        cleaned = re.sub(r'[^a-zA-Z0-9\+\#\-\.\s]', ' ', low)
+        cleaned = re.sub(r"[^a-zA-Z0-9\+\#\-\.\s]", " ", low)
         tokens = set(cleaned.split())
 
         common_stopwords = {
-            "the", "and", "or", "to", "in", "for", "with", "a", "an", "is", "are", "as",
-            "at", "by", "from", "of", "on", "that", "this", "be", "have", "has", "will",
-            "you", "we", "our", "all", "your", "must", "can", "years", "experience", "role",
-            "job", "work", "looking", "candidate", "responsibilities", "requirements", "skills"
+            "the",
+            "and",
+            "or",
+            "to",
+            "in",
+            "for",
+            "with",
+            "a",
+            "an",
+            "is",
+            "are",
+            "as",
+            "at",
+            "by",
+            "from",
+            "of",
+            "on",
+            "that",
+            "this",
+            "be",
+            "have",
+            "has",
+            "will",
+            "you",
+            "we",
+            "our",
+            "all",
+            "your",
+            "must",
+            "can",
+            "years",
+            "experience",
+            "role",
+            "job",
+            "work",
+            "looking",
+            "candidate",
+            "responsibilities",
+            "requirements",
+            "skills",
         }
         filtered = {t.strip() for t in tokens if len(t.strip()) >= 2 and t.strip() not in common_stopwords}
         return filtered
@@ -74,7 +110,9 @@ class ResumeTailoringEngine:
         Returns the tailored ResumeSchema and the ResumeDiff explanation.
         """
         job_keywords = cls.extract_keywords(job_description)
-        role = target_role or (profile.preferences.target_roles[0] if profile.preferences.target_roles else "Software Engineer")
+        role = target_role or (
+            profile.preferences.target_roles[0] if profile.preferences.target_roles else "Software Engineer"
+        )
         co = company_name or "Target Company"
 
         # 1. Tailor Executive Summary
@@ -85,7 +123,11 @@ class ResumeTailoringEngine:
                 if any(k in sk_clean or sk_clean in k for k in job_keywords):
                     matched_top_skills.append(sk)
 
-        skill_summary_str = ", ".join(matched_top_skills[:5]) if matched_top_skills else "distributed systems and autonomous intelligence"
+        skill_summary_str = (
+            ", ".join(matched_top_skills[:5])
+            if matched_top_skills
+            else "distributed systems and autonomous intelligence"
+        )
 
         tailored_summary = (
             f"Results-driven {role} with deep expertise in {skill_summary_str}. "
@@ -119,7 +161,9 @@ class ResumeTailoringEngine:
             tailored_skills.append(SkillCategory(category=cat.category, skills=matching_in_cat + other_in_cat))
 
         # 4. Construct Tailored Schema Snapshot
-        master_schema = ResumeRenderer.schema_from_profile(profile, target_role=role, template_id=template_id, theme=theme)
+        master_schema = ResumeRenderer.schema_from_profile(
+            profile, target_role=role, template_id=template_id, theme=theme
+        )
 
         tailored_schema = copy.deepcopy(master_schema)
         tailored_schema.resume_id = f"tailored_{uuid.uuid4().hex[:8]}"
@@ -152,5 +196,7 @@ class ResumeTailoringEngine:
             keyword_matches_added=list(matched_top_skills[:12]),
         )
 
-        logger.info(f"✨ Tailored resume generated for '{role}' at '{co}' ({len(matched_top_skills)} keyword alignments)")
+        logger.info(
+            f"✨ Tailored resume generated for '{role}' at '{co}' ({len(matched_top_skills)} keyword alignments)"
+        )
         return tailored_schema, diff_record

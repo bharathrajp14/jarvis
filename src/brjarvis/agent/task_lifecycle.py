@@ -3,6 +3,7 @@
 Explicit Task State Machine for BR JARVIS.
 Defines valid state transitions and guarantees terminal state immutability.
 """
+
 from __future__ import annotations
 
 import logging
@@ -10,19 +11,19 @@ import threading
 import time
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Dict, Optional, Set
+from typing import Any, Dict, Optional, Set
 
 logger = logging.getLogger("JARVIS.TaskLifecycle")
 
 
 class TaskState(str, Enum):
-    QUEUED     = "queued"
-    RUNNING    = "running"
+    QUEUED = "queued"
+    RUNNING = "running"
     CANCELLING = "cancelling"
-    SUCCEEDED  = "succeeded"
-    FAILED     = "failed"
-    CANCELLED  = "cancelled"
-    TIMED_OUT  = "timed_out"
+    SUCCEEDED = "succeeded"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+    TIMED_OUT = "timed_out"
 
 
 TERMINAL_STATES: Set[TaskState] = {
@@ -34,19 +35,26 @@ TERMINAL_STATES: Set[TaskState] = {
 
 # Valid forward transitions
 VALID_TRANSITIONS: Dict[TaskState, Set[TaskState]] = {
-    TaskState.QUEUED:     {TaskState.RUNNING, TaskState.CANCELLED},
-    TaskState.RUNNING:    {TaskState.CANCELLING, TaskState.SUCCEEDED, TaskState.FAILED, TaskState.TIMED_OUT, TaskState.CANCELLED},
+    TaskState.QUEUED: {TaskState.RUNNING, TaskState.CANCELLED},
+    TaskState.RUNNING: {
+        TaskState.CANCELLING,
+        TaskState.SUCCEEDED,
+        TaskState.FAILED,
+        TaskState.TIMED_OUT,
+        TaskState.CANCELLED,
+    },
     TaskState.CANCELLING: {TaskState.CANCELLED, TaskState.FAILED},
-    TaskState.SUCCEEDED:  set(),
-    TaskState.FAILED:     set(),
-    TaskState.CANCELLED:  set(),
-    TaskState.TIMED_OUT:  set(),
+    TaskState.SUCCEEDED: set(),
+    TaskState.FAILED: set(),
+    TaskState.CANCELLED: set(),
+    TaskState.TIMED_OUT: set(),
 }
 
 
 @dataclass
 class CancellationToken:
     """Cooperative cancellation token for tasks and tool executions."""
+
     _event: threading.Event = field(default_factory=threading.Event)
     _reason: str = ""
 
@@ -71,6 +79,7 @@ class CancellationToken:
 @dataclass
 class TaskContext:
     """Complete structured context for a managed task."""
+
     task_id: str
     goal: str
     priority: int = 2
@@ -93,7 +102,9 @@ class TaskContext:
             if self.state in TERMINAL_STATES:
                 logger.warning(
                     "Illegal state transition attempted for task %s: from terminal state '%s' to '%s'",
-                    self.task_id, self.state.value, target_state.value
+                    self.task_id,
+                    self.state.value,
+                    target_state.value,
                 )
                 return False
 
@@ -101,7 +112,9 @@ class TaskContext:
             if target_state not in allowed:
                 logger.warning(
                     "Invalid state transition for task %s: '%s' -> '%s'",
-                    self.task_id, self.state.value, target_state.value
+                    self.task_id,
+                    self.state.value,
+                    target_state.value,
                 )
                 return False
 

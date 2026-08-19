@@ -3,6 +3,7 @@
 Free Wikipedia connector. No API key, no setup required.
 Uses the Wikipedia REST API v1 (public, no rate limit for reasonable use).
 """
+
 from __future__ import annotations
 
 import json
@@ -20,7 +21,6 @@ _SEARCH = "https://en.wikipedia.org/w/api.php"
 
 
 class WikipediaConnector(BaseConnector):
-
     @property
     def connector_id(self) -> str:
         return "wikipedia"
@@ -84,12 +84,7 @@ class WikipediaConnector(BaseConnector):
         norm_tool = tool_name.lower().replace("wikipedia_", "").replace("wiki_", "")
 
         topic = str(
-            args.get("title")
-            or args.get("query")
-            or args.get("topic")
-            or args.get("article")
-            or args.get("q")
-            or ""
+            args.get("title") or args.get("query") or args.get("topic") or args.get("article") or args.get("q") or ""
         ).strip()
 
         if norm_tool in ("search", "find", "lookup"):
@@ -111,13 +106,15 @@ class WikipediaConnector(BaseConnector):
         if not query.strip():
             return "Please provide a search query."
         try:
-            params = urllib.parse.urlencode({
-                "action": "query",
-                "list": "search",
-                "srsearch": query,
-                "format": "json",
-                "srlimit": min(limit, 10),
-            })
+            params = urllib.parse.urlencode(
+                {
+                    "action": "query",
+                    "list": "search",
+                    "srsearch": query,
+                    "format": "json",
+                    "srlimit": min(limit, 10),
+                }
+            )
             data = self._fetch(f"{_SEARCH}?{params}")
             results = data.get("query", {}).get("search", [])
             if not results:
@@ -126,7 +123,7 @@ class WikipediaConnector(BaseConnector):
             lines = [f"📖 **Wikipedia Search: '{query}'**\n"]
             for r in results:
                 title = r.get("title", "")
-                snippet = r.get("snippet", "").replace("<span class=\"searchmatch\">", "").replace("</span>", "")
+                snippet = r.get("snippet", "").replace('<span class="searchmatch">', "").replace("</span>", "")
                 url = f"https://en.wikipedia.org/wiki/{urllib.parse.quote(title.replace(' ', '_'))}"
                 lines.append(f"• **{title}**\n  {snippet}...\n  🔗 {url}")
             return "\n".join(lines)
@@ -142,13 +139,15 @@ class WikipediaConnector(BaseConnector):
                 data = self._fetch(f"{_BASE}/page/summary/{safe_title}")
             except Exception:
                 # If exact title failed, search for top title
-                params = urllib.parse.urlencode({
-                    "action": "query",
-                    "list": "search",
-                    "srsearch": title,
-                    "format": "json",
-                    "srlimit": 1,
-                })
+                params = urllib.parse.urlencode(
+                    {
+                        "action": "query",
+                        "list": "search",
+                        "srsearch": title,
+                        "format": "json",
+                        "srlimit": 1,
+                    }
+                )
                 s_data = self._fetch(f"{_SEARCH}?{params}")
                 results = s_data.get("query", {}).get("search", [])
                 if not results:
@@ -180,14 +179,16 @@ class WikipediaConnector(BaseConnector):
             return "Please provide an article title."
         try:
             safe_title = urllib.parse.quote(title.strip().replace(" ", "_"))
-            params = urllib.parse.urlencode({
-                "action": "query",
-                "prop": "extracts",
-                "titles": title,
-                "explaintext": 1,
-                "exlimit": 1,
-                "format": "json",
-            })
+            params = urllib.parse.urlencode(
+                {
+                    "action": "query",
+                    "prop": "extracts",
+                    "titles": title,
+                    "explaintext": 1,
+                    "exlimit": 1,
+                    "format": "json",
+                }
+            )
             data = self._fetch(f"{_SEARCH}?{params}")
             pages = data.get("query", {}).get("pages", {})
             for pid, page in pages.items():

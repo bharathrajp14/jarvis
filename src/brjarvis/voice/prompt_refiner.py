@@ -11,21 +11,23 @@ Cleans raw acoustic speech input by:
 - Preserving file paths, numbers, code identifiers, and technical symbols
 - Retaining raw, normalized, and final execution prompts for complete observability.
 """
+
 from __future__ import annotations
 
 import json
 import logging
-import os
 import re
-import sys
-from pathlib import Path
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional
 
 logger = logging.getLogger("JARVIS.Voice.PromptRefiner")
 
 # Vocal hesitation and filler patterns
 FILLER_PATTERNS = [
-    r"\b(um+)\b", r"\b(uh+)\b", r"\b(ah+)\b", r"\b(er+)\b", r"\b(hmm+)\b",
+    r"\b(um+)\b",
+    r"\b(uh+)\b",
+    r"\b(ah+)\b",
+    r"\b(er+)\b",
+    r"\b(hmm+)\b",
 ]
 
 # Polite prefix bloat and wake-word prefixes
@@ -79,13 +81,9 @@ DEFAULT_TECH_VOCAB: Dict[str, str] = {
 
 # Approval and cancellation patterns
 APPROVAL_PATTERNS = re.compile(
-    r"^(yes|confirm|proceed|do it|go ahead|sure|affirmative|approved|run it|continue)\b",
-    re.IGNORECASE
+    r"^(yes|confirm|proceed|do it|go ahead|sure|affirmative|approved|run it|continue)\b", re.IGNORECASE
 )
-REJECTION_PATTERNS = re.compile(
-    r"^(no|cancel|stop|never mind|abort|negative|halt|don't|do not)\b",
-    re.IGNORECASE
-)
+REJECTION_PATTERNS = re.compile(r"^(no|cancel|stop|never mind|abort|negative|halt|don't|do not)\b", re.IGNORECASE)
 
 
 class VoicePromptRefiner:
@@ -107,6 +105,7 @@ class VoicePromptRefiner:
         vocab = dict(DEFAULT_TECH_VOCAB)
         try:
             from brjarvis.core.paths import paths
+
             vocab_path = paths.CONFIG_ROOT / "vocabulary.json"
             if vocab_path.exists():
                 data = json.loads(vocab_path.read_text(encoding="utf-8"))
@@ -216,7 +215,21 @@ class VoicePromptRefiner:
         without_fillers = self.strip_fillers(collapsed)
 
         # If stripping wake words/fillers leaves nothing or only meaningless noise words remain
-        meaningless_words = {"hey", "jarvis", "javis", "br", "hello", "hi", "ok", "please", "um", "uh", "ah", "er", "hmm"}
+        meaningless_words = {
+            "hey",
+            "jarvis",
+            "javis",
+            "br",
+            "hello",
+            "hi",
+            "ok",
+            "please",
+            "um",
+            "uh",
+            "ah",
+            "er",
+            "hmm",
+        }
         clean_words = set(re.findall(r"\b\w+\b", without_fillers.lower()))
         if not without_fillers or (clean_words.issubset(meaningless_words) and not is_approval and not is_rejection):
             return {
@@ -239,7 +252,7 @@ class VoicePromptRefiner:
         else:
             refined = raw_trimmed
 
-        was_modified = (refined.lower() != raw_trimmed.lower())
+        was_modified = refined.lower() != raw_trimmed.lower()
         confidence = self.classify_confidence(raw_trimmed, refined)
 
         return {

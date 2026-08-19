@@ -8,6 +8,7 @@ Calculates a weighted complexity score S in [0, 100] based on 5 structural & sta
   4. Non-linear Context & Payload Scale
   5. Multimodal Payload Detection
 """
+
 from __future__ import annotations
 
 import math
@@ -34,10 +35,11 @@ MODEL_TIER_MAP = {
 
 class DynamicTokenBudgetMap(dict):
     """Auto-flexible token budget map.
-    
+
     Dynamically scales output token limits using semantic context payload analysis,
     information entropy, and complexity score rather than hardcoded string lookups.
     """
+
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._sync_env_overrides()
@@ -46,6 +48,7 @@ class DynamicTokenBudgetMap(dict):
         """Sync overrides from environment or models.json config."""
         try:
             from brjarvis.config.models import get_model_config
+
             cfg = get_model_config()
         except Exception:
             cfg = {}
@@ -90,7 +93,7 @@ class DynamicTokenBudgetMap(dict):
         # 1. Structural entropy & length metric
         char_len = len(full_text)
         entropy = ComplexityAnalyzer.compute_shannon_entropy(full_text)
-        
+
         # 2. Structural punctuation & code fence density
         syntax_ratio = ComplexityAnalyzer.compute_structural_density(full_text) / 100.0
 
@@ -102,18 +105,20 @@ class DynamicTokenBudgetMap(dict):
             multiplier += min(1.0, (char_len / 2000.0))
 
         calculated = int(base_limit * multiplier)
-        
+
         # Hard cap floor/ceiling based on model context limits
         max_cap = int(os.environ.get("JARVIS_TOKEN_LIMIT_MAX", "32768"))
         return max(base_limit, min(calculated, max_cap))
 
 
-RECOMMENDED_TOKEN_LIMITS = DynamicTokenBudgetMap({
-    TaskComplexity.FAST: 1024,
-    TaskComplexity.MEDIUM: 4096,
-    TaskComplexity.HIGH: 16384,
-    TaskComplexity.VISION: 8192,
-})
+RECOMMENDED_TOKEN_LIMITS = DynamicTokenBudgetMap(
+    {
+        TaskComplexity.FAST: 1024,
+        TaskComplexity.MEDIUM: 4096,
+        TaskComplexity.HIGH: 16384,
+        TaskComplexity.VISION: 8192,
+    }
+)
 
 
 # Pure AST & Syntactic Operators (universal across code, markup, math, JSON)
@@ -240,7 +245,7 @@ class ComplexityAnalyzer:
         if char_count <= 60:
             return 10.0
         # Sigmoidal growth up to 100
-        score = (100.0 / (1.0 + math.exp(-0.003 * (char_count - 500))))
+        score = 100.0 / (1.0 + math.exp(-0.003 * (char_count - 500)))
         return min(100.0, max(10.0, score))
 
     @staticmethod
@@ -253,9 +258,7 @@ class ComplexityAnalyzer:
 
 
 def calculate_complexity_score(
-    messages: list[dict[str, Any]] | None = None,
-    system: str = "",
-    task_type: str | None = None
+    messages: list[dict[str, Any]] | None = None, system: str = "", task_type: str | None = None
 ) -> tuple[float, TaskComplexity, dict[str, float]]:
     """
     Calculates the multi-vector composite complexity score S in [0, 100] and maps to a TaskComplexity tier.
@@ -311,13 +314,7 @@ def calculate_complexity_score(
     s_history = ComplexityAnalyzer.compute_history_score(messages)
 
     # Weighted composite score formula
-    base_score = (
-        0.40 * s_code +
-        0.30 * s_cognitive +
-        0.15 * s_task +
-        0.10 * s_length +
-        0.05 * s_history
-    )
+    base_score = 0.40 * s_code + 0.30 * s_cognitive + 0.15 * s_task + 0.10 * s_length + 0.05 * s_history
 
     # Boost score if significant syntax structure or information density is present
     if s_code >= 30.0:
@@ -347,9 +344,7 @@ def calculate_complexity_score(
 
 
 def analyze_complexity(
-    messages: list[dict[str, Any]] | None = None,
-    system: str = "",
-    task_type: str | None = None
+    messages: list[dict[str, Any]] | None = None, system: str = "", task_type: str | None = None
 ) -> TaskComplexity:
     """Wrapper function returning TaskComplexity tier."""
     _, tier, _ = calculate_complexity_score(messages=messages, system=system, task_type=task_type)
@@ -360,7 +355,7 @@ def select_model_for_prompt(
     messages: list[dict[str, Any]] | None = None,
     system: str = "",
     task_type: str | None = None,
-    override_model: str | None = None
+    override_model: str | None = None,
 ) -> str:
     """Selects optimal model ID using composite multi-dimensional complexity score."""
     if override_model and isinstance(override_model, str) and override_model.strip():
@@ -368,6 +363,7 @@ def select_model_for_prompt(
 
     try:
         from brjarvis.config.models import get_model_config
+
         cfg = get_model_config()
     except Exception:
         cfg = {}
@@ -412,9 +408,7 @@ def estimate_tokens(text: str | Any) -> int:
 
 
 def prune_messages_to_fit_budget(
-    messages: list[dict[str, Any]],
-    system: str = "",
-    max_input_tokens: int = 16000
+    messages: list[dict[str, Any]], system: str = "", max_input_tokens: int = 16000
 ) -> list[dict[str, Any]]:
     """Adapts conversation history so total estimated input tokens fit within max_input_tokens budget."""
     if not messages:

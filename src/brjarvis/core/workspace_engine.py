@@ -4,22 +4,18 @@ Core Cognitive Workspace Engine for BR JARVIS AI OS.
 Manages BR_WORKSPACE/ root vault, project lifecycles, self-healing file organization,
 smart semantic retrieval, and workspace timeline event logging.
 """
+
 from __future__ import annotations
 
 import json
-import os
 import re
-import shutil
 import sqlite3
-import sys
-import time
-from datetime import datetime
 from pathlib import Path
-from typing import Any
 
 
 def _get_project_root() -> Path:
     from brjarvis.core.paths import paths
+
     return paths.PROJECT_ROOT
 
 
@@ -29,20 +25,68 @@ class CognitiveWorkspaceEngine:
     _instance = None
 
     ROOT_FOLDERS = [
-        "Projects", "Memory", "Knowledge", "Conversations", "Documents",
-        "Downloads", "Screenshots", "Images", "Audio", "Video", "Code",
-        "Research", "Browser", "Automation", "Models", "Plugins", "Config",
-        "Cache", "Logs", "Temporary", "Trash", "Archive", "AI_Output",
-        "AI_Drafts", "Templates", "Reports", "Exports", "Database",
-        "Sessions", "Timeline", "Workflows", "Assets"
+        "Projects",
+        "Memory",
+        "Knowledge",
+        "Conversations",
+        "Documents",
+        "Downloads",
+        "Screenshots",
+        "Images",
+        "Audio",
+        "Video",
+        "Code",
+        "Research",
+        "Browser",
+        "Automation",
+        "Models",
+        "Plugins",
+        "Config",
+        "Cache",
+        "Logs",
+        "Temporary",
+        "Trash",
+        "Archive",
+        "AI_Output",
+        "AI_Drafts",
+        "Templates",
+        "Reports",
+        "Exports",
+        "Database",
+        "Sessions",
+        "Timeline",
+        "Workflows",
+        "Assets",
     ]
 
     PROJECT_FOLDERS = [
-        "source", "documents", "meeting_notes", "design", "architecture",
-        "api", "database", "frontend", "backend", "assets", "images",
-        "screenshots", "research", "references", "prompt_library",
-        "generated", "exports", "build", "logs", "tests", "benchmark",
-        "timeline", "versions", "memories", "tasks", "todos", "issues"
+        "source",
+        "documents",
+        "meeting_notes",
+        "design",
+        "architecture",
+        "api",
+        "database",
+        "frontend",
+        "backend",
+        "assets",
+        "images",
+        "screenshots",
+        "research",
+        "references",
+        "prompt_library",
+        "generated",
+        "exports",
+        "build",
+        "logs",
+        "tests",
+        "benchmark",
+        "timeline",
+        "versions",
+        "memories",
+        "tasks",
+        "todos",
+        "issues",
     ]
 
     def __new__(cls):
@@ -130,19 +174,22 @@ class CognitiveWorkspaceEngine:
         self.log_timeline_event(
             event_type="PROJECT_CREATED",
             description=f"Initialized Project Workspace for '{project_name}'",
-            project_name=clean_name
+            project_name=clean_name,
         )
         return proj_dir
 
-    def log_timeline_event(self, event_type: str, description: str, project_name: str | None = None, metadata: dict | None = None):
+    def log_timeline_event(
+        self, event_type: str, description: str, project_name: str | None = None, metadata: dict | None = None
+    ):
         """Record an event in the timeline event stream."""
         import uuid
+
         event_id = f"evt_{uuid.uuid4().hex[:12]}"
         conn = sqlite3.connect(self.db_path, timeout=15.0)
         cur = conn.cursor()
         cur.execute(
             "INSERT INTO workspace_timeline (event_id, event_type, project_name, description, metadata_json) VALUES (?, ?, ?, ?, ?)",
-            (event_id, event_type, project_name, description, json.dumps(metadata or {}))
+            (event_id, event_type, project_name, description, json.dumps(metadata or {})),
         )
         conn.commit()
         conn.close()
@@ -157,8 +204,10 @@ class CognitiveWorkspaceEngine:
         cur = conn.cursor()
 
         # 1. Direct filename search in database
-        cur.execute("SELECT relative_path FROM workspace_files WHERE filename LIKE ? OR relative_path LIKE ? ORDER BY updated_at DESC LIMIT 1",
-                    (f"%{clean}%", f"%{clean}%"))
+        cur.execute(
+            "SELECT relative_path FROM workspace_files WHERE filename LIKE ? OR relative_path LIKE ? ORDER BY updated_at DESC LIMIT 1",
+            (f"%{clean}%", f"%{clean}%"),
+        )
         row = cur.fetchone()
         if row:
             conn.close()

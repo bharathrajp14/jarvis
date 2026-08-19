@@ -50,13 +50,13 @@ def generate_report(data: dict) -> str:
     findings_md = ""
     for i, f in enumerate(data.get("findings", []), 1):
         findings_md += f"""
-### Finding {i}: {f['title']}
+### Finding {i}: {f["title"]}
 
-- **Severity:** {f['severity']}
-- **CVSS:** {f.get('cvss', 'N/A')}
-- **Description:** {f['description']}
-- **Evidence:** {f.get('evidence', 'N/A')}
-- **Recommendation:** {f['recommendation']}
+- **Severity:** {f["severity"]}
+- **CVSS:** {f.get("cvss", "N/A")}
+- **Description:** {f["description"]}
+- **Evidence:** {f.get("evidence", "N/A")}
+- **Recommendation:** {f["recommendation"]}
 """
     return REPORT_TEMPLATE.format(
         client=data.get("client", "CONFIDENTIAL"),
@@ -77,10 +77,10 @@ def generate_html_report(data: dict) -> str:
     for i, f in enumerate(data.get("findings", []), 1):
         findings_html += f"""
         <div class="finding-card">
-            <h3>Finding {i}: {html.escape(f.get('title', ''))}</h3>
-            <p><strong>Severity:</strong> <span class="badge {f.get('severity', 'low').lower()}">{html.escape(f.get('severity', ''))}</span></p>
-            <p><strong>Description:</strong> {html.escape(f.get('description', ''))}</p>
-            <p><strong>Recommendation:</strong> {html.escape(f.get('recommendation', ''))}</p>
+            <h3>Finding {i}: {html.escape(f.get("title", ""))}</h3>
+            <p><strong>Severity:</strong> <span class="badge {f.get("severity", "low").lower()}">{html.escape(f.get("severity", ""))}</span></p>
+            <p><strong>Description:</strong> {html.escape(f.get("description", ""))}</p>
+            <p><strong>Recommendation:</strong> {html.escape(f.get("recommendation", ""))}</p>
         </div>
         """
 
@@ -88,7 +88,7 @@ def generate_html_report(data: dict) -> str:
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Pentest Report — {html.escape(data.get('client', 'CONFIDENTIAL'))}</title>
+    <title>Pentest Report — {html.escape(data.get("client", "CONFIDENTIAL"))}</title>
     <style>
         body {{ font-family: sans-serif; background: #0f172a; color: #f8fafc; padding: 2rem; max-width: 900px; margin: 0 auto; }}
         h1 {{ color: #ef4444; border-bottom: 2px solid #334155; padding-bottom: 0.5rem; }}
@@ -101,7 +101,7 @@ def generate_html_report(data: dict) -> str:
 </head>
 <body>
     <h1>Security Audit Report</h1>
-    <p><b>Client:</b> {html.escape(data.get('client', ''))} | <b>Engagement:</b> {html.escape(data.get('engagement_id', ''))}</p>
+    <p><b>Client:</b> {html.escape(data.get("client", ""))} | <b>Engagement:</b> {html.escape(data.get("engagement_id", ""))}</p>
     <hr>
     <h2>Findings</h2>
     {findings_html}

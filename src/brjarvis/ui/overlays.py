@@ -6,17 +6,15 @@ from __future__ import annotations
 import json
 import math
 import platform
-import sys
-import threading
 import time
-from pathlib import Path
 
-from brjarvis.ui import _base_dir, _WIN_HIDE  # noqa: F401
+from brjarvis.ui import _WIN_HIDE, _base_dir  # noqa: F401
+
 from ._qt import *  # noqa: F401,F403
 
-BASE_DIR   = _base_dir()
+BASE_DIR = _base_dir()
 CONFIG_DIR = BASE_DIR / "config"
-API_FILE   = CONFIG_DIR / "api_keys.json"
+API_FILE = CONFIG_DIR / "api_keys.json"
 
 _OS = platform.system()  # "Windows" | "Darwin" | "Linux"
 
@@ -29,8 +27,9 @@ def _read_full_config() -> dict:
         return {}
 
 
-from .colors import C, qcol, DEFAULT_UI_COLOR
-from .widgets import HudCanvas, MetricBar, LogWidget, SubAgentTaskWidget, SubAgentTaskPanel, FileDropZone
+from .colors import DEFAULT_UI_COLOR, C, qcol
+
+
 class SetupOverlay(QWidget):
     done = pyqtSignal(str, str)
 
@@ -45,21 +44,17 @@ class SetupOverlay(QWidget):
             }}
         """)
 
-        detected = {"darwin": "mac", "windows": "windows"}.get(
-            _OS.lower(), "linux"
-        )
+        detected = {"darwin": "mac", "windows": "windows"}.get(_OS.lower(), "linux")
         self._sel_os = detected
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(30, 22, 30, 22)
         layout.setSpacing(8)
 
-        def _lbl(txt, font_size=9, bold=False, color=C.PRI,
-                 align=Qt.AlignmentFlag.AlignCenter):
+        def _lbl(txt, font_size=9, bold=False, color=C.PRI, align=Qt.AlignmentFlag.AlignCenter):
             w = QLabel(txt)
             w.setAlignment(align)
-            w.setFont(QFont("Courier New", font_size,
-                            QFont.Weight.Bold if bold else QFont.Weight.Normal))
+            w.setFont(QFont("Courier New", font_size, QFont.Weight.Bold if bold else QFont.Weight.Normal))
             w.setStyleSheet(f"color: {color}; background: transparent;")
             return w
 
@@ -67,12 +62,13 @@ class SetupOverlay(QWidget):
         layout.addWidget(_lbl("Configure J.A.R.V.I.S. before first boot.", 9, color=C.PRI_DIM))
         layout.addSpacing(6)
 
-        sep = QFrame(); sep.setFrameShape(QFrame.Shape.HLine)
-        sep.setStyleSheet(f"color: {C.BORDER};"); layout.addWidget(sep)
+        sep = QFrame()
+        sep.setFrameShape(QFrame.Shape.HLine)
+        sep.setStyleSheet(f"color: {C.BORDER};")
+        layout.addWidget(sep)
         layout.addSpacing(4)
 
-        layout.addWidget(_lbl("GEMINI API KEY", 8, color=C.TEXT_DIM,
-                               align=Qt.AlignmentFlag.AlignLeft))
+        layout.addWidget(_lbl("GEMINI API KEY", 8, color=C.TEXT_DIM, align=Qt.AlignmentFlag.AlignLeft))
         self._key_input = QLineEdit()
         self._key_input.setEchoMode(QLineEdit.EchoMode.Password)
         self._key_input.setPlaceholderText("AIza…")
@@ -88,19 +84,20 @@ class SetupOverlay(QWidget):
         layout.addWidget(self._key_input)
         layout.addSpacing(12)
 
-        sep2 = QFrame(); sep2.setFrameShape(QFrame.Shape.HLine)
-        sep2.setStyleSheet(f"color: {C.BORDER};"); layout.addWidget(sep2)
+        sep2 = QFrame()
+        sep2.setFrameShape(QFrame.Shape.HLine)
+        sep2.setStyleSheet(f"color: {C.BORDER};")
+        layout.addWidget(sep2)
         layout.addSpacing(4)
 
-        layout.addWidget(_lbl("OPERATING SYSTEM", 8, color=C.TEXT_DIM,
-                               align=Qt.AlignmentFlag.AlignLeft))
+        layout.addWidget(_lbl("OPERATING SYSTEM", 8, color=C.TEXT_DIM, align=Qt.AlignmentFlag.AlignLeft))
         det_name = {"windows": "Windows", "mac": "macOS", "linux": "Linux"}[detected]
-        layout.addWidget(_lbl(f"Auto-detected: {det_name}", 8, color=C.ACC2,
-                               align=Qt.AlignmentFlag.AlignLeft))
+        layout.addWidget(_lbl(f"Auto-detected: {det_name}", 8, color=C.ACC2, align=Qt.AlignmentFlag.AlignLeft))
 
-        os_row = QHBoxLayout(); os_row.setSpacing(6)
+        os_row = QHBoxLayout()
+        os_row.setSpacing(6)
         self._os_btns: dict[str, QPushButton] = {}
-        for key, label in [("windows","⊞  Windows"),("mac","  macOS"),("linux","🐧  Linux")]:
+        for key, label in [("windows", "⊞  Windows"), ("mac", "  macOS"), ("linux", "🐧  Linux")]:
             btn = QPushButton(label)
             btn.setFont(QFont("Courier New", 9, QFont.Weight.Bold))
             btn.setFixedHeight(32)
@@ -130,7 +127,7 @@ class SetupOverlay(QWidget):
 
     def _sel(self, key: str):
         self._sel_os = key
-        pal = {"windows":(C.PRI,"#001a22"),"mac":(C.ACC2,"#1a1400"),"linux":(C.GREEN,"#001a0d")}
+        pal = {"windows": (C.PRI, "#001a22"), "mac": (C.ACC2, "#1a1400"), "linux": (C.GREEN, "#001a0d")}
         for k, btn in self._os_btns.items():
             if k == key:
                 fg, bg = pal[k]
@@ -152,10 +149,7 @@ class SetupOverlay(QWidget):
     def _submit(self):
         key = self._key_input.text().strip()
         if not key:
-            self._key_input.setStyleSheet(
-                self._key_input.styleSheet() +
-                f" QLineEdit {{ border: 1px solid {C.RED}; }}"
-            )
+            self._key_input.setStyleSheet(self._key_input.styleSheet() + f" QLineEdit {{ border: 1px solid {C.RED}; }}")
             return
         self.done.emit(key, self._sel_os)
 
@@ -167,16 +161,16 @@ class HueWheel(QWidget):
     Merkezdeki dolu daire seçilen rengin canlı önizlemesidir.
     """
 
-    hue_picked    = pyqtSignal(str)   # sürükleme sırasında (canlı)
-    hue_committed = pyqtSignal(str)   # tutamaç bırakıldığında
+    hue_picked = pyqtSignal(str)  # sürükleme sırasında (canlı)
+    hue_committed = pyqtSignal(str)  # tutamaç bırakıldığında
 
-    _RING = 16   # halka kalınlığı (px)
+    _RING = 16  # halka kalınlığı (px)
 
     def __init__(self, initial_hex: str = DEFAULT_UI_COLOR, parent=None):
         super().__init__(parent)
         self.setFixedSize(148, 148)
         self.setCursor(Qt.CursorShape.PointingHandCursor)
-        self._hue  = 0.53
+        self._hue = 0.53
         self._drag = False
         self.set_color(initial_hex)
 
@@ -196,17 +190,17 @@ class HueWheel(QWidget):
         return QRectF(self.rect()).adjusted(m, m, -m, -m)
 
     def _hue_from_pos(self, pos: QPointF) -> float:
-        c  = QRectF(self.rect()).center()
+        c = QRectF(self.rect()).center()
         dx = pos.x() - c.x()
-        dy = pos.y() - c.y()          # Qt screen coordinates (downward is positive clockwise)
-        ang = math.atan2(dy, dx)      # [-π, π], clockwise matching QConicalGradient
+        dy = pos.y() - c.y()  # Qt screen coordinates (downward is positive clockwise)
+        ang = math.atan2(dy, dx)  # [-π, π], clockwise matching QConicalGradient
         return (ang / (2 * math.pi)) % 1.0
 
     # ── çizim ────────────────────────────────────────────────────────────────
     def paintEvent(self, _):
         p = QPainter(self)
         p.setRenderHint(QPainter.RenderHint.Antialiasing)
-        rect   = self._ring_rect()
+        rect = self._ring_rect()
         center = rect.center()
 
         grad = QConicalGradient(center, 0)
@@ -218,16 +212,16 @@ class HueWheel(QWidget):
 
         # merkez önizleme dairesi
         preview = QColor.fromHsvF(self._hue, 1.0, 1.0)
-        inner   = rect.adjusted(30, 30, -30, -30)
+        inner = rect.adjusted(30, 30, -30, -30)
         p.setPen(QPen(qcol(C.BORDER_B), 1))
         p.setBrush(QBrush(preview))
         p.drawEllipse(inner)
 
         # sürüklenen tutamaç (clockwise with Qt screen coordinates)
-        r   = rect.width() / 2
+        r = rect.width() / 2
         ang = self._hue * 2 * math.pi
-        hx  = center.x() + r * math.cos(ang)
-        hy  = center.y() + r * math.sin(ang)
+        hx = center.x() + r * math.cos(ang)
+        hy = center.y() + r * math.sin(ang)
         p.setPen(QPen(QColor("#00060a"), 2))
         p.setBrush(QBrush(QColor("#ffffff")))
         p.drawEllipse(QPointF(hx, hy), 7.5, 7.5)
@@ -235,7 +229,7 @@ class HueWheel(QWidget):
     # ── fare ─────────────────────────────────────────────────────────────────
     def mousePressEvent(self, e):
         self._drag = True
-        self._hue  = self._hue_from_pos(e.position())
+        self._hue = self._hue_from_pos(e.position())
         self.update()
         self.hue_picked.emit(self.color())
 
@@ -254,11 +248,10 @@ class HueWheel(QWidget):
 class CustomizeOverlay(QWidget):
     """Floating overlay — change assistant name, user name and UI colour."""
 
-    saved = pyqtSignal(str, str, str)   # assistant_name, user_name, ui_color
+    saved = pyqtSignal(str, str, str)  # assistant_name, user_name, ui_color
     _OW, _OH = 400, 500
 
-    def __init__(self, assistant_name="JARVIS", user_name="",
-                 ui_color=DEFAULT_UI_COLOR, parent=None):
+    def __init__(self, assistant_name="JARVIS", user_name="", ui_color=DEFAULT_UI_COLOR, parent=None):
         super().__init__(parent)
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setStyleSheet(f"""
@@ -273,23 +266,25 @@ class CustomizeOverlay(QWidget):
         lay.setSpacing(8)
 
         def _lbl(txt, fs=9, bold=False, color=C.PRI, align=Qt.AlignmentFlag.AlignCenter):
-            w = QLabel(txt); w.setAlignment(align)
-            w.setFont(QFont("Courier New", fs,
-                            QFont.Weight.Bold if bold else QFont.Weight.Normal))
+            w = QLabel(txt)
+            w.setAlignment(align)
+            w.setFont(QFont("Courier New", fs, QFont.Weight.Bold if bold else QFont.Weight.Normal))
             w.setStyleSheet(f"color: {color}; background: transparent;")
             return w
 
-        _fs = (f"QLineEdit {{ background: #000d12; color: {C.TEXT}; "
-               f"border: 1px solid {C.BORDER}; border-radius: 3px; padding: 4px 8px; }}"
-               f"QLineEdit:focus {{ border: 1px solid {C.PRI}; }}")
+        _fs = (
+            f"QLineEdit {{ background: #000d12; color: {C.TEXT}; "
+            f"border: 1px solid {C.BORDER}; border-radius: 3px; padding: 4px 8px; }}"
+            f"QLineEdit:focus {{ border: 1px solid {C.PRI}; }}"
+        )
 
         lay.addWidget(_lbl("⚙  CUSTOMISE ASSISTANT", 12, True))
-        sep = QFrame(); sep.setFrameShape(QFrame.Shape.HLine)
+        sep = QFrame()
+        sep.setFrameShape(QFrame.Shape.HLine)
         sep.setStyleSheet(f"color: {C.BORDER}; margin: 2px 0;")
         lay.addWidget(sep)
 
-        lay.addWidget(_lbl("ASSISTANT NAME", 8, color=C.TEXT_DIM,
-                            align=Qt.AlignmentFlag.AlignLeft))
+        lay.addWidget(_lbl("ASSISTANT NAME", 8, color=C.TEXT_DIM, align=Qt.AlignmentFlag.AlignLeft))
         self._name_input = QLineEdit(assistant_name)
         self._name_input.setFont(QFont("Courier New", 10))
         self._name_input.setFixedHeight(32)
@@ -297,8 +292,14 @@ class CustomizeOverlay(QWidget):
         lay.addWidget(self._name_input)
 
         lay.addSpacing(4)
-        lay.addWidget(_lbl("YOUR NAME  (leave blank for default sir / efendim)", 8,
-                            color=C.TEXT_DIM, align=Qt.AlignmentFlag.AlignLeft))
+        lay.addWidget(
+            _lbl(
+                "YOUR NAME  (leave blank for default sir / efendim)",
+                8,
+                color=C.TEXT_DIM,
+                align=Qt.AlignmentFlag.AlignLeft,
+            )
+        )
         self._user_input = QLineEdit(user_name)
         self._user_input.setPlaceholderText("e.g.  Tony   (leave blank for auto)")
         self._user_input.setFont(QFont("Courier New", 10))
@@ -309,8 +310,7 @@ class CustomizeOverlay(QWidget):
         # ── UI colour — renk çarkı ───────────────────────────────────────────
         lay.addSpacing(4)
         clr_hdr = QHBoxLayout()
-        clr_hdr.addWidget(_lbl("UI COLOUR  —  drag the handle", 8,
-                               color=C.TEXT_DIM, align=Qt.AlignmentFlag.AlignLeft))
+        clr_hdr.addWidget(_lbl("UI COLOUR  —  drag the handle", 8, color=C.TEXT_DIM, align=Qt.AlignmentFlag.AlignLeft))
         clr_hdr.addStretch()
         df_btn = QPushButton("DEFAULT")
         df_btn.setFixedSize(64, 20)
@@ -328,12 +328,14 @@ class CustomizeOverlay(QWidget):
         lay.addLayout(clr_hdr)
 
         self._initial_color = (ui_color or DEFAULT_UI_COLOR).strip().lower()
-        self._sel_color     = self._initial_color
-        self.on_preview     = None   # callable(hex) — canlı önizleme; MainWindow bağlar
+        self._sel_color = self._initial_color
+        self.on_preview = None  # callable(hex) — canlı önizleme; MainWindow bağlar
 
         self._wheel = HueWheel(self._sel_color)
         wheel_row = QHBoxLayout()
-        wheel_row.addStretch(); wheel_row.addWidget(self._wheel); wheel_row.addStretch()
+        wheel_row.addStretch()
+        wheel_row.addWidget(self._wheel)
+        wheel_row.addStretch()
         lay.addLayout(wheel_row)
         self._wheel.hue_picked.connect(self._on_wheel_pick)
         self._wheel.hue_committed.connect(self._on_wheel_commit)
@@ -347,7 +349,8 @@ class CustomizeOverlay(QWidget):
         lay.addWidget(self._hex_input)
 
         lay.addSpacing(6)
-        btn_row = QHBoxLayout(); btn_row.setSpacing(8)
+        btn_row = QHBoxLayout()
+        btn_row.setSpacing(8)
 
         save_btn = QPushButton("▸  APPLY CHANGES")
         save_btn.setFixedHeight(34)
@@ -446,11 +449,13 @@ class ClipboardPanel(QWidget):
         lay.setContentsMargins(8, 6, 8, 7)
         lay.setSpacing(4)
 
-        hdr = QHBoxLayout(); hdr.setSpacing(4)
+        hdr = QHBoxLayout()
+        hdr.setSpacing(4)
         icon_lbl = QLabel("◈  CLIPBOARD DETECTED")
         icon_lbl.setFont(QFont("Courier New", 7, QFont.Weight.Bold))
         icon_lbl.setStyleSheet(f"color: {C.ACC2}; background: transparent;")
-        hdr.addWidget(icon_lbl); hdr.addStretch()
+        hdr.addWidget(icon_lbl)
+        hdr.addStretch()
         x_btn = QPushButton("✕")
         x_btn.setFixedSize(16, 16)
         x_btn.setFont(QFont("Courier New", 8))
@@ -470,15 +475,18 @@ class ClipboardPanel(QWidget):
         self._preview.setFixedHeight(28)
         lay.addWidget(self._preview)
 
-        btn_row = QHBoxLayout(); btn_row.setSpacing(4)
-        _bs = (f"QPushButton {{ background: {C.PANEL2}; color: {C.TEXT_MED}; "
-               f"border: 1px solid {C.BORDER}; border-radius: 2px; }}"
-               f"QPushButton:hover {{ color: {C.PRI}; border-color: {C.BORDER_B}; }}")
+        btn_row = QHBoxLayout()
+        btn_row.setSpacing(4)
+        _bs = (
+            f"QPushButton {{ background: {C.PANEL2}; color: {C.TEXT_MED}; "
+            f"border: 1px solid {C.BORDER}; border-radius: 2px; }}"
+            f"QPushButton:hover {{ color: {C.PRI}; border-color: {C.BORDER_B}; }}"
+        )
         for label, cmd_fmt in [
             ("TRANSLATE", "Translate this text to English: {text}"),
             ("SUMMARISE", "Summarise this: {text}"),
-            ("EXPLAIN",   "Explain this: {text}"),
-            ("FIX",       "Fix grammar and spelling: {text}"),
+            ("EXPLAIN", "Explain this: {text}"),
+            ("FIX", "Fix grammar and spelling: {text}"),
         ]:
             b = QPushButton(label)
             b.setFixedHeight(22)
@@ -501,11 +509,12 @@ class ClipboardPanel(QWidget):
 
     def show_clipboard(self, text: str):
         self._clip_text = text
-        preview = text[:58].replace('\n', ' ')
+        preview = text[:58].replace("\n", " ")
         if len(text) > 58:
             preview += "…"
         self._preview.setText(f'"{preview}"')
-        self.show(); self.raise_()
+        self.show()
+        self.raise_()
         self._dismiss_timer.start(8000)
 
 
@@ -516,8 +525,9 @@ class RemoteKeyOverlay(QWidget):
 
     _OW, _OH = 400, 465
 
-    def __init__(self, url: str, key: str, auto_login_url: str = "",
-                 manual_url: str = "", expiry_secs: int = 600, parent=None):
+    def __init__(
+        self, url: str, key: str, auto_login_url: str = "", manual_url: str = "", expiry_secs: int = 600, parent=None
+    ):
         super().__init__(parent)
         self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setStyleSheet(f"""
@@ -527,27 +537,26 @@ class RemoteKeyOverlay(QWidget):
                 border-radius: 14px;
             }}
         """)
-        self._expiry          = time.time() + expiry_secs
-        self._on_new_key      = None
-        self._auto_login_url  = auto_login_url
-        self._manual_url      = manual_url or url
+        self._expiry = time.time() + expiry_secs
+        self._on_new_key = None
+        self._auto_login_url = auto_login_url
+        self._manual_url = manual_url or url
 
         lay = QVBoxLayout(self)
         lay.setContentsMargins(24, 16, 24, 16)
         lay.setSpacing(5)
 
-        def _lbl(txt, fs=9, bold=False, color=C.PRI,
-                 align=Qt.AlignmentFlag.AlignCenter):
+        def _lbl(txt, fs=9, bold=False, color=C.PRI, align=Qt.AlignmentFlag.AlignCenter):
             w = QLabel(txt)
             w.setAlignment(align)
-            w.setFont(QFont("Courier New", fs,
-                            QFont.Weight.Bold if bold else QFont.Weight.Normal))
+            w.setFont(QFont("Courier New", fs, QFont.Weight.Bold if bold else QFont.Weight.Normal))
             w.setStyleSheet(f"color: {color}; background: transparent;")
             w.setWordWrap(True)
             return w
 
         lay.addWidget(_lbl("◈  REMOTE ACCESS", 12, True))
-        sep = QFrame(); sep.setFrameShape(QFrame.Shape.HLine)
+        sep = QFrame()
+        sep.setFrameShape(QFrame.Shape.HLine)
         sep.setStyleSheet(f"color: {C.BORDER}; margin: 1px 0;")
         lay.addWidget(sep)
 
@@ -555,9 +564,7 @@ class RemoteKeyOverlay(QWidget):
         self._qr_label = QLabel()
         self._qr_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._qr_label.setFixedSize(176, 176)
-        self._qr_label.setStyleSheet(
-            "background: white; border-radius: 10px; padding: 4px;"
-        )
+        self._qr_label.setStyleSheet("background: white; border-radius: 10px; padding: 4px;")
         qr_row = QHBoxLayout()
         qr_row.addStretch()
         qr_row.addWidget(self._qr_label)
@@ -568,19 +575,18 @@ class RemoteKeyOverlay(QWidget):
 
         lay.addWidget(_lbl("Scan with phone camera to connect instantly", 8, color=C.TEXT_DIM))
 
-        sep2 = QFrame(); sep2.setFrameShape(QFrame.Shape.HLine)
+        sep2 = QFrame()
+        sep2.setFrameShape(QFrame.Shape.HLine)
         sep2.setStyleSheet(f"color: {C.BORDER}; margin: 1px 0;")
         lay.addWidget(sep2)
 
-        lay.addWidget(_lbl("Or enter manually:", 7, color=C.TEXT_DIM,
-                           align=Qt.AlignmentFlag.AlignLeft))
+        lay.addWidget(_lbl("Or enter manually:", 7, color=C.TEXT_DIM, align=Qt.AlignmentFlag.AlignLeft))
 
         self._url_lbl = QLabel(self._manual_url)
         self._url_lbl.setFont(QFont("Courier New", 8))
         self._url_lbl.setStyleSheet(f"color: {C.PRI_DIM}; background: transparent;")
         self._url_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._url_lbl.setTextInteractionFlags(
-            Qt.TextInteractionFlag.TextSelectableByMouse)
+        self._url_lbl.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         lay.addWidget(self._url_lbl)
 
         self._key_lbl = QLabel(key)
@@ -602,7 +608,8 @@ class RemoteKeyOverlay(QWidget):
         self._timer_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         lay.addWidget(self._timer_lbl)
 
-        btn_row = QHBoxLayout(); btn_row.setSpacing(8)
+        btn_row = QHBoxLayout()
+        btn_row.setSpacing(8)
         new_btn = QPushButton("NEW KEY")
         new_btn.setFixedHeight(32)
         new_btn.setFont(QFont("Courier New", 8, QFont.Weight.Bold))
@@ -645,10 +652,13 @@ class RemoteKeyOverlay(QWidget):
             self._qr_label.setText("—")
             return
         try:
-            import qrcode as _qrmod
             from io import BytesIO
+
+            import qrcode as _qrmod
+
             qr = _qrmod.QRCode(
-                box_size=5, border=2,
+                box_size=5,
+                border=2,
                 error_correction=_qrmod.constants.ERROR_CORRECT_M,
             )
             qr.add_data(url)
@@ -659,22 +669,16 @@ class RemoteKeyOverlay(QWidget):
             px = QPixmap()
             px.loadFromData(buf.getvalue())
             self._qr_label.setPixmap(
-                px.scaled(170, 170,
-                          Qt.AspectRatioMode.KeepAspectRatio,
-                          Qt.TransformationMode.SmoothTransformation)
+                px.scaled(170, 170, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
             )
         except ImportError:
             self._qr_label.setText("pip install\nqrcode[pil]")
             self._qr_label.setFont(QFont("Courier New", 8))
-            self._qr_label.setStyleSheet(
-                "color: #888; background: white; border-radius: 10px; padding: 4px;"
-            )
+            self._qr_label.setStyleSheet("color: #888; background: white; border-radius: 10px; padding: 4px;")
         except Exception:
             self._qr_label.setText(url[:28])
             self._qr_label.setFont(QFont("Courier New", 7))
-            self._qr_label.setStyleSheet(
-                f"color: {C.PRI}; background: white; border-radius: 10px; padding: 4px;"
-            )
+            self._qr_label.setStyleSheet(f"color: {C.PRI}; background: white; border-radius: 10px; padding: 4px;")
 
     def _tick(self):
         remaining = max(0, int(self._expiry - time.time()))
@@ -697,9 +701,7 @@ class RemoteKeyOverlay(QWidget):
         """)
         self._qr_label.setText("✓")
         self._qr_label.setFont(QFont("Courier New", 54, QFont.Weight.Bold))
-        self._qr_label.setStyleSheet(
-            "color: #00ff88; background: #001a0d; border-radius: 10px;"
-        )
+        self._qr_label.setStyleSheet("color: #00ff88; background: #001a0d; border-radius: 10px;")
         self._timer_lbl.setText("Phone connected — JARVIS ready")
         self._timer_lbl.setStyleSheet(f"color: {C.GREEN}; background: transparent;")
 
@@ -707,11 +709,11 @@ class RemoteKeyOverlay(QWidget):
         if self._on_new_key:
             result = self._on_new_key()
             if result:
-                url    = result[0]
-                key    = result[1]
-                auto   = result[2] if len(result) >= 3 else ""
+                url = result[0]
+                key = result[1]
+                auto = result[2] if len(result) >= 3 else ""
                 manual = result[3] if len(result) >= 4 else url
-                self._manual_url     = manual or url
+                self._manual_url = manual or url
                 self._url_lbl.setText(self._manual_url)
                 self._key_lbl.setText(key)
                 self._auto_login_url = auto
@@ -725,9 +727,7 @@ class RemoteKeyOverlay(QWidget):
                     padding: 6px 4px;
                     letter-spacing: 10px;
                 """)
-                self._timer_lbl.setStyleSheet(
-                    f"color: {C.TEXT_MED}; background: transparent;"
-                )
+                self._timer_lbl.setStyleSheet(f"color: {C.TEXT_MED}; background: transparent;")
                 self._ctimer.start(1000)
                 self._tick()
 
@@ -735,5 +735,3 @@ class RemoteKeyOverlay(QWidget):
         self._ctimer.stop()
         self.hide()
         self.closed.emit()
-
-

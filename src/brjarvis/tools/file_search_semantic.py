@@ -3,11 +3,13 @@
 Fast local semantic file search tool.
 Matches natural language queries against workspace filenames, extensions, and paths.
 """
+
 from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Dict, List, Any, Optional
+from typing import Any, Dict, List, Optional
+
 from .registry import register_tool
 
 
@@ -33,12 +35,14 @@ def semantic_file_search(query: str, root_dir: Optional[Path] = None, max_result
                     score += 2 if term in f.lower() else 1
 
             if score > 0:
-                matches.append({
-                    "score": score,
-                    "filename": f,
-                    "path": str(fp),
-                    "relative_path": str(fp.relative_to(target_root)),
-                })
+                matches.append(
+                    {
+                        "score": score,
+                        "filename": f,
+                        "path": str(fp),
+                        "relative_path": str(fp.relative_to(target_root)),
+                    }
+                )
 
     matches.sort(key=lambda x: x["score"], reverse=True)
     return matches[:max_results]
@@ -49,31 +53,26 @@ def semantic_file_search(query: str, root_dir: Optional[Path] = None, max_result
     description="Search workspace files by natural language keywords, filename patterns, or extensions.",
     parameters={
         "type": "object",
-        "properties": {
-            "query": {"type": "string", "description": "Search query or file pattern"}
-        },
-        "required": ["query"]
-    }
+        "properties": {"query": {"type": "string", "description": "Search query or file pattern"}},
+        "required": ["query"],
+    },
 )
 @register_tool(
     name="file_search_semantic",
     description="Search workspace files by natural language keywords, filename patterns, or extensions.",
     parameters={
         "type": "object",
-        "properties": {
-            "query": {"type": "string", "description": "Search query or file pattern"}
-        },
-        "required": ["query"]
-    }
+        "properties": {"query": {"type": "string", "description": "Search query or file pattern"}},
+        "required": ["query"],
+    },
 )
 def file_search_semantic_action(args: Dict[str, Any]) -> str:
-
     """Main tool handler for semantic file search."""
     if isinstance(args, str):
         query = args.strip()
     else:
         query = str(args.get("query") or args.get("q") or args.get("pattern") or args.get("filename") or "").strip()
-    
+
     res = semantic_file_search(query)
     if not res:
         return f"No matching files found for query '{query}'."

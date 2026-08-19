@@ -2,12 +2,12 @@
 """
 Automatic Rollback Engine that restores system state on failed healthchecks.
 """
+
 from __future__ import annotations
 
 import logging
-import shutil
 import subprocess
-from pathlib import Path
+
 from .snapshot import SNAPSHOT_DIR
 
 logger = logging.getLogger(__name__)
@@ -20,6 +20,7 @@ class RollbackEngine:
     def rollback_to_latest(cls) -> dict:
         """Roll back git state and databases to the most recent snapshot."""
         from brjarvis.core.paths import paths
+
         from .snapshot import SnapshotManager
 
         if not SNAPSHOT_DIR.exists():
@@ -43,7 +44,9 @@ class RollbackEngine:
                 res = subprocess.run(
                     ["git", "checkout", git_hash],
                     capture_output=True,
-                    text=True, encoding="utf-8", errors="replace",
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
                     cwd=str(paths.PROJECT_ROOT),
                 )
                 if res.returncode == 0:

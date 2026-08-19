@@ -4,16 +4,16 @@ import os
 import platform
 import shutil
 import subprocess
-import sys
 import tempfile
+from datetime import datetime
 from pathlib import Path
 from typing import Any
-from datetime import datetime
 
 logger = logging.getLogger("JARVIS.Actions.Desktop")
 
 try:
     import pyautogui
+
     _PYAUTOGUI = True
 except ImportError:
     _PYAUTOGUI = False
@@ -23,7 +23,9 @@ _OS = platform.system()  # "Windows" | "Darwin" | "Linux"
 
 def _get_base_dir() -> Path:
     from brjarvis.core.paths import paths
+
     return paths.PROJECT_ROOT
+
 
 def _get_api_key() -> str:
     try:
@@ -34,7 +36,8 @@ def _get_api_key() -> str:
     except Exception:
         pass
     return ""
-    
+
+
 def _get_desktop() -> Path:
     if _OS == "Linux":
         xdg = os.environ.get("XDG_DESKTOP_DIR", "")
@@ -42,32 +45,53 @@ def _get_desktop() -> Path:
             return Path(xdg)
     return Path.home() / "Desktop"
 
+
 def _build_sandbox() -> dict:
     import time
 
     safe_builtins = {
         "print": print,
-        "len": len, "str": str, "int": int, "float": float,
-        "bool": bool, "list": list, "dict": dict, "tuple": tuple,
-        "range": range, "enumerate": enumerate, "sorted": sorted,
-        "isinstance": isinstance, "hasattr": hasattr, "getattr": getattr,
-        "max": max, "min": min, "sum": sum, "abs": abs,
-        "zip": zip, "map": map, "filter": filter,
+        "len": len,
+        "str": str,
+        "int": int,
+        "float": float,
+        "bool": bool,
+        "list": list,
+        "dict": dict,
+        "tuple": tuple,
+        "range": range,
+        "enumerate": enumerate,
+        "sorted": sorted,
+        "isinstance": isinstance,
+        "hasattr": hasattr,
+        "getattr": getattr,
+        "max": max,
+        "min": min,
+        "sum": sum,
+        "abs": abs,
+        "zip": zip,
+        "map": map,
+        "filter": filter,
     }
 
     sandbox = {
         "__builtins__": safe_builtins,
         "Path": Path,
         "time": time,
-        "shutil": type("shutil", (), {
-            "copy2":      shutil.copy2,
-            "copytree":   shutil.copytree,
-            "disk_usage": shutil.disk_usage,
-        })(),
-        "os_path": os.path,  
+        "shutil": type(
+            "shutil",
+            (),
+            {
+                "copy2": shutil.copy2,
+                "copytree": shutil.copytree,
+                "disk_usage": shutil.disk_usage,
+            },
+        )(),
+        "os_path": os.path,
     }
 
     if _PYAUTOGUI:
+
         class PyAutoGUIWrapper:
             def __init__(self, original):
                 self._original = original
@@ -127,6 +151,7 @@ def _build_sandbox() -> dict:
 
         def wait_for_element(image_path: str, timeout: float = 5.0):
             import time
+
             start = time.monotonic()
             while time.monotonic() - start < timeout:
                 try:
@@ -140,18 +165,22 @@ def _build_sandbox() -> dict:
 
         sandbox["wait_for_element"] = wait_for_element
 
-
     if _OS == "Windows":
         try:
             import ctypes
             import winreg
+
             sandbox["ctypes"] = ctypes
-            sandbox["winreg"] = type("winreg", (), {
-                # Sadece okuma
-                "OpenKey":      winreg.OpenKey,
-                "QueryValueEx": winreg.QueryValueEx,
-                "HKEY_CURRENT_USER": winreg.HKEY_CURRENT_USER,
-            })()
+            sandbox["winreg"] = type(
+                "winreg",
+                (),
+                {
+                    # Sadece okuma
+                    "OpenKey": winreg.OpenKey,
+                    "QueryValueEx": winreg.QueryValueEx,
+                    "HKEY_CURRENT_USER": winreg.HKEY_CURRENT_USER,
+                },
+            )()
         except ImportError:
             pass
 
@@ -211,17 +240,26 @@ def _safe_ast_execute(code: str, scope: dict) -> dict:
         elif isinstance(node, ast.BinOp):
             left = _eval_expr(node.left)
             right = _eval_expr(node.right)
-            if isinstance(node.op, ast.Add): return left + right
-            elif isinstance(node.op, ast.Sub): return left - right
-            elif isinstance(node.op, ast.Mult): return left * right
-            elif isinstance(node.op, ast.Div): return left / right
-            elif isinstance(node.op, ast.Mod): return left % right
-            else: raise NotImplementedError(f"Unsupported binary op: {node.op}")
+            if isinstance(node.op, ast.Add):
+                return left + right
+            elif isinstance(node.op, ast.Sub):
+                return left - right
+            elif isinstance(node.op, ast.Mult):
+                return left * right
+            elif isinstance(node.op, ast.Div):
+                return left / right
+            elif isinstance(node.op, ast.Mod):
+                return left % right
+            else:
+                raise NotImplementedError(f"Unsupported binary op: {node.op}")
         elif isinstance(node, ast.UnaryOp):
             operand = _eval_expr(node.operand)
-            if isinstance(node.op, ast.USub): return -operand
-            elif isinstance(node.op, ast.Not): return not operand
-            else: raise NotImplementedError(f"Unsupported unary op: {node.op}")
+            if isinstance(node.op, ast.USub):
+                return -operand
+            elif isinstance(node.op, ast.Not):
+                return not operand
+            else:
+                raise NotImplementedError(f"Unsupported unary op: {node.op}")
         elif isinstance(node, ast.Subscript):
             val = _eval_expr(node.value)
             idx = _eval_expr(node.slice)
@@ -238,11 +276,13 @@ def _safe_ast_execute(code: str, scope: dict) -> dict:
                 if isinstance(target, ast.Name):
                     scope[target.id] = val
         elif isinstance(stmt, ast.FunctionDef):
+
             def _fn(*fn_args, **fn_kwargs):
                 for param, arg in zip([a.arg for a in stmt.args.args], fn_args):
                     scope[param] = arg
                 for body_stmt in stmt.body:
                     _exec_stmt(body_stmt)
+
             scope[stmt.name] = _fn
         elif isinstance(stmt, ast.For):
             iter_val = _eval_expr(stmt.iter)
@@ -274,7 +314,7 @@ def _execute_generated_code(code: str, player=None) -> str:
     # Kod temizleme
     if code.startswith("```"):
         lines = code.split("\n")
-        code  = "\n".join(lines[1:-1]).strip()
+        code = "\n".join(lines[1:-1]).strip()
 
     is_safe, reason = _is_ast_safe(code)
     if not is_safe:
@@ -285,9 +325,21 @@ def _execute_generated_code(code: str, player=None) -> str:
         scope: dict = _build_sandbox()
         # Ensure builtins in scope are strictly restricted
         scope["__builtins__"] = {
-            "range": range, "len": len, "str": str, "int": int, "float": float,
-            "bool": bool, "list": list, "dict": dict, "tuple": tuple, "set": set,
-            "print": print, "min": min, "max": max, "sum": sum, "abs": abs
+            "range": range,
+            "len": len,
+            "str": str,
+            "int": int,
+            "float": float,
+            "bool": bool,
+            "list": list,
+            "dict": dict,
+            "tuple": tuple,
+            "set": set,
+            "print": print,
+            "min": min,
+            "max": max,
+            "sum": sum,
+            "abs": abs,
         }
         _safe_ast_execute(code, scope)
         fn = scope.get("run_desktop_task")
@@ -302,7 +354,9 @@ def _execute_generated_code(code: str, player=None) -> str:
 
 def _ask_gemini_for_desktop_action(task: str) -> str:
 
-    from brjarvis.actions._gemini_client import get_gemini_client as _get_gc, get_proxy_model as _gpm
+    from brjarvis.actions._gemini_client import get_gemini_client as _get_gc
+    from brjarvis.actions._gemini_client import get_proxy_model as _gpm
+
     _client = _get_gc()
     _desktop_model = _gpm("gemini-3.5-flash", "gemini-2.5-flash")
 
@@ -346,10 +400,11 @@ Task: {task}"""
         code = response.text.strip()
         if code.startswith("```"):
             lines = code.split("\n")
-            code  = "\n".join(lines[1:-1]).strip()
+            code = "\n".join(lines[1:-1]).strip()
         return code
     except Exception as e:
         return f"ERROR: {e}"
+
 
 def set_wallpaper(image_path: str) -> str:
     path = Path(image_path).expanduser().resolve()
@@ -361,22 +416,21 @@ def set_wallpaper(image_path: str) -> str:
     try:
         if _OS == "Windows":
             import ctypes
+
             if path.suffix.lower() in {".webp", ".png"}:
                 try:
                     from PIL import Image  # type: ignore
+
                     bmp_path = Path(tempfile.mktemp(suffix=".bmp"))
                     Image.open(path).convert("RGB").save(bmp_path, "BMP")
                     path = bmp_path
                 except ImportError:
-                    pass 
+                    pass
             ctypes.windll.user32.SystemParametersInfoW(20, 0, str(path), 3)
             return f"Wallpaper set: {path.name}"
 
         elif _OS == "Darwin":
-            script = (
-                f'tell application "System Events" to tell every desktop to '
-                f'set picture to POSIX file "{path}"'
-            )
+            script = f'tell application "System Events" to tell every desktop to set picture to POSIX file "{path}"'
             subprocess.run(["osascript", "-e", script], capture_output=True)
             return f"Wallpaper set: {path.name}"
 
@@ -385,14 +439,12 @@ def set_wallpaper(image_path: str) -> str:
             uri = f"file://{path}"
 
             if "gnome" in desktop_env or "unity" in desktop_env:
-                subprocess.run([
-                    "gsettings", "set", "org.gnome.desktop.background",
-                    "picture-uri", uri
-                ], capture_output=True)
-                subprocess.run([
-                    "gsettings", "set", "org.gnome.desktop.background",
-                    "picture-uri-dark", uri
-                ], capture_output=True)
+                subprocess.run(
+                    ["gsettings", "set", "org.gnome.desktop.background", "picture-uri", uri], capture_output=True
+                )
+                subprocess.run(
+                    ["gsettings", "set", "org.gnome.desktop.background", "picture-uri-dark", uri], capture_output=True
+                )
 
             elif "kde" in desktop_env:
                 # KDE Plasma
@@ -406,28 +458,28 @@ for (var i = 0; i < allDesktops.length; i++) {{
 }}
 """
                 subprocess.run(
-                    ["qdbus", "org.kde.plasmashell", "/PlasmaShell",
-                     "org.kde.PlasmaShell.evaluateScript", script],
-                    capture_output=True
+                    ["qdbus", "org.kde.plasmashell", "/PlasmaShell", "org.kde.PlasmaShell.evaluateScript", script],
+                    capture_output=True,
                 )
 
             elif "xfce" in desktop_env:
-                subprocess.run([
-                    "xfconf-query", "-c", "xfce4-desktop",
-                    "-p", "/backdrop/screen0/monitor0/workspace0/last-image",
-                    "-s", str(path)
-                ], capture_output=True)
+                subprocess.run(
+                    [
+                        "xfconf-query",
+                        "-c",
+                        "xfce4-desktop",
+                        "-p",
+                        "/backdrop/screen0/monitor0/workspace0/last-image",
+                        "-s",
+                        str(path),
+                    ],
+                    capture_output=True,
+                )
 
             else:
-                result = subprocess.run(
-                    ["feh", "--bg-scale", str(path)],
-                    capture_output=True
-                )
+                result = subprocess.run(["feh", "--bg-scale", str(path)], capture_output=True)
                 if result.returncode != 0:
-                    return (
-                        f"Could not set wallpaper automatically on {desktop_env}. "
-                        f"Try manually or install 'feh'."
-                    )
+                    return f"Could not set wallpaper automatically on {desktop_env}. Try manually or install 'feh'."
 
             return f"Wallpaper set: {path.name}"
 
@@ -438,8 +490,9 @@ for (var i = 0; i < allDesktops.length; i++) {{
 def set_wallpaper_from_url(url: str) -> str:
     try:
         import urllib.request
+
         suffix = Path(url.split("?")[0]).suffix or ".jpg"
-        tmp    = Path(tempfile.mktemp(suffix=suffix))
+        tmp = Path(tempfile.mktemp(suffix=suffix))
         urllib.request.urlretrieve(url, str(tmp))
         result = set_wallpaper(str(tmp))
         try:
@@ -455,29 +508,22 @@ def get_current_wallpaper() -> str:
     try:
         if _OS == "Windows":
             import winreg
-            key = winreg.OpenKey(
-                winreg.HKEY_CURRENT_USER, r"Control Panel\Desktop"
-            )
+
+            key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Control Panel\Desktop")
             val, _ = winreg.QueryValueEx(key, "Wallpaper")
             winreg.CloseKey(key)
             return f"Current wallpaper: {val}"
 
         elif _OS == "Darwin":
-            script = (
-                'tell application "System Events" to get picture of desktop 1'
-            )
-            result = subprocess.run(
-                ["osascript", "-e", script],
-                capture_output=True, text=True
-            )
+            script = 'tell application "System Events" to get picture of desktop 1'
+            result = subprocess.run(["osascript", "-e", script], capture_output=True, text=True)
             return f"Current wallpaper: {result.stdout.strip()}"
 
         else:
             desktop_env = os.environ.get("XDG_CURRENT_DESKTOP", "").lower()
             if "gnome" in desktop_env or "unity" in desktop_env:
                 result = subprocess.run(
-                    ["gsettings", "get", "org.gnome.desktop.background", "picture-uri"],
-                    capture_output=True, text=True
+                    ["gsettings", "get", "org.gnome.desktop.background", "picture-uri"], capture_output=True, text=True
                 )
                 return f"Current wallpaper: {result.stdout.strip()}"
             return "Wallpaper path retrieval not supported for this desktop environment."
@@ -485,28 +531,42 @@ def get_current_wallpaper() -> str:
     except Exception as e:
         return f"Could not get wallpaper: {e}"
 
+
 FILE_TYPE_MAP = {
-    "Images":      {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".svg", ".ico", ".heic"},
-    "Documents":   {".pdf", ".doc", ".docx", ".txt", ".xls", ".xlsx",
-                    ".ppt", ".pptx", ".csv", ".odt", ".ods", ".odp"},
-    "Videos":      {".mp4", ".avi", ".mkv", ".mov", ".wmv", ".flv", ".webm", ".m4v"},
-    "Music":       {".mp3", ".wav", ".flac", ".aac", ".ogg", ".wma", ".m4a"},
-    "Archives":    {".zip", ".rar", ".7z", ".tar", ".gz", ".bz2", ".xz"},
-    "Code":        {".py", ".js", ".ts", ".html", ".css", ".json", ".xml",
-                    ".cpp", ".java", ".cs", ".go", ".rs", ".sh", ".php"},
+    "Images": {".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".svg", ".ico", ".heic"},
+    "Documents": {".pdf", ".doc", ".docx", ".txt", ".xls", ".xlsx", ".ppt", ".pptx", ".csv", ".odt", ".ods", ".odp"},
+    "Videos": {".mp4", ".avi", ".mkv", ".mov", ".wmv", ".flv", ".webm", ".m4v"},
+    "Music": {".mp3", ".wav", ".flac", ".aac", ".ogg", ".wma", ".m4a"},
+    "Archives": {".zip", ".rar", ".7z", ".tar", ".gz", ".bz2", ".xz"},
+    "Code": {
+        ".py",
+        ".js",
+        ".ts",
+        ".html",
+        ".css",
+        ".json",
+        ".xml",
+        ".cpp",
+        ".java",
+        ".cs",
+        ".go",
+        ".rs",
+        ".sh",
+        ".php",
+    },
     "Executables": {".exe", ".msi", ".bat", ".cmd", ".sh", ".appimage", ".deb", ".rpm"},
 }
 
 _SKIP_EXTENSIONS = {
     "Windows": {".lnk", ".url"},
-    "Darwin":  {".webloc"},
-    "Linux":   {".desktop"},
+    "Darwin": {".webloc"},
+    "Linux": {".desktop"},
 }
 
 
 def organize_desktop(mode: str = "by_type") -> str:
-    desktop       = _get_desktop()
-    skip_exts     = _SKIP_EXTENSIONS.get(_OS, set())
+    desktop = _get_desktop()
+    skip_exts = _SKIP_EXTENSIONS.get(_OS, set())
     moved, skipped = [], []
 
     for item in desktop.iterdir():
@@ -516,10 +576,10 @@ def organize_desktop(mode: str = "by_type") -> str:
             continue
 
         if mode == "by_date":
-            mtime       = datetime.fromtimestamp(item.stat().st_mtime)
+            mtime = datetime.fromtimestamp(item.stat().st_mtime)
             folder_name = mtime.strftime("%Y-%m")
         else:
-            ext         = item.suffix.lower()
+            ext = item.suffix.lower()
             folder_name = "Others"
             for folder, exts in FILE_TYPE_MAP.items():
                 if ext in exts:
@@ -549,7 +609,7 @@ def organize_desktop(mode: str = "by_type") -> str:
 
 def list_desktop() -> str:
     desktop = _get_desktop()
-    items   = []
+    items = []
     for item in sorted(desktop.iterdir()):
         if item.name.startswith("."):
             continue
@@ -560,11 +620,8 @@ def list_desktop() -> str:
                 count = "?"
             items.append(f"📁 {item.name}/ ({count} items)")
         else:
-            size     = item.stat().st_size
-            size_str = (
-                f"{size / 1024:.1f} KB" if size < 1024 * 1024
-                else f"{size / 1024 / 1024:.1f} MB"
-            )
+            size = item.stat().st_size
+            size_str = f"{size / 1024:.1f} KB" if size < 1024 * 1024 else f"{size / 1024 / 1024:.1f} MB"
             items.append(f"📄 {item.name} ({size_str})")
 
     if not items:
@@ -573,9 +630,9 @@ def list_desktop() -> str:
 
 
 def clean_desktop() -> str:
-    desktop     = _get_desktop()
-    skip_exts   = _SKIP_EXTENSIONS.get(_OS, set())
-    today       = datetime.now().strftime("%Y-%m-%d")
+    desktop = _get_desktop()
+    skip_exts = _SKIP_EXTENSIONS.get(_OS, set())
+    today = datetime.now().strftime("%Y-%m-%d")
     archive_dir = desktop / f"Desktop Archive {today}"
     archive_dir.mkdir(exist_ok=True)
 
@@ -594,14 +651,11 @@ def clean_desktop() -> str:
 
 
 def get_desktop_stats() -> str:
-    desktop    = _get_desktop()
-    files      = [i for i in desktop.iterdir() if i.is_file()]
-    folders    = [i for i in desktop.iterdir() if i.is_dir()]
+    desktop = _get_desktop()
+    files = [i for i in desktop.iterdir() if i.is_file()]
+    folders = [i for i in desktop.iterdir() if i.is_dir()]
     total_size = sum(f.stat().st_size for f in files if f.exists())
-    size_str   = (
-        f"{total_size / 1024:.1f} KB" if total_size < 1024 * 1024
-        else f"{total_size / 1024 / 1024:.1f} MB"
-    )
+    size_str = f"{total_size / 1024:.1f} KB" if total_size < 1024 * 1024 else f"{total_size / 1024 / 1024:.1f} MB"
     return (
         f"Desktop stats ({_OS}):\n"
         f"  Files   : {len(files)}\n"
@@ -609,6 +663,7 @@ def get_desktop_stats() -> str:
         f"  Size    : {size_str}\n"
         f"  Path    : {desktop}"
     )
+
 
 def desktop_control(
     parameters: dict = None,
@@ -628,7 +683,7 @@ def desktop_control(
     """
     params = parameters or {}
     action = params.get("action", "").lower().strip()
-    task   = params.get("task", "").strip()
+    task = params.get("task", "").strip()
 
     if player:
         player.write_log(f"[desktop] {action or task[:40]}")

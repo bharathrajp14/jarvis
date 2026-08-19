@@ -10,6 +10,7 @@ Improvements:
   - Frame delta encoding hint (annotations)
   - Graceful degradation when dependencies missing
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -30,6 +31,7 @@ _mss_ok = False
 try:
     import mss
     import mss.tools
+
     _mss_ok = True
 except ImportError:
     pass
@@ -37,6 +39,7 @@ except ImportError:
 _pag_ok = False
 try:
     import pyautogui
+
     _pag_ok = True
 except Exception:
     pass
@@ -44,40 +47,42 @@ except Exception:
 _pil_ok = False
 try:
     from PIL import Image, ImageDraw, ImageFont
+
     _pil_ok = True
 except ImportError:
     try:
         from PIL import Image
+
         _pil_ok = True
     except ImportError:
         pass
 
 # ── Global state ───────────────────────────────────────────────────────────────
-_thread:     Optional[threading.Thread] = None
-_stop_ev     = threading.Event()
-_server_ref: Optional[Any]             = None
+_thread: Optional[threading.Thread] = None
+_stop_ev = threading.Event()
+_server_ref: Optional[Any] = None
 _status = {
-    "is_running":   False,
+    "is_running": False,
     "viewer_count": 0,
-    "fps":          0,
-    "actual_fps":   0.0,
-    "monitor":      1,
-    "port":         8765,
-    "quality":      70,
-    "frames_sent":  0,
-    "bytes_sent":   0,
+    "fps": 0,
+    "actual_fps": 0.0,
+    "monitor": 1,
+    "port": 8765,
+    "quality": 70,
+    "frames_sent": 0,
+    "bytes_sent": 0,
 }
 
 
 # ── Monitor enumeration ───────────────────────────────────────────────────────
+
 
 def list_monitors() -> list[dict]:
     if _mss_ok:
         try:
             with mss.mss() as sct:
                 return [
-                    {"id": i, "width": m["width"], "height": m["height"],
-                     "left": m["left"],  "top": m["top"]}
+                    {"id": i, "width": m["width"], "height": m["height"], "left": m["left"], "top": m["top"]}
                     for i, m in enumerate(sct.monitors)
                 ]
         except Exception as e:
@@ -95,20 +100,21 @@ def list_monitors() -> list[dict]:
 
 # ── Frame capture ──────────────────────────────────────────────────────────────
 
+
 def _capture_frame_mss(monitor_idx: int, quality: int) -> tuple[bytes, int, int]:
     with mss.mss() as sct:
         monitors = sct.monitors
-        idx      = monitor_idx if monitor_idx < len(monitors) else (1 if len(monitors) > 1 else 0)
-        mon      = monitors[idx]
-        raw      = sct.grab(mon)
-        img      = Image.frombytes("RGB", raw.size, raw.bgra, "raw", "BGRX")
-        buf      = io.BytesIO()
+        idx = monitor_idx if monitor_idx < len(monitors) else (1 if len(monitors) > 1 else 0)
+        mon = monitors[idx]
+        raw = sct.grab(mon)
+        img = Image.frombytes("RGB", raw.size, raw.bgra, "raw", "BGRX")
+        buf = io.BytesIO()
         img.save(buf, format="JPEG", quality=quality, optimize=False)
         return buf.getvalue(), mon["width"], mon["height"]
 
 
 def _capture_frame_pag(quality: int) -> tuple[bytes, int, int]:
-    ss  = pyautogui.screenshot()
+    ss = pyautogui.screenshot()
     buf = io.BytesIO()
     if _pil_ok:
         ss.save(buf, format="JPEG", quality=quality, optimize=False)
@@ -128,18 +134,19 @@ def _capture_frame(monitor_idx: int, quality: int) -> tuple[bytes, int, int]:
 
 # ── WebSocket server ───────────────────────────────────────────────────────────
 
+
 class ScreenShareServer:
     """Asyncio WebSocket server for JARVIS screen sharing."""
 
     def __init__(self, port: int = 8765, token: Optional[str] = None):
-        self.port      = port
-        self.token     = token
-        self.host      = "127.0.0.1"
+        self.port = port
+        self.token = token
+        self.host = "127.0.0.1"
         self.meta: dict = {"type": "meta", "width": 1920, "height": 1080, "fps": 10}
         self._viewers: Set[Any] = set()
-        self._vlock    = threading.Lock()
-        self._srv      = None
-        self._dropped  = 0
+        self._vlock = threading.Lock()
+        self._srv = None
+        self._dropped = 0
 
     @property
     def viewer_count(self) -> int:
@@ -167,7 +174,7 @@ class ScreenShareServer:
                     first = await asyncio.wait_for(ws.recv(), timeout=5.0)
                     if isinstance(first, str):
                         d = __import__("json").loads(first)
-                        authed = (d.get("token") == self.token)
+                        authed = d.get("token") == self.token
                 except Exception:
                     pass
             if not authed:
@@ -175,7 +182,6 @@ class ScreenShareServer:
                 return
 
         # Send metadata
-        import json
         try:
             await ws.send(json.dumps(self.meta))
         except Exception:
@@ -195,9 +201,9 @@ class ScreenShareServer:
 
     async def start(self) -> None:
         from websockets.server import serve as ws_serve
+
         self._srv = await ws_serve(
-            self._handler, self.host, self.port,
-            max_size=None, ping_interval=20, ping_timeout=10
+            self._handler, self.host, self.port, max_size=None, ping_interval=20, ping_timeout=10
         )
         logger.info("Server listening on ws://%s:%s", self.host, self.port)
 
@@ -235,10 +241,8 @@ class ScreenShareServer:
 
 # ── Capture loop ───────────────────────────────────────────────────────────────
 
-def _capture_loop(
-    port: int, token: Optional[str],
-    monitor: int, fps: int, quality: int
-) -> None:
+
+def _capture_loop(port: int, token: Optional[str], monitor: int, fps: int, quality: int) -> None:
     import asyncio as _aio
 
     async def _run():
@@ -258,15 +262,15 @@ def _capture_loop(
             server.meta = {"type": "meta", "width": w, "height": h, "fps": fps}
             await server.start()
 
-            _status["is_running"]   = True
-            _status["port"]         = port
-            _status["monitor"]      = monitor
-            _status["fps"]          = fps
-            _status["quality"]      = quality
+            _status["is_running"] = True
+            _status["port"] = port
+            _status["monitor"] = monitor
+            _status["fps"] = fps
+            _status["quality"] = quality
 
             frame_interval = 1.0 / max(1, min(fps, 30))
-            fps_tick       = 0
-            fps_ts         = time.monotonic()
+            fps_tick = 0
+            fps_ts = time.monotonic()
 
             while not _stop_ev.is_set():
                 frame_start = time.monotonic()
@@ -274,15 +278,15 @@ def _capture_loop(
                 try:
                     frame_data, fw, fh = _capture_frame(monitor, quality)
                     _status["frames_sent"] += 1
-                    _status["bytes_sent"]  += len(frame_data)
-                    fps_tick               += 1
+                    _status["bytes_sent"] += len(frame_data)
+                    fps_tick += 1
 
                     # Update actual FPS every second
                     now = time.monotonic()
                     if now - fps_ts >= 1.0:
                         _status["actual_fps"] = round(fps_tick / (now - fps_ts), 1)
                         fps_tick = 0
-                        fps_ts   = now
+                        fps_ts = now
 
                     await server.broadcast(frame_data)
                     _status["viewer_count"] = server.viewer_count
@@ -292,17 +296,17 @@ def _capture_loop(
                     await _aio.sleep(frame_interval)
                     continue
 
-                elapsed  = time.monotonic() - frame_start
-                sleep_t  = max(0, frame_interval - elapsed)
+                elapsed = time.monotonic() - frame_start
+                sleep_t = max(0, frame_interval - elapsed)
                 if sleep_t > 0:
                     await _aio.sleep(sleep_t)
 
         finally:
             if _server_ref:
                 await _server_ref.stop()
-            _status["is_running"]   = False
+            _status["is_running"] = False
             _status["viewer_count"] = 0
-            _status["actual_fps"]   = 0.0
+            _status["actual_fps"] = 0.0
             _server_ref = None
 
     loop = _aio.new_event_loop()
@@ -317,12 +321,13 @@ def _capture_loop(
 
 # ── Public API ─────────────────────────────────────────────────────────────────
 
+
 def start_sharing(
-    port:    int            = 8765,
-    token:   Optional[str]  = None,
-    monitor: int            = 1,
-    fps:     int            = 10,
-    quality: int            = 70,
+    port: int = 8765,
+    token: Optional[str] = None,
+    monitor: int = 1,
+    fps: int = 10,
+    quality: int = 70,
 ) -> str:
     global _thread
 
@@ -334,7 +339,7 @@ def start_sharing(
     if _mss_ok and not _pil_ok:
         return "ERROR: Pillow required. Install: pip install Pillow"
 
-    fps     = max(1, min(fps, 30))
+    fps = max(1, min(fps, 30))
     quality = max(10, min(quality, 100))
 
     _stop_ev.clear()

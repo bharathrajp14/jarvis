@@ -5,13 +5,14 @@ Provides structured abstractions for Mouse, Keyboard, Resize, and Focus events,
 with decoders for xterm and SGR (1006) terminal mouse escape sequences.
 All coordinates are 0-indexed (x=col, y=row).
 """
+
 from __future__ import annotations
 
 import re
 import time
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import List, Optional, Tuple
+from typing import Optional, Tuple
 
 
 class MouseEventType(str, Enum):
@@ -47,6 +48,7 @@ class MouseCaptureMode(str, Enum):
 @dataclass
 class InputEvent:
     """Base class for all normalized terminal input events."""
+
     timestamp: float = field(default_factory=time.time)
     terminal_source: str = "stdin"
 
@@ -54,6 +56,7 @@ class InputEvent:
 @dataclass
 class KeyEvent(InputEvent):
     """Normalized keyboard event."""
+
     key: str = ""
     char: str = ""
     ctrl: bool = False
@@ -68,6 +71,7 @@ class MouseEvent(InputEvent):
     Normalized terminal mouse event.
     Coordinates are 0-indexed: x = column (0..cols-1), y = row (0..rows-1).
     """
+
     event_type: MouseEventType = MouseEventType.MOUSE_MOVE
     x: int = 0
     y: int = 0
@@ -96,6 +100,7 @@ class MouseEvent(InputEvent):
 @dataclass
 class ResizeEvent(InputEvent):
     """Terminal window resize event."""
+
     columns: int = 80
     lines: int = 24
 
@@ -103,10 +108,12 @@ class ResizeEvent(InputEvent):
 @dataclass
 class FocusEvent(InputEvent):
     """Terminal application focus gained/lost event."""
+
     focused: bool = True
 
 
 # ── Terminal Mouse Escape Sequence Decoder ───────────────────────────────────
+
 
 class TerminalInputDecoder:
     """
@@ -141,7 +148,7 @@ class TerminalInputDecoder:
         action_char = match.group(4)  # 'M' for press/motion, 'm' for release
         consumed_len = match.end()
 
-        is_release = (action_char == "m")
+        is_release = action_char == "m"
 
         # Extract modifier bits
         shift = bool(raw_btn & 4)

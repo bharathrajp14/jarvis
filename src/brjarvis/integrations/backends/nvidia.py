@@ -3,11 +3,11 @@
 NVIDIA NIM backend connector for BR Core.
 Uses the OpenAI SDK pointed at NVIDIA's API endpoint.
 """
+
 from __future__ import annotations
 
 import logging
 import os
-import traceback
 from typing import Generator
 
 from .base import BaseBackend
@@ -21,6 +21,7 @@ class NvidiaBackend(BaseBackend):
     def __init__(self, model: str = None, api_key: str = None):
         try:
             from brjarvis.config.models import get_model
+
             default_model = get_model("nvidia") or "meta/llama3-70b-instruct"
         except Exception:
             default_model = "meta/llama3-70b-instruct"
@@ -32,6 +33,7 @@ class NvidiaBackend(BaseBackend):
         if _api_key:
             try:
                 from openai import OpenAI
+
                 self.client = OpenAI(
                     base_url="https://integrate.api.nvidia.com/v1",
                     api_key=_api_key,

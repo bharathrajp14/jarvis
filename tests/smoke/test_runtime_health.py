@@ -1,9 +1,7 @@
 # tests/smoke/test_runtime_health.py — Smoke Test Suite for BR JARVIS MK40.2+
 from __future__ import annotations
 
-import os
 import sys
-import pytest
 from pathlib import Path
 
 # Ensure src in sys.path
@@ -12,12 +10,12 @@ _SRC = _ROOT / "src"
 if str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
-from brjarvis.core.paths import paths, find_python_executable
-from brjarvis.core.config import get_config, JarvisConfig
-from brjarvis.diagnostics.doctor import run_diagnostics_audit, check_module
-from brjarvis.tools.registry import get_registry_status, TOOL_REGISTRY, TOOL_SCHEMAS
 from brjarvis.career.crm.database import get_career_crm_db
+from brjarvis.core.config import JarvisConfig, get_config
+from brjarvis.core.paths import find_python_executable, paths
+from brjarvis.diagnostics.doctor import run_diagnostics_audit
 from brjarvis.router.core import load_available_backends
+from brjarvis.tools.registry import TOOL_REGISTRY, get_registry_status
 
 
 def test_python_runtime_and_venv():
@@ -47,6 +45,13 @@ def test_truthful_doctor_diagnostics():
     assert "paths_status" in report
     assert "subsystems_status" in report
     assert "overall_health" in report
+    assert "api_key_sources" in report
+    assert "dependency_summary" in report
+    assert "python_runtime" in report
+    assert "repair_actions" in report
+    assert set(report["api_key_sources"]) == set(report["api_keys"])
+    assert "executable" in report["python_runtime"]
+    assert report["dependency_summary"]["total"] == len(report["python_packages"])
 
     # Subsystems check
     assert "Career OS" in report["subsystems_status"]
@@ -54,7 +59,14 @@ def test_truthful_doctor_diagnostics():
     assert "Skills Subsystem" in report["subsystems_status"]
 
     # Overall health should not be empty
-    assert report["overall_health"] in ("HEALTHY", "DEGRADED", "NOT_READY (AI backends unconfigured)", "NEEDS_ATTENTION", "FAILED")
+    assert report["overall_health"] in (
+        "HEALTHY",
+        "DEGRADED",
+        "DEGRADED (Missing core Python dependencies)",
+        "NOT_READY (AI backends unconfigured)",
+        "NEEDS_ATTENTION",
+        "FAILED",
+    )
 
 
 def test_tool_registry_ecosystem():

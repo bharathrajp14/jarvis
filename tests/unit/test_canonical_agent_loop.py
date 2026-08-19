@@ -40,10 +40,12 @@ class TestCanonicalAgentLoop:
         loop = AgentLoop(session=sess)
 
         # Mock router that calls file_read then gives response
-        mock_router = MockRouter([
-            '```tool_call\n{"tool": "file_read", "args": {"path": "readme.md"}}\n```',
-            "I read the readme file and found project details.",
-        ])
+        mock_router = MockRouter(
+            [
+                '```tool_call\n{"tool": "file_read", "args": {"path": "readme.md"}}\n```',
+                "I read the readme file and found project details.",
+            ]
+        )
 
         events_received = []
         bus = get_event_bus()

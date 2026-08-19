@@ -47,7 +47,9 @@ async def safe_ws_send(ws: WebSocket, data: dict) -> bool:
     return False
 
 
-async def broadcast_ws_event(event_type: str, payload: dict, conversation_id: Optional[str] = None, task_id: Optional[str] = None):
+async def broadcast_ws_event(
+    event_type: str, payload: dict, conversation_id: Optional[str] = None, task_id: Optional[str] = None
+):
     """Broadcast an event to all connected web clients."""
     data = {
         "event_id": str(uuid.uuid4()),
@@ -144,15 +146,18 @@ async def websocket_endpoint(websocket: WebSocket):
     task_mgr = get_task_state_manager()
 
     # Send initial ServerReady message
-    await safe_ws_send(websocket, {
-        "event_id": str(uuid.uuid4()),
-        "type": "ServerReady",
-        "timestamp": time.time(),
-        "payload": {
-            "status": "ONLINE",
-            "server_version": VERSION,
-        }
-    })
+    await safe_ws_send(
+        websocket,
+        {
+            "event_id": str(uuid.uuid4()),
+            "type": "ServerReady",
+            "timestamp": time.time(),
+            "payload": {
+                "status": "ONLINE",
+                "server_version": VERSION,
+            },
+        },
+    )
 
     try:
         while True:
@@ -163,12 +168,15 @@ async def websocket_endpoint(websocket: WebSocket):
             try:
                 req = json.loads(raw_data)
             except json.JSONDecodeError:
-                await safe_ws_send(websocket, {
-                    "event_id": str(uuid.uuid4()),
-                    "type": "error",
-                    "timestamp": time.time(),
-                    "payload": {"error": "Invalid JSON format"},
-                })
+                await safe_ws_send(
+                    websocket,
+                    {
+                        "event_id": str(uuid.uuid4()),
+                        "type": "error",
+                        "timestamp": time.time(),
+                        "payload": {"error": "Invalid JSON format"},
+                    },
+                )
                 continue
 
             msg_type = req.get("type", "").lower()
@@ -176,13 +184,16 @@ async def websocket_endpoint(websocket: WebSocket):
 
             # 1. Heartbeat Ping / Pong
             if msg_type in ("ping", "heartbeat"):
-                await safe_ws_send(websocket, {
-                    "event_id": str(uuid.uuid4()),
-                    "type": "Heartbeat",
-                    "request_id": request_id,
-                    "timestamp": time.time(),
-                    "payload": {"status": "pong"},
-                })
+                await safe_ws_send(
+                    websocket,
+                    {
+                        "event_id": str(uuid.uuid4()),
+                        "type": "Heartbeat",
+                        "request_id": request_id,
+                        "timestamp": time.time(),
+                        "payload": {"status": "pong"},
+                    },
+                )
                 continue
 
             # 2. Chat Prompt / Execution
@@ -208,12 +219,15 @@ async def websocket_endpoint(websocket: WebSocket):
                 if not conv_id or not store.get_conversation(conv_id):
                     new_conv = store.create_conversation(title="New Chat")
                     conv_id = new_conv.conversation_id
-                    await safe_ws_send(websocket, {
-                        "event_id": str(uuid.uuid4()),
-                        "type": "conversation.created",
-                        "conversation_id": conv_id,
-                        "payload": {"conversation": new_conv.to_dict()},
-                    })
+                    await safe_ws_send(
+                        websocket,
+                        {
+                            "event_id": str(uuid.uuid4()),
+                            "type": "conversation.created",
+                            "conversation_id": conv_id,
+                            "payload": {"conversation": new_conv.to_dict()},
+                        },
+                    )
 
                 # Persist user message
                 user_msg = store.add_message(
@@ -223,12 +237,15 @@ async def websocket_endpoint(websocket: WebSocket):
                     branch_id=branch_id,
                     backend=backend_choice or "gemini",
                 )
-                await safe_ws_send(websocket, {
-                    "event_id": str(uuid.uuid4()),
-                    "type": "message.created",
-                    "conversation_id": conv_id,
-                    "payload": {"message": user_msg.to_dict()},
-                })
+                await safe_ws_send(
+                    websocket,
+                    {
+                        "event_id": str(uuid.uuid4()),
+                        "type": "message.created",
+                        "conversation_id": conv_id,
+                        "payload": {"message": user_msg.to_dict()},
+                    },
+                )
 
                 orch = get_orchestrator()
                 if backend_choice and orch and getattr(orch, "router", None):
@@ -251,30 +268,41 @@ async def websocket_endpoint(websocket: WebSocket):
                     start_time = time.time()
                     try:
                         # 1. Create or notify task
-                        await safe_ws_send(ws, {
-                            "event_id": str(uuid.uuid4()),
-                            "type": "task.started",
-                            "conversation_id": cid,
-                            "task_id": tid,
-                            "request_id": rid,
-                            "payload": {
+                        await safe_ws_send(
+                            ws,
+                            {
+                                "event_id": str(uuid.uuid4()),
+                                "type": "task.started",
+                                "conversation_id": cid,
                                 "task_id": tid,
-                                "goal": command,
-                                "status": "PLANNING" if is_plan_only else "RUNNING",
-                                "plan_only": is_plan_only,
+                                "request_id": rid,
+                                "payload": {
+                                    "task_id": tid,
+                                    "goal": command,
+                                    "status": "PLANNING" if is_plan_only else "RUNNING",
+                                    "plan_only": is_plan_only,
+                                },
                             },
-                        })
+                        )
 
                         # 2. Plan Mode Only
                         if is_plan_only:
                             plan_steps = [
                                 {"step_id": "1", "title": "Analyze Goal & Requirements", "status": "completed"},
-                                {"step_id": "2", "title": "Inspect Local Context & Dependencies", "status": "completed"},
-                                {"step_id": "3", "title": "Synthesize Plan Graph & Execution Steps", "status": "completed"},
+                                {
+                                    "step_id": "2",
+                                    "title": "Inspect Local Context & Dependencies",
+                                    "status": "completed",
+                                },
+                                {
+                                    "step_id": "3",
+                                    "title": "Synthesize Plan Graph & Execution Steps",
+                                    "status": "completed",
+                                },
                                 {"step_id": "4", "title": "Await User Plan Approval", "status": "pending"},
                             ]
                             plan_text = (
-                                f"### 📋 Execution Plan for: \"{command}\"\n\n"
+                                f'### 📋 Execution Plan for: "{command}"\n\n'
                                 f"**Objective**: Autonomous multi-step fulfillment with verification.\n\n"
                                 f"**Planned Steps**:\n"
                                 f"1. 🔍 **Phase 1: Inspection & Scope Discovery** — Read existing files, verify dependencies.\n"
@@ -293,35 +321,44 @@ async def websocket_endpoint(websocket: WebSocket):
                                 backend=backend_choice or "gemini",
                                 latency_ms=int((time.time() - start_time) * 1000),
                             )
-                            await safe_ws_send(ws, {
-                                "event_id": str(uuid.uuid4()),
-                                "type": "message.completed",
-                                "conversation_id": cid,
-                                "task_id": tid,
-                                "payload": {
-                                    "message": asst_msg.to_dict(),
-                                    "is_plan": True,
-                                    "plan_steps": plan_steps,
+                            await safe_ws_send(
+                                ws,
+                                {
+                                    "event_id": str(uuid.uuid4()),
+                                    "type": "message.completed",
+                                    "conversation_id": cid,
+                                    "task_id": tid,
+                                    "payload": {
+                                        "message": asst_msg.to_dict(),
+                                        "is_plan": True,
+                                        "plan_steps": plan_steps,
+                                    },
                                 },
-                            })
-                            await safe_ws_send(ws, {
-                                "event_id": str(uuid.uuid4()),
-                                "type": "task.waiting",
-                                "conversation_id": cid,
-                                "task_id": tid,
-                                "payload": {"status": "WAITING_FOR_APPROVAL", "plan_steps": plan_steps},
-                            })
+                            )
+                            await safe_ws_send(
+                                ws,
+                                {
+                                    "event_id": str(uuid.uuid4()),
+                                    "type": "task.waiting",
+                                    "conversation_id": cid,
+                                    "task_id": tid,
+                                    "payload": {"status": "WAITING_FOR_APPROVAL", "plan_steps": plan_steps},
+                                },
+                            )
                             return
 
                         # 3. Active Stream Execution
-                        await safe_ws_send(ws, {
-                            "event_id": str(uuid.uuid4()),
-                            "type": "message.delta_start",
-                            "conversation_id": cid,
-                            "task_id": tid,
-                            "request_id": rid,
-                            "payload": {"status": "streaming"},
-                        })
+                        await safe_ws_send(
+                            ws,
+                            {
+                                "event_id": str(uuid.uuid4()),
+                                "type": "message.delta_start",
+                                "conversation_id": cid,
+                                "task_id": tid,
+                                "request_id": rid,
+                                "payload": {"status": "streaming"},
+                            },
+                        )
 
                         active_orch = get_orchestrator()
                         full_text = ""
@@ -329,24 +366,30 @@ async def websocket_endpoint(websocket: WebSocket):
                         if active_orch:
                             async for token_str in run_generator_in_thread(active_orch.chat_stream, command):
                                 full_text += token_str
-                                await safe_ws_send(ws, {
+                                await safe_ws_send(
+                                    ws,
+                                    {
+                                        "event_id": str(uuid.uuid4()),
+                                        "type": "message.delta",
+                                        "conversation_id": cid,
+                                        "task_id": tid,
+                                        "request_id": rid,
+                                        "payload": {"delta": token_str, "accumulated": full_text},
+                                    },
+                                )
+                        else:
+                            full_text = "JARVIS Cognitive Core initialized. Execution completed."
+                            await safe_ws_send(
+                                ws,
+                                {
                                     "event_id": str(uuid.uuid4()),
                                     "type": "message.delta",
                                     "conversation_id": cid,
                                     "task_id": tid,
                                     "request_id": rid,
-                                    "payload": {"delta": token_str, "accumulated": full_text},
-                                })
-                        else:
-                            full_text = "JARVIS Cognitive Core initialized. Execution completed."
-                            await safe_ws_send(ws, {
-                                "event_id": str(uuid.uuid4()),
-                                "type": "message.delta",
-                                "conversation_id": cid,
-                                "task_id": tid,
-                                "request_id": rid,
-                                "payload": {"delta": full_text, "accumulated": full_text},
-                            })
+                                    "payload": {"delta": full_text, "accumulated": full_text},
+                                },
+                            )
 
                         latency = int((time.time() - start_time) * 1000)
 
@@ -365,38 +408,47 @@ async def websocket_endpoint(websocket: WebSocket):
                             latency_ms=latency,
                         )
 
-                        await safe_ws_send(ws, {
-                            "event_id": str(uuid.uuid4()),
-                            "type": "message.completed",
-                            "conversation_id": cid,
-                            "task_id": tid,
-                            "request_id": rid,
-                            "payload": {"message": asst_msg.to_dict()},
-                        })
-
-                        await safe_ws_send(ws, {
-                            "event_id": str(uuid.uuid4()),
-                            "type": "task.completed",
-                            "conversation_id": cid,
-                            "task_id": tid,
-                            "request_id": rid,
-                            "payload": {
-                                "status": "SUCCESS_VERIFIED",
-                                "result": full_text[:500],
-                                "latency_ms": latency,
+                        await safe_ws_send(
+                            ws,
+                            {
+                                "event_id": str(uuid.uuid4()),
+                                "type": "message.completed",
+                                "conversation_id": cid,
+                                "task_id": tid,
+                                "request_id": rid,
+                                "payload": {"message": asst_msg.to_dict()},
                             },
-                        })
+                        )
+
+                        await safe_ws_send(
+                            ws,
+                            {
+                                "event_id": str(uuid.uuid4()),
+                                "type": "task.completed",
+                                "conversation_id": cid,
+                                "task_id": tid,
+                                "request_id": rid,
+                                "payload": {
+                                    "status": "SUCCESS_VERIFIED",
+                                    "result": full_text[:500],
+                                    "latency_ms": latency,
+                                },
+                            },
+                        )
 
                     except Exception as e:
                         logger.exception("Error executing WebSocket chat/task job: %s", e)
-                        await safe_ws_send(ws, {
-                            "event_id": str(uuid.uuid4()),
-                            "type": "task.failed",
-                            "conversation_id": cid,
-                            "task_id": tid,
-                            "request_id": rid,
-                            "payload": {"error": str(e)},
-                        })
+                        await safe_ws_send(
+                            ws,
+                            {
+                                "event_id": str(uuid.uuid4()),
+                                "type": "task.failed",
+                                "conversation_id": cid,
+                                "task_id": tid,
+                                "request_id": rid,
+                                "payload": {"error": str(e)},
+                            },
+                        )
 
                 asyncio.create_task(run_chat_or_task_job())
 
@@ -404,17 +456,20 @@ async def websocket_endpoint(websocket: WebSocket):
             elif msg_type == "status_query":
                 orch = get_orchestrator()
                 mode = getattr(orch, "current_mode", "general") if orch else "offline"
-                await safe_ws_send(websocket, {
-                    "event_id": str(uuid.uuid4()),
-                    "type": "SystemMessage",
-                    "request_id": request_id,
-                    "timestamp": time.time(),
-                    "payload": {
-                        "status": "ONLINE",
-                        "mode": mode,
-                        "active_clients": len(ACTIVE_WEBSOCKETS),
+                await safe_ws_send(
+                    websocket,
+                    {
+                        "event_id": str(uuid.uuid4()),
+                        "type": "SystemMessage",
+                        "request_id": request_id,
+                        "timestamp": time.time(),
+                        "payload": {
+                            "status": "ONLINE",
+                            "mode": mode,
+                            "active_clients": len(ACTIVE_WEBSOCKETS),
+                        },
                     },
-                })
+                )
 
             # 4. Resolve Approval Gate
             elif msg_type == "approval.resolve":
@@ -423,12 +478,15 @@ async def websocket_endpoint(websocket: WebSocket):
                 approved = bool(req.get("approved", True))
                 if app_task_id and app_req_id:
                     task_mgr.resolve_approval(app_task_id, app_req_id, approved=approved)
-                    await safe_ws_send(websocket, {
-                        "event_id": str(uuid.uuid4()),
-                        "type": "approval.resolved",
-                        "task_id": app_task_id,
-                        "payload": {"request_id": app_req_id, "approved": approved},
-                    })
+                    await safe_ws_send(
+                        websocket,
+                        {
+                            "event_id": str(uuid.uuid4()),
+                            "type": "approval.resolved",
+                            "task_id": app_task_id,
+                            "payload": {"request_id": app_req_id, "approved": approved},
+                        },
+                    )
 
     except WebSocketDisconnect:
         pass
@@ -443,6 +501,7 @@ async def websocket_endpoint(websocket: WebSocket):
 async def mobile_websocket_endpoint(websocket: WebSocket):
     """Real-time WebSocket endpoint for paired mobile clients."""
     from starlette.websockets import WebSocketDisconnect
+
     token = websocket.query_params.get("token") or websocket.query_params.get("key")
     device_id = websocket.query_params.get("device_id") or websocket.query_params.get("id")
     if not token or not device_id:

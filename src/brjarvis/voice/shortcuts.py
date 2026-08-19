@@ -2,10 +2,11 @@
 """
 Provides fast-path matching for instant voice command execution without passing through full ReAct loop.
 """
+
 from __future__ import annotations
 
 import re
-from typing import Callable, Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple
 
 
 class VoiceShortcutRegistry:
@@ -19,35 +20,22 @@ class VoiceShortcutRegistry:
         self._shortcuts[key] = (re.compile(pattern, re.IGNORECASE), tool_name, args)
 
     def _register_default_shortcuts(self):
-        self.register(
-            "stop_speech",
-            r"^(stop speaking|be quiet|shut up|silence|stop talking)$",
-            "stop_speech",
-            {}
-        )
+        self.register("stop_speech", r"^(stop speaking|be quiet|shut up|silence|stop talking)$", "stop_speech", {})
         self.register(
             "system_health",
             r"^(system health|system status|check system|computer status)$",
             "system_diagnostic",
-            {"aspect": "cpu_ram"}
+            {"aspect": "cpu_ram"},
         )
+        self.register("screenshot", r"^(take screenshot|capture screen|screen shot)$", "take_screenshot", {})
         self.register(
-            "screenshot",
-            r"^(take screenshot|capture screen|screen shot)$",
-            "take_screenshot",
-            {}
-        )
-        self.register(
-            "open_browser",
-            r"^(open browser|open chrome|launch browser)$",
-            "open_app",
-            {"app_name": "chrome"}
+            "open_browser", r"^(open browser|open chrome|launch browser)$", "open_app", {"app_name": "chrome"}
         )
         self.register(
             "open_terminal",
             r"^(open terminal|open cmd|launch terminal|open powershell)$",
             "open_app",
-            {"app_name": "powershell"}
+            {"app_name": "powershell"},
         )
 
     def match(self, spoken_text: str) -> Optional[Tuple[str, dict]]:

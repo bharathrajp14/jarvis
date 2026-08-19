@@ -1,12 +1,14 @@
 """E2E Test: Full Career OS User Journey."""
+
 from __future__ import annotations
 
 import pytest
+
 from brjarvis.career.ats_engine import ATSEngine
 from brjarvis.career.crm.database import CareerCRMDatabase
 from brjarvis.career.models import ApplicationRecord, ApplicationStatus
-from tests.fixtures.sample_resumes import SAMPLE_AI_ENGINEER_RESUME
 from tests.fixtures.sample_job_descriptions import JOB_DESCRIPTION_SENIOR_AI_BACKEND
+from tests.fixtures.sample_resumes import SAMPLE_AI_ENGINEER_RESUME
 
 
 @pytest.mark.e2e
@@ -26,7 +28,7 @@ def test_career_full_lifecycle_journey(tmp_path):
         company_name="Scale AI",
         job_title="Senior AI Backend Engineer",
         status=ApplicationStatus.APPLIED,
-        match_score=score_report.total_score
+        match_score=score_report.total_score,
     )
     crm.save_application(app)
 

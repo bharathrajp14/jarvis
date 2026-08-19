@@ -4,12 +4,10 @@ High-Fidelity Sandboxed Code Execution Suite for BR JARVIS MK40.2 / MK41.
 Provides isolated execution, environment filtering, stdout/stderr capture,
 and canonical ToolResult evidence contracts.
 """
+
 from __future__ import annotations
 
-import json
-from typing import Any, Dict, Optional
-
-from .domain import RiskLevel, SideEffectLevel, ToolCategory, ToolErrorCode, VerificationStrategy
+from .domain import ToolErrorCode
 from .registry import register_tool
 from .sandbox import CodeSandbox
 from .tool_result import ToolResult
@@ -24,7 +22,11 @@ _sandbox = CodeSandbox()
         "type": "object",
         "properties": {
             "code": {"type": "string", "description": "Source code to execute"},
-            "lang": {"type": "string", "enum": ["python", "javascript", "bash", "powershell"], "description": "Programming language (default: python)"},
+            "lang": {
+                "type": "string",
+                "enum": ["python", "javascript", "bash", "powershell"],
+                "description": "Programming language (default: python)",
+            },
             "timeout": {"type": "integer", "description": "Execution timeout in seconds (default: 30)"},
         },
         "required": ["code"],

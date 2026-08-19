@@ -3,19 +3,16 @@ from __future__ import annotations
 
 import json
 import logging
-import re
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from brjarvis.core.runtime import get_runtime
+
 from .types import (
     ConfidenceScore,
     PlanGraph,
-    ReasoningStep,
     ReasoningTrace,
-    StepStatus,
     TaskNode,
 )
-from brjarvis.tools.registry import TOOL_SCHEMAS
 
 logger = logging.getLogger("JARVIS.ReasoningEngine")
 
@@ -35,11 +32,12 @@ class ReasoningEngine:
     def build_plan_graph(self, goal: str, context: Optional[str] = None) -> PlanGraph:
         """Decompose a high-level goal into a structured PlanGraph (DAG)."""
         logger.info(f"🧠 ReasoningEngine: Building PlanGraph for goal: '{goal}'")
-        
+
         graph = PlanGraph(goal=goal, parallelizable=True)
 
         try:
             from brjarvis.agent.planner import create_plan
+
             plan_dict = create_plan(goal, context=context or "")
             graph.parallelizable = plan_dict.get("can_parallelize", False)
 
@@ -124,7 +122,7 @@ class ReasoningEngine:
     def evaluate_confidence(self, tool_name: str, args: Dict[str, Any], goal: str) -> ConfidenceScore:
         """Assess risk level and confidence score for a proposed tool action, checking past lessons."""
         risk = "low"
-        
+
         # High-risk actions
         destructive_tools = {"file_write", "cli_controller", "custom_command_tools", "run_code"}
         if tool_name in destructive_tools:
@@ -140,6 +138,7 @@ class ReasoningEngine:
         # Query LessonStore for past corrections on this tool
         try:
             from brjarvis.memory.lessons import LessonStore
+
             ls = LessonStore()
             past_lessons = ls.get_relevant_lessons(query=tool_name, limit=2)
             if past_lessons:
@@ -158,7 +157,7 @@ class ReasoningEngine:
     def self_verify_trace(self, trace: ReasoningTrace) -> bool:
         """Perform self-verification on an executed reasoning trace."""
         logger.info(f"🔎 Self-verifying reasoning trace for goal: '{trace.goal}'")
-        
+
         if not trace.steps:
             trace.verified = False
             trace.verification_notes = "Empty steps in trace"

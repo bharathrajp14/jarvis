@@ -3,12 +3,12 @@
 DeepSeek and OpenRouter backend connector for BR Core.
 Supports DeepSeek-R1 reasoning models, DeepSeek-V3, and OpenRouter unified proxying.
 """
+
 from __future__ import annotations
 
 import logging
 import os
-import traceback
-from typing import Generator, List, Dict, Any
+from typing import Any, Dict, Generator, List
 
 from .base import BaseBackend
 
@@ -19,19 +19,26 @@ class DeepSeekBackend(BaseBackend):
     """DeepSeek & OpenRouter high-performance AI backend connector."""
 
     def __init__(self, model: str = None, api_key: str = None):
-        _api_key = api_key or os.environ.get("DEEPSEEK_API_KEY", "").strip() or os.environ.get("OPENROUTER_API_KEY", "").strip()
+        _api_key = (
+            api_key
+            or os.environ.get("DEEPSEEK_API_KEY", "").strip()
+            or os.environ.get("OPENROUTER_API_KEY", "").strip()
+        )
         if not _api_key:
             try:
                 from brjarvis.core.config import get_config
+
                 _api_key = (get_config().secrets.deepseek_api_key or "").strip()
             except Exception:
                 pass
         if not _api_key:
             try:
                 from brjarvis.core.paths import paths
+
                 cfg_file = paths.CONFIG_ROOT / "api_keys.json"
                 if cfg_file.exists():
                     import json
+
                     data = json.loads(cfg_file.read_text(encoding="utf-8"))
                     for k, v in data.items():
                         if str(k).lower().strip() in ("deepseek_api_key", "openrouter_api_key") and str(v).strip():
@@ -42,14 +49,15 @@ class DeepSeekBackend(BaseBackend):
 
         is_openrouter = not os.environ.get("DEEPSEEK_API_KEY") and bool(os.environ.get("OPENROUTER_API_KEY"))
         self.base_url = "https://openrouter.ai/api/v1" if is_openrouter else "https://api.deepseek.com/v1"
-        
+
         default_model = "deepseek/deepseek-r1" if is_openrouter else "deepseek-reasoner"
         self.model = model or default_model
         self.client = None
-        
+
         if _api_key:
             try:
                 import openai
+
                 self.client = openai.OpenAI(api_key=_api_key, base_url=self.base_url)
                 logger.info("Initialized backend with model: %s on base_url: %s", self.model, self.base_url)
             except ImportError:

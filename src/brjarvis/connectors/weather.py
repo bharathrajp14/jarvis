@@ -3,6 +3,7 @@
 Free weather connector using Open-Meteo API.
 No API key required. Supports current conditions and 7-day forecasts worldwide.
 """
+
 from __future__ import annotations
 
 import json
@@ -19,18 +20,31 @@ _GEOCODE_URL = "https://geocoding-api.open-meteo.com/v1/search"
 _WEATHER_URL = "https://api.open-meteo.com/v1/forecast"
 
 _WMO_CODES = {
-    0: "Clear sky", 1: "Mainly clear", 2: "Partly cloudy", 3: "Overcast",
-    45: "Fog", 48: "Depositing rime fog",
-    51: "Light drizzle", 53: "Moderate drizzle", 55: "Dense drizzle",
-    61: "Slight rain", 63: "Moderate rain", 65: "Heavy rain",
-    71: "Slight snow", 73: "Moderate snow", 75: "Heavy snow",
-    80: "Slight rain showers", 81: "Moderate rain showers", 82: "Violent rain showers",
-    95: "Thunderstorm", 96: "Thunderstorm with slight hail", 99: "Thunderstorm with heavy hail",
+    0: "Clear sky",
+    1: "Mainly clear",
+    2: "Partly cloudy",
+    3: "Overcast",
+    45: "Fog",
+    48: "Depositing rime fog",
+    51: "Light drizzle",
+    53: "Moderate drizzle",
+    55: "Dense drizzle",
+    61: "Slight rain",
+    63: "Moderate rain",
+    65: "Heavy rain",
+    71: "Slight snow",
+    73: "Moderate snow",
+    75: "Heavy snow",
+    80: "Slight rain showers",
+    81: "Moderate rain showers",
+    82: "Violent rain showers",
+    95: "Thunderstorm",
+    96: "Thunderstorm with slight hail",
+    99: "Thunderstorm with heavy hail",
 }
 
 
 class WeatherConnector(BaseConnector):
-
     @property
     def connector_id(self) -> str:
         return "weather"
@@ -59,7 +73,10 @@ class WeatherConnector(BaseConnector):
                 parameters={
                     "type": "object",
                     "properties": {
-                        "city": {"type": "string", "description": "City or place name (e.g. 'Chennai', 'London', 'New York')"},
+                        "city": {
+                            "type": "string",
+                            "description": "City or place name (e.g. 'Chennai', 'London', 'New York')",
+                        },
                     },
                     "required": ["city"],
                 },
@@ -80,12 +97,7 @@ class WeatherConnector(BaseConnector):
 
     def call_tool(self, tool_name: str, args: Dict[str, Any]) -> Any:
         city = str(
-            args.get("city")
-            or args.get("location")
-            or args.get("place")
-            or args.get("query")
-            or args.get("q")
-            or ""
+            args.get("city") or args.get("location") or args.get("place") or args.get("query") or args.get("q") or ""
         ).strip()
         if not city:
             return "Please provide a city or location name."
@@ -117,13 +129,15 @@ class WeatherConnector(BaseConnector):
     def _current(self, city: str) -> str:
         try:
             lat, lon, label = self._geocode(city)
-            params = urllib.parse.urlencode({
-                "latitude": lat,
-                "longitude": lon,
-                "current": "temperature_2m,relative_humidity_2m,wind_speed_10m,weathercode,apparent_temperature",
-                "wind_speed_unit": "kmh",
-                "timezone": "auto",
-            })
+            params = urllib.parse.urlencode(
+                {
+                    "latitude": lat,
+                    "longitude": lon,
+                    "current": "temperature_2m,relative_humidity_2m,wind_speed_10m,weathercode,apparent_temperature",
+                    "wind_speed_unit": "kmh",
+                    "timezone": "auto",
+                }
+            )
             data = self._fetch(f"{_WEATHER_URL}?{params}")
             cur = data.get("current", {})
             temp = cur.get("temperature_2m", "?")
@@ -148,13 +162,15 @@ class WeatherConnector(BaseConnector):
         try:
             lat, lon, label = self._geocode(city)
             days = max(1, min(days, 7))
-            params = urllib.parse.urlencode({
-                "latitude": lat,
-                "longitude": lon,
-                "daily": "weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max",
-                "forecast_days": days,
-                "timezone": "auto",
-            })
+            params = urllib.parse.urlencode(
+                {
+                    "latitude": lat,
+                    "longitude": lon,
+                    "daily": "weathercode,temperature_2m_max,temperature_2m_min,precipitation_probability_max",
+                    "forecast_days": days,
+                    "timezone": "auto",
+                }
+            )
             data = self._fetch(f"{_WEATHER_URL}?{params}")
             daily = data.get("daily", {})
             dates = daily.get("time", [])

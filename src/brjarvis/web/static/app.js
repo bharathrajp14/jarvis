@@ -250,8 +250,34 @@
         if (viewId === 'knowledgeView') window.fetchMemories();
     };
 
+        // ── DESKTOP WORKSPACE HANDOFF ──
+    window.redeemWorkspaceHandoff = async function () {
+        const params = new URLSearchParams(window.location.search);
+        const handoff = params.get('handoff');
+        if (!handoff) return true;
+        try {
+            const response = await fetch(`${API_BASE}/api/auth/desktop-handoff/redeem`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ handoff }),
+            });
+            if (!response.ok) throw new Error('Workspace handoff expired or was already used.');
+            params.delete('handoff');
+            const cleanQuery = params.toString();
+            window.history.replaceState({}, document.title, `${window.location.pathname}${cleanQuery ? `?${cleanQuery}` : ''}${window.location.hash}`);
+            return true;
+        } catch (error) {
+            console.error('Workspace handoff failed:', error);
+            window.showToast('Workspace connection failed', String(error.message || error), 'error');
+            return false;
+        }
+    };
+
     // ── INITIALIZATION ON DOM READY ──
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
+        await window.redeemWorkspaceHandoff();
+
         // DOM Elements
         const networkLatencyEl = document.getElementById('network-latency');
         const backendSelector = document.getElementById('backendSelector');
@@ -494,7 +520,9 @@
                 socket.onopen = () => {
                     wsReconnectDelay = 1000;
                     _setWsStatus(true);
+                    window.dispatchEvent(new CustomEvent('brjarvis:legacy-connection', { detail: { status: 'connected' } }));
                     fetchTelemetry();
+
                     fetchConnectorStatus();
 
                     if (heartbeatInterval) clearInterval(heartbeatInterval);
@@ -516,6 +544,8 @@
 
                 socket.onclose = () => {
                     _setWsStatus(false);
+                    window.dispatchEvent(new CustomEvent('brjarvis:legacy-connection', { detail: { status: 'reconnecting' } }));
+
                     if (heartbeatInterval) clearInterval(heartbeatInterval);
                     if (wsReconnectTimer) clearTimeout(wsReconnectTimer);
                     wsReconnectTimer = setTimeout(initWebSocket, wsReconnectDelay);
@@ -524,6 +554,8 @@
 
                 socket.onerror = () => {
                     _setWsStatus(false);
+                    window.dispatchEvent(new CustomEvent('brjarvis:legacy-connection', { detail: { status: 'error' } }));
+
                 };
             } catch (e) {
                 console.error('WebSocket Init Error:', e);
@@ -532,7 +564,9 @@
 
         // ── WEBSOCKET MESSAGE HANDLER ──
         function handleServerMessage(data) {
+            window.dispatchEvent(new CustomEvent('brjarvis:legacy-message', { detail: data }));
             const type = (data.type || '').toLowerCase();
+
             const payload = data.payload || {};
 
             if (type === 'message.delta_start' || type === 'stream_start') {

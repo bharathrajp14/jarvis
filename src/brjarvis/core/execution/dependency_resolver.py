@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 from .environment_resolver import get_environment_resolver
-from .types import DependencyDeclaration, EnvironmentProfile, RuntimeType
+from .types import DependencyDeclaration, EnvironmentProfile
 
 logger = logging.getLogger("JARVIS.DependencyResolver")
 
@@ -61,9 +61,10 @@ _KNOWN_MODULE_TO_DIST: Dict[str, str] = {
 @dataclass
 class DependencyCheckReport:
     """Detailed diagnostic report of dependencies checked in a specific environment."""
+
     satisfied: bool = True
-    missing_packages: List[str] = field(default_factory=list)          # Distribution names to install
-    missing_modules: List[str] = field(default_factory=list)           # Import module names that failed
+    missing_packages: List[str] = field(default_factory=list)  # Distribution names to install
+    missing_modules: List[str] = field(default_factory=list)  # Import module names that failed
     missing_executables: List[str] = field(default_factory=list)
     missing_browser_binaries: List[str] = field(default_factory=list)
     missing_files: List[str] = field(default_factory=list)
@@ -135,16 +136,51 @@ class DependencyResolver:
                         imports.add(top)
         except Exception:
             # Fallback regex parsing if syntax has partial snippet or invalid grammar
-            for match in re.finditer(r'^\s*(?:from|import)\s+([a-zA-Z0-9_]+)', code_snippet, re.MULTILINE):
+            for match in re.finditer(r"^\s*(?:from|import)\s+([a-zA-Z0-9_]+)", code_snippet, re.MULTILINE):
                 imports.add(match.group(1))
-        
+
         # Filter standard library modules that never require PyPI installation
-        stdlib_modules = sys.stdlib_module_names if hasattr(sys, "stdlib_module_names") else {
-            "os", "sys", "re", "json", "time", "math", "random", "typing", "datetime", "pathlib",
-            "subprocess", "collections", "itertools", "functools", "logging", "threading", "asyncio",
-            "shutil", "tempfile", "uuid", "hashlib", "urllib", "sqlite3", "io", "copy", "traceback",
-            "platform", "ctypes", "zipfile", "tarfile", "csv", "xml", "html", "unittest", "inspect"
-        }
+        stdlib_modules = (
+            sys.stdlib_module_names
+            if hasattr(sys, "stdlib_module_names")
+            else {
+                "os",
+                "sys",
+                "re",
+                "json",
+                "time",
+                "math",
+                "random",
+                "typing",
+                "datetime",
+                "pathlib",
+                "subprocess",
+                "collections",
+                "itertools",
+                "functools",
+                "logging",
+                "threading",
+                "asyncio",
+                "shutil",
+                "tempfile",
+                "uuid",
+                "hashlib",
+                "urllib",
+                "sqlite3",
+                "io",
+                "copy",
+                "traceback",
+                "platform",
+                "ctypes",
+                "zipfile",
+                "tarfile",
+                "csv",
+                "xml",
+                "html",
+                "unittest",
+                "inspect",
+            }
+        )
         return {m for m in imports if m not in stdlib_modules}
 
     def verify_dependencies(
@@ -246,13 +282,13 @@ class DependencyResolver:
 
         # Sanitize module name to avoid shell injection
         clean_mod = module_name.strip()
-        if not re.match(r'^[a-zA-Z0-9_\.]+$', clean_mod):
+        if not re.match(r"^[a-zA-Z0-9_\.]+$", clean_mod):
             return False, "Invalid module name"
 
         check_code = f"import {clean_mod}; print(getattr({clean_mod}, '__version__', 'installed'))"
-        
+
         env_vars = self.env_resolver.get_runtime_environment_vars(env)
-        
+
         try:
             proc = subprocess.run(
                 [env.executable, "-c", check_code],

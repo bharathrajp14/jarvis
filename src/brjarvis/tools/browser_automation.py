@@ -3,26 +3,28 @@
 Playwright-driven interactive browser controller with session persistence for Gmail,
 Microsoft 365, Outlook, and general web applications.
 """
+
 from __future__ import annotations
 
-import asyncio
-import os
-import sys
 import threading
-import time
 from pathlib import Path
 from typing import Any, Optional
 
-
-from .registry import register_tool, _run_async
+from .registry import _run_async, register_tool
 
 _PLAYWRIGHT_AVAILABLE = False
 try:
-    from playwright.async_api import async_playwright, BrowserContext, Page, ElementHandle  # type: ignore[import-not-found]
+    from playwright.async_api import (  # type: ignore[import-not-found]
+        BrowserContext,
+        ElementHandle,
+        Page,
+        async_playwright,
+    )
 except ImportError:
     _PLAYWRIGHT_AVAILABLE = False
 
 import logging
+
 from brjarvis.core.paths import paths
 
 logger = logging.getLogger("JARVIS.Tools.BrowserAutomation")
@@ -37,13 +39,9 @@ _last_page_errors: list[str] = []
 _BROWSER_LOCK = threading.Lock()
 
 
-
 def get_browser_trace_logs() -> dict:
     """Return accumulated browser console logs and page errors."""
-    return {
-        "console_logs": list(_last_page_console_logs),
-        "page_errors": list(_last_page_errors)
-    }
+    return {"console_logs": list(_last_page_console_logs), "page_errors": list(_last_page_errors)}
 
 
 def clear_browser_trace_logs():
@@ -55,7 +53,14 @@ def clear_browser_trace_logs():
 def _attach_trace_listeners(page: Any):
     """Attach console and error listeners to Playwright page."""
     try:
-        page.on("console", lambda msg: _last_page_console_logs.append(f"[{msg.type.upper()}] {msg.text}") if len(_last_page_console_logs) < 200 else None)
+        page.on(
+            "console",
+            lambda msg: (
+                _last_page_console_logs.append(f"[{msg.type.upper()}] {msg.text}")
+                if len(_last_page_console_logs) < 200
+                else None
+            ),
+        )
         page.on("pageerror", lambda err: _last_page_errors.append(str(err)) if len(_last_page_errors) < 50 else None)
     except Exception:
         pass
@@ -73,7 +78,9 @@ async def _get_or_create_page(headless: bool = False) -> Page:
     global _active_browser_context, _active_page, _playwright_instance
 
     if not _PLAYWRIGHT_AVAILABLE:
-        raise RuntimeError("Playwright is not installed. Install with: pip install playwright && playwright install chromium")
+        raise RuntimeError(
+            "Playwright is not installed. Install with: pip install playwright && playwright install chromium"
+        )
 
     # Fast-path: page already exists and is open — no lock needed for read
     if _active_page and not _active_page.is_closed():
@@ -109,7 +116,7 @@ async def _get_or_create_page(headless: bool = False) -> Page:
             user_data_dir=str(_USER_DATA_DIR),
             headless=headless,
             viewport={"width": 1280, "height": 800},
-            args=["--disable-blink-features=AutomationControlled"]
+            args=["--disable-blink-features=AutomationControlled"],
         )
 
     pages = browser_ctx.pages
@@ -147,10 +154,13 @@ async def _close_browser():
     parameters={
         "type": "object",
         "properties": {
-            "url": {"type": "string", "description": "URL or host artifact path to open (e.g. https://mail.google.com or C:/Users/.../report.html)"},
-            "headless": {"type": "boolean", "description": "Run in background without opening window (default false)"}
+            "url": {
+                "type": "string",
+                "description": "URL or host artifact path to open (e.g. https://mail.google.com or C:/Users/.../report.html)",
+            },
+            "headless": {"type": "boolean", "description": "Run in background without opening window (default false)"},
         },
-        "required": ["url"]
+        "required": ["url"],
     },
     category="browser",
     risk_level="low",
@@ -161,15 +171,18 @@ async def _close_browser():
 def browser_open_url(args: dict) -> Any:
     """Open a URL or verified host artifact in the persistent browser and return canonical ToolResult."""
     from brjarvis.agent.artifacts import get_artifact_manager
-    from brjarvis.tools.tool_result import ToolResult
     from brjarvis.tools.domain import ToolErrorCode
+    from brjarvis.tools.tool_result import ToolResult
+
     mgr = get_artifact_manager()
 
     if isinstance(args, str):
         raw_url = args.strip()
         headless = False
     else:
-        raw_url = str(args.get("url") or args.get("uri") or args.get("link") or args.get("target") or args.get("path") or "").strip()
+        raw_url = str(
+            args.get("url") or args.get("uri") or args.get("link") or args.get("target") or args.get("path") or ""
+        ).strip()
         headless = args.get("headless", False)
 
     if not raw_url:
@@ -180,10 +193,16 @@ def browser_open_url(args: dict) -> Any:
     if not success:
         logger.warning("Browser open handoff rejected: %s", resolved_target)
         mgr.record_browser_result(raw_url, opened=False, observed=False, browser_verified=False, error=resolved_target)
-        return ToolResult.failed("browser_open_url", ToolErrorCode.PERMISSION_DENIED, f"Browser open rejected: {resolved_target}")
+        return ToolResult.failed(
+            "browser_open_url", ToolErrorCode.PERMISSION_DENIED, f"Browser open rejected: {resolved_target}"
+        )
 
     # Convert local host paths to file:// URI for browser navigation
-    if not (resolved_target.startswith("http://") or resolved_target.startswith("https://") or resolved_target.startswith("about:")):
+    if not (
+        resolved_target.startswith("http://")
+        or resolved_target.startswith("https://")
+        or resolved_target.startswith("about:")
+    ):
         host_p = Path(resolved_target).resolve()
         nav_url = host_p.as_uri()
     else:
@@ -194,8 +213,12 @@ def browser_open_url(args: dict) -> Any:
         try:
             resp = await page.goto(nav_url, wait_until="domcontentloaded", timeout=30000)
         except Exception as nav_err:
-            mgr.record_browser_result(resolved_target, opened=True, observed=True, browser_verified=False, error=str(nav_err))
-            return ToolResult.failed("browser_open_url", ToolErrorCode.EXECUTION_EXCEPTION, f"Could not navigate to '{nav_url}': {nav_err}")
+            mgr.record_browser_result(
+                resolved_target, opened=True, observed=True, browser_verified=False, error=str(nav_err)
+            )
+            return ToolResult.failed(
+                "browser_open_url", ToolErrorCode.EXECUTION_EXCEPTION, f"Could not navigate to '{nav_url}': {nav_err}"
+            )
 
         title = await page.title()
         content = ""
@@ -209,13 +232,21 @@ def browser_open_url(args: dict) -> Any:
             "file not found",
             "it may have been moved, edited, or deleted",
             "err_access_denied",
-            "access denied"
+            "access denied",
         ]
 
         for ind in err_indicators:
             if ind in content or ind in title.lower():
-                mgr.record_browser_result(resolved_target, opened=True, observed=True, browser_verified=False, error=f"Browser error indicator '{ind}' detected.")
-                return ToolResult.failed("browser_open_url", ToolErrorCode.VERIFICATION_FAILED, f"Browser error screen: '{ind}'")
+                mgr.record_browser_result(
+                    resolved_target,
+                    opened=True,
+                    observed=True,
+                    browser_verified=False,
+                    error=f"Browser error indicator '{ind}' detected.",
+                )
+                return ToolResult.failed(
+                    "browser_open_url", ToolErrorCode.VERIFICATION_FAILED, f"Browser error screen: '{ind}'"
+                )
 
         # Verification succeeded
         mgr.record_browser_result(resolved_target, opened=True, observed=True, browser_verified=True)
@@ -242,9 +273,12 @@ def browser_open_url(args: dict) -> Any:
     parameters={
         "type": "object",
         "properties": {
-            "target": {"type": "string", "description": "Text, button label, or CSS selector to click (e.g., 'Compose', 'Send', 'Reply', '#btn')"}
+            "target": {
+                "type": "string",
+                "description": "Text, button label, or CSS selector to click (e.g., 'Compose', 'Send', 'Reply', '#btn')",
+            }
         },
-        "required": ["target"]
+        "required": ["target"],
     },
     category="browser",
     risk_level="medium",
@@ -254,13 +288,15 @@ def browser_open_url(args: dict) -> Any:
 )
 def browser_click(args: dict) -> Any:
     """Click an element on the current browser page."""
-    from brjarvis.tools.tool_result import ToolResult
     from brjarvis.tools.domain import ToolErrorCode
+    from brjarvis.tools.tool_result import ToolResult
 
     if isinstance(args, str):
         target = args.strip()
     else:
-        target = str(args.get("target") or args.get("selector") or args.get("element") or args.get("text") or "").strip()
+        target = str(
+            args.get("target") or args.get("selector") or args.get("element") or args.get("text") or ""
+        ).strip()
 
     if not target:
         return ToolResult.failed("browser_click", ToolErrorCode.INVALID_ARGUMENT, "Parameter 'target' is required.")
@@ -273,7 +309,7 @@ def browser_click(args: dict) -> Any:
             f"button:has-text('{target}')",
             f"a:has-text('{target}')",
             f"[aria-label='{target}']",
-            target
+            target,
         ]
 
         clicked = False
@@ -311,19 +347,21 @@ def browser_click(args: dict) -> Any:
         return ToolResult.failed("browser_click", ToolErrorCode.EXECUTION_EXCEPTION, f"Browser click error: {e}")
 
 
-
 @register_tool(
     name="browser_type",
     description="Type text into an input field or contenteditable area on the active web page.",
     parameters={
         "type": "object",
         "properties": {
-            "target": {"type": "string", "description": "Field text label, placeholder, name, or selector (e.g. 'To', 'Subject', 'Message body')"},
+            "target": {
+                "type": "string",
+                "description": "Field text label, placeholder, name, or selector (e.g. 'To', 'Subject', 'Message body')",
+            },
             "text": {"type": "string", "description": "Text content to type"},
-            "press_enter": {"type": "boolean", "description": "Whether to press Enter after typing"}
+            "press_enter": {"type": "boolean", "description": "Whether to press Enter after typing"},
         },
-        "required": ["target", "text"]
-    }
+        "required": ["target", "text"],
+    },
 )
 def browser_type(args: dict) -> str:
     """Type text into a web page input element."""
@@ -332,7 +370,9 @@ def browser_type(args: dict) -> str:
         text = args.strip()
         press_enter = False
     else:
-        target = str(args.get("target") or args.get("selector") or args.get("element") or args.get("field") or "").strip()
+        target = str(
+            args.get("target") or args.get("selector") or args.get("element") or args.get("field") or ""
+        ).strip()
         text = str(args.get("text") or args.get("content") or args.get("value") or "")
         press_enter = args.get("press_enter", False)
 
@@ -347,7 +387,7 @@ def browser_type(args: dict) -> str:
             f"[aria-label='{target}']",
             f"input[name='{target}']",
             f"text={target}",
-            target
+            target,
         ]
 
         typed = False
@@ -387,10 +427,11 @@ def browser_type(args: dict) -> str:
 @register_tool(
     name="browser_read_page",
     description="Read visible text and interactive form fields from the current web page.",
-    parameters={"type": "object", "properties": {}}
+    parameters={"type": "object", "properties": {}},
 )
 def browser_read_page(args: dict) -> str:
     """Read inner text from current page."""
+
     async def _read():
         page = await _get_or_create_page()
         title = await page.title()
@@ -408,10 +449,8 @@ def browser_read_page(args: dict) -> str:
     description="Open a new browser tab with an optional URL.",
     parameters={
         "type": "object",
-        "properties": {
-            "url": {"type": "string", "description": "URL to open in the new tab (default 'about:blank')"}
-        }
-    }
+        "properties": {"url": {"type": "string", "description": "URL to open in the new tab (default 'about:blank')"}},
+    },
 )
 def browser_new_tab(args: dict) -> str:
     """Open a new browser tab."""
@@ -438,11 +477,9 @@ def browser_new_tab(args: dict) -> str:
     description="Switch active browser focus to a specific tab by 0-based index.",
     parameters={
         "type": "object",
-        "properties": {
-            "index": {"type": "integer", "description": "0-based tab index to bring to focus"}
-        },
-        "required": ["index"]
-    }
+        "properties": {"index": {"type": "integer", "description": "0-based tab index to bring to focus"}},
+        "required": ["index"],
+    },
 )
 def browser_switch_tab(args: dict) -> str:
     """Switch active tab focus."""
@@ -473,9 +510,9 @@ def browser_switch_tab(args: dict) -> str:
         "type": "object",
         "properties": {
             "direction": {"type": "string", "description": "Scroll direction: 'down', 'up', 'top', or 'bottom'"},
-            "amount": {"type": "integer", "description": "Pixel amount to scroll (default 500)"}
-        }
-    }
+            "amount": {"type": "integer", "description": "Pixel amount to scroll (default 500)"},
+        },
+    },
 )
 def browser_scroll(args: dict) -> str:
     """Scroll the current browser page."""
@@ -506,10 +543,13 @@ def browser_scroll(args: dict) -> str:
     parameters={
         "type": "object",
         "properties": {
-            "script": {"type": "string", "description": "JavaScript code string to evaluate (e.g. 'document.title' or 'document.links.length')"}
+            "script": {
+                "type": "string",
+                "description": "JavaScript code string to evaluate (e.g. 'document.title' or 'document.links.length')",
+            }
         },
-        "required": ["script"]
-    }
+        "required": ["script"],
+    },
 )
 def browser_eval_js(args: dict) -> str:
     """Evaluate JavaScript inside the active page."""
@@ -529,17 +569,14 @@ def browser_eval_js(args: dict) -> str:
         return f"Browser JS Evaluation Error: {exc}"
 
 
-
 @register_tool(
     name="browser_history",
     description="Execute browser history actions: 'back', 'forward', or 'reload'.",
     parameters={
         "type": "object",
-        "properties": {
-            "action": {"type": "string", "description": "Action name: 'back', 'forward', or 'reload'"}
-        },
-        "required": ["action"]
-    }
+        "properties": {"action": {"type": "string", "description": "Action name: 'back', 'forward', or 'reload'"}},
+        "required": ["action"],
+    },
 )
 def browser_history(args: dict) -> str:
     """Execute browser history action."""
@@ -568,8 +605,8 @@ def browser_history(args: dict) -> str:
         "type": "object",
         "properties": {
             "filename": {"type": "string", "description": "Target PNG filename, default is browser_screenshot.png"}
-        }
-    }
+        },
+    },
 )
 def browser_screenshot(args: dict) -> str:
     """Capture page screenshot."""

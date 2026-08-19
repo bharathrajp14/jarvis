@@ -4,13 +4,12 @@ from __future__ import annotations
 import logging
 import os
 import re
-import shutil
 import sys
 import tempfile
 import time
 import uuid
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, Optional
 
 from .capability_checker import CapabilityChecker, get_capability_checker
 from .completion_gate import TaskCompletionGate, get_task_completion_gate
@@ -21,12 +20,10 @@ from .recovery_manager import RecoveryManager, get_recovery_manager
 from .trace import ExecutionTrace
 from .types import (
     DependencyDeclaration,
-    EnvironmentProfile,
     ExecutionResult,
     ExecutionStatus,
     RepairPolicy,
     RuntimeType,
-    VerificationOutcome,
 )
 from .verifier import UniversalVerifier, get_universal_verifier
 
@@ -36,7 +33,7 @@ logger = logging.getLogger("JARVIS.UniversalExecutionRuntime")
 class UniversalExecutionRuntime:
     """
     Master Universal Execution Runtime Engine for BR JARVIS MK40.2.
-    
+
     Orchestrates:
     - 6-Tier Deterministic Environment Resolution
     - Machine-Readable Universal Dependency Engine & Import Intelligence
@@ -93,7 +90,9 @@ class UniversalExecutionRuntime:
         t0 = time.perf_counter()
 
         if trace:
-            trace.add_event("EXECUTION", f"Executing {lang} code ({len(code)} chars)", {"lang": lang, "timeout": timeout_sec})
+            trace.add_event(
+                "EXECUTION", f"Executing {lang} code ({len(code)} chars)", {"lang": lang, "timeout": timeout_sec}
+            )
 
         # Strip markdown code blocks if present
         clean_code = code.strip()
@@ -111,7 +110,10 @@ class UniversalExecutionRuntime:
             env_prof = self.env_resolver.resolve_python()
 
         if trace:
-            trace.add_event("ENVIRONMENT", f"Resolved runtime: {env_prof.runtime_type.value} ({env_prof.precedence_source}) -> {env_prof.executable}")
+            trace.add_event(
+                "ENVIRONMENT",
+                f"Resolved runtime: {env_prof.runtime_type.value} ({env_prof.precedence_source}) -> {env_prof.executable}",
+            )
 
         # 2. Dependency Preflight Check (Python)
         if lang == "python":
@@ -129,12 +131,14 @@ class UniversalExecutionRuntime:
                             )
                             if repair_act and self.recovery_mgr.execute_repair(repair_act):
                                 if trace:
-                                    trace.add_event("RECOVERY", f"Auto-repaired package '{pkg}' in {env_prof.executable}")
+                                    trace.add_event(
+                                        "RECOVERY", f"Auto-repaired package '{pkg}' in {env_prof.executable}"
+                                    )
 
         # 3. Create isolated script file in jail directory
         jail_dir = Path(tempfile.gettempdir()) / "jarvis_runtime_jails" / f"jail_{uuid.uuid4().hex[:10]}"
         jail_dir.mkdir(parents=True, exist_ok=True)
-        
+
         ext_map = {"python": ".py", "javascript": ".js", "powershell": ".ps1", "bash": ".sh"}
         script_file = jail_dir / f"main{ext_map.get(lang, '.py')}"
         script_file.write_text(clean_code, encoding="utf-8")
@@ -145,7 +149,15 @@ class UniversalExecutionRuntime:
         elif lang == "javascript":
             cmd = ["node", str(script_file)]
         elif lang == "powershell":
-            cmd = ["powershell", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", str(script_file)]
+            cmd = [
+                "powershell",
+                "-NoProfile",
+                "-NonInteractive",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                str(script_file),
+            ]
         else:
             cmd = [env_prof.executable, str(script_file)]
 
@@ -179,6 +191,7 @@ class UniversalExecutionRuntime:
         if export_artifacts and jail_dir.exists():
             try:
                 from brjarvis.agent.artifacts import get_artifact_manager
+
                 mgr = get_artifact_manager()
                 for p in jail_dir.rglob("*"):
                     if p.is_file() and p.name not in ("main.py", "main.js", "main.ps1", "main.sh"):
@@ -198,6 +211,7 @@ class UniversalExecutionRuntime:
         # 8. Clean up jail directory
         try:
             import shutil
+
             shutil.rmtree(jail_dir, ignore_errors=True)
         except Exception:
             pass
@@ -232,7 +246,9 @@ class UniversalExecutionRuntime:
             dep_report = self.dep_resolver.verify_dependencies(declaration, env=env_prof)
             if not dep_report.satisfied:
                 if trace:
-                    trace.add_event("DEPENDENCY", f"Tool '{tool_name}' missing dependencies: {dep_report.error_summary}")
+                    trace.add_event(
+                        "DEPENDENCY", f"Tool '{tool_name}' missing dependencies: {dep_report.error_summary}"
+                    )
                 if auto_repair and dep_report.missing_packages:
                     for pkg in dep_report.missing_packages:
                         repair_act = self.recovery_mgr.diagnose_failure(
@@ -245,11 +261,12 @@ class UniversalExecutionRuntime:
         # 2. Invoke Handler
         try:
             import inspect
+
             if inspect.iscoroutinefunction(handler):
                 import asyncio
+
                 try:
                     loop = asyncio.get_running_loop()
-                    import concurrent.futures
                     future = asyncio.run_coroutine_threadsafe(handler(args), loop)
                     raw_res = future.result(timeout=60.0)
                 except RuntimeError:
@@ -262,7 +279,7 @@ class UniversalExecutionRuntime:
 
             # 3. Post-execution physical side-effect verification
             v_outcome = self.verifier.verify_execution(tool_name, args, str_output, return_code=0)
-            
+
             status = v_outcome.status
             if not v_outcome.verified:
                 status = ExecutionStatus.VERIFICATION_FAILED

@@ -1,18 +1,17 @@
 # career/application_engine/tracker.py — Canonical Lifecycle Application Tracker Bridge
 from __future__ import annotations
 
-import json
 import logging
 import time
 import uuid
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Dict, List, Optional
+
+from brjarvis.core.paths import paths
 
 from ..crm.database import get_career_crm_db
 from ..crm.state_machine import ApplicationStateMachine
-from ..models import Application, ApplicationRecord, ApplicationStatus, JobPosting, PriorityLevel
-
-from brjarvis.core.paths import paths
+from ..models import Application, ApplicationStatus, JobPosting, PriorityLevel
 
 logger = logging.getLogger("JARVIS.ApplicationTracker")
 
@@ -71,7 +70,13 @@ class ApplicationTracker:
         )
 
         self.crm_db.save_application(app)
-        logger.info("📋 Application created: [%s] for %s — %s (%s)", app.application_id, app.company, app.job_title, status.value)
+        logger.info(
+            "📋 Application created: [%s] for %s — %s (%s)",
+            app.application_id,
+            app.company,
+            app.job_title,
+            status.value,
+        )
         return app
 
     def update_status(
@@ -121,4 +126,3 @@ def get_instance(storage_dir: Optional[Path | str] = None) -> ApplicationTracker
 
 
 get_application_tracker = get_instance
-

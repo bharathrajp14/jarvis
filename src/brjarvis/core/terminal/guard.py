@@ -5,6 +5,7 @@ Manages alternate screen buffers, mouse tracking modes (Normal, Highlight, Any, 
 cursor visibility, and emergency signal-safe terminal restoration.
 Guarantees the user's terminal is never left corrupted.
 """
+
 from __future__ import annotations
 
 import atexit
@@ -14,6 +15,7 @@ import os
 import signal
 import sys
 from typing import Any, Generator, Optional
+
 from .events import MouseCaptureMode
 
 logger = logging.getLogger("JARVIS.TerminalGuard")
@@ -22,28 +24,28 @@ logger = logging.getLogger("JARVIS.TerminalGuard")
 
 # Alternate screen buffer
 ENTER_ALT_SCREEN = "\033[?1049h"
-EXIT_ALT_SCREEN  = "\033[?1049l"
+EXIT_ALT_SCREEN = "\033[?1049l"
 
 # Cursor visibility
-HIDE_CURSOR      = "\033[?25l"
-SHOW_CURSOR      = "\033[?25h"
+HIDE_CURSOR = "\033[?25l"
+SHOW_CURSOR = "\033[?25h"
 
 # Bracketed paste
-ENABLE_BRACKETED_PASTE  = "\033[?2004h"
+ENABLE_BRACKETED_PASTE = "\033[?2004h"
 DISABLE_BRACKETED_PASTE = "\033[?2004l"
 
 # Mouse tracking modes
-ENABLE_MOUSE_SGR        = "\033[?1006h"  # SGR extended coordinates mode
-DISABLE_MOUSE_SGR       = "\033[?1006l"
+ENABLE_MOUSE_SGR = "\033[?1006h"  # SGR extended coordinates mode
+DISABLE_MOUSE_SGR = "\033[?1006l"
 
-ENABLE_MOUSE_BUTTON     = "\033[?1000h"  # Report button click & release
-DISABLE_MOUSE_BUTTON    = "\033[?1000l"
+ENABLE_MOUSE_BUTTON = "\033[?1000h"  # Report button click & release
+DISABLE_MOUSE_BUTTON = "\033[?1000l"
 
-ENABLE_MOUSE_DRAG       = "\033[?1002h"  # Report button events & mouse drag
-DISABLE_MOUSE_DRAG      = "\033[?1002l"
+ENABLE_MOUSE_DRAG = "\033[?1002h"  # Report button events & mouse drag
+DISABLE_MOUSE_DRAG = "\033[?1002l"
 
-ENABLE_MOUSE_ALL        = "\033[?1003h"  # Report all mouse movements (hover)
-DISABLE_MOUSE_ALL       = "\033[?1003l"
+ENABLE_MOUSE_ALL = "\033[?1003h"  # Report all mouse movements (hover)
+DISABLE_MOUSE_ALL = "\033[?1003l"
 
 # Reset all attributes & clear line
 RESET_TERMINAL_ATTRIBUTES = "\033[0m"
@@ -102,9 +104,17 @@ class TerminalStateGuard:
     def _on_signal(self, signum: int, frame: Any) -> None:
         """Emergency restoration on signal before propagating."""
         self.restore_all()
-        if signum == signal.SIGINT and callable(self._prev_sigint) and self._prev_sigint not in (signal.SIG_IGN, signal.SIG_DFL, self._on_signal):
+        if (
+            signum == signal.SIGINT
+            and callable(self._prev_sigint)
+            and self._prev_sigint not in (signal.SIG_IGN, signal.SIG_DFL, self._on_signal)
+        ):
             self._prev_sigint(signum, frame)
-        elif signum == signal.SIGTERM and callable(self._prev_sigterm) and self._prev_sigterm not in (signal.SIG_IGN, signal.SIG_DFL, self._on_signal):
+        elif (
+            signum == signal.SIGTERM
+            and callable(self._prev_sigterm)
+            and self._prev_sigterm not in (signal.SIG_IGN, signal.SIG_DFL, self._on_signal)
+        ):
             self._prev_sigterm(signum, frame)
         else:
             sys.exit(130 if signum == signal.SIGINT else 143)
@@ -126,6 +136,7 @@ class TerminalStateGuard:
             return
         try:
             import ctypes
+
             kernel32 = ctypes.windll.kernel32
             GENERIC_READ_WRITE = 0x80000000 | 0x40000000
             FILE_SHARE_READ_WRITE = 0x00000001 | 0x00000002
@@ -138,7 +149,9 @@ class TerminalStateGuard:
             ENABLE_VIRTUAL_TERMINAL_PROCESSING = 0x0004
 
             # Open CONIN$ to access real console input buffer even if redirected
-            h_in = kernel32.CreateFileW("CONIN$", GENERIC_READ_WRITE, FILE_SHARE_READ_WRITE, None, OPEN_EXISTING, 0, None)
+            h_in = kernel32.CreateFileW(
+                "CONIN$", GENERIC_READ_WRITE, FILE_SHARE_READ_WRITE, None, OPEN_EXISTING, 0, None
+            )
             if h_in and h_in != -1:
                 self._conin_handle = h_in
                 mode_in = ctypes.c_ulong()
@@ -147,11 +160,15 @@ class TerminalStateGuard:
                         self._orig_conin_mode = mode_in.value
 
                     # Disable QuickEdit & enable mouse input
-                    new_mode_in = (mode_in.value | ENABLE_MOUSE_INPUT | ENABLE_WINDOW_INPUT | ENABLE_EXTENDED_FLAGS) & ~ENABLE_QUICK_EDIT_MODE
+                    new_mode_in = (
+                        mode_in.value | ENABLE_MOUSE_INPUT | ENABLE_WINDOW_INPUT | ENABLE_EXTENDED_FLAGS
+                    ) & ~ENABLE_QUICK_EDIT_MODE
                     kernel32.SetConsoleMode(h_in, new_mode_in)
 
             # Open CONOUT$ to enable Virtual Terminal Processing
-            h_out = kernel32.CreateFileW("CONOUT$", GENERIC_READ_WRITE, FILE_SHARE_READ_WRITE, None, OPEN_EXISTING, 0, None)
+            h_out = kernel32.CreateFileW(
+                "CONOUT$", GENERIC_READ_WRITE, FILE_SHARE_READ_WRITE, None, OPEN_EXISTING, 0, None
+            )
             if h_out and h_out != -1:
                 self._conout_handle = h_out
                 mode_out = ctypes.c_ulong()
@@ -169,6 +186,7 @@ class TerminalStateGuard:
             return
         try:
             import ctypes
+
             kernel32 = ctypes.windll.kernel32
             ENABLE_EXTENDED_FLAGS = 0x0080
 

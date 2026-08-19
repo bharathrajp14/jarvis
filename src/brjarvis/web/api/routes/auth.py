@@ -4,6 +4,7 @@ Provides secure session authentication and one-time short-lived ticket issuance 
 Prevents passing long-lived credentials in URL query parameters.
 Supports both versioned (/api/v1/auth/*) and root (/api/auth/*) paths.
 """
+
 from __future__ import annotations
 
 import hmac
@@ -30,6 +31,10 @@ _TICKET_TTL_SECONDS = 60.0
 _SESSION_STORE: Dict[str, float] = {}
 _SESSION_TTL_SECONDS = 86400.0  # 24 hours
 
+# Desktop-to-browser handoff storage: one-time token -> expiry timestamp.
+_HANDOFF_STORE: Dict[str, float] = {}
+_HANDOFF_TTL_SECONDS = 45.0
+
 
 def _prune_expired() -> None:
     now = time.time()
@@ -40,6 +45,10 @@ def _prune_expired() -> None:
     expired_sessions = [s for s, exp in _SESSION_STORE.items() if exp < now]
     for s in expired_sessions:
         _SESSION_STORE.pop(s, None)
+
+    expired_handoffs = [h for h, exp in _HANDOFF_STORE.items() if exp < now]
+    for h in expired_handoffs:
+        _HANDOFF_STORE.pop(h, None)
 
 
 def issue_ws_ticket() -> str:
@@ -86,7 +95,6 @@ class LoginRequest(BaseModel):
 
 class LoginResponse(BaseModel):
     success: bool
-    session_token: str
     expires_in: int
     auth_required: bool = True
 
@@ -100,6 +108,19 @@ class AuthStatusResponse(BaseModel):
 class TicketResponse(BaseModel):
     ticket: str
     expires_in: int
+
+
+class DesktopHandoffRequest(BaseModel):
+    redirect: str = Field(default="/web/", description="Same-origin workspace redirect path")
+
+
+class DesktopHandoffResponse(BaseModel):
+    url: str
+    expires_in: int
+
+
+class DesktopHandoffRedeemRequest(BaseModel):
+    handoff: str = Field(..., min_length=16, max_length=256)
 
 
 def _extract_token(request: Request, authorization: Optional[str], x_api_key: Optional[str]) -> Optional[str]:
@@ -130,9 +151,7 @@ def _is_authorized(request: Request, authorization: Optional[str], x_api_key: Op
 @router.get("/api/auth/status", response_model=AuthStatusResponse)
 @router.get("/api/v1/auth/status", response_model=AuthStatusResponse)
 async def get_auth_status(
-    request: Request,
-    authorization: Optional[str] = Header(None),
-    x_api_key: Optional[str] = Header(None)
+    request: Request, authorization: Optional[str] = Header(None), x_api_key: Optional[str] = Header(None)
 ):
     """Inspect whether server authentication is active and if caller is authenticated."""
     auth_req = bool(SERVER_API_KEY)
@@ -162,18 +181,57 @@ async def login(login_req: LoginRequest, response: Response):
     )
     return LoginResponse(
         success=True,
-        session_token=session_token,
         expires_in=int(_SESSION_TTL_SECONDS),
         auth_required=bool(SERVER_API_KEY),
     )
 
 
+@router.post("/api/auth/desktop-handoff", response_model=DesktopHandoffResponse)
+@router.post("/api/v1/auth/desktop-handoff", response_model=DesktopHandoffResponse)
+async def create_desktop_handoff(
+    req: DesktopHandoffRequest,
+    request: Request,
+    authorization: Optional[str] = Header(None),
+    x_api_key: Optional[str] = Header(None),
+):
+    """Create a short-lived browser handoff without exposing the native API key."""
+    if not _is_authorized(request, authorization, x_api_key):
+        raise HTTPException(status_code=401, detail="Unauthorized: Invalid API Key")
+    redirect = req.redirect.strip() or "/web/"
+    if not redirect.startswith("/web") or "//" in redirect:
+        raise HTTPException(status_code=400, detail="Workspace redirect must be same-origin under /web")
+    _prune_expired()
+    handoff = secrets.token_urlsafe(32)
+    _HANDOFF_STORE[handoff] = time.time() + _HANDOFF_TTL_SECONDS
+    separator = "&" if "?" in redirect else "?"
+    return DesktopHandoffResponse(url=f"{redirect}{separator}handoff={handoff}", expires_in=int(_HANDOFF_TTL_SECONDS))
+
+
+@router.post("/api/auth/desktop-handoff/redeem")
+@router.post("/api/v1/auth/desktop-handoff/redeem")
+async def redeem_desktop_handoff(req: DesktopHandoffRedeemRequest, response: Response):
+    """Consume a one-time desktop handoff and establish the normal browser session cookie."""
+    _prune_expired()
+    expiry = _HANDOFF_STORE.pop(req.handoff, None)
+    if expiry is None or expiry < time.time():
+        raise HTTPException(status_code=401, detail="Workspace handoff expired or already used")
+    session_token = create_session()
+    response.set_cookie(
+        key="jarvis_session",
+        value=session_token,
+        max_age=int(_SESSION_TTL_SECONDS),
+        httponly=True,
+        samesite="strict",
+        secure=os.environ.get("JARVIS_COOKIE_SECURE", "false").strip().lower() in {"1", "true", "yes", "on"},
+    )
+    return {"success": True, "expires_in": int(_SESSION_TTL_SECONDS)}
+
+
 @router.post("/api/auth/ws-ticket", response_model=TicketResponse)
 @router.post("/api/v1/auth/ws-ticket", response_model=TicketResponse)
 async def request_ws_ticket(
-    request: Request,
-    authorization: Optional[str] = Header(None),
-    x_api_key: Optional[str] = Header(None)
+
+    request: Request, authorization: Optional[str] = Header(None), x_api_key: Optional[str] = Header(None)
 ):
     """Issue a short-lived one-time ticket for WebSocket connection."""
     if not _is_authorized(request, authorization, x_api_key):

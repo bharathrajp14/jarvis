@@ -1,27 +1,17 @@
 # tests/integration/test_unified_runtime_e2e.py — End-to-End Unified Runtime & Contracts Integration Tests
 from __future__ import annotations
 
-import os
-import pytest
 import time
-from pathlib import Path
 
-from brjarvis.contracts.agent import AgentRequest, AgentRole
-from brjarvis.contracts.session import SessionState, SessionCheckpoint, Handoff
-from brjarvis.contracts.tool import RiskLevel, ToolRequest, ToolResult
-from brjarvis.contracts.security import IdentityScope, PermissionContext, ActionDecision as ContractActionDecision
 from brjarvis.agent.session import (
-    AgentSession,
-    get_or_create_session,
-    list_active_sessions,
     delete_session,
+    get_or_create_session,
     reset_active_session,
 )
-from brjarvis.memory.canonical_db import get_canonical_db
-from brjarvis.memory.unified_memory import get_unified_memory, CanonicalMemory
-from brjarvis.memory.domain import MemoryType, RetentionClass, SourceType
 from brjarvis.guardian.prompt_injection_shield import get_prompt_injection_shield
-from brjarvis.security.policy_engine import PolicyEngine, PolicyContext, PermissionMode, ActionDecision
+from brjarvis.memory.domain import MemoryType, RetentionClass, SourceType
+from brjarvis.memory.unified_memory import CanonicalMemory, get_unified_memory
+from brjarvis.security.policy_engine import ActionDecision, PermissionMode, PolicyContext, PolicyEngine
 
 
 class TestUnifiedRuntimeE2E:
@@ -140,7 +130,11 @@ class TestUnifiedRuntimeE2E:
         # 3. Hybrid search retrieval
         results = mem_mgr.search(f"{test_entity} PostgreSQL pgvector", limit=5)
         assert len(results) >= 1
-        found_matches = [r for r in results if (r.get("entity") if isinstance(r, dict) else getattr(r, "entity", None)) == test_entity]
+        found_matches = [
+            r
+            for r in results
+            if (r.get("entity") if isinstance(r, dict) else getattr(r, "entity", None)) == test_entity
+        ]
         assert len(found_matches) >= 1
 
         # 4. User correction (authority = 1.0)

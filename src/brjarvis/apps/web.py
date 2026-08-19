@@ -3,10 +3,13 @@ from __future__ import annotations
 
 import os
 import sys
+
 import uvicorn
+
 
 def find_available_port(start_port: int = 8000, max_attempts: int = 20) -> int:
     import socket
+
     for p in range(start_port, start_port + max_attempts):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             try:
@@ -23,11 +26,13 @@ def main() -> int:
     host = os.environ.get("HOST", "127.0.0.1")
     try:
         from brjarvis.web.api.server import create_app
+
         app = create_app()
     except Exception:
         from brjarvis.web.api.app import app
     uvicorn.run(app, host=host, port=port, log_level="info")
     return 0
+
 
 if __name__ == "__main__":
     sys.exit(main())

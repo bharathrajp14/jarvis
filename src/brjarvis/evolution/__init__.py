@@ -16,6 +16,7 @@ Example usage::
     for p in proposals:
         print(f"[{p.source}] {p.topic}: {p.action}")
 """
+
 from __future__ import annotations
 
 from brjarvis.evolution.engine import (

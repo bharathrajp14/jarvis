@@ -1,22 +1,21 @@
 # core/execution/trace.py — Universal Execution Trace & Telemetry Engine
 from __future__ import annotations
 
-import json
 import logging
 import re
 import time
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
-from .types import ExecutionResult, ExecutionStatus
+from .types import ExecutionStatus
 
 logger = logging.getLogger("JARVIS.ExecutionTrace")
 
 _SECRET_PATTERNS = [
-    re.compile(r'(AIzaSy[0-9A-Za-z\-_]{33})'),
-    re.compile(r'(sk-[a-zA-Z0-9_\-]{20,})'),
-    re.compile(r'(ghp_[a-zA-Z0-9]{36})'),
-    re.compile(r'(Bearer\s+[a-zA-Z0-9_\-\.]{20,})'),
+    re.compile(r"(AIzaSy[0-9A-Za-z\-_]{33})"),
+    re.compile(r"(sk-[a-zA-Z0-9_\-]{20,})"),
+    re.compile(r"(ghp_[a-zA-Z0-9]{36})"),
+    re.compile(r"(Bearer\s+[a-zA-Z0-9_\-\.]{20,})"),
 ]
 
 
@@ -26,7 +25,7 @@ def redact_secrets(text: str) -> str:
         return text
     clean = text
     for p in _SECRET_PATTERNS:
-        clean = p.sub(r'[\1_REDACTED]', clean)
+        clean = p.sub(r"[\1_REDACTED]", clean)
     return clean
 
 

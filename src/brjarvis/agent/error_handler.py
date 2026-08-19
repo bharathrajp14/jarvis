@@ -1,32 +1,32 @@
 # agent/error_handler.py — Automated Error Recovery & Reflection for JARVIS MK37
 from __future__ import annotations
 
-import logging
 import json
+import logging
 import os
 import re
-import sys
-from pathlib import Path
 from enum import Enum
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
 
 from brjarvis.core.paths import paths
 
+
 def get_base_dir() -> Path:
     return paths.PROJECT_ROOT
 
 
-BASE_DIR        = get_base_dir()
+BASE_DIR = get_base_dir()
 API_CONFIG_PATH = paths.CONFIG_ROOT / "api_keys.json"
 
 
 class ErrorDecision(Enum):
-    RETRY       = "retry"      
-    SKIP        = "skip"       
-    REPLAN      = "replan"     
-    ABORT       = "abort"    
+    RETRY = "retry"
+    SKIP = "skip"
+    REPLAN = "replan"
+    ABORT = "abort"
 
 
 ERROR_ANALYST_PROMPT = """You are the error recovery module of JARVIS MK37 AI assistant.
@@ -66,16 +66,11 @@ def _get_api_key() -> str:
             with open(API_CONFIG_PATH, "r", encoding="utf-8") as f:
                 return json.load(f).get("gemini_api_key", "").strip()
     except Exception as e:
-        logger.debug('Suppressed exception: %s', e)
+        logger.debug("Suppressed exception: %s", e)
     return ""
 
 
-def analyze_error(
-    step: dict,
-    error: str,
-    attempt: int = 1,
-    max_attempts: int = 2
-) -> dict:
+def analyze_error(step: dict, error: str, attempt: int = 1, max_attempts: int = 2) -> dict:
     """
     Analyzes a failed step and returns a recovery decision. Automatically logs
     the failure lesson to the LessonStore to prevent future errors.
@@ -83,45 +78,50 @@ def analyze_error(
     # Auto-log failure lesson to LessonStore
     try:
         from brjarvis.memory.lessons import LessonStore
+
         ls = LessonStore()
         ls.add_lesson(
             topic=f"Failed tool: {step.get('tool', 'unknown')}",
             correction=f"Error in '{step.get('description', '')}': {error[:120]}",
             source="executor_error_handler",
-            weight=1.5
+            weight=1.5,
         )
     except Exception as e:
-        logger.debug('Suppressed exception: %s', e)
+        logger.debug("Suppressed exception: %s", e)
     if attempt >= max_attempts:
         logger.warning(f"[ErrorHandler] ⚠️ Max attempts reached for step {step.get('step')} — forcing replan")
         return {
-            "decision":      ErrorDecision.REPLAN,
-            "reason":        f"Failed {attempt} times: {error[:100]}",
+            "decision": ErrorDecision.REPLAN,
+            "reason": f"Failed {attempt} times: {error[:100]}",
             "fix_suggestion": "Try a completely different approach or tool",
-            "max_retries":   0,
-            "user_message":  "Trying a different approach, sir."
+            "max_retries": 0,
+            "user_message": "Trying a different approach, sir.",
         }
 
     try:
         from brjarvis.actions._gemini_client import gemini_generate
-        text = gemini_generate(
-            f"{ERROR_ANALYST_PROMPT}\n\n{prompt}",
-            model="gemini-3.6-flash-high"
-        ).strip()
+
+        prompt = (
+            f"Failed step: {json.dumps(step, default=str, ensure_ascii=False)}\n"
+            f"Error: {error}\n"
+            f"Attempt: {attempt} of {max_attempts}\n"
+        )
+        text = gemini_generate(f"{ERROR_ANALYST_PROMPT}\n\n{prompt}", model="gemini-3.6-flash-high").strip()
+
         text = re.sub(r"```(?:json)?", "", text).strip().rstrip("`").strip()
 
         result = json.loads(text)
         decision_str = result.get("decision", "replan").lower()
         decision_map = {
-            "retry":  ErrorDecision.RETRY,
-            "skip":   ErrorDecision.SKIP,
+            "retry": ErrorDecision.RETRY,
+            "skip": ErrorDecision.SKIP,
             "replan": ErrorDecision.REPLAN,
-            "abort":  ErrorDecision.ABORT,
+            "abort": ErrorDecision.ABORT,
         }
         result["decision"] = decision_map.get(decision_str, ErrorDecision.REPLAN)
 
         if step.get("critical") and result["decision"] == ErrorDecision.SKIP:
-            result["decision"]     = ErrorDecision.REPLAN
+            result["decision"] = ErrorDecision.REPLAN
             result["user_message"] = "This step is critical — finding alternative approach, sir."
 
         logger.warning(f"[ErrorHandler] Decision: {result['decision'].value} — {result.get('reason', '')}")
@@ -130,11 +130,11 @@ def analyze_error(
     except Exception as e:
         logger.warning(f"[ErrorHandler] ⚠️ Analysis failed: {e} — defaulting to replan")
         return {
-            "decision":       ErrorDecision.REPLAN,
-            "reason":         str(e),
+            "decision": ErrorDecision.REPLAN,
+            "reason": str(e),
             "fix_suggestion": "Try alternative approach",
-            "max_retries":    1,
-            "user_message":   "Encountered an issue, adjusting approach, sir."
+            "max_retries": 1,
+            "user_message": "Encountered an issue, adjusting approach, sir.",
         }
 
 
@@ -146,9 +146,9 @@ def generate_fix(step: dict, error: str, fix_suggestion: str) -> dict:
     prompt = f"""A task step failed. Generate a replacement step.
 
 Original step:
-Tool: {step.get('tool')}
-Description: {step.get('description')}
-Parameters: {json.dumps(step.get('parameters', {}), indent=2)}
+Tool: {step.get("tool")}
+Description: {step.get("description")}
+Parameters: {json.dumps(step.get("parameters", {}), indent=2)}
 
 Error: {error[:300]}
 Fix suggestion: {fix_suggestion}
@@ -158,31 +158,26 @@ Return ONLY the Python code, no explanation."""
 
     try:
         from brjarvis.actions._gemini_client import gemini_generate
+
         code = gemini_generate(prompt, model="gemini-3.6-flash-high").strip()
         code = re.sub(r"```(?:python)?", "", code).strip().rstrip("`").strip()
 
         return {
-            "step":        step.get("step"),
-            "tool":        "run_code",
+            "step": step.get("step"),
+            "tool": "run_code",
             "description": f"Auto-fix for: {step.get('description')}",
-
-            "parameters": {
-                "action":      "run",
-                "description": fix_suggestion,
-                "code":        code,
-                "language":    "python"
-            },
+            "parameters": {"action": "run", "description": fix_suggestion, "code": code, "language": "python"},
             "depends_on": step.get("depends_on", []),
-            "critical":   step.get("critical", False)
+            "critical": step.get("critical", False),
         }
 
     except Exception as e:
         logger.warning(f"[ErrorHandler] ⚠️ Fix generation failed: {e}")
         return {
-            "step":        step.get("step"),
-            "tool":        "web_search",
+            "step": step.get("step"),
+            "tool": "web_search",
             "description": f"Fallback search for: {step.get('description')}",
-            "parameters":  {"query": step.get("description", "")[:200]},
-            "depends_on":  step.get("depends_on", []),
-            "critical":    step.get("critical", False)
+            "parameters": {"query": step.get("description", "")[:200]},
+            "depends_on": step.get("depends_on", []),
+            "critical": step.get("critical", False),
         }

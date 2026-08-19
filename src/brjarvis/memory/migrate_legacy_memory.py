@@ -8,16 +8,16 @@ Migrates all legacy memory sources:
 Imports all records into the authoritative Canonical SQLite WAL Store (`canonical_memories`)
 with complete provenance mapping, deduplication, and zero data loss.
 """
+
 from __future__ import annotations
 
 import json
 import logging
-import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from brjarvis.core.paths import paths
-from .canonical_db import get_canonical_db
+
 from .domain import CanonicalMemory, MemoryStatus, MemoryType, SourceType
 from .store import CanonicalMemoryStore, get_canonical_store
 
@@ -52,7 +52,10 @@ class LegacyMemoryMigrator:
                 report["errors"].append(f"JSON migration error: {e}")
 
         # 2. Migrate Markdown Memory Files
-        for scope, mem_dir in [("user", Path.home() / ".jarvis" / "memory"), ("project", Path.cwd() / ".jarvis" / "memory")]:
+        for scope, mem_dir in [
+            ("user", Path.home() / ".jarvis" / "memory"),
+            ("project", Path.cwd() / ".jarvis" / "memory"),
+        ]:
             if mem_dir.exists():
                 for md_file in mem_dir.glob("*.md"):
                     if md_file.name == "MEMORY.md":

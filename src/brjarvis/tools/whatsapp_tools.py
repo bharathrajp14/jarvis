@@ -4,15 +4,16 @@ High-Fidelity Verified WhatsApp Automation Suite for BR JARVIS MK40.2 / MK41.
 Ensures recipient phone resolution, scheduled queues, contact management,
 and canonical ToolResult evidence contracts.
 """
+
 from __future__ import annotations
 
 import json
-from typing import Any, Dict, Optional
 
-from .domain import RiskLevel, SideEffectLevel, ToolCategory, ToolErrorCode, VerificationStrategy
+from brjarvis.actions.whatsapp_automation import get_whatsapp_automation
+
+from .domain import ToolErrorCode
 from .registry import register_tool
 from .tool_result import ToolResult
-from brjarvis.actions.whatsapp_automation import get_whatsapp_automation
 
 
 @register_tool(
@@ -79,7 +80,10 @@ def tool_send_whatsapp(args: dict) -> ToolResult:
         "properties": {
             "recipient": {"type": "string", "description": "Contact name or phone number"},
             "message": {"type": "string", "description": "Message content"},
-            "send_at": {"type": "string", "description": "Target date/time string (e.g. '2026-08-20 10:00:00' or '15:30')"},
+            "send_at": {
+                "type": "string",
+                "description": "Target date/time string (e.g. '2026-08-20 10:00:00' or '15:30')",
+            },
         },
         "required": ["recipient", "message", "send_at"],
     },

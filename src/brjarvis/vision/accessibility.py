@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import logging
 import sys
-from typing import List, Optional
+from typing import Optional
 
 from .types import ScreenBoundingBox, SemanticUIGraph, SemanticUINode, UIRole
 
@@ -35,6 +35,7 @@ class AccessibilityBridge:
         """Extract Windows UI Automation control hierarchy via ctypes."""
         try:
             import ctypes
+
             user32 = ctypes.windll.user32
 
             # Root node (Desktop)
@@ -77,6 +78,7 @@ class AccessibilityBridge:
                 return True
 
             import ctypes.wintypes
+
             WNDENUMPROC = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p)
             user32.EnumWindows(WNDENUMPROC(enum_windows_proc), 0)
 

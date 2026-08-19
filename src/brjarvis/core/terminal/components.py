@@ -4,33 +4,22 @@ Reusable rich terminal UI components for BR JARVIS agent terminal.
 Provides consistent visual semantics, collapsible outputs, glyph-based progress,
 and interactive prompts.
 """
+
 from __future__ import annotations
 
 import os
-import sys
-import time
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, Optional
 
+from ..version import CODENAME, VERSION
 from .theme import (
     COLOR_AMBER,
-    COLOR_BLUE,
-    COLOR_BORDER,
     COLOR_CYAN,
-    COLOR_DARK,
-    COLOR_DIM,
     COLOR_GREEN,
     COLOR_MAGENTA,
-    COLOR_MUTED,
-    COLOR_ORANGE,
-    COLOR_PANEL_BG,
-    COLOR_PURPLE,
     COLOR_RED,
-    COLOR_TEAL,
-    COLOR_WHITE,
-    Glyphs,
     MODE_COLORS,
+    Glyphs,
 )
-from ..version import CODENAME, VERSION
 
 try:
     from rich.box import DOUBLE, HEAVY, ROUNDED, SIMPLE
@@ -41,6 +30,7 @@ try:
     from rich.syntax import Syntax
     from rich.table import Table
     from rich.text import Text
+
     HAS_RICH = True
 except ImportError:
     HAS_RICH = False
@@ -59,7 +49,9 @@ class HeaderComponent:
         working_dir: str = "",
     ) -> None:
         if not HAS_RICH or not console:
-            print(f"[⚡ BR JARVIS v{VERSION} | Mode: {mode.upper()} | Model: {model} | ID: {session_id[:8]} | Perms: {permission_mode}]")
+            print(
+                f"[⚡ BR JARVIS v{VERSION} | Mode: {mode.upper()} | Model: {model} | ID: {session_id[:8]} | Perms: {permission_mode}]"
+            )
             return
 
         mode_color = MODE_COLORS.get(mode.lower(), COLOR_CYAN)
@@ -123,7 +115,9 @@ class WelcomeCard:
         left.append(f"{Glyphs.LIGHTNING} BR JARVIS MK40.2+ ", style="bold cyan")
         left.append(f"v{VERSION} ", style="bold white")
         left.append(f"({CODENAME})\n", style="dim")
-        left.append("Autonomous Cognitive Agent Terminal with Multimodal Reasoning & Tool Lifecycle.\n\n", style="white")
+        left.append(
+            "Autonomous Cognitive Agent Terminal with Multimodal Reasoning & Tool Lifecycle.\n\n", style="white"
+        )
 
         left.append("Quick Commands:\n", style="bold cyan")
         left.append("  /plan <goal>     ", style="bold teal")
@@ -252,7 +246,14 @@ class CollapsibleOutputComponent:
 
         if len(lines) <= max_lines:
             if syntax_lexer:
-                console.print(Panel(Syntax(content, syntax_lexer, theme="monokai", line_numbers=True), title=title, box=ROUNDED, border_style="dim cyan"))
+                console.print(
+                    Panel(
+                        Syntax(content, syntax_lexer, theme="monokai", line_numbers=True),
+                        title=title,
+                        box=ROUNDED,
+                        border_style="dim cyan",
+                    )
+                )
             else:
                 console.print(Panel(content, title=title, box=ROUNDED, border_style="dim cyan"))
         else:
@@ -445,4 +446,6 @@ class StatusPanelComponent:
         right.append(f"Tools Catalog: {telemetry.get('tools_count', 0)} registered\n", style="white")
 
         grid.add_row(left, right)
-        console.print(Panel(grid, title="[bold cyan]BR JARVIS Subsystem Health[/bold cyan]", box=ROUNDED, border_style="cyan"))
+        console.print(
+            Panel(grid, title="[bold cyan]BR JARVIS Subsystem Health[/bold cyan]", box=ROUNDED, border_style="cyan")
+        )

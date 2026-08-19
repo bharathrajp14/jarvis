@@ -1,4 +1,4 @@
-﻿# ui/colors.py — JARVIS Cyberpunk Color System & Palette Engine
+# ui/colors.py — JARVIS Cyberpunk Color System & Palette Engine
 # ==============================================================
 # Provides:
 #   C                  — singleton color namespace (all theme colors)
@@ -12,7 +12,7 @@ from __future__ import annotations
 import logging
 import platform
 
-from brjarvis.ui import _base_dir, setup_qt_paths
+from brjarvis.ui import setup_qt_paths
 
 # Ensure Qt plugin paths are set before importing Qt
 setup_qt_paths()
@@ -26,27 +26,27 @@ _OS = platform.system()  # "Windows" | "Darwin" | "Linux"
 
 # ── Cyberpunk Color Palette ───────────────────────────────────────────────────
 class C:
-    BG        = "#04070d"
-    PANEL     = "#080d19"
-    PANEL2    = "#0a101c"
-    BORDER    = "#0d3347"
-    BORDER_B  = "#1a5c7a"
-    BORDER_A  = "#0f4060"
-    PRI       = "#00f2fe"
-    PRI_DIM   = "#007a99"
-    PRI_GHO   = "#001f2e"
-    ACC       = "#7928ca"
-    ACC2      = "#ffcc00"
-    GREEN     = "#00dfa2"
-    GREEN_D   = "#00aa55"
-    RED       = "#f31260"
-    MUTED_C   = "#f31260"
-    TEXT      = "#f8fafc"
-    TEXT_DIM  = "#64748b"
-    TEXT_MED  = "#94a3b8"
-    WHITE     = "#ffffff"
-    DARK      = "#04070d"
-    BAR_BG    = "#080d19"
+    BG = "#04070d"
+    PANEL = "#080d19"
+    PANEL2 = "#0a101c"
+    BORDER = "#0d3347"
+    BORDER_B = "#1a5c7a"
+    BORDER_A = "#0f4060"
+    PRI = "#00f2fe"
+    PRI_DIM = "#007a99"
+    PRI_GHO = "#001f2e"
+    ACC = "#7928ca"
+    ACC2 = "#ffcc00"
+    GREEN = "#00dfa2"
+    GREEN_D = "#00aa55"
+    RED = "#f31260"
+    MUTED_C = "#f31260"
+    TEXT = "#f8fafc"
+    TEXT_DIM = "#64748b"
+    TEXT_MED = "#94a3b8"
+    WHITE = "#ffffff"
+    DARK = "#04070d"
+    BAR_BG = "#080d19"
 
 
 # Ana renge (accent) bağlı anahtarlar — durum renkleri (ACC, GREEN, RED…) sabit kalır
@@ -54,32 +54,46 @@ class C:
 
 class LightC:
     """Light theme color palette — mirrors C class structure."""
-    BG        = "#f8fafc"
-    PANEL     = "#f1f5f9"
-    PANEL2    = "#e2e8f0"
-    BORDER    = "#cbd5e1"
-    BORDER_B  = "#94a3b8"
-    BORDER_A  = "#93c5fd"
-    PRI       = "#0070f3"
-    PRI_DIM   = "#3b82f6"
-    PRI_GHO   = "#dbeafe"
-    ACC       = "#7928ca"
-    ACC2      = "#d4a000"
-    GREEN     = "#00a67e"
-    GREEN_D   = "#059669"
-    RED       = "#e0005a"
-    MUTED_C   = "#e0005a"
-    TEXT      = "#0f172a"
-    TEXT_DIM  = "#94a3b8"
-    TEXT_MED  = "#475569"
-    WHITE     = "#ffffff"
-    DARK      = "#0f172a"
-    BAR_BG    = "#f1f5f9"
+
+    BG = "#f8fafc"
+    PANEL = "#f1f5f9"
+    PANEL2 = "#e2e8f0"
+    BORDER = "#cbd5e1"
+    BORDER_B = "#94a3b8"
+    BORDER_A = "#93c5fd"
+    PRI = "#0070f3"
+    PRI_DIM = "#3b82f6"
+    PRI_GHO = "#dbeafe"
+    ACC = "#7928ca"
+    ACC2 = "#d4a000"
+    GREEN = "#00a67e"
+    GREEN_D = "#059669"
+    RED = "#e0005a"
+    MUTED_C = "#e0005a"
+    TEXT = "#0f172a"
+    TEXT_DIM = "#94a3b8"
+    TEXT_MED = "#475569"
+    WHITE = "#ffffff"
+    DARK = "#0f172a"
+    BAR_BG = "#f1f5f9"
+
 
 _HUE_LINKED = (
-    "BG", "PANEL", "PANEL2", "BORDER", "BORDER_B", "BORDER_A",
-    "PRI", "PRI_DIM", "PRI_GHO", "TEXT", "TEXT_DIM", "TEXT_MED",
-    "WHITE", "DARK", "BAR_BG",
+    "BG",
+    "PANEL",
+    "PANEL2",
+    "BORDER",
+    "BORDER_B",
+    "BORDER_A",
+    "PRI",
+    "PRI_DIM",
+    "PRI_GHO",
+    "TEXT",
+    "TEXT_DIM",
+    "TEXT_MED",
+    "WHITE",
+    "DARK",
+    "BAR_BG",
 )
 _PALETTE_DEFAULTS: dict[str, str] = {k: getattr(C, k) for k in _HUE_LINKED}
 
@@ -109,18 +123,17 @@ def apply_ui_accent(accent_hex: str) -> bool:
         b = int(h[5:7], 16) / 255
         return colorsys.rgb_to_hsv(r, g, b)
 
-    base_h            = _hsv(_PALETTE_DEFAULTS["PRI"])[0]
+    base_h = _hsv(_PALETTE_DEFAULTS["PRI"])[0]
     acc_h, acc_s, _av = _hsv(accent_hex)
-    dh   = acc_h - base_h
-    grey = acc_s < 0.08   # griye yakın accent → tüm tema desaturize edilir
+    dh = acc_h - base_h
+    grey = acc_s < 0.08  # griye yakın accent → tüm tema desaturize edilir
 
     for key, hex0 in _PALETTE_DEFAULTS.items():
         h, s, v = _hsv(hex0)
         if grey:
             s *= 0.15
         r, g, b = colorsys.hsv_to_rgb((h + dh) % 1.0, s, v)
-        setattr(C, key, "#{:02x}{:02x}{:02x}".format(
-            int(r * 255 + 0.5), int(g * 255 + 0.5), int(b * 255 + 0.5)))
+        setattr(C, key, "#{:02x}{:02x}{:02x}".format(int(r * 255 + 0.5), int(g * 255 + 0.5), int(b * 255 + 0.5)))
     return True
 
 
@@ -136,8 +149,7 @@ def retheme_all_widgets(old: dict[str, str], new: dict[str, str]) -> None:
     değişimi yalnızca boyanan öğelerde değil, panel/buton/kenarlık dahil tüm
     arayüzde ANINDA uygulanır — yeniden başlatma gerekmez.
     """
-    mapping = {old[k].lower(): new[k].lower()
-               for k in old if old[k].lower() != new.get(k, old[k]).lower()}
+    mapping = {old[k].lower(): new[k].lower() for k in old if old[k].lower() != new.get(k, old[k]).lower()}
     if not mapping:
         return
     app = QApplication.instance()
@@ -155,7 +167,9 @@ def retheme_all_widgets(old: dict[str, str], new: dict[str, str]) -> None:
                     w.setStyleSheet(s2)
             w.update()
         except Exception as e:
-            logger.debug('Suppressed exception: %s', e)
+            logger.debug("Suppressed exception: %s", e)
+
+
 def qcol(h: str, a: int = 255) -> QColor:
     """Convenience factory: create a QColor from a hex string with optional alpha."""
     c = QColor(h)
@@ -164,8 +178,8 @@ def qcol(h: str, a: int = 255) -> QColor:
 
 
 # ── Windows GPU via NVML DLL (no subprocess, no console window) ──────────────
-_nvml_lib: object = None   # cached ctypes DLL
-_nvml_ok:  object = None   # None=untested, True=works, False=unavailable
+_nvml_lib: object = None  # cached ctypes DLL
+_nvml_ok: object = None  # None=untested, True=works, False=unavailable
 
 
 def _nvml_gpu_windows() -> float:
@@ -191,6 +205,7 @@ def _nvml_gpu_windows() -> float:
 
         if _nvml_lib is None:
             import pynvml  # type: ignore
+
             pynvml.nvmlInit()
             h = pynvml.nvmlDeviceGetHandleByIndex(0)
             _nvml_ok = True

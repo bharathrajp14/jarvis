@@ -2,33 +2,25 @@
 from __future__ import annotations
 
 import atexit
-import importlib
-import json
-import logging
 import os
 import platform
-import re
-import signal
-import subprocess
 import sys
-import threading
-import time
 from datetime import datetime
-from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, TextIO, Tuple, TypedDict, cast
+from typing import Optional
 
 from brjarvis.core.paths import paths
-from brjarvis.core.version import VERSION, BUILD, CODENAME
+from brjarvis.core.version import BUILD, CODENAME, VERSION
 
 # Ensure environment variables from .env are loaded immediately
 if paths.DOTENV_FILE.exists():
     try:
         from dotenv import load_dotenv
+
         load_dotenv(paths.DOTENV_FILE)
     except ImportError:
         pass
 
-from brjarvis.diagnostics.doctor import check_module, auto_install_package, run_diagnostics_audit
+from brjarvis.diagnostics.doctor import DoctorReport, run_diagnostics_audit
 
 PYTHON = sys.executable
 BASE_DIR = paths.PROJECT_ROOT
@@ -42,14 +34,18 @@ try:
     from rich.prompt import Prompt
     from rich.table import Table
     from rich.text import Text
+
     console = Console()
 except ImportError:
     print("Notice: 'rich' module is missing. Running in basic console mode.")
+
     class DummyConsole:
         def print(self, *args, **kwargs):
             print(*args)
+
         def clear(self):
             pass
+
     console = DummyConsole()  # type: ignore
 
 
@@ -71,7 +67,10 @@ def banner():
     text.append("⚡ BR JARVIS — ADVANCED AI OPERATING SYSTEM ⚡\n", style="bold cyan")
     text.append("Autonomous Cognitive Agent Architecture & Isolated Sandbox Lifecycle Engine\n\n", style="dim")
     text.append(f"Version: {VERSION}  │  Build: {BUILD}  │  Codename: {CODENAME}\n", style="bold green")
-    text.append(f"Python: {sys.version.split()[0]}  │  Platform: {platform.system()}  │  Security: FAIL-CLOSED 🛡️\n", style="cyan")
+    text.append(
+        f"Python: {sys.version.split()[0]}  │  Platform: {platform.system()}  │  Security: FAIL-CLOSED 🛡️\n",
+        style="cyan",
+    )
     text.append(now, style="dim")
 
     panel = Panel(text, border_style="bold cyan", padding=(0, 2))
@@ -94,16 +93,21 @@ def show_status():
     table_env.add_row("Python Executable", sys.executable)
     venv = hasattr(sys, "real_prefix") or (hasattr(sys, "base_prefix") and sys.base_prefix != sys.prefix)
     table_env.add_row("Virtual Env", f"[green]Active ({paths.VENV_DIR})[/]" if venv else "[yellow]Not detected[/]")
-    
-    health_val = rep['overall_health']
-    health_style = "bold green" if health_val == "HEALTHY" else ("bold red" if "FAILED" in health_val else "bold yellow")
+
+    health_val = rep["overall_health"]
+    health_style = (
+        "bold green" if health_val == "HEALTHY" else ("bold red" if "FAILED" in health_val else "bold yellow")
+    )
     table_env.add_row("Overall Health", f"[{health_style}]{health_val}[/]")
 
     # Backends
     table_be = Table(title="AI Backends & Gateway Routing", title_style="bold magenta", show_header=False, box=None)
     has_any = False
     for label, ok in rep["api_keys"].items():
-        table_be.add_row(f"[green]✓ {label}[/]" if ok else f"[dim]○ {label}[/]", "[green]Configured[/]" if ok else "[dim]Not Configured[/]")
+        table_be.add_row(
+            f"[green]✓ {label}[/]" if ok else f"[dim]○ {label}[/]",
+            "[green]Configured[/]" if ok else "[dim]Not Configured[/]",
+        )
         if ok:
             has_any = True
 
@@ -153,11 +157,13 @@ def launch_cli():
     console.print("\n[bold cyan]▶ Starting CLI Orchestrator[/]")
     console.print("[dim]Type /quit to exit.[/]\n")
     from brjarvis.core.cli import run_cli
+
     run_cli()
 
 
 def find_available_port(start_port: int = 8000, max_attempts: int = 20) -> int:
     import socket
+
     for p in range(start_port, start_port + max_attempts):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             try:
@@ -168,20 +174,29 @@ def find_available_port(start_port: int = 8000, max_attempts: int = 20) -> int:
     return start_port
 
 
-def launch_web_server(open_url: Optional[str] = None):
-    requested_port = int(os.environ.get("PORT", os.environ.get("BR_SERVER_PORT", "8000")))
+def launch_web_server(
+    open_url: Optional[str] = None,
+    *,
+    host: Optional[str] = None,
+    port: Optional[int] = None,
+):
+    """Start the canonical web server with explicit CLI-over-environment settings."""
+    bind_host = (host or os.environ.get("HOST", "127.0.0.1")).strip() or "127.0.0.1"
+    requested_port = int(port if port is not None else os.environ.get("PORT", os.environ.get("BR_SERVER_PORT", "8000")))
     port = find_available_port(requested_port)
+
     if port != requested_port:
         console.print(f"[yellow]⚠ Port {requested_port} is busy. Automatically re-routing to port {port}.[/]")
 
-    base_url = f"http://127.0.0.1:{port}"
+    display_host = "127.0.0.1" if bind_host in {"0.0.0.0", "::"} else bind_host
+
+    base_url = f"http://{display_host}:{port}"
     if open_url:
-        if "/career" in open_url:
-            target_url = f"{base_url}/career"
-        elif "/galaxy" in open_url:
-            target_url = f"{base_url}/galaxy"
+        if open_url.startswith("/"):
+            target_url = f"{base_url}{open_url}"
         else:
             target_url = open_url
+
     else:
         target_url = base_url
 
@@ -191,12 +206,14 @@ def launch_web_server(open_url: Optional[str] = None):
     console.print("[dim]Press Ctrl+C to shut down.[/]\n")
 
     import uvicorn
+
     try:
         from brjarvis.web.api.server import create_app
+
         app = create_app()
     except Exception:
         from brjarvis.web.api.app import app
-    uvicorn.run(app, host="127.0.0.1", port=port, log_level="info")
+    uvicorn.run(app, host=bind_host, port=port, log_level="info")
 
 
 def launch_career_studio(open_url: Optional[str] = None):
@@ -207,6 +224,7 @@ def launch_voice():
     console.print("\n[bold cyan]▶ Starting BR Voice Assistant Cyberpunk HUD[/]")
     try:
         from brjarvis.desktop.ui_mark import run_voice_ui
+
         run_voice_ui()
     except KeyboardInterrupt:
         pass
@@ -260,11 +278,39 @@ def interactive_menu() -> int:
     console.print()
 
     try:
-        choice = Prompt.ask(
-            "[bold green]▶ Enter option number[/]",
-            default="1",
-            choices=["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "0", "q", "exit", "quit", "web", "career", "voice", "cli", "status", "doctor", "smoke", "audio", "sync"]
-        ).strip().lower()
+        choice = (
+            Prompt.ask(
+                "[bold green]▶ Enter option number[/]",
+                default="1",
+                choices=[
+                    "1",
+                    "2",
+                    "3",
+                    "4",
+                    "5",
+                    "6",
+                    "7",
+                    "8",
+                    "9",
+                    "10",
+                    "0",
+                    "q",
+                    "exit",
+                    "quit",
+                    "web",
+                    "career",
+                    "voice",
+                    "cli",
+                    "status",
+                    "doctor",
+                    "smoke",
+                    "audio",
+                    "sync",
+                ],
+            )
+            .strip()
+            .lower()
+        )
     except (KeyboardInterrupt, EOFError):
         console.print("\n[dim]Session closed.[/]")
         return 0
@@ -280,6 +326,7 @@ def interactive_menu() -> int:
     elif choice in ("5", "floating", "widget"):
         try:
             from brjarvis.desktop.float_widget import main as float_main
+
             return float_main() or 0
         except Exception as exc:
             console.print(f"[red]Error launching Floating Widget: {exc}[/]")
@@ -292,6 +339,7 @@ def interactive_menu() -> int:
     elif choice in ("8", "smoke", "verify"):
         try:
             from scripts.smoke_startup import main as smoke_main
+
             return smoke_main()
         except Exception as exc:
             console.print(f"[red]Error executing smoke verification: {exc}[/]")
@@ -299,12 +347,14 @@ def interactive_menu() -> int:
     elif choice in ("9", "audio", "sound", "mic"):
         try:
             from scripts.probe_voice_env import main as probe_main
+
             return probe_main()
         except Exception as exc:
             console.print(f"[red]Error executing audio probe: {exc}[/]")
             return 1
     elif choice in ("10", "sync"):
         from brjarvis.career.crm.database import get_career_crm_db
+
         db = get_career_crm_db()
         console.print(f"[green]✓ Career CRM synchronized. Total applications: {len(db.list_applications())}[/]")
     elif choice in ("0", "q", "exit", "quit"):
@@ -337,6 +387,7 @@ def main() -> int:
             launch_career_studio()
         elif cmd in ("sync", "career-sync"):
             from brjarvis.career.crm.database import get_career_crm_db
+
             db = get_career_crm_db()
             console.print(f"[green]Career CRM synchronized. Total applications: {len(db.list_applications())}[/]")
         elif cmd in ("voice", "hud"):
@@ -344,6 +395,7 @@ def main() -> int:
         else:
             # Default to CLI asking question or executing query
             from brjarvis.core.cli import run_query
+
             return run_query(" ".join(args))
         return 0
     except (KeyboardInterrupt, EOFError):

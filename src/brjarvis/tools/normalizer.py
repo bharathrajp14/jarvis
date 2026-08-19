@@ -3,15 +3,15 @@
 Deterministic Tool Argument Normalizer for BR JARVIS.
 Normalizes paths, URLs, enums, booleans, and schema defaults before validation and execution.
 """
+
 from __future__ import annotations
 
 import logging
-import os
-import re
 from pathlib import Path
 from typing import Any, Dict, Optional
 
 from brjarvis.core.paths import paths
+
 from .domain import ToolDefinition
 
 logger = logging.getLogger("JARVIS.Tools.Normalizer")
@@ -21,9 +21,20 @@ class ArgumentNormalizer:
     """Single authoritative argument normalization stage."""
 
     PATH_KEYS = {
-        "path", "file_path", "target_path", "dir_path", "source_path",
-        "destination_path", "destination", "folder", "filename", "filepath",
-        "out_path", "output_path", "sandbox_path", "host_path"
+        "path",
+        "file_path",
+        "target_path",
+        "dir_path",
+        "source_path",
+        "destination_path",
+        "destination",
+        "folder",
+        "filename",
+        "filepath",
+        "out_path",
+        "output_path",
+        "sandbox_path",
+        "host_path",
     }
 
     URL_KEYS = {"url", "target_url", "link", "uri", "web_url", "site_url"}
@@ -125,7 +136,7 @@ class ArgumentNormalizer:
         # Avoid double-workspace nesting (e.g. 'workspace/Reports/doc.docx')
         ws_name = workspace_root.name.lower()
         if clean.lower().startswith(f"{ws_name}/"):
-            clean = clean[len(ws_name) + 1:]
+            clean = clean[len(ws_name) + 1 :]
 
         # Check for path traversal attempts '../'
         if ".." in clean.split("/"):

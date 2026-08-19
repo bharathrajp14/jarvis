@@ -7,6 +7,7 @@ Provides:
 - Safe task replay from Execution Ledger without re-executing side effects
 - User memory control operations (remember, forget, show, correct, invalidate, export)
 """
+
 from __future__ import annotations
 
 import json
@@ -14,14 +15,15 @@ import logging
 import time
 from typing import Any, Dict, List, Optional
 
-from .domain import CanonicalMemory, MemoryStatus, MemoryType, SourceType
-from .retrieval import HybridRetrievalEngine, RankedMemoryCandidate, get_retrieval_engine
-from .store import CanonicalMemoryStore, get_canonical_store
-from .task_memory_router import MemoryMode, TaskMemoryRouter, get_task_memory_router
-from .temporal import TemporalEngine, get_temporal_engine
-from .unified_memory import UnifiedMemoryManager, get_unified_memory
-from brjarvis.agent.execution_ledger import ExecutionLedger, get_execution_ledger
-from brjarvis.reasoning.decision_engine import DecisionEngine, get_decision_engine
+from brjarvis.agent.execution_ledger import get_execution_ledger
+from brjarvis.reasoning.decision_engine import get_decision_engine
+
+from .domain import CanonicalMemory
+from .retrieval import RankedMemoryCandidate, get_retrieval_engine
+from .store import get_canonical_store
+from .task_memory_router import get_task_memory_router
+from .temporal import get_temporal_engine
+from .unified_memory import get_unified_memory
 
 logger = logging.getLogger("JARVIS.MemoryDiagnostics")
 
@@ -124,17 +126,19 @@ class MemoryDiagnostics:
 
         steps = []
         for e in entries:
-            steps.append({
-                "step_id": e.step_id,
-                "tool_name": e.tool_name,
-                "status": e.status.value,
-                "duration_seconds": e.duration_seconds,
-                "evidence": e.evidence,
-                "side_effects": e.side_effects,
-                "error": e.error,
-                "verification_status": e.verification_status.value,
-                "timestamp": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(e.timestamp)),
-            })
+            steps.append(
+                {
+                    "step_id": e.step_id,
+                    "tool_name": e.tool_name,
+                    "status": e.status.value,
+                    "duration_seconds": e.duration_seconds,
+                    "evidence": e.evidence,
+                    "side_effects": e.side_effects,
+                    "error": e.error,
+                    "verification_status": e.verification_status.value,
+                    "timestamp": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(e.timestamp)),
+                }
+            )
 
         return {
             "task_id": task_id,
@@ -148,7 +152,9 @@ class MemoryDiagnostics:
     # ── User Memory Controls ──────────────────────────────────────────────────
 
     def remember(self, key: str, value: str, scope: str = "user", project_id: str = "global") -> CanonicalMemory:
-        return self.unified.remember(name=key, content=f"{key} = {value}", value=value, entity=key, scope=scope, project_id=project_id)
+        return self.unified.remember(
+            name=key, content=f"{key} = {value}", value=value, entity=key, scope=scope, project_id=project_id
+        )
 
     def forget(self, key: str, scope: str = "user") -> bool:
         return self.unified.forget(key, scope=scope)

@@ -79,6 +79,7 @@ python scripts/test_generator.py --input math_utils.py --framework pytest
 import pytest
 from math_utils import divide
 
+
 class TestDivide:
     def test_divide_positive_numbers(self):
         assert divide(10, 2) == 5.0
@@ -241,11 +242,13 @@ describe("Cart", () => {
 import pytest
 from app.db import create_engine, Session
 
+
 @pytest.fixture(scope="session")
 def db_engine():
     engine = create_engine("sqlite:///:memory:")
     yield engine
     engine.dispose()
+
 
 @pytest.fixture
 def db_session(db_engine):
@@ -254,16 +257,21 @@ def db_session(db_engine):
     session.rollback()
     session.close()
 
+
 # tests/test_pricing.py — parametrize for multiple cases
 import pytest
 from app.pricing import calculate_discount
 
-@pytest.mark.parametrize("subtotal, expected_discount", [
-    (50.0, 0.0),       # Below threshold — no discount
-    (100.0, 5.0),      # 5% tier
-    (250.0, 25.0),     # 10% tier
-    (500.0, 75.0),     # 15% tier
-])
+
+@pytest.mark.parametrize(
+    "subtotal, expected_discount",
+    [
+        (50.0, 0.0),  # Below threshold — no discount
+        (100.0, 5.0),  # 5% tier
+        (250.0, 25.0),  # 10% tier
+        (500.0, 75.0),  # 15% tier
+    ],
+)
 def test_calculate_discount(subtotal, expected_discount):
     assert calculate_discount(subtotal) == pytest.approx(expected_discount)
 ```
@@ -334,10 +342,12 @@ Property-based testing generates random inputs to verify invariants instead of r
 from hypothesis import given, strategies as st
 from app.serializers import serialize, deserialize
 
+
 @given(st.text())
 def test_roundtrip_serialization(data):
     """Serialization followed by deserialization returns the original."""
     assert deserialize(serialize(data)) == data
+
 
 @given(st.integers(), st.integers())
 def test_addition_is_commutative(a, b):

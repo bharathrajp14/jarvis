@@ -3,11 +3,11 @@
 System Application Analyzer Tools Plugin for JARVIS.
 Exposes tools for scanning installed software and running process applications.
 """
+
 from __future__ import annotations
 
-import json
-from typing import Any, Dict
 from .registry import register_tool
+
 # NOTE: get_app_analyzer is imported lazily inside each handler to prevent a
 # missing/broken actions.app_analyzer from silently killing all tool registrations.
 
@@ -19,13 +19,14 @@ from .registry import register_tool
         "type": "object",
         "properties": {
             "query": {"type": "string", "description": "Optional keyword filter to search app names"},
-            "limit": {"type": "integer", "description": "Maximum number of apps to return (default: 50)"}
-        }
-    }
+            "limit": {"type": "integer", "description": "Maximum number of apps to return (default: 50)"},
+        },
+    },
 )
 def tool_list_installed_applications(args: dict) -> str:
     """List installed applications on the host system."""
     from brjarvis.actions.app_analyzer import get_app_analyzer  # lazy import
+
     query = str(args.get("query", "")).strip().lower()
     limit = args.get("limit", 50)
 
@@ -40,8 +41,8 @@ def tool_list_installed_applications(args: dict) -> str:
 
     output = [f"💻 INSTALLED APPLICATIONS ({len(apps_pruned)} shown / {total_count} total):"]
     for app in apps_pruned:
-        path_str = f" | Path: {app['path']}" if app['path'] else ""
-        ver_str = f" | Ver: {app['version']}" if app['version'] != "N/A" else ""
+        path_str = f" | Path: {app['path']}" if app["path"] else ""
+        ver_str = f" | Ver: {app['version']}" if app["version"] != "N/A" else ""
         output.append(f" - [{app['source']}] {app['name']}{ver_str}{path_str}")
 
     return "\n".join(output)
@@ -54,13 +55,14 @@ def tool_list_installed_applications(args: dict) -> str:
         "type": "object",
         "properties": {
             "gui_only": {"type": "boolean", "description": "Whether to filter system background noise (default: true)"},
-            "top_n": {"type": "integer", "description": "Number of top running apps to display (default: 25)"}
-        }
-    }
+            "top_n": {"type": "integer", "description": "Number of top running apps to display (default: 25)"},
+        },
+    },
 )
 def tool_list_running_applications(args: dict) -> str:
     """List running desktop applications and processes."""
     from brjarvis.actions.app_analyzer import get_app_analyzer  # lazy import
+
     gui_only = args.get("gui_only", True)
     top_n = args.get("top_n", 25)
 
@@ -69,8 +71,10 @@ def tool_list_running_applications(args: dict) -> str:
 
     output = [f"⚡ RUNNING APPLICATIONS & PROCESSES ({min(len(running), top_n)} of {len(running)} active):"]
     for proc in running[:top_n]:
-        path_str = f" | Exe: {proc['exe_path']}" if proc['exe_path'] else ""
-        output.append(f" - PID {proc['pid']:<6} | {proc['name']:<25} | RAM: {proc['memory_mb']} MB | CPU: {proc['cpu_percent']}%{path_str}")
+        path_str = f" | Exe: {proc['exe_path']}" if proc["exe_path"] else ""
+        output.append(
+            f" - PID {proc['pid']:<6} | {proc['name']:<25} | RAM: {proc['memory_mb']} MB | CPU: {proc['cpu_percent']}%{path_str}"
+        )
 
     return "\n".join(output)
 
@@ -80,15 +84,14 @@ def tool_list_running_applications(args: dict) -> str:
     description="Search both installed and currently running applications on the system by keyword.",
     parameters={
         "type": "object",
-        "properties": {
-            "query": {"type": "string", "description": "Application name or keyword to search for"}
-        },
-        "required": ["query"]
-    }
+        "properties": {"query": {"type": "string", "description": "Application name or keyword to search for"}},
+        "required": ["query"],
+    },
 )
 def tool_search_applications(args: dict) -> str:
     """Search installed and running applications by keyword."""
     from brjarvis.actions.app_analyzer import get_app_analyzer  # lazy import
+
     query = str(args.get("query", "")).strip()
     if not query:
         return "Error: Search query required."
@@ -120,12 +123,14 @@ def tool_search_applications(args: dict) -> str:
 @register_tool(
     name="sync_app_paths",
     description="Automatically scan host OS (Windows Registry, Start Menu, LocalAppData, Program Files) and configure/index all application executable paths into config/app_paths.json.",
-    parameters={"type": "object", "properties": {}}
+    parameters={"type": "object", "properties": {}},
 )
 def tool_sync_app_paths(args: dict) -> str:
     """Rescan and auto-configure all system application executable paths."""
     from brjarvis.actions.app_resolver import get_app_resolver
+
     resolver = get_app_resolver()
     apps = resolver.rescan_system_applications()
-    return f"✅ Successfully scanned and auto-configured {len(apps)} system application paths into config/app_paths.json."
-
+    return (
+        f"✅ Successfully scanned and auto-configured {len(apps)} system application paths into config/app_paths.json."
+    )

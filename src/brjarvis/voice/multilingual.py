@@ -3,6 +3,7 @@
 Provides 90+ language support for speech recognition.
 Maps ISO-639-1 codes to display names and configures STT engines accordingly.
 """
+
 from __future__ import annotations
 
 # ── 90+ Supported Languages ──────────────────────────────────────────────────

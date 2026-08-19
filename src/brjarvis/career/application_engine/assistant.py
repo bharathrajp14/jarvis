@@ -2,27 +2,24 @@
 from __future__ import annotations
 
 import logging
-import time
 import webbrowser
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
+from brjarvis.core.execution.verifier import get_universal_verifier
+
+from ..models import (
+    ApplicationQuestion,
+    ApplicationStatus,
+    CareerProfile,
+    JobPosting,
+)
+from ..profile_manager import get_profile_manager
 from .duplicate_guard import DuplicateApplicationGuard
 from .package_builder import ApplicationPackageBuilder
 from .policy import PlatformPolicyEngine
 from .questions import QuestionEngine
 from .tracker import ApplicationTracker
 from .verifier import ApplicationSubmissionVerifier
-from ..models import (
-    ApplicationPackage,
-    ApplicationQuestion,
-    ApplicationRecord,
-    ApplicationStatus,
-    CareerProfile,
-    JobPosting,
-    PlatformPolicyState,
-)
-from ..profile_manager import get_profile_manager
-from brjarvis.core.execution.verifier import get_universal_verifier
 
 logger = logging.getLogger("JARVIS.ApplicationAssistant")
 
@@ -30,7 +27,7 @@ logger = logging.getLogger("JARVIS.ApplicationAssistant")
 class ManualApplicationAssistant:
     """
     Core Product Assistant for Job Applications.
-    
+
     Standard Flow:
     1. READ       - Inspect JobPosting & requirements
     2. GUARD      - Check for prior duplicate applications
@@ -82,8 +79,16 @@ class ManualApplicationAssistant:
             ApplicationQuestion(question_id="location", question_text="Location / City", required=True),
             ApplicationQuestion(question_id="linkedin", question_text="LinkedIn URL", required=False),
             ApplicationQuestion(question_id="github", question_text="GitHub URL", required=False),
-            ApplicationQuestion(question_id="work_auth", question_text="Are you legally authorized to work in this location?", required=True),
-            ApplicationQuestion(question_id="sponsorship", question_text="Will you require visa sponsorship now or in the future?", required=True),
+            ApplicationQuestion(
+                question_id="work_auth",
+                question_text="Are you legally authorized to work in this location?",
+                required=True,
+            ),
+            ApplicationQuestion(
+                question_id="sponsorship",
+                question_text="Will you require visa sponsorship now or in the future?",
+                required=True,
+            ),
             ApplicationQuestion(question_id="salary", question_text="Desired Salary Expectations", required=False),
             ApplicationQuestion(question_id="notice", question_text="Notice Period / Availability", required=False),
         ]
@@ -120,9 +125,7 @@ class ManualApplicationAssistant:
             except Exception as e:
                 logger.warning(f"Could not open browser URL: {e}")
 
-        sensitive_questions = [
-            q.to_dict() for q in mapped_questions if q.requires_confirmation
-        ]
+        sensitive_questions = [q.to_dict() for q in mapped_questions if q.requires_confirmation]
 
         return {
             "success": True,

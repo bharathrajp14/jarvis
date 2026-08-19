@@ -4,37 +4,40 @@ Automated Executive Document Creator for Microsoft Word (.docx), PDF (.pdf), HTM
 Features Publication-Grade Typography, Cover Pages, Styled Tables, Multi-Line Callout Boxes,
 Code Syntax Blocks, Headers, Footers, Non-destructive Path Resolution, Artifact Registration, and Auto-Launching.
 """
+
 from __future__ import annotations
 
 import html
 import logging
 import os
 import re
-import shutil
 import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, List, Optional, Tuple
+
+from brjarvis.core.paths import paths
 
 from .registry import register_tool
-from brjarvis.core.paths import paths, get_workspace_manager
 
 logger = logging.getLogger("JARVIS.DocTools")
 
 try:
     import docx  # type: ignore
-    from docx.shared import Inches, Pt, RGBColor  # type: ignore
-    from docx.enum.text import WD_ALIGN_PARAGRAPH  # type: ignore
     from docx.enum.table import WD_TABLE_ALIGNMENT  # type: ignore
+    from docx.enum.text import WD_ALIGN_PARAGRAPH  # type: ignore
     from docx.oxml import OxmlElement  # type: ignore
     from docx.oxml.ns import qn  # type: ignore
+    from docx.shared import Inches, Pt, RGBColor  # type: ignore
+
     _DOCX_AVAILABLE = True
 except ImportError:
     _DOCX_AVAILABLE = False
 
 try:
     from fpdf import FPDF
+
     _FPDF_AVAILABLE = True
 except ImportError:
     _FPDF_AVAILABLE = False
@@ -54,7 +57,7 @@ def _resolve_doc_path(filename: str, title: str, fmt: str) -> Path:
       6. Ensures proper file extension
     """
     clean_fmt = fmt.lower().lstrip(".").strip() or "docx"
-    clean_title = re.sub(r'[^\w\-]', '_', title.strip() or "Document")
+    clean_title = re.sub(r"[^\w\-]", "_", title.strip() or "Document")
 
     if not filename or not filename.strip():
         target = paths.DOCUMENTS_DIR / f"{clean_title}.{clean_fmt}"
@@ -78,7 +81,7 @@ def _resolve_doc_path(filename: str, title: str, fmt: str) -> Path:
     # Strip leading workspace/ prefix to avoid workspace/workspace/ nesting
     ws_name = paths.WORKSPACE_ROOT.name.lower()
     if raw.lower().startswith(f"{ws_name}/"):
-        raw = raw[len(ws_name) + 1:]
+        raw = raw[len(ws_name) + 1 :]
 
     # If subdirectories specified, resolve under WORKSPACE_ROOT; otherwise under DOCUMENTS_DIR
     if "/" in raw:
@@ -125,30 +128,30 @@ def set_cell_background(cell: Any, fill_hex: str):
     if not _DOCX_AVAILABLE:
         return
     tcPr = cell._tc.get_or_add_tcPr()
-    shd = OxmlElement('w:shd')
-    shd.set(qn('w:val'), 'clear')
-    shd.set(qn('w:color'), 'auto')
-    shd.set(qn('w:fill'), fill_hex)
+    shd = OxmlElement("w:shd")
+    shd.set(qn("w:val"), "clear")
+    shd.set(qn("w:color"), "auto")
+    shd.set(qn("w:fill"), fill_hex)
     tcPr.append(shd)
 
 
-def set_cell_left_border(cell: Any, border_hex: str = '1B365D', border_size_pt: float = 4.0):
+def set_cell_left_border(cell: Any, border_hex: str = "1B365D", border_size_pt: float = 4.0):
     """Set a thick left border and remove top, bottom, and right borders for callout boxes."""
     if not _DOCX_AVAILABLE:
         return
     tcPr = cell._tc.get_or_add_tcPr()
-    tcBorders = OxmlElement('w:tcBorders')
+    tcBorders = OxmlElement("w:tcBorders")
 
-    left = OxmlElement('w:left')
-    left.set(qn('w:val'), 'single')
-    left.set(qn('w:sz'), str(int(border_size_pt * 8)))
-    left.set(qn('w:space'), '0')
-    left.set(qn('w:color'), border_hex)
+    left = OxmlElement("w:left")
+    left.set(qn("w:val"), "single")
+    left.set(qn("w:sz"), str(int(border_size_pt * 8)))
+    left.set(qn("w:space"), "0")
+    left.set(qn("w:color"), border_hex)
     tcBorders.append(left)
 
-    for side in ('top', 'bottom', 'right'):
-        node = OxmlElement(f'w:{side}')
-        node.set(qn('w:val'), 'none')
+    for side in ("top", "bottom", "right"):
+        node = OxmlElement(f"w:{side}")
+        node.set(qn("w:val"), "none")
         tcBorders.append(node)
 
     tcPr.append(tcBorders)
@@ -159,21 +162,22 @@ def set_cell_margins(cell: Any, top_pt: int = 6, bottom_pt: int = 6, left_pt: in
     if not _DOCX_AVAILABLE:
         return
     tcPr = cell._tc.get_or_add_tcPr()
-    tcMar = OxmlElement('w:tcMar')
-    for side, val in [('top', top_pt * 14), ('bottom', bottom_pt * 14), ('left', left_pt * 14), ('right', right_pt * 14)]:
-        node = OxmlElement(f'w:{side}')
-        node.set(qn('w:w'), str(val))
-        node.set(qn('w:type'), 'dxa')
+    tcMar = OxmlElement("w:tcMar")
+    for side, val in [
+        ("top", top_pt * 14),
+        ("bottom", bottom_pt * 14),
+        ("left", left_pt * 14),
+        ("right", right_pt * 14),
+    ]:
+        node = OxmlElement(f"w:{side}")
+        node.set(qn("w:w"), str(val))
+        node.set(qn("w:type"), "dxa")
         tcMar.append(node)
     tcPr.append(tcMar)
 
 
 def add_docx_callout(
-    doc: Any,
-    text: str,
-    callout_type: str = "NOTE",
-    border_hex: str = "0284C7",
-    fill_hex: str = "F0F9FF"
+    doc: Any, text: str, callout_type: str = "NOTE", border_hex: str = "0284C7", fill_hex: str = "F0F9FF"
 ):
     """Add a styled executive callout box with a colored left border and subtle tinted background."""
     palette = {
@@ -201,7 +205,7 @@ def add_docx_callout(
     p_badge.paragraph_format.space_before = Pt(2)
     p_badge.paragraph_format.space_after = Pt(2)
     r_badge = p_badge.add_run(badge)
-    r_badge.font.name = 'Calibri'
+    r_badge.font.name = "Calibri"
     r_badge.font.size = Pt(9.5)
     r_badge.font.bold = True
     r_badge.font.color.rgb = RGBColor(int(b_hex[0:2], 16), int(b_hex[2:4], 16), int(b_hex[4:6], 16))
@@ -230,8 +234,9 @@ def inject_document_aliases(doc: Any):
 
 # ── Inline Markdown Lexer & Run Generator ──────────────────────────────────
 _INLINE_RE = re.compile(
-    r'(\*\*[^\*\n]+\*\*|__[^\_\n]+__|(?<!\*)\*[^\*\n]+\*(?!\*)|(?<!_)_[^_\n]+_(?!_)|`[^`\n]+`|\[[^\]\n]+\]\([^\)\n]+\))'
+    r"(\*\*[^\*\n]+\*\*|__[^\_\n]+__|(?<!\*)\*[^\*\n]+\*(?!\*)|(?<!_)_[^_\n]+_(?!_)|`[^`\n]+`|\[[^\]\n]+\]\([^\)\n]+\))"
 )
+
 
 def _parse_inline_tokens(text: str) -> List[Tuple[str, str, Optional[str]]]:
     """Tokenize inline markdown into (kind, content, extra) tuples."""
@@ -239,7 +244,7 @@ def _parse_inline_tokens(text: str) -> List[Tuple[str, str, Optional[str]]]:
     last_idx = 0
     for match in _INLINE_RE.finditer(text):
         if match.start() > last_idx:
-            tokens.append(("normal", text[last_idx:match.start()], None))
+            tokens.append(("normal", text[last_idx : match.start()], None))
         raw = match.group(0)
         if (raw.startswith("**") and raw.endswith("**")) or (raw.startswith("__") and raw.endswith("__")):
             tokens.append(("bold", raw[2:-2], None))
@@ -262,9 +267,9 @@ def _parse_inline_tokens(text: str) -> List[Tuple[str, str, Optional[str]]]:
 def _add_paragraph_runs(
     p: Any,
     text: str,
-    font_name: str = 'Calibri',
+    font_name: str = "Calibri",
     font_size_pt: float = 11.0,
-    font_color_rgb: Tuple[int, int, int] = (0x22, 0x22, 0x22)
+    font_color_rgb: Tuple[int, int, int] = (0x22, 0x22, 0x22),
 ):
     """Parse inline markdown tokens and append styled runs to a DOCX paragraph."""
     tokens = _parse_inline_tokens(text)
@@ -282,7 +287,7 @@ def _add_paragraph_runs(
             run.italic = True
             run.font.color.rgb = RGBColor(*font_color_rgb)
         elif kind == "code":
-            run.font.name = 'Consolas'
+            run.font.name = "Consolas"
             run.font.size = Pt(font_size_pt * 0.92)
             run.font.color.rgb = RGBColor(0x33, 0x41, 0x55)
         elif kind == "link":
@@ -294,12 +299,7 @@ def _add_paragraph_runs(
 
 # ── Advanced DOCX Document Builder ─────────────────────────────────────────
 def _build_executive_docx(
-    title: str,
-    subtitle: str,
-    author: str,
-    content: str,
-    out_path: Path,
-    cover_page: bool = True
+    title: str, subtitle: str, author: str, content: str, out_path: Path, cover_page: bool = True
 ) -> str:
     """Build a publication-grade Word Document with Cover Page, Callouts, Tables, and Code Blocks."""
     doc = docx.Document()
@@ -320,7 +320,7 @@ def _build_executive_docx(
         title_p.paragraph_format.space_after = Pt(12)
 
         t_run = title_p.add_run(title.upper())
-        t_run.font.name = 'Calibri'
+        t_run.font.name = "Calibri"
         t_run.font.size = Pt(30)
         t_run.font.bold = True
         t_run.font.color.rgb = RGBColor(0x1B, 0x36, 0x5D)
@@ -330,7 +330,7 @@ def _build_executive_docx(
             sub_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
             sub_p.paragraph_format.space_after = Pt(110)
             s_run = sub_p.add_run(subtitle)
-            s_run.font.name = 'Calibri'
+            s_run.font.name = "Calibri"
             s_run.font.size = Pt(13.5)
             s_run.font.italic = True
             s_run.font.color.rgb = RGBColor(0x55, 0x66, 0x77)
@@ -339,7 +339,7 @@ def _build_executive_docx(
         auth_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
         auth_p.paragraph_format.space_after = Pt(4)
         a_run = auth_p.add_run(f"Authored by: {author or 'BR JARVIS Autonomous Intelligence'}")
-        a_run.font.name = 'Calibri'
+        a_run.font.name = "Calibri"
         a_run.font.size = Pt(11)
         a_run.font.bold = True
         a_run.font.color.rgb = RGBColor(0x22, 0x22, 0x22)
@@ -348,7 +348,7 @@ def _build_executive_docx(
         date_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
         date_p.paragraph_format.space_after = Pt(20)
         d_run = date_p.add_run(time.strftime("%B %d, %Y • Executive Edition"))
-        d_run.font.name = 'Calibri'
+        d_run.font.name = "Calibri"
         d_run.font.size = Pt(10)
         d_run.font.color.rgb = RGBColor(0x77, 0x77, 0x77)
 
@@ -381,14 +381,14 @@ def _build_executive_docx(
                 tbl.autofit = False
                 c = tbl.cell(0, 0)
                 c.width = Inches(6.5)
-                set_cell_background(c, '0F172A')  # Slate Dark
+                set_cell_background(c, "0F172A")  # Slate Dark
                 set_cell_margins(c, top_pt=8, bottom_pt=8, left_pt=12, right_pt=12)
                 p_code = c.paragraphs[0]
                 p_code.paragraph_format.space_before = Pt(2)
                 p_code.paragraph_format.space_after = Pt(2)
                 p_code.paragraph_format.line_spacing = 1.0
                 r_code = p_code.add_run("\n".join(code_lines))
-                r_code.font.name = 'Consolas'
+                r_code.font.name = "Consolas"
                 r_code.font.size = Pt(9.5)
                 r_code.font.color.rgb = RGBColor(0xF8, 0xFA, 0xFC)
 
@@ -417,10 +417,10 @@ def _build_executive_docx(
             while i < len(lines) and lines[i].strip().startswith(">"):
                 raw_c = lines[i].strip().lstrip("> ").strip()
                 if raw_c.startswith("[!") and "]" in raw_c:
-                    ctype = raw_c[2:raw_c.find("]")].strip().upper()
+                    ctype = raw_c[2 : raw_c.find("]")].strip().upper()
                     if ctype in ("NOTE", "TIP", "IMPORTANT", "WARNING", "CAUTION"):
                         callout_type = ctype
-                    remainder = raw_c[raw_c.find("]") + 1:].strip()
+                    remainder = raw_c[raw_c.find("]") + 1 :].strip()
                     if remainder:
                         callout_lines.append(remainder)
                 else:
@@ -469,12 +469,12 @@ def _build_executive_docx(
                         p_cell.paragraph_format.space_after = Pt(2)
 
                         if r_idx == 0:
-                            set_cell_background(cell, '1B365D')  # Navy Header
+                            set_cell_background(cell, "1B365D")  # Navy Header
                             _add_paragraph_runs(p_cell, cell_text, font_color_rgb=(0xFF, 0xFF, 0xFF))
                             for run in p_cell.runs:
                                 run.bold = True
                         else:
-                            bg_fill = 'F8FAFC' if r_idx % 2 == 1 else 'FFFFFF'
+                            bg_fill = "F8FAFC" if r_idx % 2 == 1 else "FFFFFF"
                             set_cell_background(cell, bg_fill)
                             _add_paragraph_runs(p_cell, cell_text, font_color_rgb=(0x22, 0x22, 0x22))
 
@@ -488,7 +488,7 @@ def _build_executive_docx(
             p.paragraph_format.space_after = Pt(8)
             p.paragraph_format.keep_with_next = True
             r = p.add_run(line_s[2:])
-            r.font.name = 'Calibri'
+            r.font.name = "Calibri"
             r.font.size = Pt(18)
             r.font.bold = True
             r.font.color.rgb = RGBColor(0x1B, 0x36, 0x5D)
@@ -498,7 +498,7 @@ def _build_executive_docx(
             p.paragraph_format.space_after = Pt(6)
             p.paragraph_format.keep_with_next = True
             r = p.add_run(line_s[3:])
-            r.font.name = 'Calibri'
+            r.font.name = "Calibri"
             r.font.size = Pt(14)
             r.font.bold = True
             r.font.color.rgb = RGBColor(0x0D, 0x94, 0x88)  # Teal Accent
@@ -508,7 +508,7 @@ def _build_executive_docx(
             p.paragraph_format.space_after = Pt(4)
             p.paragraph_format.keep_with_next = True
             r = p.add_run(line_s[4:])
-            r.font.name = 'Calibri'
+            r.font.name = "Calibri"
             r.font.size = Pt(12)
             r.font.bold = True
             r.font.color.rgb = RGBColor(0x33, 0x41, 0x55)
@@ -518,18 +518,18 @@ def _build_executive_docx(
             p.paragraph_format.space_after = Pt(3)
             p.paragraph_format.keep_with_next = True
             r = p.add_run(line_s[5:])
-            r.font.name = 'Calibri'
+            r.font.name = "Calibri"
             r.font.size = Pt(11)
             r.font.bold = True
             r.font.color.rgb = RGBColor(0x1E, 0x29, 0x3B)
 
         # Horizontal Divider (--- or ***)
-        elif re.match(r'^(?:---|\*\*\*|___)\s*$', line_s):
+        elif re.match(r"^(?:---|\*\*\*|___)\s*$", line_s):
             p = doc.add_paragraph()
             p.paragraph_format.space_before = Pt(8)
             p.paragraph_format.space_after = Pt(8)
             r = p.add_run("─" * 45)
-            r.font.name = 'Calibri'
+            r.font.name = "Calibri"
             r.font.size = Pt(9)
             r.font.color.rgb = RGBColor(0xCB, 0xD5, 0xE1)
 
@@ -544,14 +544,14 @@ def _build_executive_docx(
             _add_paragraph_runs(p, line_s[2:])
 
         # Numbered List items
-        elif re.match(r'^\d+\.\s+', line_s):
-            match = re.match(r'^(\d+\.\s+)(.*)', line_s)
+        elif re.match(r"^\d+\.\s+", line_s):
+            match = re.match(r"^(\d+\.\s+)(.*)", line_s)
             p = doc.add_paragraph()
             p.paragraph_format.left_indent = Inches(0.25)
             p.paragraph_format.space_after = Pt(3)
             p.paragraph_format.line_spacing = 1.15
             run_num = p.add_run(match.group(1))
-            run_num.font.name = 'Calibri'
+            run_num.font.name = "Calibri"
             run_num.font.bold = True
             run_num.font.color.rgb = RGBColor(0x1B, 0x36, 0x5D)
             _add_paragraph_runs(p, match.group(2))
@@ -571,10 +571,10 @@ def _build_executive_docx(
         tbl.alignment = WD_TABLE_ALIGNMENT.CENTER
         c = tbl.cell(0, 0)
         c.width = Inches(6.5)
-        set_cell_background(c, '0F172A')
+        set_cell_background(c, "0F172A")
         p_code = c.paragraphs[0]
         r_code = p_code.add_run("\n".join(code_lines))
-        r_code.font.name = 'Consolas'
+        r_code.font.name = "Consolas"
         r_code.font.size = Pt(9.5)
         r_code.font.color.rgb = RGBColor(0xF8, 0xFA, 0xFC)
 
@@ -588,29 +588,29 @@ def _sanitize_pdf_text(text: str) -> str:
     if not text:
         return ""
     replacements = {
-        "\u2022": "*",   # Bullet •
-        "\u2023": "*",   # Triangular bullet
-        "\u2043": "*",   # Hyphen bullet
-        "\u2013": "-",   # En dash –
+        "\u2022": "*",  # Bullet •
+        "\u2023": "*",  # Triangular bullet
+        "\u2043": "*",  # Hyphen bullet
+        "\u2013": "-",  # En dash –
         "\u2014": "--",  # Em dash —
         "\u2015": "--",  # Horizontal bar
-        "\u2018": "'",   # Left single quote ‘
-        "\u2019": "'",   # Right single quote ’
-        "\u201a": "'",   # Single low-9 quote
-        "\u201c": '"',   # Left double quote “
-        "\u201d": '"',   # Right double quote ”
-        "\u201e": '"',   # Double low-9 quote
-        "\u2026": "...", # Ellipsis …
-        "\u00a0": " ",   # Non-breaking space
+        "\u2018": "'",  # Left single quote ‘
+        "\u2019": "'",  # Right single quote ’
+        "\u201a": "'",  # Single low-9 quote
+        "\u201c": '"',  # Left double quote “
+        "\u201d": '"',  # Right double quote ”
+        "\u201e": '"',  # Double low-9 quote
+        "\u2026": "...",  # Ellipsis …
+        "\u00a0": " ",  # Non-breaking space
         "\u2192": "->",  # Right arrow
         "\u2190": "<-",  # Left arrow
-        "\u2713": "[v]", # Checkmark
-        "\u2714": "[v]", # Heavy checkmark
-        "\u2717": "[x]", # Cross mark
-        "\u2718": "[x]", # Heavy cross mark
-        "\u26a0": "[!]", # Warning sign
-        "\u2728": "*",   # Sparkles
-        "\u26a1": "[*]", # Lightning ⚡
+        "\u2713": "[v]",  # Checkmark
+        "\u2714": "[v]",  # Heavy checkmark
+        "\u2717": "[x]",  # Cross mark
+        "\u2718": "[x]",  # Heavy cross mark
+        "\u26a0": "[!]",  # Warning sign
+        "\u2728": "*",  # Sparkles
+        "\u26a1": "[*]",  # Lightning ⚡
     }
     for orig, rep in replacements.items():
         text = text.replace(orig, rep)
@@ -619,6 +619,7 @@ def _sanitize_pdf_text(text: str) -> str:
 
 # ── Advanced PDF Builder (FPDF2) ───────────────────────────────────────────
 if _FPDF_AVAILABLE:
+
     class ExecutivePDF(FPDF):
         """Custom PDF class with running header, footer, and page numbering."""
 
@@ -640,13 +641,7 @@ if _FPDF_AVAILABLE:
             self.cell(0, 10, f"Page {self.page_no()} | BR JARVIS Autonomous Executive Intelligence", align="C")
 
 
-def _build_executive_pdf(
-    title: str,
-    subtitle: str,
-    author: str,
-    content: str,
-    out_path: Path
-) -> str:
+def _build_executive_pdf(title: str, subtitle: str, author: str, content: str, out_path: Path) -> str:
     """Build a styled publication PDF document using FPDF2 with Tables, Callouts, and Code Blocks."""
     pdf = ExecutivePDF(doc_title=title)
     pdf.set_auto_page_break(auto=True, margin=18)
@@ -721,7 +716,7 @@ def _build_executive_pdf(
             while i < len(lines) and lines[i].strip().startswith(">"):
                 raw_c = lines[i].strip().lstrip("> ").strip()
                 if raw_c.startswith("[!") and "]" in raw_c:
-                    raw_c = raw_c[raw_c.find("]") + 1:].strip()
+                    raw_c = raw_c[raw_c.find("]") + 1 :].strip()
                 if raw_c:
                     c_lines.append(raw_c)
                 i += 1
@@ -729,7 +724,7 @@ def _build_executive_pdf(
             if c_lines:
                 pdf.set_font("Helvetica", "I", 9.5)
                 pdf.set_fill_color(240, 249, 255)  # Sky tint
-                pdf.set_draw_color(2, 132, 199)   # Sky border
+                pdf.set_draw_color(2, 132, 199)  # Sky border
                 pdf.set_text_color(15, 23, 42)
                 c_text = _sanitize_pdf_text(" * " + "\n * ".join(c_lines))
                 pdf.multi_cell(pdf.epw, 5, c_text, fill=True, border=1, new_x="LMARGIN", new_y="NEXT")
@@ -795,7 +790,7 @@ def _build_executive_pdf(
             bullet_text = _sanitize_pdf_text("  *  " + line_s[2:])
             pdf.multi_cell(pdf.epw, 5, bullet_text, new_x="LMARGIN", new_y="NEXT")
             pdf.ln(1)
-        elif re.match(r'^\d+\.\s+', line_s):
+        elif re.match(r"^\d+\.\s+", line_s):
             pdf.set_font("Helvetica", "", 9.5)
             pdf.set_text_color(30, 41, 59)
             pdf.multi_cell(pdf.epw, 5, _sanitize_pdf_text("   " + line_s), new_x="LMARGIN", new_y="NEXT")
@@ -835,13 +830,7 @@ def _format_inline_html(text: str) -> str:
     return "".join(out_parts)
 
 
-def _build_executive_html(
-    title: str,
-    subtitle: str,
-    author: str,
-    content: str,
-    out_path: Path
-) -> str:
+def _build_executive_html(title: str, subtitle: str, author: str, content: str, out_path: Path) -> str:
     """Build a modern responsive Glassmorphism HTML document with print styling."""
     title_esc = html.escape(title)
     sub_esc = html.escape(subtitle or "Executive Intelligence Document")
@@ -956,8 +945,8 @@ def _build_executive_html(
             while i < len(lines) and lines[i].strip().startswith(">"):
                 raw_c = lines[i].strip().lstrip("> ").strip()
                 if raw_c.startswith("[!") and "]" in raw_c:
-                    badge_label = raw_c[2:raw_c.find("]")].strip().upper()
-                    remainder = raw_c[raw_c.find("]") + 1:].strip()
+                    badge_label = raw_c[2 : raw_c.find("]")].strip().upper()
+                    remainder = raw_c[raw_c.find("]") + 1 :].strip()
                     if remainder:
                         callout_lines.append(remainder)
                 else:
@@ -1030,8 +1019,8 @@ def _build_executive_html(
             html_lines.append(f"<li>{_format_inline_html(line_s[2:])}</li>")
 
         # Numbered lists
-        elif re.match(r'^\d+\.\s+', line_s):
-            match = re.match(r'^\d+\.\s+(.*)', line_s)
+        elif re.match(r"^\d+\.\s+", line_s):
+            match = re.match(r"^\d+\.\s+(.*)", line_s)
             if not in_ol:
                 _close_lists()
                 html_lines.append("<ol>")
@@ -1067,13 +1056,25 @@ def _build_executive_html(
             "title": {"type": "string", "description": "Title of the document"},
             "subtitle": {"type": "string", "description": "Subtitle or tagline for the document"},
             "author": {"type": "string", "description": "Author name (default: BR JARVIS AI)"},
-            "content": {"type": "string", "description": "Main text content in structured Markdown (headings, bullets, tables, callouts)"},
-            "filename": {"type": "string", "description": "Target filename or relative path (e.g., Reports/Startup_Book.docx or documents/analysis.pdf)"},
+            "content": {
+                "type": "string",
+                "description": "Main text content in structured Markdown (headings, bullets, tables, callouts)",
+            },
+            "filename": {
+                "type": "string",
+                "description": "Target filename or relative path (e.g., Reports/Startup_Book.docx or documents/analysis.pdf)",
+            },
             "format": {"type": "string", "description": "Output format: docx | pdf | html | md (default: docx)"},
-            "cover_page": {"type": "boolean", "description": "Whether to include an executive cover page (default: true)"},
-            "auto_open": {"type": "boolean", "description": "Whether to auto-launch the generated file (default: true)"}
+            "cover_page": {
+                "type": "boolean",
+                "description": "Whether to include an executive cover page (default: true)",
+            },
+            "auto_open": {
+                "type": "boolean",
+                "description": "Whether to auto-launch the generated file (default: true)",
+            },
         },
-        "required": ["title", "content"]
+        "required": ["title", "content"],
     },
     category="document",
     risk_level="low",
@@ -1084,8 +1085,8 @@ def _build_executive_html(
 )
 def document_creator(args: dict) -> Any:
     """Universal Executive Document Engine."""
-    from brjarvis.tools.tool_result import ToolResult
     from brjarvis.tools.domain import ToolErrorCode
+    from brjarvis.tools.tool_result import ToolResult
 
     title = str(args.get("title") or "Document").strip()
     subtitle = str(args.get("subtitle") or "").strip()
@@ -1097,18 +1098,24 @@ def document_creator(args: dict) -> Any:
     filename = str(args.get("filename") or "").strip()
 
     if not title or not content:
-        return ToolResult.failed("document_creator", ToolErrorCode.INVALID_ARGUMENT, "Parameters 'title' and 'content' are required.")
+        return ToolResult.failed(
+            "document_creator", ToolErrorCode.INVALID_ARGUMENT, "Parameters 'title' and 'content' are required."
+        )
 
     out_path = _resolve_doc_path(filename, title, fmt)
 
     try:
         if fmt == "docx":
             if not _DOCX_AVAILABLE:
-                return ToolResult.failed("document_creator", ToolErrorCode.DEPENDENCY_MISSING, "'python-docx' library is not installed.")
+                return ToolResult.failed(
+                    "document_creator", ToolErrorCode.DEPENDENCY_MISSING, "'python-docx' library is not installed."
+                )
             saved_path = _build_executive_docx(title, subtitle, author, content, out_path, cover_page=cover_page)
         elif fmt == "pdf":
             if not _FPDF_AVAILABLE:
-                return ToolResult.failed("document_creator", ToolErrorCode.DEPENDENCY_MISSING, "'fpdf2' library is not installed.")
+                return ToolResult.failed(
+                    "document_creator", ToolErrorCode.DEPENDENCY_MISSING, "'fpdf2' library is not installed."
+                )
             saved_path = _build_executive_pdf(title, subtitle, author, content, out_path)
         elif fmt == "html":
             saved_path = _build_executive_html(title, subtitle, author, content, out_path)
@@ -1118,20 +1125,32 @@ def document_creator(args: dict) -> Any:
             out_path.write_text(md_text, encoding="utf-8")
             saved_path = str(out_path)
         else:
-            return ToolResult.failed("document_creator", ToolErrorCode.INVALID_ARGUMENT, f"Unsupported format '{fmt}'. Choose from docx, pdf, html, md.")
+            return ToolResult.failed(
+                "document_creator",
+                ToolErrorCode.INVALID_ARGUMENT,
+                f"Unsupported format '{fmt}'. Choose from docx, pdf, html, md.",
+            )
     except Exception as e:
         logger.exception("Document creation error: %s", e)
-        return ToolResult.failed("document_creator", ToolErrorCode.EXECUTION_EXCEPTION, f"Error building document ({fmt}): {e}")
+        return ToolResult.failed(
+            "document_creator", ToolErrorCode.EXECUTION_EXCEPTION, f"Error building document ({fmt}): {e}"
+        )
 
     # Verify generated document
     from brjarvis.agent.verifier import ActionVerifier
+
     v_res = ActionVerifier.verify_file_parsed(str(saved_path))
     if not v_res.verified:
-        return ToolResult.failed("document_creator", ToolErrorCode.VERIFICATION_FAILED, f"Document created but verification failed: {v_res.details}")
+        return ToolResult.failed(
+            "document_creator",
+            ToolErrorCode.VERIFICATION_FAILED,
+            f"Document created but verification failed: {v_res.details}",
+        )
 
     # Register in ArtifactManager
     try:
         from brjarvis.agent.artifacts import get_artifact_manager
+
         mgr = get_artifact_manager()
         mgr.export_sandbox_artifact(saved_path, custom_filename=out_path.name)
     except Exception as art_err:
@@ -1163,9 +1182,9 @@ def document_creator(args: dict) -> Any:
             "title": {"type": "string", "description": "Document title"},
             "content": {"type": "string", "description": "Main document text content or markdown"},
             "filename": {"type": "string", "description": "Output filename ending in .docx"},
-            "auto_open": {"type": "boolean", "description": "Whether to auto-launch Word"}
+            "auto_open": {"type": "boolean", "description": "Whether to auto-launch Word"},
         },
-        "required": ["title", "content"]
+        "required": ["title", "content"],
     },
     category="document",
     risk_level="low",
@@ -1192,9 +1211,9 @@ def create_word_document(args: dict) -> Any:
             "title": {"type": "string", "description": "Document title"},
             "content": {"type": "string", "description": "Main text content or markdown"},
             "filename": {"type": "string", "description": "Output filename ending in .pdf"},
-            "auto_open": {"type": "boolean", "description": "Whether to auto-launch PDF viewer"}
+            "auto_open": {"type": "boolean", "description": "Whether to auto-launch PDF viewer"},
         },
-        "required": ["title", "content"]
+        "required": ["title", "content"],
     },
     category="document",
     risk_level="low",
@@ -1212,11 +1231,10 @@ def create_pdf_document(args: dict) -> Any:
     return document_creator(args_copy)
 
 
-
 @register_tool(
     name="generate_project_product_analysis",
     description="Generate a complete Product Analysis Report for B.R. JARVIS as Word (.docx) and PDF (.pdf) documents and auto-open them.",
-    parameters={"type": "object", "properties": {}}
+    parameters={"type": "object", "properties": {}},
 )
 def generate_project_product_analysis(args: dict) -> str:
     """Generate complete Product Analysis report for B.R. JARVIS in Word & PDF formats."""
@@ -1254,20 +1272,24 @@ B.R. JARVIS shifts the paradigm from static autocomplete AI to an autonomous sen
 - Local-first workspace execution with absolute path validation.
 - AST compilation checks and security vulnerability scanning.
 """
-    res_word = document_creator({
-        "title": doc_title,
-        "content": doc_text,
-        "filename": "Reports/JARVIS_Product_Analysis.docx",
-        "format": "docx",
-        "auto_open": True
-    })
-    res_pdf = document_creator({
-        "title": doc_title,
-        "content": doc_text,
-        "filename": "Reports/JARVIS_Product_Analysis.pdf",
-        "format": "pdf",
-        "auto_open": True
-    })
+    res_word = document_creator(
+        {
+            "title": doc_title,
+            "content": doc_text,
+            "filename": "Reports/JARVIS_Product_Analysis.docx",
+            "format": "docx",
+            "auto_open": True,
+        }
+    )
+    res_pdf = document_creator(
+        {
+            "title": doc_title,
+            "content": doc_text,
+            "filename": "Reports/JARVIS_Product_Analysis.pdf",
+            "format": "pdf",
+            "auto_open": True,
+        }
+    )
 
     return f"{res_word}\n{res_pdf}"
 
@@ -1283,10 +1305,10 @@ B.R. JARVIS shifts the paradigm from static autocomplete AI to an autonomous sen
             "changes": {"type": "string", "description": "Detailed description or markdown list of changes made"},
             "verification": {"type": "string", "description": "Verification steps and automated test results"},
             "filename": {"type": "string", "description": "Target filename, default is walkthrough.md"},
-            "auto_open": {"type": "boolean", "description": "Whether to auto-open the generated walkthrough file"}
+            "auto_open": {"type": "boolean", "description": "Whether to auto-open the generated walkthrough file"},
         },
-        "required": ["title", "changes"]
-    }
+        "required": ["title", "changes"],
+    },
 )
 def generate_walkthrough(args: dict) -> str:
     """Generate a GitHub-flavored markdown walkthrough document."""

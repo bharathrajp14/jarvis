@@ -1,7 +1,9 @@
 """Adversarial Security Tests: Prompt Injection & Jailbreak Guard."""
+
 from __future__ import annotations
 
 import pytest
+
 from brjarvis.guardian.prompt_injection_shield import PromptInjectionShield
 
 

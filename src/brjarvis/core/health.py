@@ -3,20 +3,23 @@ from __future__ import annotations
 
 import logging
 import shutil
-import time
 import threading
+import time
 from typing import Callable, Dict, Optional
+
 from pydantic import BaseModel, Field
 
 try:
     import psutil
+
     _PSUTIL_AVAILABLE = True
     # Prime the CPU counter so the first call returns a real value (not 0.0)
     psutil.cpu_percent(interval=None)
 except ImportError:
     _PSUTIL_AVAILABLE = False
 
-from .native_bridge import is_native_active, get_status as get_native_status
+from .native_bridge import get_status as get_native_status
+from .native_bridge import is_native_active
 
 logger = logging.getLogger("JARVIS.Health")
 
@@ -83,7 +86,7 @@ class HealthMonitor:
                     mem_pct = mem.percent
                     mem_avail_mb = mem.available / (1024 * 1024)
                 except Exception as e:
-                    logger.exception('Boot critical exception encountered in core/health.py')
+                    logger.exception("Boot critical exception encountered in core/health.py")
                     raise e
             # Disk usage
             disk_pct = 0.0
@@ -91,7 +94,7 @@ class HealthMonitor:
                 total, used, _ = shutil.disk_usage(".")
                 disk_pct = (used / total) * 100.0
             except Exception as e:
-                logger.exception('Boot critical exception encountered in core/health.py')
+                logger.exception("Boot critical exception encountered in core/health.py")
                 raise e
             metrics = HardwareMetrics(
                 cpu_percent=cpu,
@@ -119,10 +122,7 @@ class HealthMonitor:
         components["c_native_bridge"] = ComponentHealth(
             name="c_native_bridge",
             status="HEALTHY" if native_stat["active"] else "DEGRADED",
-            message=(
-                f"Library v{native_stat['version']}" if native_stat["active"]
-                else "Python Fallback Active"
-            ),
+            message=(f"Library v{native_stat['version']}" if native_stat["active"] else "Python Fallback Active"),
         )
 
         # Run all registered external checks
@@ -137,9 +137,7 @@ class HealthMonitor:
                 elif res.status == "UNHEALTHY":
                     has_unhealthy = True
             except Exception as exc:
-                components[name] = ComponentHealth(
-                    name=name, status="UNHEALTHY", message=str(exc)
-                )
+                components[name] = ComponentHealth(name=name, status="UNHEALTHY", message=str(exc))
                 has_unhealthy = True
 
         # Determine overall status

@@ -3,6 +3,7 @@
 Comprehensive Verification Test Suite for BR JARVIS Canonical Tool Execution Platform.
 Validates contracts, normalizer, validator, resolver, runtime lifecycle, and modernized tools.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -24,6 +25,7 @@ from brjarvis.tools.tool_result import ToolResult
 from brjarvis.tools.validator import SchemaValidator
 
 # ── 1. Domain & Contract Tests ────────────────────────────────────────────────
+
 
 def test_tool_definition_contract():
     tool_def = ToolDefinition(
@@ -75,6 +77,7 @@ def test_tool_result_failure_and_blocked():
 
 
 # ── 2. Normalizer & Validator Tests ───────────────────────────────────────────
+
 
 def test_argument_normalizer_booleans_and_paths():
     tool_def = ToolDefinition(
@@ -139,6 +142,7 @@ def test_schema_validator_constraints():
 
 # ── 3. Resolver Tests ─────────────────────────────────────────────────────────
 
+
 def test_tool_resolver_namespace_and_aliases():
     catalog = {
         "file_read": ToolDefinition(name="file_read", description="Read file", tool_id="filesystem.read"),
@@ -164,6 +168,7 @@ def test_tool_resolver_namespace_and_aliases():
 
 
 # ── 4. Canonical ToolRuntime Execution Tests ──────────────────────────────────
+
 
 def test_runtime_execution_synchronous():
     runtime = ToolRuntime.get_instance()
@@ -239,6 +244,7 @@ def test_runtime_registration_defaults_to_high_risk_approval():
 
 # ── 5. Modernized Tool Suites Verification ────────────────────────────────────
 
+
 def test_filesystem_suite_roundtrip():
     runtime = ToolRuntime.get_instance()
 
@@ -284,13 +290,17 @@ def test_memory_suite_roundtrip():
     mem_content = "Universal ToolRuntime is fully operational with zero false successes."
 
     # 1. Save memory
-    s_res = runtime.execute_tool("memory_save", {
-        "name": mem_name,
-        "type": "project",
-        "description": "Rebuild verification key",
-        "content": mem_content,
-        "scope": "project"
-    }, confirmed=True)
+    s_res = runtime.execute_tool(
+        "memory_save",
+        {
+            "name": mem_name,
+            "type": "project",
+            "description": "Rebuild verification key",
+            "content": mem_content,
+            "scope": "project",
+        },
+        confirmed=True,
+    )
     assert s_res.success is True
     assert s_res.verified is True
 

@@ -3,16 +3,18 @@
 KnowledgeGraph provides a graph-based world model connecting workspace entities,
 projects, files, apps, windows, goals, repositories, and APIs with directed relational edges.
 """
+
 from __future__ import annotations
 
 import json
 import logging
 import os
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional
 
 try:
     import networkx as nx
+
     _HAS_NETWORKX = True
 except ImportError:
     _HAS_NETWORKX = False
@@ -28,7 +30,7 @@ class KnowledgeGraph:
     def __init__(self, storage_path: Optional[str] = None):
         self.storage_path = Path(storage_path or os.path.join("workspace", "knowledge_graph.json"))
         self.storage_path.parent.mkdir(parents=True, exist_ok=True)
-        
+
         if _HAS_NETWORKX:
             self.graph = nx.DiGraph()
         else:
@@ -41,7 +43,7 @@ class KnowledgeGraph:
         """Add or update an entity node in the Knowledge Graph."""
         props = properties or {}
         props["entity_type"] = entity_type
-        
+
         if _HAS_NETWORKX:
             self.graph.add_node(entity_id, **props)
         else:
@@ -103,7 +105,9 @@ class KnowledgeGraph:
             for neighbor in self.graph.successors(entity_id):
                 edge_data = self.graph.get_edge_data(entity_id, neighbor)
                 node_data = self.graph.nodes[neighbor]
-                results.append({"entity_id": neighbor, "relation": edge_data.get("relation_type"), "properties": node_data})
+                results.append(
+                    {"entity_id": neighbor, "relation": edge_data.get("relation_type"), "properties": node_data}
+                )
         else:
             for edge in self._edges.get(entity_id, []):
                 target = edge["target"]
