@@ -14,7 +14,7 @@ import time
 from typing import Any, Callable, Dict, List, Optional
 
 from .canonical_db import CanonicalDatabaseManager, get_canonical_db
-from .domain import CanonicalMemory, MemoryStatus, MemoryType, SourceType
+from .domain import CanonicalMemory, MemoryStatus, MemoryType, RetentionClass, SourceType
 
 logger = logging.getLogger("JARVIS.CanonicalStore")
 
@@ -53,7 +53,7 @@ class CanonicalMemoryStore:
                         effective_from, effective_until, updated_at, last_accessed_at,
                         last_validated_at, status, version, supersedes_memory_id,
                         superseded_by_memory_id, conflict_group_id, session_id, task_id,
-                        decision_id, tags_json, content_hash, embedding_id
+                        decision_id, tags_json, content_hash, embedding_id, retention_class
                     ) VALUES (
                         ?, ?, ?, ?, ?, ?,
                         ?, ?, ?, ?, ?, ?, ?,
@@ -61,7 +61,7 @@ class CanonicalMemoryStore:
                         ?, ?, ?, ?,
                         ?, ?, ?, ?,
                         ?, ?, ?, ?,
-                        ?, ?, ?, ?
+                        ?, ?, ?, ?, ?
                     )
                     ON CONFLICT(memory_id) DO UPDATE SET
                         user_id = excluded.user_id,
@@ -94,7 +94,8 @@ class CanonicalMemoryStore:
                         decision_id = excluded.decision_id,
                         tags_json = excluded.tags_json,
                         content_hash = excluded.content_hash,
-                        embedding_id = excluded.embedding_id
+                        embedding_id = excluded.embedding_id,
+                        retention_class = excluded.retention_class
                     """,
                     (
                         memory.memory_id, memory.user_id, memory.project_id, memory.scope,
@@ -107,7 +108,8 @@ class CanonicalMemoryStore:
                         memory.last_accessed_at, memory.last_validated_at, memory.status.value,
                         memory.version, memory.supersedes_memory_id, memory.superseded_by_memory_id,
                         memory.conflict_group_id, memory.session_id, memory.task_id,
-                        memory.decision_id, tags_str, memory.content_hash, memory.embedding_id
+                        memory.decision_id, tags_str, memory.content_hash, memory.embedding_id,
+                        memory.retention_class.value if hasattr(memory.retention_class, "value") else str(memory.retention_class)
                     ),
                 )
                 conn.commit()
@@ -148,6 +150,16 @@ class CanonicalMemoryStore:
             if not row:
                 return None
             return self._row_to_memory(row)
+
+    def get_by_entity(self, entity: str, limit: int = 20) -> List[CanonicalMemory]:
+        """Retrieve active memories for a given entity."""
+        with self.db.get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT * FROM canonical_memories WHERE entity = ? AND status = 'ACTIVE' ORDER BY updated_at DESC LIMIT ?",
+                (entity, limit),
+            )
+            return [self._row_to_memory(row) for row in cursor.fetchall()]
 
     def list_active(
         self,
@@ -358,6 +370,7 @@ class CanonicalMemoryStore:
             tags=tags,
             content_hash=row["content_hash"] or "",
             embedding_id=row["embedding_id"],
+            retention_class=RetentionClass(row["retention_class"]) if ("retention_class" in row.keys() and row["retention_class"]) else RetentionClass.NORMAL,
         )
 
 

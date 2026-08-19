@@ -51,6 +51,7 @@ _ALIASES = {
     "plugins": "brjarvis.plugins",
     "screen_server": "brjarvis.screen_server",
     "multi_agent": "brjarvis.multi_agent",
+    "contracts": "brjarvis.contracts",
 }
 
 import importlib.abc

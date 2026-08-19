@@ -146,7 +146,16 @@ def _random_data(data_type: str) -> str:
     return f"random_{data_type}_{random.randint(1000, 9999)}"
 
 def _user_profile() -> dict:
-    """Read identity fields from long-term memory."""
+    """Read identity fields from canonical memory store."""
+    try:
+        from brjarvis.memory.store import get_canonical_store
+        from brjarvis.memory.domain import MemoryType
+        store = get_canonical_store()
+        memories = store.list_active(memory_type=MemoryType.USER_PROFILE)
+        if memories:
+            return {m.entity: str(m.value or m.content) for m in memories}
+    except Exception:
+        pass
     try:
         if _MEMORY_PATH.exists():
             data     = json.loads(_MEMORY_PATH.read_text(encoding="utf-8"))

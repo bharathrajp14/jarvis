@@ -134,3 +134,83 @@ class TestAgentSession:
 
         all_sess = list_active_sessions()
         assert any(s.session_id == "sess-reg-1" for s in all_sess)
+
+    def test_session_checkpoint_and_resume(self):
+        sess = AgentSession(session_id="test-sess-ckpt", current_mode="coder")
+        sess.add_user_turn("Initial query")
+        sess.add_assistant_turn("Initial response")
+        sess.set_active_task("task-ckpt-1", "Checkpoint Task")
+
+        # Create checkpoint
+        ckpt_id = sess.checkpoint("turn_2_snapshot")
+        assert ckpt_id.startswith("ckpt-")
+
+        # Mutate session
+        sess.add_user_turn("New query that broke things")
+        sess.add_assistant_turn("Broken response")
+        assert len(sess.turns) == 4
+
+        # Resume from checkpoint
+        resumed = sess.resume_from_checkpoint(ckpt_id)
+        assert resumed is True
+        assert len(sess.turns) == 2
+        assert sess.active_task_id == "task-ckpt-1"
+
+    def test_session_pause_and_cancel(self):
+        sess = AgentSession(session_id="test-sess-pc", current_mode="general")
+        sess.pause(reason="Waiting for user input")
+        assert sess.current_state == "PAUSED"
+
+        sess.resume_session()
+        assert sess.current_state == "ACTIVE"
+
+        sess.cancel(reason="User terminated")
+        assert sess.current_state == "CANCELLED"
+        assert sess.is_cancelled is True
+
+    def test_session_compaction(self):
+        sess = AgentSession(session_id="test-sess-compact")
+        for i in range(10):
+            sess.add_user_turn(f"Question {i}")
+            sess.add_assistant_turn(f"Answer {i}")
+        assert len(sess.turns) == 20
+
+        sess.compact(summary="Discussed math and science problems from Q0 to Q9", retain_last=4)
+        assert len(sess.turns) == 5  # 1 summary turn + 4 retained turns
+        assert sess.turns[0].role == "system"
+        assert "Session Compaction Summary" in sess.turns[0].content
+
+    def test_session_handoff(self):
+        sess = AgentSession(session_id="test-sess-hoff")
+        sess.add_user_turn("Build frontend")
+        sess.add_assistant_turn("Created components")
+
+        hoff = sess.create_handoff(
+            target_agent="jarvis-reviewer",
+            goal="Review frontend UI components",
+            next_steps=["Run linter", "Verify visual aesthetics"],
+        )
+        assert hoff["handoff_id"].startswith("hoff-")
+        assert hoff["target_agent"] == "jarvis-reviewer"
+        assert "Run linter" in hoff["next_steps"]
+
+    def test_session_database_persistence(self):
+        from brjarvis.agent.session import reset_active_session, delete_session
+        sess_id = "test-sess-db-persist"
+        sess = get_or_create_session(sess_id, mode="research")
+        sess.add_user_turn("Research quantum computing algorithms")
+        sess.add_assistant_turn("Quantum algorithms summary...")
+        sess.save_to_store()
+
+        # Clear in-memory cache to simulate process restart
+        reset_active_session()
+
+        # Re-fetch session from canonical DB
+        recovered = get_or_create_session(sess_id)
+        assert recovered.session_id == sess_id
+        assert recovered.current_mode == "research"
+        assert len(recovered.turns) == 2
+        assert "quantum computing" in recovered.turns[0].content
+
+        delete_session(sess_id)
+

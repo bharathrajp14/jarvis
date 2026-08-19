@@ -206,6 +206,18 @@ class JarvisOrchestrator:
         except Exception as exc:
             logger.warning(f"[Orchestrator] Conversation store unavailable: {exc}")
 
+        # Canonical Agent Session State Container
+        self._agent_session = None
+        try:
+            from brjarvis.agent.session import get_or_create_session
+            self._agent_session = get_or_create_session(
+                session_id=self._session_id,
+                mode=self.current_mode,
+                model=getattr(router.default, "value", "gemini"),
+            )
+        except Exception as _sess_err:
+            logger.debug("[Orchestrator] Canonical AgentSession init note: %s", _sess_err)
+
         set_orchestrator_ref(self)
 
         # ── Boot Connector Hub (lazy, background) ─────────────────────────────
@@ -229,6 +241,11 @@ class JarvisOrchestrator:
     @property
     def session_id(self) -> str:
         return self._session_id
+
+    @property
+    def session(self) -> Any:
+        """Access the canonical active AgentSession container."""
+        return self._agent_session
 
     def handle_query(self, query: str) -> str:
         """Handle a direct query or command with deterministic fallback."""
@@ -295,45 +312,49 @@ class JarvisOrchestrator:
                 return "\n".join(lines)
 
             elif sub == "recent":
-                from brjarvis.memory.persistent_store import load_index
-                entries = load_index("user")[:5]
+                from brjarvis.memory.unified_memory import get_unified_memory
+                mem = get_unified_memory()
+                entries = mem.store.list_active(limit=5)
                 if not entries:
                     return "[Memory] No recent memories found."
-                lines = ["[Memory] Recent memories:"]
+                lines = ["[Memory] Recent canonical memories:"]
                 for e in entries:
-                    lines.append(f"  • [{e.type}] {e.name}: {e.content[:100]}")
+                    lines.append(f"  • [{e.memory_type.value}] {e.entity}: {e.content[:100]}")
                 return "\n".join(lines)
 
             elif sub == "project":
-                from brjarvis.memory.persistent_store import load_index
-                entries = [e for e in load_index("user") if e.type in ("project", "operational")][:5]
+                from brjarvis.memory.unified_memory import get_unified_memory
+                mem = get_unified_memory()
+                entries = mem.store.list_active(scope="project", limit=5)
                 if not entries:
                     return "[Memory] No project memories found."
-                lines = ["[Memory] Project memories:"]
+                lines = ["[Memory] Project canonical memories:"]
                 for e in entries:
-                    lines.append(f"  • [{e.type}] {e.name}: {e.content[:100]}")
+                    lines.append(f"  • [{e.memory_type.value}] {e.entity}: {e.content[:100]}")
                 return "\n".join(lines)
 
             elif sub == "stats":
-                from brjarvis.memory.persistent_store import load_index
-                user_entries = load_index("user")
-                proj_entries = load_index("project")
+                from brjarvis.memory.unified_memory import get_unified_memory
+                mem = get_unified_memory()
+                all_entries = mem.store.list_all(limit=500)
                 by_type: dict = {}
-                for e in user_entries + proj_entries:
-                    by_type[e.type] = by_type.get(e.type, 0) + 1
-                lines = [f"[Memory] Stats — Total: {len(user_entries) + len(proj_entries)}"]
+                for e in all_entries:
+                    t = e.memory_type.value
+                    by_type[t] = by_type.get(t, 0) + 1
+                lines = [f"[Memory] Stats — Total Active/Archived: {len(all_entries)}"]
                 for t, count in sorted(by_type.items()):
                     lines.append(f"  • {t}: {count}")
                 return "\n".join(lines)
 
             else:
                 # Default: show memory summary
-                from brjarvis.memory.persistent_store import load_index
-                entries = load_index("user")[:3]
-                total = len(load_index("user")) + len(load_index("project"))
-                lines = [f"[Memory] {total} total memories. Recent:"]
+                from brjarvis.memory.unified_memory import get_unified_memory
+                mem = get_unified_memory()
+                entries = mem.store.list_active(limit=3)
+                total = len(mem.store.list_all(limit=500))
+                lines = [f"[Memory] {total} total canonical memories. Recent:"]
                 for e in entries:
-                    lines.append(f"  • [{e.type}] {e.name}: {e.content[:80]}")
+                    lines.append(f"  • [{e.memory_type.value}] {e.entity}: {e.content[:80]}")
                 lines.append("\nUsage: /memory search <query> | /memory recent | /memory project | /memory stats")
                 return "\n".join(lines)
 
@@ -550,6 +571,25 @@ class JarvisOrchestrator:
                 )
             except Exception as exc:
                 logger.debug("[Session] Add turn failed: %s", exc)
+
+        if self._agent_session:
+            try:
+                if role == "user":
+                    self._agent_session.add_user_turn(content)
+                elif role == "assistant":
+                    tool_name = kwargs.get("tool_name")
+                    tool_args = kwargs.get("tool_args")
+                    tool_result = kwargs.get("tool_result")
+                    tool_calls = [{"tool": tool_name, "args": tool_args}] if tool_name else []
+                    tool_results = [{"tool": tool_name, "result": tool_result}] if tool_name else []
+                    self._agent_session.add_assistant_turn(
+                        content=content,
+                        tool_calls=tool_calls,
+                        tool_results=tool_results,
+                        latency_ms=kwargs.get("latency_ms", 0),
+                    )
+            except Exception as exc:
+                logger.debug("[AgentSession] Record turn note: %s", exc)
 
         if self.conversation_store and self._session_id:
             try:
@@ -978,6 +1018,21 @@ class JarvisOrchestrator:
 
     def chat(self, user_input: str) -> str:
         """Run a synchronous ReAct chat turn and return the final response."""
+        # ── Guardian / Prompt Injection Defense ───────────────────────────────
+        try:
+            from brjarvis.guardian.prompt_injection_shield import get_prompt_injection_shield
+            shield = get_prompt_injection_shield()
+            injection_result = shield.inspect(user_input)
+            if injection_result.is_injection and injection_result.risk_level in ("high", "critical"):
+                logger.warning(
+                    "[Guardian] 🚨 Prompt Injection blocked: risk=%s, patterns=%s",
+                    injection_result.risk_level,
+                    injection_result.detected_patterns,
+                )
+                return f"[Guardian Alert] Request blocked by safety policy due to detected adversarial prompt injection pattern: {', '.join(injection_result.detected_patterns)}."
+        except Exception as _shield_err:
+            logger.debug("[Guardian] Prompt injection inspection note: %s", _shield_err)
+
         mode_result = self._parse_mode(user_input)
         if mode_result:
             return mode_result

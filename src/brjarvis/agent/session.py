@@ -14,9 +14,11 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Set, Union
 
+from brjarvis.contracts.session import SessionState
 from brjarvis.core.paths import paths
 from brjarvis.events.bus import get_event_bus
 from brjarvis.events.types import SessionLifecycleEvent
+from brjarvis.memory.canonical_db import get_canonical_db
 from brjarvis.security.permission_request import (
     PermissionDecision,
     PermissionManager,
@@ -54,8 +56,9 @@ class AgentSession:
     device_id: str = "pc_primary"
     active_model: str = "gemini"
     model_strategy: str = "fixed"  # fixed | adaptive
-    permission_mode: str = "allow_all"
+    permission_mode: str = "confirm_destructive"
     current_mode: str = "general"
+    current_state: str = "ACTIVE"  # NEW, ACTIVE, WAITING, PAUSED, COMPACTING, RESUMING, COMPLETED, FAILED, CANCELLED
 
     # Turn & history collections
     turns: List[SessionTurn] = field(default_factory=list)
@@ -82,6 +85,7 @@ class AgentSession:
     def __post_init__(self):
         # Register in PermissionManager or publish session.started
         self._publish_session_event("started")
+        self.save_to_store()
 
     def _publish_session_event(self, action: str) -> None:
         try:
@@ -285,23 +289,158 @@ class AgentSession:
 
     # ── Lifecycle & Persistence ───────────────────────────────────────────────
 
+    # ── Lifecycle, State Machine & Checkpointing ──────────────────────────────
+
+    def transition_state(self, new_state: Union[str, SessionState]) -> None:
+        """Explicit session state machine transition."""
+        state_str = new_state.value if hasattr(new_state, "value") else str(new_state).upper()
+        self.current_state = state_str
+        self.updated_at = time.time()
+        self._publish_session_event(f"state_changed_{state_str.lower()}")
+        self.save_to_store()
+
+    def checkpoint(self, snapshot_name: str = "") -> str:
+        """Create a durable point-in-time session checkpoint in SQLite WAL database."""
+        self.save_to_store()
+        ckpt_id = f"ckpt-{uuid.uuid4().hex[:8]}"
+        snapshot_data = self.to_dict()
+        snapshot_data["snapshot_name"] = snapshot_name
+        ckpt_rec = {
+            "checkpoint_id": ckpt_id,
+            "session_id": self.session_id,
+            "state": self.current_state,
+            "turn_index": len(self.turns),
+            "active_task_id": self.active_task_id,
+            "snapshot_data": snapshot_data,
+            "created_at": time.time(),
+        }
+        try:
+            get_canonical_db().save_session_checkpoint_record(ckpt_rec)
+        except Exception as e:
+            logger.error("Session checkpoint note: %s", e, exc_info=True)
+        return ckpt_id
+
+    def resume_from_checkpoint(self, checkpoint_id: Optional[str] = None) -> bool:
+        """Restore session state from the most recent or specified checkpoint."""
+        try:
+            db = get_canonical_db()
+            ckpts = db.get_session_checkpoints(self.session_id)
+            if not ckpts:
+                return False
+            target_ckpt = None
+            if checkpoint_id:
+                for c in ckpts:
+                    if c.get("checkpoint_id") == checkpoint_id:
+                        target_ckpt = c
+                        break
+            else:
+                target_ckpt = ckpts[-1]
+
+            if not target_ckpt or "snapshot_data" not in target_ckpt:
+                return False
+
+            data = target_ckpt["snapshot_data"]
+            restored = AgentSession.from_dict(data)
+            self.turns = restored.turns
+            self.active_task_id = restored.active_task_id
+            self.active_task_label = restored.active_task_label
+            self.active_plan = restored.active_plan
+            self.tool_history = restored.tool_history
+            self.approvals = restored.approvals
+            self.current_state = "RESUMING"
+            self.updated_at = time.time()
+            self.transition_state(SessionState.ACTIVE)
+            return True
+        except Exception as e:
+            logger.error("Failed to resume session from checkpoint: %s", e)
+            return False
+
+    def pause(self, reason: str = "") -> None:
+        """Pause active session and capture state checkpoint."""
+        self.checkpoint(snapshot_name=f"paused: {reason}")
+        self.transition_state(SessionState.PAUSED)
+
+    def resume_session(self) -> None:
+        """Resume a paused or waiting session."""
+        self.transition_state(SessionState.ACTIVE)
+
+    def cancel(self, reason: str = "") -> None:
+        """Cancel active session and record cancellation reason."""
+        self.is_cancelled = True
+        if reason:
+            self.errors.append({"type": "session_cancelled", "reason": reason, "time": time.time()})
+        self.transition_state(SessionState.CANCELLED)
+
+    def compact(self, summary: str, retain_last: int = 4) -> None:
+        """Compact conversation history into a structured summary while preserving recent turns."""
+        self.transition_state(SessionState.COMPACTING)
+        if len(self.turns) > retain_last:
+            retained = self.turns[-retain_last:]
+            summary_turn = SessionTurn(
+                role="system",
+                content=f"[Session Compaction Summary]: {summary}",
+                backend=self.active_model,
+                correlation_id=self.correlation_id,
+            )
+            self.turns = [summary_turn] + retained
+            self.discovered_context.append(f"Compacted at {time.strftime('%Y-%m-%d %H:%M:%S')}: {summary}")
+        self.checkpoint(snapshot_name="post_compaction")
+        self.transition_state(SessionState.ACTIVE)
+
+    def create_handoff(
+        self,
+        target_agent: str,
+        goal: str,
+        next_steps: Optional[List[str]] = None,
+        important_files: Optional[List[str]] = None,
+        risks: Optional[List[str]] = None,
+    ) -> Dict[str, Any]:
+        """Create a durable cross-agent handoff record."""
+        hoff_id = f"hoff-{uuid.uuid4().hex[:8]}"
+        completed = [t.content[:100] for t in self.turns if t.role == "assistant"]
+        hoff_packet = {
+            "handoff_id": hoff_id,
+            "session_id": self.session_id,
+            "source_agent": self.user_id,
+            "target_agent": target_agent,
+            "project_id": self.working_directory,
+            "goal": goal,
+            "completed": completed[-5:],
+            "current_state": self.current_state,
+            "failed_attempts": [e.get("reason", str(e)) for e in self.errors],
+            "decisions": [t.content[:120] for t in self.turns if "decision" in t.content.lower()],
+            "open_questions": [],
+            "next_steps": next_steps or [],
+            "important_files": important_files or [],
+            "risks": risks or [],
+            "confidence": 1.0,
+            "created_at": time.time(),
+            "expires_at": time.time() + 86400.0,
+        }
+        self.checkpoint(snapshot_name=f"handoff_to_{target_agent}")
+        return hoff_packet
+
     def close(self, consolidate: bool = True) -> None:
         if self.is_closed:
             return
         self.is_closed = True
+        self.current_state = "COMPLETED"
         self.updated_at = time.time()
         self._publish_session_event("closed")
-
-        # Save session to persistent storage if available
         self.save_to_store()
 
     def save_to_store(self) -> None:
+        """Persist session state directly to authoritative Canonical SQLite WAL DB."""
+        try:
+            get_canonical_db().save_session_record(self.to_dict())
+        except Exception as e:
+            logger.debug("Session canonical DB persistence note: %s", e)
         try:
             from brjarvis.history.session_store import SessionStore
             store = SessionStore()
             store.save_session(self.session_id, self.to_dict())
-        except Exception as e:
-            logger.debug("Session persistence note: %s", e)
+        except Exception:
+            pass
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -314,6 +453,7 @@ class AgentSession:
             "model_strategy": self.model_strategy,
             "permission_mode": self.permission_mode,
             "current_mode": self.current_mode,
+            "current_state": self.current_state,
             "turns": [t.to_dict() for t in self.turns],
             "active_task_id": self.active_task_id,
             "active_task_label": self.active_task_label,
@@ -336,8 +476,9 @@ class AgentSession:
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> AgentSession:
-        turns_raw = data.pop("turns", [])
-        session = cls(**{k: v for k, v in data.items() if k in cls.__dataclass_fields__})
+        data_copy = dict(data)
+        turns_raw = data_copy.pop("turns", [])
+        session = cls(**{k: v for k, v in data_copy.items() if k in cls.__dataclass_fields__})
         session.turns = [SessionTurn(**t) for t in turns_raw if isinstance(t, dict)]
         return session
 
@@ -356,7 +497,18 @@ def get_or_create_session(
     if session_id and session_id in _SESSION_CACHE:
         return _SESSION_CACHE[session_id]
 
-    # Check persistent store
+    # Check authoritative canonical SQLite WAL DB first
+    if session_id:
+        try:
+            saved = get_canonical_db().get_session_record(session_id)
+            if saved:
+                sess = AgentSession.from_dict(saved)
+                _SESSION_CACHE[session_id] = sess
+                return sess
+        except Exception:
+            pass
+
+    # Check secondary persistent store if needed
     if session_id:
         try:
             from brjarvis.history.session_store import SessionStore
@@ -375,6 +527,7 @@ def get_or_create_session(
         current_mode=mode,
         active_model=model,
     )
+    sess.save_to_store()
     _SESSION_CACHE[new_id] = sess
     return sess
 
@@ -394,8 +547,11 @@ def get_session(session_id: str) -> Optional[AgentSession]:
 def delete_session(session_id: str) -> bool:
     if session_id in _SESSION_CACHE:
         del _SESSION_CACHE[session_id]
-        return True
-    return False
+    try:
+        get_canonical_db().delete_session_record(session_id)
+    except Exception:
+        pass
+    return True
 
 
 def reset_active_session() -> None:

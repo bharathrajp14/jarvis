@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import re
 import sys
 import time
@@ -125,7 +126,7 @@ def _ask_for_url(prompt_text: str = "YouTube video URL:") -> str | None:
         import tkinter as tk
         from tkinter import simpledialog
 
-        root = tk._default_root
+        root = getattr(tk, "_default_root", None)
         if root is None:
             root = tk.Tk()
             root.withdraw()
@@ -194,7 +195,7 @@ def _summarize_with_gemini(transcript: str, video_url: str) -> str:
             model="gemini-2.5-flash",
             contents=prompt,
         )
-        return response.text.strip()
+        return (response.text or "").strip()
 
 
 def _save_summary(content: str, video_url: str) -> str:
@@ -285,7 +286,7 @@ def _scrape_trending(region: str = "TR", max_results: int = 8) -> list[dict]:
         logger.warning("Trending scrape failed: %s", e)
         return []
 
-def _handle_play(parameters: dict, player) -> str:
+def _handle_play(parameters: dict, player=None, speak=None) -> str:
     query = parameters.get("query", "").strip()
     if not query:
         return "Please tell me what you'd like to watch, sir."
@@ -311,11 +312,17 @@ def _handle_play(parameters: dict, player) -> str:
     return f"Opened YouTube search for: {query} (manual selection required)"
 
 
-def _handle_summarize(parameters: dict, player, speak) -> str:
+def _handle_summarize(parameters: dict, player=None, speak=None) -> str:
     if not _TRANSCRIPT_OK:
         return "youtube-transcript-api is not installed. Run: pip install youtube-transcript-api"
 
-    url = _ask_for_url("Please paste the YouTube video URL:")
+    url = (
+        str(parameters.get("url") or parameters.get("video_url") or parameters.get("link") or "").strip()
+    )
+    if not url:
+        if os.environ.get("JARVIS_HEADLESS") == "true" or "pytest" in sys.modules:
+            return "Please provide a valid YouTube URL in the action parameters, sir."
+        url = _ask_for_url("Please paste the YouTube video URL:")
     if not url:
         return "No URL provided, sir. Summary cancelled."
     if not _is_valid_youtube_url(url):
@@ -352,9 +359,11 @@ def _handle_summarize(parameters: dict, player, speak) -> str:
     return summary
 
 
-def _handle_get_info(parameters: dict, player, speak) -> str:
-    url = parameters.get("url", "").strip()
+def _handle_get_info(parameters: dict, player=None, speak=None) -> str:
+    url = str(parameters.get("url") or parameters.get("video_url") or parameters.get("link") or "").strip()
     if not url:
+        if os.environ.get("JARVIS_HEADLESS") == "true" or "pytest" in sys.modules:
+            return "Please provide a valid YouTube URL in the action parameters, sir."
         url = _ask_for_url("Please paste the YouTube video URL:")
     if not url or not _is_valid_youtube_url(url):
         return "Please provide a valid YouTube URL, sir."
@@ -383,7 +392,7 @@ def _handle_get_info(parameters: dict, player, speak) -> str:
     return result
 
 
-def _handle_trending(parameters: dict, player, speak) -> str:
+def _handle_trending(parameters: dict, player=None, speak=None) -> str:
     region = parameters.get("region", "TR").upper()
 
     if player:
@@ -436,8 +445,6 @@ def youtube_video(
         )
 
     try:
-        if action == "play":
-            return handler(params, player) or "Done."
         return handler(params, player, speak) or "Done."
     except Exception as e:
         logger.warning(f"[YouTube] ❌ Error in {action}: {e}")

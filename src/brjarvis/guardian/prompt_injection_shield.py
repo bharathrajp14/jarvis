@@ -40,6 +40,24 @@ class InjectionScanResult:
     threats_detected: List[str]
     quarantined_content: str
 
+    @property
+    def is_injection(self) -> bool:
+        return not self.is_safe
+
+    @property
+    def detected_patterns(self) -> List[str]:
+        return self.threats_detected
+
+    @property
+    def risk_level(self) -> str:
+        if self.risk_score >= 0.7:
+            return "critical"
+        elif self.risk_score >= 0.3:
+            return "high"
+        elif self.risk_score > 0.0:
+            return "medium"
+        return "low"
+
 
 class PromptInjectionShield:
     """Detects adversarial payloads and enforces structural context isolation."""
@@ -92,6 +110,18 @@ class PromptInjectionShield:
             f'</untrusted_content>'
         )
 
+    @classmethod
+    def inspect(cls, raw_text: str, source: str = "untrusted") -> InjectionScanResult:
+        """Inspect input text and return scan result with is_injection property."""
+        return cls.scan(raw_text, source=source)
+
+
+_GLOBAL_SHIELD = PromptInjectionShield()
+
+
+def get_prompt_injection_shield() -> PromptInjectionShield:
+    return _GLOBAL_SHIELD
+
 
 def check_prompt_injection(text: str) -> Tuple[bool, str]:
     """Public helper to scan text and return (is_injected, threat_label)."""
@@ -104,3 +134,4 @@ def check_prompt_injection(text: str) -> Tuple[bool, str]:
 def quarantine_untrusted_data(text: str, source: str = "external") -> str:
     """Public helper to sanitize and quarantine external data."""
     return PromptInjectionShield.quarantine(text, source=source)
+

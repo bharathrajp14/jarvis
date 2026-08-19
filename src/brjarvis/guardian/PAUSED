@@ -1,0 +1,1 @@
+PAUSED: Guardian Integrity Mismatch in files: ['guardian/core.py', 'guardian/snapshot.py', 'guardian/rollback.py', 'security/policy_engine.py', 'security/path_policy.py', 'permissions.py']

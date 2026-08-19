@@ -42,11 +42,23 @@ def _title_hash(title: str) -> str:
 # ── Memory I/O ─────────────────────────────────────────────────────────────────
 
 def _load() -> dict:
+    try:
+        from brjarvis.memory.canonical_db import get_canonical_db
+        val = get_canonical_db().get_preference("monitors:active")
+        if val:
+            return json.loads(val)
+    except Exception:
+        pass
     from brjarvis.memory.memory_manager import load_memory
     data = load_memory().get("monitors", {})
     return data if isinstance(data, dict) else {}
 
 def _save(monitors: dict) -> None:
+    try:
+        from brjarvis.memory.canonical_db import get_canonical_db
+        get_canonical_db().set_preference("monitors:active", json.dumps(monitors))
+    except Exception:
+        pass
     from brjarvis.memory.memory_manager import load_memory, MEMORY_PATH, _lock
     memory = load_memory()
     memory["monitors"] = monitors

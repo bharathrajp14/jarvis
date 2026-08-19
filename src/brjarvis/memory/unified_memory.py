@@ -21,7 +21,7 @@ from brjarvis.events.bus import get_event_bus
 from .archiver import MemoryArchiver
 from .cache import MemoryCache
 from .conflict_engine import ConflictEngine, get_conflict_engine
-from .domain import CanonicalMemory, MemoryStatus, MemoryType, SourceType
+from .domain import CanonicalMemory, FeedbackSignal, MemoryFeedback, MemoryStatus, MemoryType, RetentionClass, SourceType
 from .experience_replay import ExperienceReplayStore, ExperienceTrajectory, get_experience_replay
 from .lessons import LessonStore
 from .reflection import ReflectionEngine
@@ -87,8 +87,8 @@ class UnifiedMemoryManager:
 
     def remember(
         self,
-        name: str,
-        content: str,
+        name_or_memory: Union[str, CanonicalMemory],
+        content: str = "",
         description: str = "",
         mem_type: str = "user",
         scope: str = "user",
@@ -102,23 +102,28 @@ class UnifiedMemoryManager:
         """
         Store a new memory through the conflict detection and resolution engine.
         Guarantees deterministic state evolution, provenance, and derived index sync.
+        Supports passing a CanonicalMemory object directly or individual attributes.
         """
-        ent = entity or name
-        attr = attribute or name
-        val = value or content
+        if isinstance(name_or_memory, CanonicalMemory):
+            candidate = name_or_memory
+        else:
+            name = str(name_or_memory)
+            ent = entity or name
+            attr = attribute or name
+            val = value or content
 
-        candidate = CanonicalMemory(
-            entity=ent,
-            attribute=attr,
-            value=val,
-            content=content,
-            memory_type=MemoryType.from_str(mem_type),
-            scope=scope,
-            project_id=project_id,
-            confidence=confidence,
-            source_type=SourceType.from_str(source),
-            status=MemoryStatus.ACTIVE,
-        )
+            candidate = CanonicalMemory(
+                entity=ent,
+                attribute=attr,
+                value=val,
+                content=content,
+                memory_type=MemoryType.from_str(mem_type),
+                scope=scope,
+                project_id=project_id,
+                confidence=confidence,
+                source_type=SourceType.from_str(source),
+                status=MemoryStatus.ACTIVE,
+            )
 
         # Detect and resolve conflicts deterministically
         detected_conflicts = self.conflicts.detect_conflicts(candidate)
@@ -184,25 +189,50 @@ class UnifiedMemoryManager:
         logger.info(f"✨ User correction applied: {entity}/{attribute} -> {new_value} (Superseded {len(resolution.loser_memories)} older records)")
         return saved
 
-    def forget(self, name_or_id: str, scope: str = "user") -> bool:
-        """Soft-delete memory record and remove from all vector and cache indexes."""
-        # Find memory ID
-        target_id = name_or_id
-        if not name_or_id.startswith("mem_"):
-            with self.store.db.get_connection() as conn:
-                cursor = conn.cursor()
-                cursor.execute(
-                    "SELECT memory_id FROM canonical_memories WHERE (entity = ? OR attribute = ? OR content LIKE ?) AND status = 'ACTIVE' LIMIT 1",
-                    (name_or_id, name_or_id, f"%{name_or_id}%"),
-                )
-                row = cursor.fetchone()
-                if row:
-                    target_id = row["memory_id"]
+    def forget(self, name_or_id: str = "", entity: str = "", scope: Optional[str] = None) -> bool:
+        """Soft-delete memory record and remove from all vector and cache indexes.
+
+        FIXED (Phase 7): No longer uses direct SQL. Uses store.search_lexical()
+        so invalidation hooks fire correctly and no raw DB access bypasses the store layer.
+
+        Args:
+            name_or_id: memory_id (mem_xxx) or entity name to look up
+            entity:     alternative entity name lookup (used by memory_tools)
+            scope:      optional scope filter (user/project/session)
+        """
+        lookup = entity or name_or_id
+        target_id = ""
+
+        if lookup.startswith("mem_"):
+            target_id = lookup
+        else:
+            # Use the store's lexical search instead of direct SQL
+            proj = "global"
+            hits = self.store.search_lexical(
+                query=lookup,
+                project_id=proj,
+                scope=scope,
+                limit=5,
+            )
+            # Find exact entity match first
+            for hit in hits:
+                if hit.entity and hit.entity.lower() == lookup.lower():
+                    target_id = hit.memory_id
+                    break
+            # Fall back to first result
+            if not target_id and hits:
+                target_id = hits[0].memory_id
+
+        if not target_id:
+            logger.warning("[UnifiedMemory] forget(): could not locate memory '%s'", lookup)
+            return False
 
         success = self.store.delete(target_id, hard=False)
         self.cache.clear()
-        VectorMemory._RECALL_CACHE.clear()
-        logger.info(f"🗑️ Unified Memory deleted: [{scope}] {name_or_id}")
+        # Use instance cache clear (class-level cache removed in Phase 2)
+        if self.vector:
+            self.vector._invalidate_cache()
+        logger.info("[UnifiedMemory] Soft-deleted: %s (%s)", lookup, target_id)
         return success
 
     def search(
@@ -233,11 +263,16 @@ class UnifiedMemoryManager:
             results.append({
                 "source": "canonical_memory",
                 "memory_id": h.memory.memory_id,
+                "entity": h.memory.entity,
+                "attribute": h.memory.attribute,
                 "name": h.memory.entity or h.memory.attribute or "Memory",
                 "content": h.memory.content,
+                "scope": h.memory.scope,
+                "project_id": h.memory.project_id,
                 "confidence": h.confidence,
                 "reliability": h.reliability,
                 "type": h.memory.memory_type.value,
+                "retention_class": h.memory.retention_class.value if hasattr(h.memory, "retention_class") else "NORMAL",
                 "final_score": h.final_score,
                 "selection_reason": h.selection_reason,
             })

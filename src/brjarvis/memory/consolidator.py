@@ -1,9 +1,8 @@
 # memory/consolidator.py
 """
 Memory consolidator: extract long-term insights from completed sessions.
-Ported from the Claude Code collection for JARVIS MK37.
 
-Called on /quit or programmatically after a session.
+Called on /quit or programmatically after a session ends.
 Uses a lightweight AI call to identify preferences, feedback, and project
 decisions worth promoting to persistent memory.
 
@@ -12,12 +11,17 @@ Design principles:
   - Auto-extracted memories start at 0.8 confidence
   - Won't overwrite a higher-confidence existing memory
   - Skips short sessions (< MIN_MESSAGES_TO_CONSOLIDATE turns)
+
+CRITICAL FIX (Phase 3):
+  Previously wrote via persistent_store (memory.db) which was invisible to
+  UnifiedMemoryManager.recall(). Now routes through UnifiedMemoryManager so
+  session-extracted knowledge is immediately retrievable in the canonical store.
 """
 from __future__ import annotations
 
 import json
+import re
 import traceback
-from datetime import datetime
 
 MIN_MESSAGES_TO_CONSOLIDATE = 8
 
@@ -32,16 +36,16 @@ Focus ONLY on:
 
 Return a JSON object with key "memories" containing a list of objects, each with:
   "name":        short slug, e.g. "user_prefers_concise_responses"
-  "type":        "user" | "feedback" | "project"
+  "type":        "user" | "feedback" | "preference" | "project" | "lesson"
   "description": one-line description (used for search relevance)
   "content":     memory body
-  "confidence":  float 0.0–1.0 (use ~0.8 for inferred, ~0.9 for clearly stated)
+  "confidence":  float 0.0-1.0 (use ~0.8 for inferred, ~0.9 for clearly stated)
 
 Return {"memories": []} if nothing new or worth saving.
 
 Do NOT extract:
-- Code patterns, architecture, file paths — derivable from the codebase
-- Git history or debugging fixes — already in commits
+- Code patterns, architecture, file paths -- derivable from the codebase
+- Git history or debugging fixes -- already in commits
 - Ephemeral task state or tool results
 
 Keep to AT MOST 3 memories. Quality over quantity."""
@@ -55,7 +59,7 @@ def consolidate_session(messages: list, router=None) -> list[str]:
         router:   AgentRouter instance (to call an LLM)
 
     Returns:
-        List of memory names that were saved. Empty list on skip or error.
+        List of memory_ids that were saved. Empty list on skip or error.
     """
     if len(messages) < MIN_MESSAGES_TO_CONSOLIDATE:
         return []
@@ -64,7 +68,8 @@ def consolidate_session(messages: list, router=None) -> list[str]:
         return []
 
     try:
-        from brjarvis.memory.persistent_store import MemoryEntry, save_memory, check_conflict
+        from brjarvis.memory.unified_memory import get_unified_memory
+        from brjarvis.memory.domain import CanonicalMemory, MemoryType, SourceType, redact_secrets
 
         # Build condensed transcript from the last 40 messages
         recent = messages[-40:]
@@ -82,7 +87,6 @@ def consolidate_session(messages: list, router=None) -> list[str]:
 
         transcript = "\n".join(parts)
 
-        # Use the router's default backend for consolidation
         consolidation_messages = [
             {"role": "user", "content": f"Conversation:\n\n{transcript}"}
         ]
@@ -99,38 +103,54 @@ def consolidate_session(messages: list, router=None) -> list[str]:
         if not result_text:
             return []
 
-        # Parse JSON from the response
-        # Strip markdown code blocks if present
-        import re
+        # Parse JSON (strip markdown code blocks if present)
         clean = re.sub(r"```(?:json)?", "", result_text).strip().rstrip("`").strip()
         parsed = json.loads(clean)
         memories_data = parsed.get("memories", [])
         if not isinstance(memories_data, list):
             return []
 
+        _type_map = {
+            "user": MemoryType.USER_PROFILE,
+            "feedback": MemoryType.OBSERVATION,
+            "preference": MemoryType.PREFERENCE,
+            "project": MemoryType.PROJECT_STATE,
+            "lesson": MemoryType.LESSON,
+            "semantic": MemoryType.SEMANTIC,
+        }
+
+        mem_manager = get_unified_memory()
         saved: list[str] = []
-        for m in memories_data[:3]:  # hard cap
+
+        for m in memories_data[:3]:  # hard cap: max 3 per session
             required = ("name", "type", "description", "content")
             if not all(k in m for k in required):
                 continue
 
-            entry = MemoryEntry(
-                name=str(m["name"]),
-                description=str(m["description"]),
-                type=str(m.get("type", "user")),
-                content=str(m["content"]),
-                created=datetime.now().strftime("%Y-%m-%d"),
-                confidence=float(m.get("confidence", 0.8)),
-                source="consolidator",
+            confidence = float(m.get("confidence", 0.8))
+            mem_type = _type_map.get(str(m.get("type", "user")).lower(), MemoryType.SEMANTIC)
+
+            # Apply secret redaction before persistence
+            content_text = redact_secrets(str(m["content"]))
+
+            canonical = CanonicalMemory(
+                entity=str(m["name"]),
+                attribute=str(m.get("type", "user")),
+                content=content_text,
+                memory_type=mem_type,
+                scope="user",
+                confidence=confidence,
+                importance=0.65,
+                source_type=SourceType.STRONG_INFERENCE,
             )
 
-            # Don't overwrite a more confident existing memory
-            conflict = check_conflict(entry, scope="user")
-            if conflict and conflict["existing_confidence"] >= entry.confidence:
+            try:
+                result = mem_manager.remember(canonical)
+                if result:
+                    saved.append(result.memory_id)
+            except Exception:
+                traceback.print_exc()
                 continue
-
-            save_memory(entry, scope="user")
-            saved.append(entry.name)
 
         return saved
 

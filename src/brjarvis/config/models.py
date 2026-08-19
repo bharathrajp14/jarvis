@@ -41,9 +41,9 @@ _DEFAULTS = {
     "planner_model":    "gemini-3-flash-agent",
     "fast_model":       "gemini-3.6-flash-low",
     "proxy_base_url":   "http://localhost:8045/v1",
-    "proxy_api_key":    "sk-5ec70bf9fa324084b7a7326babf52c45",
+    "proxy_api_key":    "",
     "openai_base_url":  "http://localhost:8045/v1",
-    "openai_api_key":   "sk-5ec70bf9fa324084b7a7326babf52c45",
+    "openai_api_key":   "",
     "openai_model":     "gemini-3.6-flash-high",
 }
 

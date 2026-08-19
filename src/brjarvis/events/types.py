@@ -13,8 +13,19 @@ class BaseEvent(BaseModel):
     topic: str = Field(..., description="Topic taxonomy e.g. system.startup, task.created")
     timestamp: float = Field(default_factory=time.time)
     correlation_id: str = Field(default="sys-event", description="Tracing/correlation ID")
+    trace_id: str = Field(default_factory=lambda: f"tr-{uuid.uuid4().hex[:16]}", description="Distributed trace ID")
+    execution_id: str = Field(default_factory=lambda: f"exec-{uuid.uuid4().hex[:8]}", description="Execution turn ID")
+    agent_id: str = Field(default="jarvis", description="Agent ID emitting event")
+    workspace_id: str = Field(default="default", description="Workspace ID context")
+    schema_version: str = Field(default="1.0", description="Contract schema version")
+    causation_id: Optional[str] = Field(default=None, description="Triggering event ID")
     source: str = Field(default="system", description="Event emitter component")
     payload: Dict[str, Any] = Field(default_factory=dict, description="Event data body")
+
+    @property
+    def event_type(self) -> str:
+        """Alias for topic for contract compatibility."""
+        return self.topic
 
 
 class SystemEvent(BaseEvent):

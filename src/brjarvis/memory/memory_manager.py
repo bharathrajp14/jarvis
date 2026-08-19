@@ -111,6 +111,17 @@ def save_memory(memory: dict) -> None:
             json.dumps(memory, indent=2, ensure_ascii=False),
             encoding="utf-8",
         )
+    # Synchronize to Central Canonical DB
+    try:
+        from brjarvis.memory.canonical_db import get_canonical_db
+        db = get_canonical_db()
+        for cat, items in memory.items():
+            if isinstance(items, dict):
+                for k, v in items.items():
+                    val = v.get("value") if isinstance(v, dict) else str(v)
+                    db.set_preference(f"{cat}:{k}", val, scope="user")
+    except Exception as e:
+        logger.debug("Canonical DB sync from memory_manager note: %s", e)
 
 
 def _truncate_value(val: str) -> str:

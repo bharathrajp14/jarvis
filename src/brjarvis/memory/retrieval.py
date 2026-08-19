@@ -19,7 +19,7 @@ from typing import Any, Dict, List, Optional
 
 from .domain import CanonicalMemory, MemoryStatus, MemoryType
 from .store import CanonicalMemoryStore, get_canonical_store
-from .vector_store import VectorMemory
+from .vector_store import VectorMemory, SearchResult
 
 logger = logging.getLogger("JARVIS.HybridRetrieval")
 
@@ -44,6 +44,7 @@ class RankedMemoryCandidate:
             "attribute": self.memory.attribute,
             "content": self.memory.content,
             "memory_type": self.memory.memory_type.value,
+            "retention_class": self.memory.retention_class.value if hasattr(self.memory, "retention_class") else "NORMAL",
             "project_id": self.memory.project_id,
             "scope": self.memory.scope,
             "similarity": round(self.similarity, 4),
@@ -125,27 +126,45 @@ class HybridRetrievalEngine:
         for mem in lexical_hits:
             candidate_map[mem.memory_id] = mem
 
-        # 3. Semantic Vector Search (with graceful fallback on failure)
+        # 3. Semantic Vector Search — FIXED: semantic hits enter pool INDEPENDENTLY
+        #
+        # Previous bug: vector results could only boost lexically-found candidates.
+        # A memory that was semantically relevant but lexically different was silently
+        # dropped. This was the single largest retrieval quality failure.
+        #
+        # Fix: for each semantic hit with a known memory_id, fetch the canonical record
+        # directly from the store and add it to candidate_map if not already present.
         semantic_similarities: Dict[str, float] = {}
         vm = self._get_vector_store()
         if vm:
             try:
                 v_results = vm.search(q_clean, top_k=limit * 2)
                 for vr in v_results:
-                    v_text = vr.get("text", "")
-                    v_score = float(vr.get("score", 0.70))
-                    # Link semantic match back to canonical memory if metadata matches
-                    v_meta = vr.get("metadata", {})
-                    mem_id = v_meta.get("memory_id")
-                    if mem_id and mem_id in candidate_map:
-                        semantic_similarities[mem_id] = v_score
+                    # v_results are now SearchResult namedtuples with real scores
+                    v_mem_id: str = vr.memory_id if hasattr(vr, "memory_id") else vr.get("memory_id", "")
+                    v_score: float = float(vr.score if hasattr(vr, "score") else vr.get("score", 0.0))
+                    v_text: str = vr.text if hasattr(vr, "text") else vr.get("text", "")
+
+                    if v_mem_id:
+                        # Primary path: semantic hit has a memory_id — record the score.
+                        semantic_similarities[v_mem_id] = max(semantic_similarities.get(v_mem_id, 0.0), v_score)
+                        # CRITICAL FIX: fetch from canonical store if not already in pool
+                        if v_mem_id not in candidate_map:
+                            fetched = self.store.get(v_mem_id)
+                            if fetched and fetched.is_currently_effective(now):
+                                candidate_map[v_mem_id] = fetched
+                                logger.debug(
+                                    "[Retrieval] Semantic-only candidate admitted: %s (score=%.3f)",
+                                    v_mem_id, v_score,
+                                )
                     else:
-                        # Search by content snippet match
-                        for cid, cm in candidate_map.items():
-                            if cm.content and (cm.content in v_text or v_text in cm.content):
-                                semantic_similarities[cid] = max(semantic_similarities.get(cid, 0.0), v_score)
+                        # Fallback: no memory_id in metadata (legacy index) — try content match
+                        if v_text:
+                            for cid, cm in candidate_map.items():
+                                if cm.content and (cm.content in v_text or v_text in cm.content):
+                                    semantic_similarities[cid] = max(semantic_similarities.get(cid, 0.0), v_score)
             except Exception as v_err:
-                logger.debug("Vector search fallback triggered: %s", v_err)
+                logger.debug("[Retrieval] Vector search fallback triggered: %s", v_err)
 
         # 4. If candidates are sparse, retrieve active memories by type/project
         if len(candidate_map) < limit:
@@ -179,7 +198,10 @@ class HybridRetrievalEngine:
                 lexical_score = 0.10
 
             # b. Semantic score
-            similarity = semantic_similarities.get(mem.memory_id, 0.50 if lexical_score > 0.4 else 0.0)
+            # FIXED: no longer defaults to synthetic 0.50 for lexical matches.
+            # A memory that was not hit by vector search gets 0.0 semantic score.
+            # Only real semantic hits get a score > 0.0.
+            similarity = semantic_similarities.get(mem.memory_id, 0.0)
 
             # c. Temporal recency decay (45-day half-life)
             age_days = max(0.0, (now - mem.updated_at) / 86400.0)
@@ -214,8 +236,10 @@ class HybridRetrievalEngine:
                 reasons = []
                 if lexical_score >= 0.3:
                     reasons.append("keyword match")
-                if similarity >= 0.7:
-                    reasons.append("strong semantic similarity")
+                if similarity >= 0.5:
+                    reasons.append(f"semantic similarity={similarity:.2f}")
+                if similarity > 0 and lexical_score < 0.1:
+                    reasons.append("semantic-only match (no keyword overlap)")
                 if mem.source_type.default_reliability >= 0.7:
                     reasons.append(f"verified source ({mem.source_type.value})")
                 if mem.project_id == project_id and project_id != "global":
@@ -223,7 +247,7 @@ class HybridRetrievalEngine:
                 if not reasons:
                     reasons.append("relevant active memory fact")
 
-                reason_text = f"Selected because of {', '.join(reasons)} (score: {final_score:.2f})."
+                reason_text = f"Selected because of: {', '.join(reasons)} (score: {final_score:.2f})."
 
                 ranked_candidates.append(
                     RankedMemoryCandidate(

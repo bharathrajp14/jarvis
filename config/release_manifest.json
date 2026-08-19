@@ -1,15 +1,15 @@
 {
   "manifest_version": "40.2",
   "file_hashes": {
-    "guardian/core.py": "b670fa6c8398bb85c1d132c28c11449bec48d05f1a1dc54349d89780476b57cb",
+    "guardian/core.py": "504b3acad59572127c5f51c5f88ad83aff120114354cb3d9a16c59ec1d9df5eb",
     "guardian/kill_switch.py": "e9a6dbc8c6802fa2cbdaf21cb3af680fc20a1723b10cfb9bb9e931a4415b645c",
-    "guardian/snapshot.py": "4e1a9190d2ee1be17861e630720df0fab1d83dc02ade6ed70441667a460014f9",
-    "guardian/rollback.py": "6a0fade807cc5add88f5383675726abc7f8bd96b2e949281a43b95d1c723f772",
+    "guardian/snapshot.py": "160d2511becce6957099d0872bbe8ac16b9dd839f3fc3871aa004dfd49c2e726",
+    "guardian/rollback.py": "3246a2fe560f2f4efedb08771ffa182fc2a6820bd97396489d3c89eade2eb111",
     "guardian/audit_log.py": "cccd184434dca29ecb8f664f909d77d00b3977ff17110743ce264aaacb4324fe",
-    "permissions.py": "aaf4da95eb7b5a8e0e01ea575b8c2aeda28d5f7df649d2ade719753c24d1d028",
     "security/capabilities.py": "90aa5f25422e984c33ce7e6e8ffab1bd37e2a9334bcff6faee6ac5ae249781d4",
-    "security/policy_engine.py": "c2ce4f62a97f0e6f4f9d89c896fef859cf3417bcc07ef4152218056522c7c475",
-    "security/path_policy.py": "25feab29d79c61e968a573de796f6d3527cca5dda32cf85151bf276a7a712c04"
+    "security/policy_engine.py": "bd717c17da339bb4662e5ddeae8bb941ce6fb15730624941cbed2d9ee6ca70ab",
+    "security/path_policy.py": "b13cf1e4b127501adb66ca56e4f5bd1f8a611ad13a72770726a7bd17735d550a",
+    "permissions.py": "4f73b90e88d59de50b4c91d5f273df4c201225e7c7c5b010155831eaa406d37c"
   },
   "version": "MK40.2-CERTIFIED"
 }
