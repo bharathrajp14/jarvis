@@ -8,7 +8,7 @@ from __future__ import annotations
 import time
 from dataclasses import asdict, dataclass, field
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional
 
 
 class ToolExecutionStatus(str, Enum):
@@ -133,9 +133,9 @@ class ToolDefinition:
     output_schema: Dict[str, Any] = field(default_factory=dict)
 
     # Security & Governance
-    risk_level: RiskLevel = RiskLevel.LOW
-    permission_required: str = "PUBLIC_READ"
-    approval_required: bool = False
+    risk_level: RiskLevel = RiskLevel.HIGH
+    permission_required: str = "LOCAL_SYSTEM"
+    approval_required: bool = True
 
     # Execution Semantics
     is_read_only: bool = False

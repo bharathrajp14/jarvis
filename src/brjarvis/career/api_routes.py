@@ -4,17 +4,16 @@ from __future__ import annotations
 import logging
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 from fastapi import APIRouter, HTTPException, Query
-from fastapi.responses import FileResponse, HTMLResponse
-from pydantic import BaseModel, Field
+from fastapi.responses import FileResponse
+from pydantic import BaseModel
 
 from .analytics import CareerAnalyticsEngine
 from .application_engine.assistant import ManualApplicationAssistant
 from .application_engine.tracker import ApplicationTracker
 from .ats_engine.scorer import ATSEngine
-from .canva.adapter import CanvaAdapter
 from .canva.capability import CanvaCapabilityProbe
 from .interview_prep import InterviewPrepGenerator
 from .job_engine.finder import JobFinder
@@ -22,7 +21,6 @@ from .job_engine.matcher import JobMatcher
 from .models import ApplicationStatus
 from .profile_manager import get_profile_manager
 from .resume_engine.exporter import ResumeExportPipeline
-from .resume_engine.models import TemplateType
 from .resume_engine.renderer import ResumeRenderer
 from .resume_engine.tailoring import ResumeTailoringEngine
 from .resume_engine.templates import list_templates
@@ -326,11 +324,13 @@ def get_canva_capabilities():
 def download_career_file(file_path: str):
     p = Path(file_path).resolve()
     from brjarvis.core.paths import paths
-    workspace_dir = paths.WORKSPACE_ROOT
-    if not str(p).startswith(str(workspace_dir)) and not p.exists():
-        raise HTTPException(status_code=403, detail="Access denied or file does not exist.")
+    workspace_dir = paths.WORKSPACE_ROOT.resolve()
+    try:
+        p.relative_to(workspace_dir)
+    except ValueError:
+        raise HTTPException(status_code=403, detail="Access denied: file is outside the workspace.")
 
-    if not p.exists():
+    if not p.exists() or not p.is_file():
         raise HTTPException(status_code=404, detail="File not found.")
 
     media_type = "application/octet-stream"
@@ -428,9 +428,10 @@ def list_interviews(application_id: Optional[str] = None):
 
 @router.post("/interviews")
 def schedule_interview(req: InterviewCreateRequest):
+    import uuid
+
     from brjarvis.career.calendar_engine.manager import get_career_calendar_manager
     from brjarvis.career.models import InterviewSchedule
-    import uuid
 
     schedule = InterviewSchedule(
         interview_id=f"INT-{uuid.uuid4().hex[:6].upper()}",

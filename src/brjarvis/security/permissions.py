@@ -11,26 +11,29 @@ Preserves historical top-level permissions interface for backwards compatibility
 """
 from __future__ import annotations
 
-import json
 import logging
 import os
-from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 from typing import Any, Dict, FrozenSet, Optional, Set, Union
 
-from brjarvis.security.capabilities import Capability, RiskLevel as CapRiskLevel
 from brjarvis.security.path_policy import (
     CRITICAL_RESOURCE_DENYLIST as SEC_CRITICAL_DENYLIST,
+)
+from brjarvis.security.path_policy import (
     PathTier as SecPathTier,
+)
+from brjarvis.security.path_policy import (
     get_path_policy,
 )
 from brjarvis.security.policy_engine import (
-    ActionDecision as SecActionDecision,
     PermissionMode as SecPermissionMode,
+)
+from brjarvis.security.policy_engine import (
     PolicyContext as SecPolicyContext,
+)
+from brjarvis.security.policy_engine import (
     PolicyEngine,
-    get_policy_engine,
 )
 
 logger = logging.getLogger("JARVIS.Permissions")
@@ -44,7 +47,7 @@ class PermissionMode(str, Enum):
 
 
 def _normalize_mode(mode: Any) -> PermissionMode:
-    """Normalize a mode string, enum, or None to a valid PermissionMode enum member (defaults to ALLOW_ALL)."""
+    """Normalize a mode string, enum, or None; default to confirmation for side effects."""
     if not mode:
         env_val = os.environ.get("JARVIS_PERMISSION_MODE")
         if env_val:
@@ -57,7 +60,7 @@ def _normalize_mode(mode: Any) -> PermissionMode:
                 return PermissionMode.DENY_ALL
             elif val in ("confirm_destructive", "confirm", "plan", "accept_edits"):
                 return PermissionMode.CONFIRM_DESTRUCTIVE
-        return PermissionMode.ALLOW_ALL
+        return PermissionMode.CONFIRM_DESTRUCTIVE
     if isinstance(mode, PermissionMode):
         return mode
     val = str(mode).strip().lower()
@@ -72,7 +75,7 @@ def _normalize_mode(mode: Any) -> PermissionMode:
     try:
         return PermissionMode(val)
     except Exception:
-        return PermissionMode.ALLOW_ALL
+        return PermissionMode.CONFIRM_DESTRUCTIVE
 
 
 

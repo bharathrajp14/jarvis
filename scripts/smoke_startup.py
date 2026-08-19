@@ -80,7 +80,11 @@ def main() -> int:
         from router import AgentRouter, AgentProfile
         router = AgentRouter({})
         res = router.run(AgentProfile.GEMINI, [], "")
-        assert "all backends failed" in res.lower() or "no backends available" in res.lower()
+        normalized = res.lower()
+        assert any(
+            marker in normalized
+            for marker in ("all backends failed", "all_backends_failed", "no backends available")
+        )
 
     def check_skills_registry():
         from skills import load_skills
@@ -113,13 +117,9 @@ def main() -> int:
         assert rms >= 0.0
 
     def check_pwa_assets():
-        from brjarvis.core.paths import paths
-        manifest = paths.PROJECT_ROOT / "assets" / "static" / "web" / "manifest.json"
-        sw = paths.PROJECT_ROOT / "assets" / "static" / "web" / "sw.js"
-        if not manifest.exists():
-            manifest = root / "web" / "manifest.json"
-        if not sw.exists():
-            sw = root / "web" / "sw.js"
+        from brjarvis.web.api.state import WEB_DIR
+        manifest = WEB_DIR / "manifest.json"
+        sw = WEB_DIR / "sw.js"
         assert manifest.exists(), "PWA manifest.json missing"
         assert sw.exists(), "PWA sw.js missing"
 

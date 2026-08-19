@@ -8,10 +8,10 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
-__version__ = "40.2.0"
+__version__ = "41.0.0"
 VERSION = __version__
-BUILD = "2026-08-15"
-CODENAME = "MARK XL.2"
+BUILD = "2026-08-18"
+CODENAME = "MARK XLI"
 DESCRIPTION = "BR JARVIS — Cognitive Multi-Modal AI Operating System & Autonomous Controller"
 
 

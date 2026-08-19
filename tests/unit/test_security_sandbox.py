@@ -2,11 +2,11 @@
 from __future__ import annotations
 
 import pytest
-from pathlib import Path
 
 from brjarvis.core.paths import paths
-from brjarvis.security.path_policy import get_path_policy, PathTier
 from brjarvis.guardian.prompt_injection_shield import PromptInjectionShield
+from brjarvis.security.path_policy import PathTier, get_path_policy
+from brjarvis.tools.sandbox import CodeSandbox
 
 
 @pytest.mark.unit
@@ -38,3 +38,15 @@ def test_prompt_injection_shield_detects_jailbreaks():
     inj_res = PromptInjectionShield.scan(injection_text)
     assert inj_res.is_safe is False
     assert len(inj_res.threats_detected) > 0
+
+
+@pytest.mark.unit
+def test_code_execution_fails_closed_without_isolation_opt_in(monkeypatch):
+    monkeypatch.delenv("JARVIS_ENABLE_UNSAFE_HOST_EXECUTION", raising=False)
+
+    result = CodeSandbox().run("print('must not execute')")
+
+    assert result["success"] is False
+    assert result["status"] == "BLOCKED"
+    assert result["returncode"] == -1
+    assert "disabled" in result["error"].lower()

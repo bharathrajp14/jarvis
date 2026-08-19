@@ -1,114 +1,124 @@
-# ⚡ BR JARVIS — Autonomous Personal AI Operating Runtime
+# BR-JARVIS
 
 [![CI](https://github.com/bharthraj1412/BrJarvis/actions/workflows/ci.yml/badge.svg)](https://github.com/bharthraj1412/BrJarvis/actions)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-325%2B%20passing-brightgreen.svg)]()
+[![Tests](https://img.shields.io/badge/tests-295%20passing-brightgreen.svg)]()
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg)]()
+[![Python](https://img.shields.io/badge/python-3.11--3.13-blue.svg)](https://www.python.org/)
 
-> **BR JARVIS** is an autonomous personal AI operating runtime designed for pair programming, system automation, multimodal vision, hands-free voice control, and verifiable task execution.
+BR-JARVIS is a local agent runtime for verifiable task execution, software work, system automation, multimodal workflows, personal memory, connectors, and Career OS. The platform combines typed configuration, policy-controlled tools, recovery-aware tasks, evidence-led verification, a packaged FastAPI/PWA control plane, and desktop and voice adapters.
 
----
+## Architecture
 
-## 🏛️ Canonical Architecture
+The installable package under `src/brjarvis` is the source of truth. Presentation adapters call a canonical runtime; tool execution passes through schema validation, security policy, approval, execution, and physical verification; durable state is owned by domain repositories and execution ledgers.
 
-```mermaid
-graph TD
-    CLI[CLI REPL Interface] --> Runtime[ApplicationRuntime]
-    VoiceUI[Voice & Floating UI] --> Runtime
-    WebUI[Web PWA & Mobile Dashboard] --> Runtime
-    
-    subgraph "Canonical Core"
-        Runtime --> Config[ConfigManager]
-        Runtime --> EventBus[EventBus & Telemetry]
-        Runtime --> Security[SecurityPolicyEngine & Guardian]
-        Runtime --> Artifacts[ArtifactLifecycleManager]
-    end
+![BR-JARVIS production architecture](docs/architecture/production-architecture.png)
 
-    subgraph "Cognitive Execution Engine"
-        Runtime --> Cognitive[CognitiveEngine]
-        Cognitive --> Intent[Intent & Task Decomposer]
-        Intent --> DAG[TaskDAG & Recovery Engine]
-        DAG --> Gateway[ModelGateway & Smart Router]
-        DAG --> ToolRuntime[ToolRuntime & ToolRegistry]
-        DAG --> Verifier[ActionVerifier]
-    end
+The detailed current-state assessment, ownership map, migration strategy, and risk register are in the [production-readiness audit](docs/audit/PRODUCTION_READINESS_2026-08-19.md).
 
-    subgraph "Perception & Memory"
-        Runtime --> Memory[UnifiedMemoryManager]
-        Runtime --> Voice[VoicePipeline (VAD + STT + Barge-In + TTS)]
-        Runtime --> Vision[HierarchicalVision (OCR + DOM + VLM)]
-    end
-```
+## Requirements
 
----
+Use Python **3.11, 3.12, or 3.13** in a project-local virtual environment. Do not install BR-JARVIS into system Python and do not bypass dependency resolution with `--no-deps`.
 
-## 🚀 Quick Start
+## Installation
 
-### 1. Installation
+### Windows
+
 ```powershell
 git clone https://github.com/bharthraj1412/BrJarvis.git
 cd BrJarvis
-pip install -r requirements.txt
+.\setup_env.bat --dev
 ```
 
-### 2. Environment Configuration
-Copy the template and configure your API keys:
-```powershell
-Copy-Item .env.template .env
+### Linux or macOS
+
+```bash
+git clone https://github.com/bharthraj1412/BrJarvis.git
+cd BrJarvis
+./setup_linux.sh --dev
 ```
 
-### 3. Launch Sequences
-```powershell
-# Interactive Launcher Menu
-python start.py
+The default bundle installs the web, document, and model-backend capabilities. Voice and hardware-bound desktop automation remain explicit because they require platform libraries:
 
-# Direct CLI REPL
-python start.py cli
+```bash
+python -m pip install -e ".[voice,automation]"
+```
 
-# Hands-Free Voice Assistant HUD
-python start.py voice
+## Security configuration
 
-# Frameless Floating Voice Widget
-python start.py floating
+Copy `.env.template` to `.env` and replace every placeholder. The web control plane will not start without a unique `JARVIS_SERVER_API_KEY` of at least 24 characters.
 
-# Web PWA & Mobile Server
-python start.py server
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+```
 
-# Subsystem Diagnostic Matrix
+Production settings should include:
+
+```dotenv
+JARVIS_PERMISSION_MODE=confirm_destructive
+JARVIS_ENABLE_UNSAFE_HOST_EXECUTION=false
+JARVIS_ENABLE_UNTRUSTED_PLUGINS=false
+JARVIS_COOKIE_SECURE=true
+JARVIS_CORS_ORIGINS=https://your-approved-origin.example
+```
+
+Localhost is not treated as an authentication boundary. The PWA exchanges the server key for an HttpOnly session and uses one-time WebSocket tickets. Connector secrets are stored through the operating-system keyring rather than plaintext JSON.
+
+> If a real provider secret has ever been committed to Git, rotate it at the provider. Deleting the file or rewriting history does not invalidate the credential.
+
+## Running BR-JARVIS
+
+After installation, use the canonical console commands:
+
+```bash
+jarvis status
+jarvis-cli
+jarvis-server
+```
+
+A source checkout can also use the compatibility dispatcher:
+
+```bash
 python start.py status
-
-# Startup Sanity Verification
+python start.py cli
+python start.py web
 python start.py smoke
 ```
 
----
+## Verification
 
-## 🛡️ Key Guarantees
+Run the maintained regression suite:
 
-1. **Deterministic Postcondition Verification**: JARVIS never fabricates success. Actions (file writes, process spawns, browser URLs, document exports) are verified against environmental state.
-2. **Authoritative Artifact Export**: Sandbox files are verified, checked for path traversal, and exported to host before opening in a browser, eliminating `ERR_FILE_NOT_FOUND`.
-3. **Quarantined Personal Data**: User contacts and private databases reside in `~/.jarvis/` and are never committed to Git.
-4. **Active Barge-In**: Real-time Silero VAD immediately halts TTS playback and clears audio queues when you speak.
-5. **Provider-Neutral Gateway**: Supports Gemini, OpenAI, Claude, DeepSeek, Mistral, NVIDIA NIM, and local Ollama with typed diagnostic error classification.
-
----
-
-## 🧪 Testing & Verification
-
-Run the full automated test suite:
-```powershell
-pytest tests/unit/ -v
+```bash
+python -m pytest tests -m "not benchmark" -q --tb=short --timeout=60
 ```
 
-Run startup smoke check:
-```powershell
-python start.py smoke
-```
+The current verified result is **295 passed, 1 skipped, and 2 benchmark tests deselected**. CI reports quality, tests, packaging, architecture, security, dependencies, licenses, and secrets independently.
 
----
+A release artifact must also pass an installed-wheel smoke test outside the checkout. The August 2026 production-hardening wheel installed into an empty external environment, constructed 51 routes, loaded the packaged PWA, passed dependency integrity, and did not resolve code from the source tree.
 
-## 📜 Documentation Index
-- [`docs/operations/MANUAL_WORKS_AND_OPERATIONS_GUIDE.md`](docs/operations/MANUAL_WORKS_AND_OPERATIONS_GUIDE.md) — **Manual Setup, Keys, Audio & Operations Guide.**
-- [`docs/FILE_AUDIT.md`](docs/FILE_AUDIT.md) — Comprehensive forensic inventory of every repository file.
-- [`docs/MODERNIZATION_LEDGER.md`](docs/MODERNIZATION_LEDGER.md) — Architectural modernization ledger across all 18 phases.
-- [`docs/architecture/full-system-map.md`](docs/architecture/full-system-map.md) — Full system subsystem topology and lifecycle.
+## Safety defaults
+
+| Capability | Default behavior |
+|---|---|
+| Mutating tools | High-risk local-system actions require approval when metadata is incomplete. |
+| Destructive actions | Confirmation required. |
+| Code execution | Disabled unless unsafe host execution is explicitly enabled. |
+| Community plugins | Disabled unless explicitly trusted. |
+| Workspace files | Canonically resolved and contained. |
+| Agent outcomes | Verified success, partial, failed, cancelled, and timed-out states are distinct. |
+| Events | Bounded in memory, queued for persistence, and written to rotating JSONL files. |
+
+## Optional dependency decisions
+
+ChromaDB is not installed by default while its current release has an unresolved security advisory; canonical SQLite memory remains available. PyMuPDF is isolated behind the explicit `pdf-rendering` extra because its AGPL/commercial dual licensing requires a separate distribution review.
+
+## Documentation
+
+| Document | Purpose |
+|---|---|
+| [Production-readiness audit](docs/audit/PRODUCTION_READINESS_2026-08-19.md) | Full analysis, implemented changes, scorecard, residual risks, and release checklist |
+| [Production operations runbook](docs/runbooks/PRODUCTION_OPERATIONS.md) | Secure setup, build, deployment, monitoring, incident response, and rollback |
+| [Production architecture diagram](docs/architecture/production-architecture.png) | Current-to-target subsystem and ownership map |
+| [Changelog](CHANGELOG.md) | Production-hardening changes and compatibility notes |
+| [Manual operations guide](docs/operations/MANUAL_WORKS_AND_OPERATIONS_GUIDE.md) | Broader operator workflows |

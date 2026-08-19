@@ -25,21 +25,17 @@ ensure_canonical_python()
 from brjarvis.apps.web import main
 
 try:
-    from apps.web.api.server import create_app
+    from brjarvis.web.api.server import create_app
     app = create_app()
 except Exception as e:
-    try:
-        from api.server import create_app
-        app = create_app()
-    except Exception:
-        app = None  # type: ignore[assignment]
+    app = None  # type: ignore[assignment]
 
 def __getattr__(name: str):
     if name == "app":
         global app
         if app is None:
             try:
-                from apps.web.api.server import create_app
+                from brjarvis.web.api.server import create_app
                 app = create_app()
             except Exception:
                 pass

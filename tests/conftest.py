@@ -5,10 +5,15 @@ from __future__ import annotations
 
 import os
 import sys
-import shutil
-import tempfile
-import pytest
 from pathlib import Path
+
+import pytest
+
+# Security-sensitive modules read these values at import time. Tests use a
+# deterministic non-production key and still exercise the real auth boundary.
+os.environ.setdefault("JARVIS_TEST_MODE", "true")
+os.environ.setdefault("JARVIS_SERVER_API_KEY", "brjarvis-test-api-key-32-characters")
+os.environ.setdefault("JARVIS_PERMISSION_MODE", "confirm_destructive")
 
 # Ensure project root & src are on sys.path
 _ROOT = Path(__file__).resolve().parent.parent
@@ -17,7 +22,6 @@ for _p in [str(_SRC), str(_ROOT)]:
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
-from brjarvis.core.paths import paths
 
 
 @pytest.fixture(scope="session", autouse=True)

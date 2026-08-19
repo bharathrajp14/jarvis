@@ -1,12 +1,9 @@
 # tests/unit/test_canonical_agent_loop.py — Unit Tests for Canonical AgentLoop
 from __future__ import annotations
 
-import pytest
-from unittest.mock import MagicMock
-from brjarvis.agent.agent_loop import AgentLoop
+from brjarvis.agent.agent_loop import AgentLoop, AgentTurnStatus
 from brjarvis.agent.session import AgentSession
 from brjarvis.events.bus import get_event_bus
-from brjarvis.security.permission_request import PermissionDecision
 
 
 class MockRouter:
@@ -18,6 +15,11 @@ class MockRouter:
         resp = self.responses[self.call_count % len(self.responses)]
         self.call_count += 1
         return resp
+
+
+class FailingRouter:
+    def run(self, profile, history, system_prompt):
+        raise TimeoutError("provider deadline exceeded")
 
 
 class TestCanonicalAgentLoop:
@@ -80,3 +82,22 @@ class TestCanonicalAgentLoop:
         verified_missing, err_msg = loop.verify_action("file_write", {"path": str(tmp_path / "missing.txt")}, "Created")
         assert verified_missing is False
         assert "does not exist" in err_msg.lower() or "failed" in err_msg.lower()
+
+    def test_backend_failure_emits_failed_terminal_result(self):
+        sess = AgentSession(session_id="test-loop-backend-failure")
+        loop = AgentLoop(session=sess)
+        events_received = []
+        bus = get_event_bus()
+
+        def _handler(ev):
+            events_received.append(ev.topic)
+
+        bus.subscribe("agent.*", _handler)
+        result = loop.run_turn_result("Perform a complex provider task", router=FailingRouter())
+
+        assert result.status == AgentTurnStatus.FAILED
+        assert result.verified is False
+        assert "provider deadline exceeded" in result.error
+        assert "agent.failed" in events_received
+        assert "agent.completed" not in events_received
+        assert sess.active_task_id is None

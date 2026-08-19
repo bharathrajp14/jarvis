@@ -7,31 +7,29 @@ from __future__ import annotations
 
 import asyncio
 import inspect
-import json
 import logging
 import os
 import time
 import uuid
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional
 
-from brjarvis.core.paths import paths
 from brjarvis.core.runtime import get_runtime
 from brjarvis.events.bus import get_event_bus
 from brjarvis.events.types import ToolExecutionEvent
 from brjarvis.security.permissions import (
+    PERMISSIONS,
     ActionDecision,
     PermissionMode,
-    PERMISSIONS,
-    RiskLevel as SecRiskLevel,
-    check_permission,
     evaluate_action_policy,
+)
+from brjarvis.security.permissions import (
+    RiskLevel as SecRiskLevel,
 )
 
 from .domain import (
     CachePolicy,
     Observation,
     RiskLevel,
-    SideEffectLevel,
     ToolCategory,
     ToolDefinition,
     ToolErrorCode,
@@ -85,9 +83,9 @@ class ToolRuntime:
         handler: Callable[..., Any],
         parameters: Optional[Dict[str, Any]] = None,
         category: ToolCategory = ToolCategory.GENERAL,
-        risk_level: RiskLevel = RiskLevel.LOW,
-        permission_required: str = "PUBLIC_READ",
-        approval_required: bool = False,
+        risk_level: Optional[RiskLevel] = None,
+        permission_required: Optional[str] = None,
+        approval_required: Optional[bool] = None,
         is_read_only: bool = False,
         idempotent: bool = True,
         retryable: bool = True,
@@ -99,6 +97,9 @@ class ToolRuntime:
     ) -> ToolDefinition:
         """Register a canonical ToolDefinition and handler."""
         clean_name = name.strip()
+        resolved_risk = risk_level or (RiskLevel.LOW if is_read_only else RiskLevel.HIGH)
+        resolved_permission = permission_required or ("PUBLIC_READ" if is_read_only else "LOCAL_SYSTEM")
+        resolved_approval = approval_required if approval_required is not None else not is_read_only
         tool_def = ToolDefinition(
             name=clean_name,
             tool_id=tool_id or f"{category.value}.{clean_name}",
@@ -106,9 +107,9 @@ class ToolRuntime:
             category=category,
             parameters=parameters or {"type": "object", "properties": {}},
             output_schema=output_schema or {},
-            risk_level=risk_level,
-            permission_required=permission_required,
-            approval_required=approval_required,
+            risk_level=resolved_risk,
+            permission_required=resolved_permission,
+            approval_required=resolved_approval,
             is_read_only=is_read_only,
             idempotent=idempotent,
             retryable=retryable,
@@ -118,7 +119,7 @@ class ToolRuntime:
             handler=handler,
         )
         self._catalog[clean_name] = tool_def
-        logger.debug(f"[ToolRuntime] Registered tool '{clean_name}' [{category.value}] (Risk: {risk_level.value})")
+        logger.debug(f"[ToolRuntime] Registered tool '{clean_name}' [{category.value}] (Risk: {resolved_risk.value})")
         return tool_def
 
     def register_definition(self, tool_def: ToolDefinition, handler: Callable[..., Any]) -> None:
@@ -223,6 +224,14 @@ class ToolRuntime:
             args=normalized_args,
         )
 
+        if policy_decision == ActionDecision.DENY:
+            duration_ms = (time.perf_counter() - t0) * 1000.0
+            logger.error(f"🔒 Tool '{canonical_name}' denied by security policy.")
+            return ToolResult.blocked(
+                tool_name=canonical_name,
+                reason=f"Policy Denied: Tool '{canonical_name}' is blocked by active security rules.",
+            )
+
         # ── Stage 6: Human Approval Interlock ──
         is_allow_all = (
             policy_decision in (ActionDecision.ALLOW, ActionDecision.ALLOW_FOR_SESSION)
@@ -231,7 +240,11 @@ class ToolRuntime:
                 or os.environ.get("JARVIS_PERMISSION_MODE", "").strip().lower() in ("auto", "allow_all")
             )
         )
-        needs_approval = (not is_allow_all) and ((tool_def.approval_required or policy_decision == ActionDecision.CONFIRM) and not confirmed)
+        protected_permission = tool_def.permission_required.strip().upper() != "PUBLIC_READ"
+        needs_approval = (not is_allow_all) and (
+            (tool_def.approval_required or protected_permission or policy_decision == ActionDecision.CONFIRM)
+            and not confirmed
+        )
 
         if needs_approval:
             duration_ms = (time.perf_counter() - t0) * 1000.0
@@ -254,14 +267,6 @@ class ToolRuntime:
                 tool_name=canonical_name,
                 reason=f"High-risk action '{canonical_name}' requires explicit confirmation.",
                 data={"tool": canonical_name, "args": normalized_args, "risk_level": tool_def.risk_level.value},
-            )
-
-        if policy_decision == ActionDecision.DENY:
-            duration_ms = (time.perf_counter() - t0) * 1000.0
-            logger.error(f"🔒 Tool '{canonical_name}' denied by security policy.")
-            return ToolResult.blocked(
-                tool_name=canonical_name,
-                reason=f"Policy Denied: Tool '{canonical_name}' is blocked by active security rules.",
             )
 
         # ── Stage 7: Idempotency & Read-Only Cache Check ──
@@ -297,7 +302,6 @@ class ToolRuntime:
         # ── Stage 9: Execute Handler with Timeout & Sandboxing ──
         handler = tool_def.handler
         raw_res: Any = None
-        exec_error: Optional[Exception] = None
 
         try:
             if inspect.iscoroutinefunction(handler):
@@ -313,7 +317,6 @@ class ToolRuntime:
             return ToolResult.timeout(canonical_name, tool_def.timeout_sec, execution_ms=duration_ms)
 
         except Exception as exc:
-            exec_error = exc
             duration_ms = (time.perf_counter() - t0) * 1000.0
             logger.error(f"❌ Tool '{canonical_name}' raised exception: {exc}", exc_info=True)
             self._record_metrics(canonical_name, success=False, duration_ms=duration_ms)
@@ -539,7 +542,7 @@ class ToolRuntime:
             return
 
         try:
-            from brjarvis.agent.execution_ledger import get_execution_ledger, LedgerEntry, LedgerStatus
+            from brjarvis.agent.execution_ledger import LedgerEntry, LedgerStatus, get_execution_ledger
             ledger = get_execution_ledger()
             status_map = {
                 ToolExecutionStatus.SUCCESS: LedgerStatus.SUCCESS,

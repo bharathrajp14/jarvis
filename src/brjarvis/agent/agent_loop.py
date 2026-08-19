@@ -14,34 +14,28 @@ Orchestrates:
 """
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 import re
 import time
 import uuid
-from typing import Any, AsyncGenerator, Callable, Dict, Generator, List, Optional, Tuple, Union
+from dataclasses import dataclass
+from enum import Enum
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from brjarvis.agent.session import AgentSession, get_or_create_session
 from brjarvis.agent.verifier import (
     FileVerifier,
-    VerificationResult,
-    VerificationStatus,
-    verify_goal_outcome,
 )
 from brjarvis.core.intent_engine import DeterministicIntentEngine
 from brjarvis.events.bus import get_event_bus
 from brjarvis.events.types import (
     AgentLifecycleEvent,
-    AuditEvent,
-    PermissionEvent,
-    TaskEvent,
     ToolLifecycleEvent,
     VerificationEvent,
 )
 from brjarvis.security.permission_request import (
     PermissionDecision,
-    PermissionManager,
     PermissionRequest,
     RiskLevel,
     get_permission_manager,
@@ -51,7 +45,6 @@ from brjarvis.tools.registry import (
     get_tool_prompt_block,
     parse_tool_call,
 )
-from brjarvis.tools.runtime import get_canonical_tool_runtime
 
 logger = logging.getLogger("JARVIS.AgentLoop")
 
@@ -69,6 +62,28 @@ CYCLIC_LIMITS: Dict[str, int] = {
     "fetch_raw":       5,
 }
 DEFAULT_CYCLIC_LIMIT = 3
+
+
+class AgentTurnStatus(str, Enum):
+    """Truthful terminal states for one canonical agent turn."""
+
+    SUCCESS_VERIFIED = "success_verified"
+    PARTIAL = "partial"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+    TIMED_OUT = "timed_out"
+
+
+@dataclass(frozen=True)
+class AgentTurnResult:
+    """Typed terminal result retained alongside the backwards-compatible text response."""
+
+    response: str
+    status: AgentTurnStatus
+    verified: bool
+    elapsed_ms: int
+    error: str = ""
+    tool_failures: int = 0
 
 
 def _clean_model_response(text: str) -> str:
@@ -114,6 +129,7 @@ class AgentLoop:
         self.session: AgentSession = session or get_or_create_session()
         self.event_bus = get_event_bus()
         self.permission_mgr = get_permission_manager()
+        self.last_result: Optional[AgentTurnResult] = None
 
     # ── Context Discovery ─────────────────────────────────────────────────────
 
@@ -195,6 +211,53 @@ class AgentLoop:
         router: Any = None,
         interactive_permission_cb: Optional[Callable[[PermissionRequest], PermissionDecision]] = None,
     ) -> str:
+        """Run a turn and preserve a typed terminal result for callers that need status."""
+        started = time.monotonic()
+        try:
+            return self._run_turn_text(user_input, router, interactive_permission_cb)
+        except Exception as exc:
+            logger.exception("[AgentLoop] Unhandled turn failure")
+            elapsed_ms = int((time.monotonic() - started) * 1000)
+            response = f"Agent execution failed: {exc}"
+            self.last_result = AgentTurnResult(
+                response=response,
+                status=AgentTurnStatus.FAILED,
+                verified=False,
+                elapsed_ms=elapsed_ms,
+                error=str(exc),
+            )
+            self.event_bus.publish(
+                AgentLifecycleEvent(
+                    topic="agent.failed",
+                    session_id=self.session.session_id,
+                    task_id=self.session.active_task_id or "unknown",
+                    phase="failed",
+                    message="Turn failed with an unhandled execution error.",
+                    correlation_id=self.session.correlation_id,
+                )
+            )
+            return response
+        finally:
+            self.session.clear_active_task()
+
+    def run_turn_result(
+        self,
+        user_input: str,
+        router: Any = None,
+        interactive_permission_cb: Optional[Callable[[PermissionRequest], PermissionDecision]] = None,
+    ) -> AgentTurnResult:
+        """Run a turn and return its typed terminal result."""
+        self.run_turn(user_input, router, interactive_permission_cb)
+        if self.last_result is None:
+            raise RuntimeError("Agent turn completed without a terminal result")
+        return self.last_result
+
+    def _run_turn_text(
+        self,
+        user_input: str,
+        router: Any = None,
+        interactive_permission_cb: Optional[Callable[[PermissionRequest], PermissionDecision]] = None,
+    ) -> str:
         """Run a full autonomous agent turn with live lifecycle events."""
         t_start = time.monotonic()
         corr_id = f"turn-{uuid.uuid4().hex[:8]}"
@@ -229,6 +292,12 @@ class AgentLoop:
                     message="Fast-path executed.",
                     correlation_id=corr_id,
                 ))
+                self.last_result = AgentTurnResult(
+                    response=result_text,
+                    status=AgentTurnStatus.SUCCESS_VERIFIED,
+                    verified=True,
+                    elapsed_ms=int((time.monotonic() - t_start) * 1000),
+                )
                 self.session.clear_active_task()
                 return result_text
         except Exception as fast_err:
@@ -261,7 +330,7 @@ class AgentLoop:
         # Build system prompt
         tool_prompt = get_tool_prompt_block()
         sys_parts = [
-            f"You are BR JARVIS, a highly capable agentic assistant.",
+            "You are BR JARVIS, a highly capable agentic assistant.",
             f"Active Mode: {self.session.current_mode.upper()}",
             "Think clearly, act decisively with tools, and verify your results.",
             tool_prompt,
@@ -279,6 +348,9 @@ class AgentLoop:
         consecutive_tool: Dict[str, Any] = {"name": None, "args_str": None, "count": 0}
         step = 0
         final_response = ""
+        terminal_status = AgentTurnStatus.SUCCESS_VERIFIED
+        terminal_error = ""
+        tool_failures = 0
 
         # Adaptive Profile Selection based on active persona mode & task keywords
         try:
@@ -309,12 +381,13 @@ class AgentLoop:
                 correlation_id=corr_id,
             ))
 
-            t_llm = time.monotonic()
             try:
                 raw_response = router.run(mode_profile, history_msgs, system_prompt)
             except Exception as llm_err:
                 logger.error(f"[AgentLoop] LLM call failed: {llm_err}")
                 final_response = f"Backend error: {llm_err}"
+                terminal_status = AgentTurnStatus.FAILED
+                terminal_error = str(llm_err)
                 break
 
             tool_name, tool_args = parse_tool_call(raw_response)
@@ -330,6 +403,7 @@ class AgentLoop:
                 if call_counts[call_sig] >= cyclic_limit:
                     logger.warning(f"[AgentLoop] Cyclic loop detected for '{tool_name}' ({call_counts[call_sig]}/{cyclic_limit})")
                     final_response = _synthesize_evidence(tool_history, user_input)
+                    terminal_status = AgentTurnStatus.PARTIAL
                     break
 
                 # Consecutive duplicate limit
@@ -340,6 +414,7 @@ class AgentLoop:
 
                 if consecutive_tool["count"] >= 3:
                     final_response = _synthesize_evidence(tool_history, user_input)
+                    terminal_status = AgentTurnStatus.PARTIAL
                     break
 
                 # ── Permission & Risk Check ──
@@ -378,6 +453,8 @@ class AgentLoop:
 
                     if decision in (PermissionDecision.DENY, PermissionDecision.CANCEL):
                         tool_res = f"[Permission Denied: User did not authorize '{tool_name}']"
+                        terminal_status = AgentTurnStatus.PARTIAL
+                        tool_failures += 1
                         tool_history.append({"tool_name": tool_name, "args": tool_args, "result": tool_res, "verified": False})
                         history_msgs.append({"role": "assistant", "content": raw_response})
                         history_msgs.append({"role": "user", "content": f"[Tool Result for '{tool_name}']:\n{tool_res}"})
@@ -416,6 +493,9 @@ class AgentLoop:
                 ))
 
                 verified, ver_evidence = self.verify_action(tool_name, tool_args or {}, tool_raw_out)
+                if not verified:
+                    terminal_status = AgentTurnStatus.PARTIAL
+                    tool_failures += 1
                 self.session.record_verification(tool_name, str(tool_args.get("path") or ""), verified, ver_evidence)
 
                 self.event_bus.publish(VerificationEvent(
@@ -473,6 +553,8 @@ class AgentLoop:
 
         if not final_response:
             final_response = _synthesize_evidence(tool_history, user_input)
+            if step >= MAX_AGENT_STEPS:
+                terminal_status = AgentTurnStatus.PARTIAL
 
         elapsed_ms = int((time.monotonic() - t_start) * 1000)
         self.session.add_assistant_turn(
@@ -482,13 +564,34 @@ class AgentLoop:
             latency_ms=elapsed_ms,
         )
 
-        # Emit completion
+        verified_turn = terminal_status == AgentTurnStatus.SUCCESS_VERIFIED and tool_failures == 0
+        self.last_result = AgentTurnResult(
+            response=final_response,
+            status=terminal_status,
+            verified=verified_turn,
+            elapsed_ms=elapsed_ms,
+            error=terminal_error,
+            tool_failures=tool_failures,
+        )
+
+        # Emit truthful terminal lifecycle event
+        terminal_topic = {
+            AgentTurnStatus.SUCCESS_VERIFIED: "agent.completed",
+            AgentTurnStatus.PARTIAL: "agent.partial",
+            AgentTurnStatus.FAILED: "agent.failed",
+            AgentTurnStatus.CANCELLED: "agent.cancelled",
+            AgentTurnStatus.TIMED_OUT: "agent.timed_out",
+        }[terminal_status]
         self.event_bus.publish(AgentLifecycleEvent(
-            topic="agent.completed",
+            topic=terminal_topic,
             session_id=self.session.session_id,
             task_id=task_id,
-            phase="completed",
-            message="Turn completed successfully.",
+            phase=terminal_status.value,
+            message=(
+                "Turn completed with verified success."
+                if verified_turn
+                else f"Turn ended with status {terminal_status.value}."
+            ),
             correlation_id=corr_id,
         ))
 

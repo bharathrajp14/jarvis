@@ -13,18 +13,10 @@ import logging
 import os
 import threading
 import time
-import traceback
 import uuid
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Callable, Dict, List, Optional
-
-from .task_lifecycle import (
-    TERMINAL_STATES,
-    CancellationToken,
-    TaskContext,
-    TaskState,
-)
 
 # Cache one AgentExecutor per worker thread
 _executor_thread_local = threading.local()
@@ -66,6 +58,7 @@ class Task:
     started_at:  float              = field(compare=False, default=0.0)
     finished_at: float              = field(compare=False, default=0.0)
     timeout_s:   float              = field(compare=False, default=300.0)
+    timeout_requested: bool         = field(compare=False, default=False)
     _is_terminal: bool              = field(compare=False, default=False)
 
 
@@ -103,10 +96,32 @@ class TaskQueue:
             self._workers.append(t)
         logger.info("✅ TaskQueue started with %d workers", self._max)
 
-    def stop(self) -> None:
-        self._running = False
+    def stop(self, grace_period: float = 5.0) -> None:
+        """Request cancellation, wake workers, and wait a bounded time for acknowledgement."""
         with self._cond:
+            self._running = False
+            now = time.time()
+            for task in self._tasks.values():
+                if task.status in (TaskStatus.PENDING, TaskStatus.QUEUED):
+                    task.cancel_flag.set()
+                    task.status = TaskStatus.CANCELLED
+                    task.finished_at = now
+                    task._is_terminal = True
+                elif task.status == TaskStatus.RUNNING:
+                    task.cancel_flag.set()
+                    task.status = TaskStatus.CANCELLING
             self._cond.notify_all()
+        deadline = time.monotonic() + max(0.0, grace_period)
+        for worker in list(self._workers):
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                break
+            worker.join(timeout=remaining)
+        alive = [worker.name for worker in self._workers if worker.is_alive()]
+        if alive:
+            logger.warning("TaskQueue shutdown grace period expired; workers still active: %s", alive)
+        else:
+            self._workers.clear()
 
     def pause(self) -> None:
         """Pause worker processing."""
@@ -168,15 +183,19 @@ class TaskQueue:
             if task._is_terminal or task.status in (TaskStatus.COMPLETED, TaskStatus.SUCCEEDED, TaskStatus.FAILED, TaskStatus.CANCELLED, TaskStatus.TIMED_OUT):
                 return False
 
-            # Signal cooperative cancellation and set cancelled state
+            # Pending work terminates immediately; running work remains
+            # CANCELLING until the worker acknowledges the cooperative token.
             task.cancel_flag.set()
-            task.status = TaskStatus.CANCELLED
-            task.finished_at = time.time()
-            task._is_terminal = True
-            try:
-                self._queue.remove(task)
-            except ValueError:
-                pass
+            if task.status in (TaskStatus.PENDING, TaskStatus.QUEUED):
+                task.status = TaskStatus.CANCELLED
+                task.finished_at = time.time()
+                task._is_terminal = True
+                try:
+                    self._queue.remove(task)
+                except ValueError:
+                    pass
+            else:
+                task.status = TaskStatus.CANCELLING
 
         return True
 
@@ -276,11 +295,17 @@ class TaskQueue:
 
     def _run_task(self, task: Task) -> None:
         logger.info("▶️ Running [%s]: %s", task.task_id, task.goal[:60])
+        deadline_timer: Optional[threading.Timer] = None
         try:
             from brjarvis.agent.executor import AgentExecutor
             if not hasattr(_executor_thread_local, "executor"):
                 _executor_thread_local.executor = AgentExecutor()
             executor = _executor_thread_local.executor
+
+            if task.timeout_s > 0:
+                deadline_timer = threading.Timer(task.timeout_s, self._request_timeout, args=(task,))
+                deadline_timer.daemon = True
+                deadline_timer.start()
 
             result = executor.execute(
                 goal        = task.goal,
@@ -291,7 +316,10 @@ class TaskQueue:
             with self._lock:
                 task.finished_at = time.time()
                 task._is_terminal = True
-                if task.cancel_flag.is_set():
+                if task.timeout_requested:
+                    task.status = TaskStatus.TIMED_OUT
+                    task.error = task.error or f"Task deadline of {task.timeout_s:.1f}s exceeded."
+                elif task.cancel_flag.is_set():
                     task.status = TaskStatus.CANCELLED
                 else:
                     task.status = TaskStatus.COMPLETED
@@ -311,7 +339,10 @@ class TaskQueue:
             with self._lock:
                 task.finished_at = time.time()
                 task._is_terminal = True
-                if task.cancel_flag.is_set():
+                if task.timeout_requested:
+                    task.status = TaskStatus.TIMED_OUT
+                    task.error = task.error or f"Task deadline of {task.timeout_s:.1f}s exceeded."
+                elif task.cancel_flag.is_set():
                     task.status = TaskStatus.CANCELLED
                 else:
                     task.status = TaskStatus.FAILED
@@ -319,8 +350,23 @@ class TaskQueue:
                 self._active = max(0, self._active - 1)
             logger.error("❌ [%s] Failed: %s", task.task_id, e, exc_info=True)
 
+        finally:
+            if deadline_timer is not None:
+                deadline_timer.cancel()
+
         with self._cond:
             self._cond.notify_all()
+
+    def _request_timeout(self, task: Task) -> None:
+        """Request cooperative cancellation when a running task exceeds its deadline."""
+        with self._lock:
+            if task._is_terminal or task.status != TaskStatus.RUNNING:
+                return
+            task.timeout_requested = True
+            task.cancel_flag.set()
+            task.status = TaskStatus.CANCELLING
+            task.error = f"Task deadline of {task.timeout_s:.1f}s exceeded; awaiting worker acknowledgement."
+        logger.warning("⏱️ [%s] Deadline exceeded; cancellation requested", task.task_id)
 
 
 _queue      = TaskQueue()

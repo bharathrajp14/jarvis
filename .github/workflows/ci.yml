@@ -1,57 +1,137 @@
-name: CI/CD Integration Suite
+﻿name: BR-JARVIS CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main, "upgrade/**"]
   pull_request:
-    branches: [ main ]
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHONUTF8: "1"
+  PYTHONPATH: src
+  JARVIS_TEST_MODE: "true"
+  JARVIS_SERVER_API_KEY: "ci-only-brjarvis-server-key-32-characters" # pragma: allowlist secret
+  JARVIS_PERMISSION_MODE: "confirm_destructive"
 
 jobs:
-  lint:
+  quality:
+    name: Incremental quality gate
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
-          
-      - name: Install Linting Tools
-        run: |
-          pip install flake8 mypy
-          
-      - name: Run Flake8
-        run: |
-          # stop the build if there are Python syntax errors or undefined names
-          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-          # exit-zero treats all errors as warnings
-          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+          python-version: "3.12"
+          cache: pip
+      - name: Install quality tools
+        run: python -m pip install "ruff>=0.6.0" "pyright>=1.1.390" "import-linter>=2.1.0"
+      - name: Ruff correctness gate
+        run: >-
+          ruff check
+          src/brjarvis/security
+          src/brjarvis/events
+          src/brjarvis/web
+          src/brjarvis/plugins/plugin_manager.py
+          src/brjarvis/tools/domain.py
+          src/brjarvis/tools/registry.py
+          src/brjarvis/tools/runtime.py
+          src/brjarvis/tools/sandbox.py
+          src/brjarvis/agent/agent_loop.py
+          src/brjarvis/agent/task_queue.py
+          tests/unit/test_secure_credentials.py
+          tests/unit/test_security_permissions.py
+          tests/unit/test_security_sandbox.py
+          tests/unit/test_event_runtime.py
+          tests/unit/test_task_queue_lifecycle.py
+          tests/integration/test_fastapi_web_routes.py
+          tests/integration/test_websocket_hub.py
+          tests/adversarial/test_path_traversal_attacks.py
+          scripts/check_licenses.py
+      - name: Pyright hardened-surface gate
+        run: >-
+          pyright
+          src/brjarvis/security/credentials.py
+          src/brjarvis/events/store.py
+          src/brjarvis/agent/task_queue.py
+          src/brjarvis/web/api/state.py
+      - name: Architecture contracts
+        run: lint-imports
 
-  test:
-    needs: lint
+  tests:
+    name: Tests (${{ matrix.os }}, Python ${{ matrix.python }})
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: ["3.10", "3.11", "3.12"]
-
+        include:
+          - os: ubuntu-latest
+            python: "3.11"
+          - os: ubuntu-latest
+            python: "3.12"
+          - os: ubuntu-latest
+            python: "3.13"
+          - os: windows-latest
+            python: "3.12"
+          - os: macos-latest
+            python: "3.12"
     steps:
-      - uses: actions/checkout@v3
-      
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python-version }}
-          cache: 'pip'
-          
-      - name: Install Dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install pytest pytest-asyncio
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-        shell: bash
+          python-version: ${{ matrix.python }}
+          cache: pip
+      - name: Install project and test dependencies
+        run: python -m pip install -e ".[documents,web,llm-backends,dev]"
+      - name: Run maintained test suite
+        run: python -m pytest tests -m "not benchmark" -q --tb=short --timeout=60
 
-      - name: Run Pytest Suite
+  package:
+    name: Installed-wheel smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Build wheel and source distribution
         run: |
-          python -m pytest tests/ -v
+          python -m pip install "build>=1.2.0"
+          python -m build
+      - name: Install wheel outside checkout
+        run: |
+          python -m venv "$RUNNER_TEMP/wheel-smoke"
+          "$RUNNER_TEMP/wheel-smoke/bin/python" -m pip install dist/*.whl
+          cd "$RUNNER_TEMP"
+          "$RUNNER_TEMP/wheel-smoke/bin/python" -c "from brjarvis.web.api.server import create_app; from brjarvis.web.api.state import WEB_DIR; app=create_app(); assert (WEB_DIR / 'index.html').is_file(); assert len(app.routes) >= 40"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: brjarvis-distributions
+          path: dist/*
+
+  security:
+    name: Security and dependency gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install project and audit tools
+        run: python -m pip install -e ".[documents,web,llm-backends,dev]"
+      - name: Dependency audit
+        run: pip-audit --skip-editable
+      - name: Static security scan
+        run: bandit -q -r src/brjarvis/security src/brjarvis/web src/brjarvis/tools/sandbox.py -ll
+      - name: Dependency license policy
+        run: python scripts/check_licenses.py
+      - name: Secret baseline verification
+        run: git ls-files -z | xargs -0 detect-secrets-hook --baseline .secrets.baseline

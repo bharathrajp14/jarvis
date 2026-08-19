@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BR JARVIS - Offline</title>
+    <style>
+        :root { --bg: #03070d; --text: #f8fafc; --accent: #00f2fe; --muted: #64748b; }
+        @media (prefers-color-scheme: light) {
+            :root:not([data-theme="dark"]) { --bg: #f8fafc; --text: #0f172a; --accent: #0070f3; --muted: #94a3b8; }
+        }
+        body {
+            margin: 0; padding: 0; min-height: 100vh;
+            background: var(--bg); color: var(--text);
+            font-family: 'Inter', -apple-system, sans-serif;
+            display: flex; align-items: center; justify-content: center;
+            text-align: center;
+        }
+        .offline-container {
+            max-width: 400px; padding: 40px;
+        }
+        .offline-icon { font-size: 64px; margin-bottom: 20px; }
+        h1 { font-size: 24px; margin-bottom: 12px; }
+        p { color: var(--muted); line-height: 1.6; margin-bottom: 24px; }
+        .retry-btn {
+            background: var(--accent); color: #000; border: none;
+            padding: 12px 24px; border-radius: 8px; font-size: 14px;
+            font-weight: 700; cursor: pointer; transition: opacity 0.2s;
+        }
+        .retry-btn:hover { opacity: 0.8; }
+    </style>
+</head>
+<body>
+    <div class="offline-container">
+        <div class="offline-icon">📡</div>
+        <h1>You're Offline</h1>
+        <p>BR JARVIS requires a network connection to communicate with the AI engine. Please check your connection and try again.</p>
+        <button class="retry-btn" onclick="window.location.reload()">Retry Connection</button>
+    </div>
+</body>
+</html>

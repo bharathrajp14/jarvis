@@ -194,10 +194,10 @@ def _start_backend_server() -> threading.Thread:
         try:
             import uvicorn
             try:
-                from apps.web.api.server import create_app
+                from brjarvis.web.api.server import create_app
                 _fastapi_app = create_app()
             except Exception:
-                from apps.web.api.app import app as _fastapi_app
+                from brjarvis.web.api.app import app as _fastapi_app
             print(f"[Server] ⚙ Starting embedded JARVIS backend on http://127.0.0.1:{port_to_use}")
             uvicorn.run(
                 _fastapi_app,
@@ -221,7 +221,6 @@ def _start_backend_server() -> threading.Thread:
 # ─────────────────────────────────────────────────────────────────────────────
 def _generate_remote_credentials() -> tuple[str, str, str, str] | None:
     """Generate local dashboard connection URLs and access token for phone pairing."""
-    import secrets
     port = _server_port()
 
     # Determine local LAN IP
@@ -233,30 +232,12 @@ def _generate_remote_credentials() -> tuple[str, str, str, str] | None:
     except Exception:
         pass
 
-    from brjarvis.core.paths import paths
-    key = os.environ.get("JARVIS_SERVER_API_KEY")
-    api_file = paths.CONFIG_ROOT / "api_keys.json"
-    if not key and api_file.exists():
-        try:
-            cfg = json.loads(api_file.read_text(encoding="utf-8"))
-            key = cfg.get("server_api_key")
-        except Exception:
-            pass
+    from brjarvis.web.api.state import require_server_api_key
 
-    if not key:
-        key = secrets.token_hex(4).upper()
-        try:
-            cfg = {}
-            if api_file.exists():
-                cfg = json.loads(api_file.read_text(encoding="utf-8"))
-            cfg["server_api_key"] = key
-            api_file.parent.mkdir(parents=True, exist_ok=True)
-            api_file.write_text(json.dumps(cfg, indent=4), encoding="utf-8")
-        except Exception:
-            pass
+    key = require_server_api_key()
 
     base_url = f"http://{local_ip}:{port}"
-    auto_url = f"{base_url}/?token={key}"
+    auto_url = base_url
     manual_url = base_url
     return (base_url, key, auto_url, manual_url)
 

@@ -6,29 +6,22 @@ Validates contracts, normalizer, validator, resolver, runtime lifecycle, and mod
 from __future__ import annotations
 
 import asyncio
-import os
-import tempfile
-from pathlib import Path
+
 import pytest
 
-from brjarvis.core.paths import paths
 from brjarvis.tools.domain import (
-    Observation,
     RiskLevel,
     SideEffectLevel,
     ToolCategory,
     ToolDefinition,
     ToolErrorCode,
     ToolExecutionStatus,
-    VerificationStrategy,
 )
 from brjarvis.tools.normalizer import ArgumentNormalizer
 from brjarvis.tools.resolver import ToolResolver
-from brjarvis.tools.runtime import ToolRuntime, get_canonical_tool_runtime
+from brjarvis.tools.runtime import ToolRuntime
 from brjarvis.tools.tool_result import ToolResult
 from brjarvis.tools.validator import SchemaValidator
-import brjarvis.tools.registry as registry_mod
-
 
 # ── 1. Domain & Contract Tests ────────────────────────────────────────────────
 
@@ -195,6 +188,8 @@ def test_runtime_execution_synchronous():
         },
         category=ToolCategory.GENERAL,
         risk_level=RiskLevel.LOW,
+        permission_required="PUBLIC_READ",
+        approval_required=False,
         is_read_only=True,
     )
 
@@ -218,11 +213,28 @@ async def test_runtime_execution_async_and_timeout():
         handler=slow_async_handler,
         timeout_sec=0.1,  # Short timeout to force timeout status
         category=ToolCategory.GENERAL,
+        risk_level=RiskLevel.LOW,
+        permission_required="PUBLIC_READ",
+        approval_required=False,
+        is_read_only=True,
     )
 
     res = await runtime.execute_tool_async("test_slow_tool", {})
     assert res.status == ToolExecutionStatus.TIMEOUT
     assert res.error_code == ToolErrorCode.TIMEOUT_EXCEEDED
+
+
+def test_runtime_registration_defaults_to_high_risk_approval():
+    runtime = ToolRuntime.get_instance()
+    tool_def = runtime.register_tool(
+        name="test_incomplete_metadata_is_safe",
+        description="A deliberately incomplete registration",
+        handler=lambda args: "must not run without approval",
+    )
+
+    assert tool_def.risk_level == RiskLevel.HIGH
+    assert tool_def.permission_required == "LOCAL_SYSTEM"
+    assert tool_def.approval_required is True
 
 
 # ── 5. Modernized Tool Suites Verification ────────────────────────────────────
@@ -231,7 +243,7 @@ def test_filesystem_suite_roundtrip():
     runtime = ToolRuntime.get_instance()
 
     # Ensure files tools are loaded
-    import brjarvis.tools.file_tools
+    import brjarvis.tools.file_tools  # noqa: F401
 
     test_file_name = "test_rebuilt_artifact.txt"
     test_content = "BR JARVIS Canonical Tool Rebuild Verified!\nTimestamped: 2026-08-16"
@@ -266,7 +278,7 @@ def test_filesystem_suite_roundtrip():
 
 def test_memory_suite_roundtrip():
     runtime = ToolRuntime.get_instance()
-    import brjarvis.tools.memory_tools
+    import brjarvis.tools.memory_tools  # noqa: F401
 
     mem_name = "rebuild_verification_key"
     mem_content = "Universal ToolRuntime is fully operational with zero false successes."
@@ -296,24 +308,23 @@ def test_memory_suite_roundtrip():
     assert del_res.success is True
 
 
-def test_code_sandbox_execution():
+def test_code_sandbox_execution_fails_closed_without_isolation(monkeypatch):
+    monkeypatch.delenv("JARVIS_ENABLE_UNSAFE_HOST_EXECUTION", raising=False)
     runtime = ToolRuntime.get_instance()
-    import brjarvis.tools.code_tools
+    import brjarvis.tools.code_tools  # noqa: F401
 
     code_snippet = "print('Hello from sandboxed canonical runtime!')"
     c_res = runtime.execute_tool("run_code", {"code": code_snippet, "lang": "python"}, confirmed=True)
-    assert c_res.success is True
-    assert "Hello from sandboxed" in c_res.output
+    assert c_res.success is False
+    assert "disabled" in (c_res.error or "").lower()
 
 
 def test_tool_health_diagnostics():
     runtime = ToolRuntime.get_instance()
-    import brjarvis.tools.diagnostics
+    import brjarvis.tools.diagnostics  # noqa: F401
 
     h_res = runtime.execute_tool("tool_health_check", {"run_smoke_tests": True}, confirmed=True)
     assert h_res.success is True
     assert h_res.data["total_tools"] >= 10
     smoke = h_res.data.get("smoke_tests", {})
     assert smoke.get("all_passed") is True, f"Smoke tests details: {smoke}"
-
-

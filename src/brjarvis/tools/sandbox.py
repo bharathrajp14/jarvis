@@ -8,17 +8,17 @@ Cross-platform: Windows, Linux, macOS.
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List, Optional
+import os
 
-from brjarvis.core.execution.types import ExecutionStatus
 from brjarvis.core.execution.universal_runtime import get_universal_runtime
-from .sandbox_process import get_sandbox_runner, SandboxedProcessRunner
+
+from .sandbox_process import get_sandbox_runner
 
 logger = logging.getLogger(__name__)
 
 
 class CodeSandbox:
-    """Subprocess code execution sandbox wrapper powered by UniversalExecutionRuntime."""
+    """Code-execution gateway that fails closed without a real isolation backend."""
 
     ALLOWED_LANGS = {"python", "javascript", "bash", "powershell"}
 
@@ -28,6 +28,22 @@ class CodeSandbox:
 
     def run(self, code: str, lang: str = "python", timeout: int = 30) -> dict:
         """Run code inside the isolated sandbox process with verified execution."""
+        unsafe_host_execution = os.environ.get("JARVIS_ENABLE_UNSAFE_HOST_EXECUTION", "false").strip().lower()
+        if unsafe_host_execution not in {"1", "true", "yes", "on"}:
+            return {
+                "success": False,
+                "status": "BLOCKED",
+                "verified": False,
+                "stdout": "",
+                "stderr": "",
+                "returncode": -1,
+                "error": (
+                    "Code execution is disabled because no OS-isolated sandbox is configured. "
+                    "Set JARVIS_ENABLE_UNSAFE_HOST_EXECUTION=true only in a disposable, trusted environment."
+                ),
+                "artifacts": [],
+                "host_artifacts": [],
+            }
         try:
             exec_res = self.runtime.execute_code(
                 code=code,
@@ -48,14 +64,15 @@ class CodeSandbox:
                 "host_artifacts": exec_res.host_artifacts,
             }
         except Exception as exc:
-            logger.error("CodeSandbox execution fallback: %s", exc)
-            res = self.runner.execute(code=code, lang=lang, timeout=timeout)
+            logger.error("CodeSandbox isolated runtime unavailable: %s", exc)
             return {
-                "success": res.get("success", False),
-                "stdout": res.get("stdout", ""),
-                "stderr": res.get("stderr", ""),
-                "returncode": res.get("returncode", -1),
-                "error": res.get("error"),
-                "artifacts": res.get("artifacts", []),
-                "host_artifacts": res.get("host_artifacts", []),
+                "success": False,
+                "status": "BLOCKED",
+                "verified": False,
+                "stdout": "",
+                "stderr": "",
+                "returncode": -1,
+                "error": "The isolated execution runtime failed; insecure host fallback was not used.",
+                "artifacts": [],
+                "host_artifacts": [],
             }

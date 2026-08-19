@@ -1,7 +1,6 @@
 # events/handlers.py — Event Handler Decorators and Handler Registry for JARVIS MK37
 from __future__ import annotations
 
-from typing import Callable, Union
 from .bus import EventHandler, get_event_bus
 
 

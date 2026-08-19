@@ -8,10 +8,10 @@ import logging
 import re
 import threading
 from collections import deque
-from typing import Awaitable, Callable, Dict, Deque, List, Optional, Union, Any
+from typing import Any, Awaitable, Callable, Deque, Dict, List, Optional, Union
 
 from .store import EventStore
-from .types import BaseEvent, ErrorEvent
+from .types import BaseEvent
 
 logger = logging.getLogger("JARVIS.EventBus")
 
@@ -133,10 +133,9 @@ class EventBus:
                         task.add_done_callback(_make_done_cb(handler, event))
 
                     except RuntimeError:
-                        # No running loop — skip async handler in sync context
-                        logger.debug(
-                            f"Skipping async handler '{getattr(handler, '__name__', '?')}' — no event loop"
-                        )
+                        # No running loop: execute the async subscriber to preserve
+                        # at-least-once in-process delivery semantics.
+                        asyncio.run(handler(event))
                 else:
                     handler(event)
             except Exception as exc:

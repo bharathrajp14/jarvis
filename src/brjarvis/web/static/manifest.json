@@ -1,0 +1,41 @@
+{
+  "name": "BR JARVIS - AI Workspace",
+  "short_name": "BRJARVIS",
+  "description": "Autonomous Personal AI Operating Runtime",
+  "start_url": "/web/index.html",
+  "display": "standalone",
+  "orientation": "any",
+  "theme_color": "#03070d",
+  "background_color": "#03070d",
+  "scope": "/web/",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%2303070d'/><text y='.9em' font-size='80' x='10'>⚡</text></svg>",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Chat",
+      "short_name": "Chat",
+      "url": "/web/index.html#chat",
+      "description": "Open Chat Interface"
+    },
+    {
+      "name": "Tasks",
+      "short_name": "Tasks",
+      "url": "/web/index.html#tasks",
+      "description": "View Tasks"
+    },
+    {
+      "name": "Memory",
+      "short_name": "Memory",
+      "url": "/web/index.html#memory",
+      "description": "Memory Explorer"
+    }
+  ],
+  "categories": ["productivity", "utilities"],
+  "lang": "en"
+}

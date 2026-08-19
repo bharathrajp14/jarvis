@@ -1,0 +1,85 @@
+flowchart TB
+    subgraph Adapters["Presentation and Delivery Adapters"]
+        CLI[CLI / start.py adapter]
+        WEB[FastAPI + packaged PWA]
+        DESKTOP[Desktop / Voice UI]
+        REMOTE[Telegram / Mobile adapters]
+    end
+
+    subgraph Composition["Target Composition Root"]
+        FACTORY[Typed Application Factory]
+        LIFE[Lifecycle Supervisor]
+        AUTH[Authenticated Session Context]
+    end
+
+    subgraph Runtime["Canonical Runtime"]
+        ORCH[Orchestrator]
+        AGENT[Agent Loop\nTyped terminal outcomes]
+        QUEUE[Task Queue\nDeadline + cancellation]
+        WORKFLOW[Workflow / DAG Engine]
+        RECOVERY[Recovery Watchdog]
+    end
+
+    subgraph Governance["Tool Governance"]
+        CATALOG[Tool Catalog + Schemas]
+        POLICY[Capability / Risk Policy]
+        APPROVAL[Approval Interlock]
+        EXEC[Execution Adapters]
+        VERIFY[Physical Verification]
+    end
+
+    subgraph Domains["Product Domains"]
+        MEMORY[Memory + Workspace]
+        CAREER[Career OS]
+        CONNECTORS[Connectors]
+        VOICE[Voice]
+        DOCS[Documents]
+    end
+
+    subgraph Infrastructure["Infrastructure"]
+        CONFIG[Typed Config + Paths]
+        STORE[Authoritative Repositories\nTask / Session / Domain]
+        LEDGER[Execution Ledger]
+        EVENTS[Bounded Event Store\nRotating JSONL]
+        KEYRING[OS Keyring]
+        ARTIFACTS[Contained Artifact Store]
+    end
+
+    CLI --> FACTORY
+    WEB --> FACTORY
+    DESKTOP --> FACTORY
+    REMOTE --> FACTORY
+    FACTORY --> LIFE
+    FACTORY --> AUTH
+    LIFE --> ORCH
+    LIFE --> QUEUE
+    LIFE --> RECOVERY
+    ORCH --> AGENT
+    ORCH --> WORKFLOW
+    AGENT --> CATALOG
+    CATALOG --> POLICY
+    POLICY --> APPROVAL
+    APPROVAL --> EXEC
+    EXEC --> VERIFY
+    VERIFY --> LEDGER
+    AGENT --> MEMORY
+    WORKFLOW --> STORE
+    QUEUE --> STORE
+    RECOVERY --> STORE
+    ORCH --> CAREER
+    ORCH --> CONNECTORS
+    ORCH --> VOICE
+    ORCH --> DOCS
+    MEMORY --> STORE
+    CAREER --> STORE
+    CONNECTORS --> KEYRING
+    EXEC --> ARTIFACTS
+    ORCH --> EVENTS
+    CONFIG --> FACTORY
+
+    classDef hardened fill:#d9f2e6,stroke:#177245,color:#0b3d26;
+    classDef migration fill:#fff1cc,stroke:#b7791f,color:#5f370e;
+    classDef boundary fill:#dcecff,stroke:#2563a6,color:#12385e;
+    class WEB,AUTH,AGENT,QUEUE,POLICY,APPROVAL,VERIFY,EVENTS,KEYRING,ARTIFACTS hardened;
+    class FACTORY,LIFE,STORE,WORKFLOW,REMOTE migration;
+    class CLI,DESKTOP,ORCH,CATALOG,MEMORY,CAREER,CONNECTORS,VOICE,DOCS,CONFIG,LEDGER boundary;

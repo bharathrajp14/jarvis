@@ -22,10 +22,10 @@ def main() -> int:
     port = find_available_port(requested_port)
     host = os.environ.get("HOST", "127.0.0.1")
     try:
-        from apps.web.api.server import create_app
+        from brjarvis.web.api.server import create_app
         app = create_app()
     except Exception:
-        from apps.web.api.app import app
+        from brjarvis.web.api.app import app
     uvicorn.run(app, host=host, port=port, log_level="info")
     return 0
 

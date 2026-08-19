@@ -8,8 +8,8 @@ from fastapi.testclient import TestClient
 
 from brjarvis.memory.canonical_db import CanonicalDatabaseManager
 from brjarvis.memory.workspace_store import WorkspaceStore, get_workspace_store
-from apps.web.api.server import create_app
-from apps.web.api.state import SERVER_API_KEY
+from brjarvis.web.api.server import create_app
+from brjarvis.web.api.state import SERVER_API_KEY
 
 
 @pytest.fixture
@@ -233,4 +233,3 @@ def test_api_skills_endpoint(client):
     assert len(data["skills"]) >= 1
     names = [s["name"] for s in data["skills"]]
     assert any("browser" in n.lower() or "python" in n.lower() or "search" in n.lower() or len(names) > 0 for n in names)
-

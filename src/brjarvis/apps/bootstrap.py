@@ -192,10 +192,10 @@ def launch_web_server(open_url: Optional[str] = None):
 
     import uvicorn
     try:
-        from apps.web.api.server import create_app
+        from brjarvis.web.api.server import create_app
         app = create_app()
     except Exception:
-        from apps.web.api.app import app
+        from brjarvis.web.api.app import app
     uvicorn.run(app, host="127.0.0.1", port=port, log_level="info")
 
 

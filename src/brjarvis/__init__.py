@@ -1,6 +1,6 @@
 # src/brjarvis/__init__.py — Master Package for BR JARVIS Cognitive Multi-Modal OS
 """
-BR JARVIS MK40.2+ (Jarvis)
+BR JARVIS v41.0 (MARK XLI)
 Autonomous Cognitive Agent Architecture & Isolated Sandbox Lifecycle Engine
 """
 from __future__ import annotations
@@ -117,9 +117,9 @@ try:
     __build__ = BUILD
     __codename__ = CODENAME
 except Exception:
-    __version__ = "40.2.0"
-    __build__ = "2026.08.16"
-    __codename__ = "MK40.2-PRODUCTION"
+    __version__ = "41.0.0"
+    __build__ = "2026-08-18"
+    __codename__ = "MARK XLI"
 
 from brjarvis.core.paths import get_path_manager, PathManager, paths
 

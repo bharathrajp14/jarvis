@@ -11,7 +11,7 @@ import os
 import sys
 from enum import Enum
 from pathlib import Path
-from typing import FrozenSet, List, Optional, Set, Union
+from typing import FrozenSet, List, Optional, Union
 
 logger = logging.getLogger("JARVIS.PathPolicy")
 

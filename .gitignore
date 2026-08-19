@@ -5,6 +5,10 @@
 config/api_keys.json
 credentials.json
 config/credentials.json
+config/credential_vault.json
+**/api_keys.json
+**/credentials.json
+**/credential_vault.json
 token.json
 token.pickle
 *.key

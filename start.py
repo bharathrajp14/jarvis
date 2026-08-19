@@ -105,7 +105,7 @@ def main(argv: list[str] | None = None) -> int:
 
     # 2. Version Flag
     if first in ("v", "version"):
-        print(f"BR JARVIS MK40.2+ | Version: {VERSION} | Build: {BUILD} | Codename: {CODENAME}")
+        print(f"BR JARVIS v{VERSION} ({CODENAME}) | Build: {BUILD}")
         return 0
 
     # 3. Help Flag

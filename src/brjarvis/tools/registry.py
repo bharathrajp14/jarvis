@@ -6,15 +6,12 @@ Uses a decorator-based plugin system to register and execute tools.
 from __future__ import annotations
 
 import asyncio
+import importlib
 import json
 import logging
-import traceback
-import sys
-import importlib
 import re
 import threading
-from pathlib import Path
-from typing import Callable, Any
+from typing import Any, Callable
 
 logger = logging.getLogger("JARVIS.ToolRegistry")
 
@@ -46,9 +43,9 @@ def register_tool(
     description: str,
     parameters: dict | None = None,
     category: str = "general",
-    risk_level: str = "low",
-    permission_required: str = "PUBLIC_READ",
-    approval_required: bool = False,
+    risk_level: str | None = None,
+    permission_required: str | None = None,
+    approval_required: bool | None = None,
     is_read_only: bool = False,
     idempotent: bool = True,
     timeout_sec: float = 30.0,
@@ -57,6 +54,9 @@ def register_tool(
 ) -> Callable:
     """Decorator to register a tool function in the JARVIS registry and ToolRuntime (thread-safe)."""
     def decorator(func: Callable[[dict], Any]) -> Callable[[dict], Any]:
+        resolved_risk = risk_level or ("low" if is_read_only else "high")
+        resolved_permission = permission_required or ("PUBLIC_READ" if is_read_only else "LOCAL_SYSTEM")
+        resolved_approval = approval_required if approval_required is not None else not is_read_only
         schema = {
             "name": name,
             "description": description,
@@ -93,16 +93,16 @@ def register_tool(
 
         # Register in the canonical ToolRuntime
         try:
+            from .domain import RiskLevel, ToolCategory, VerificationStrategy
             from .runtime import get_canonical_tool_runtime
-            from .domain import ToolCategory, RiskLevel, VerificationStrategy
             cat_enum = ToolCategory.GENERAL
             try:
                 cat_enum = ToolCategory(category.lower())
             except Exception:
                 pass
-            risk_enum = RiskLevel.LOW
+            risk_enum = RiskLevel.HIGH
             try:
-                risk_enum = RiskLevel(risk_level.lower())
+                risk_enum = RiskLevel(resolved_risk.lower())
             except Exception:
                 pass
             ver_enum = VerificationStrategy.NONE
@@ -118,8 +118,8 @@ def register_tool(
                 parameters=parameters or {},
                 category=cat_enum,
                 risk_level=risk_enum,
-                permission_required=permission_required,
-                approval_required=approval_required,
+                permission_required=resolved_permission,
+                approval_required=resolved_approval,
                 is_read_only=is_read_only,
                 idempotent=idempotent,
                 timeout_sec=timeout_sec,
@@ -284,7 +284,7 @@ def get_pruned_tool_prompt_block(user_prompt: str = "") -> str:
 
     low = user_prompt.lower()
 
-    
+
     # Core high-frequency tools always available
     essential_tools = {
         "open_app", "web_search", "file_read", "file_write", "run_code", "computer_settings", "window_manager",
@@ -292,7 +292,7 @@ def get_pruned_tool_prompt_block(user_prompt: str = "") -> str:
         "create_calendar_event", "list_calendar_events", "send_email", "gmail_login", "automate_app",
         "run_automation_workflow", "create_word_document", "create_pdf_document", "document_creator"
     }
-    
+
     # Domain keyword matching for targeted tool inclusion
     domain_map = {
         ("search", "google", "find", "who is", "what is", "news", "price", "weather"): {"web_search", "fetch_page"},
@@ -334,7 +334,7 @@ def get_pruned_tool_prompt_block(user_prompt: str = "") -> str:
             selected_names.update(tools)
 
     pruned_schemas = [schema for schema in TOOL_SCHEMAS if schema.get("name") in selected_names]
-    
+
     # If pruning is too aggressive, fallback to full schemas
     if len(pruned_schemas) < 3:
         pruned_schemas = TOOL_SCHEMAS
@@ -557,10 +557,10 @@ def parse_tool_call(text: str) -> tuple[str | None, dict | None]:
             try:
                 cleaned_json = re.sub(r'//.*', '', msg_match.group(1))
                 data = json.loads(cleaned_json)
-                
+
                 tool_name = None
                 args = {}
-                
+
                 if isinstance(data, dict):
                     if "name" in data:
                         tool_name = data.get("name")
@@ -568,7 +568,7 @@ def parse_tool_call(text: str) -> tuple[str | None, dict | None]:
                     elif "tool" in data:
                         tool_name = data.get("tool")
                         args = data.get("args", {})
-                
+
                 if not tool_name:
                     preceding = text[:msg_match.start()]
                     tool_match = _OSS_TOOL_HINT_RE.search(preceding)
@@ -577,12 +577,12 @@ def parse_tool_call(text: str) -> tuple[str | None, dict | None]:
                         if matched_name != "tool_call":
                             tool_name = matched_name
                             args = data
-                            
+
                 if not tool_name and isinstance(data, dict):
                     if "code" in data:
                         tool_name = "run_code"
                         args = {"code": data.get("code"), "lang": data.get("lang", "python")}
-                        
+
                 if tool_name:
                     tool_name = str(tool_name).strip().split('.')[-1]
                     return tool_name, args
@@ -640,7 +640,7 @@ def _import_plugins(*, full: bool = False, plugin_name: str | None = None):
       - If full=True, imports all extended tools (e.g. for generating complete docs).
     """
     global _plugins_stage
-    
+
     # Core essential tools needed immediately.
     # IMPORTANT: Any tool referenced in essential_tools or the system prompt MUST be
     # in this list — otherwise the LLM will be told a tool exists but get

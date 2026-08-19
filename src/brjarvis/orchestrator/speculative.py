@@ -1,7 +1,7 @@
-# orchestrator/speculative.py — Speculative Drafting & Execution Engine for BR JARVIS MK38
+# orchestrator/speculative.py — Backward-Compatibility Re-Export Shim — BR JARVIS v41.0
 """
-Implements speculative drafting and parallel validation to accelerate tool step execution loops.
-Re-exports from reasoning.speculative for seamless import compatibility.
+Re-exports the canonical speculative execution classes from ``reasoning.speculative``.
+Import directly from there when writing new code.
 """
 from __future__ import annotations
 

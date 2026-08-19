@@ -1,45 +1,23 @@
-# reasoning/speculative_engine.py — Speculative Fast-Path Execution Engine
+# reasoning/speculative_engine.py — Backward-Compatibility Re-Export Shim
 """
-Fast-path speculative tool execution engine.
-Performs lightweight rule-based pattern matching to speculate tool intent before or during
-full LLM generation to accelerate tool dispatch latency.
+This module is kept for backward compatibility only.
+All canonical implementations now live in ``reasoning.speculative``.
+
+Import from there directly:
+    from brjarvis.reasoning.speculative import SpeculativeEngine, get_speculative_engine
 """
 from __future__ import annotations
 
-import logging
-import re
-from typing import Dict, Any, Tuple, Optional
+from brjarvis.reasoning.speculative import (  # noqa: F401
+    SpeculativeEngine,
+    SpeculativeDraftStep,
+    SpeculativeExecutionEngine,
+    get_speculative_engine,
+)
 
-logger = logging.getLogger(__name__)
-
-
-class SpeculativeEngine:
-    """Speculative execution fast-path classifier for high-frequency intent resolution."""
-
-    def __init__(self):
-        # High-confidence intent patterns mapped to direct tool calls
-        self.speculative_rules = [
-            (r"^(open|launch|start)\s+(chrome|brave|edge|notepad|calculator|cmd|powershell)$", "open_app", lambda m: {"app_name": m.group(2)}),
-            (r"^(search|google|find)\s+(?:for\s+)?(.+)$", "web_search", lambda m: {"query": m.group(2)}),
-            (r"^(list|show)\s+(desktop\s+)?windows$", "window_manager", lambda m: {"action": "list"}),
-            (r"^(check|show|get)\s+system\s+health$", "system_health", lambda m: {}),
-        ]
-
-    def speculate_intent(self, user_input: str) -> Optional[Tuple[str, Dict[str, Any]]]:
-        """
-        Evaluate user input string against speculative rules.
-        Returns (tool_name, tool_args) tuple if a high-confidence match is found, else None.
-        """
-        if not user_input or not user_input.strip():
-            return None
-
-        clean_input = user_input.strip().lower()
-        for pattern, tool_name, args_extractor in self.speculative_rules:
-            match = re.search(pattern, clean_input, re.IGNORECASE)
-            if match:
-                try:
-                    args = args_extractor(match)
-                    return tool_name, args
-                except Exception as e:
-                    logger.debug('Suppressed exception: %s', e)
-        return None
+__all__ = [
+    "SpeculativeEngine",
+    "SpeculativeDraftStep",
+    "SpeculativeExecutionEngine",
+    "get_speculative_engine",
+]

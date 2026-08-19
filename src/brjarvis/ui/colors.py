@@ -1,4 +1,4 @@
-# ui/colors.py — JARVIS Cyberpunk Color System & Palette Engine
+﻿# ui/colors.py — JARVIS Cyberpunk Color System & Palette Engine
 # ==============================================================
 # Provides:
 #   C                  — singleton color namespace (all theme colors)
@@ -50,6 +50,32 @@ class C:
 
 
 # Ana renge (accent) bağlı anahtarlar — durum renkleri (ACC, GREEN, RED…) sabit kalır
+
+
+class LightC:
+    """Light theme color palette — mirrors C class structure."""
+    BG        = "#f8fafc"
+    PANEL     = "#f1f5f9"
+    PANEL2    = "#e2e8f0"
+    BORDER    = "#cbd5e1"
+    BORDER_B  = "#94a3b8"
+    BORDER_A  = "#93c5fd"
+    PRI       = "#0070f3"
+    PRI_DIM   = "#3b82f6"
+    PRI_GHO   = "#dbeafe"
+    ACC       = "#7928ca"
+    ACC2      = "#d4a000"
+    GREEN     = "#00a67e"
+    GREEN_D   = "#059669"
+    RED       = "#e0005a"
+    MUTED_C   = "#e0005a"
+    TEXT      = "#0f172a"
+    TEXT_DIM  = "#94a3b8"
+    TEXT_MED  = "#475569"
+    WHITE     = "#ffffff"
+    DARK      = "#0f172a"
+    BAR_BG    = "#f1f5f9"
+
 _HUE_LINKED = (
     "BG", "PANEL", "PANEL2", "BORDER", "BORDER_B", "BORDER_A",
     "PRI", "PRI_DIM", "PRI_GHO", "TEXT", "TEXT_DIM", "TEXT_MED",
@@ -65,7 +91,7 @@ def apply_ui_accent(accent_hex: str) -> bool:
     Seçilen accent rengine göre tüm turkuaz-ailesi paleti yeniden türetir
     (hue kaydırma — parlaklık/doygunluk oranları korunur, tasarım bozulmaz).
     Boyanan öğeler (HUD, dalga formu, metrikler) bir sonraki karede yeni
-    rengi alır; stylesheet tabanlı paneller yeniden kurulduklarında alır.
+    CSS-based panels pick it up when re-established.
     """
     import colorsys
 

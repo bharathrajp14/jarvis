@@ -1,14 +1,14 @@
-# orchestrator/core.py — JARVIS MK37 Core Orchestrator (Gemini-Native)
+# orchestrator/core.py — BR JARVIS v41.0 (MARK XLI) Core Orchestrator
 """
-ReAct (Reason + Act) orchestration loop powered by Gemini.
+ReAct (Reason + Act) orchestration loop — canonical execution engine for BR JARVIS.
 
-Key improvements over previous version:
-- All module-level imports moved to top (no deferred per-call imports)
-- _react_loop() extracted to eliminate code duplication between chat() and chat_stream()
-- _prompted_continuation is now a local variable (was instance-level → race condition)
+Architecture highlights (v41.0):
+- All module-level imports at top (no deferred per-call imports)
+- _react_loop() extracted to eliminate duplication between chat() and chat_stream()
+- _prompted_continuation is a local variable (not instance-level → no race condition)
 - Working memory accessed through public API only (no direct .history manipulation)
 - Vector memory failures logged at WARNING instead of silent pass
-- _store_exchange() wrapper removed (called _save_turn() directly)
+- MAX_TOOL_ITERATIONS cap enforced to prevent unbounded re-entrant loops
 """
 from __future__ import annotations
 
@@ -18,17 +18,16 @@ import os
 import re
 import time
 import uuid
-from typing import Generator, Iterator, Optional
+from typing import Any, Iterator, Optional
 
 from brjarvis.agent.step_planner import StepPlanner
-from brjarvis.context.token_manager import TokenBudgetManager
 from brjarvis.core.intent_engine import DeterministicIntentEngine
 from brjarvis.events.bus import get_event_bus
 from brjarvis.events.types import TaskEvent
+from brjarvis.memory.task_memory_router import MemoryMode, get_task_memory_router
 from brjarvis.memory.working import WorkingMemory
-from brjarvis.memory.task_memory_router import get_task_memory_router, MemoryMode
 from brjarvis.router import AgentRouter
-from brjarvis.tools.registry import get_tool_prompt_block, parse_tool_call, execute_tool, set_orchestrator_ref
+from brjarvis.tools.registry import execute_tool, get_tool_prompt_block, parse_tool_call, set_orchestrator_ref
 
 # Auto-register connector tools into the tool registry on import
 try:
@@ -99,6 +98,12 @@ MODES = {
 
 MAX_REACT_STEPS = 20
 
+# Absolute hard cap on tool dispatch iterations per chat() call.
+# Fires as a failsafe BEFORE the StepBudget check so it cannot be bypassed
+# by budget extension logic.  Prevents re-entrant token-burn loops.
+# TOP_20 issue #13 remediation.
+MAX_TOOL_ITERATIONS: int = 25
+
 # Per-tool cyclic-loop thresholds.
 # High-frequency tools that are legitimately called many times (e.g., by
 # parallel sub-agents each making one call) get a higher limit.  Risky or
@@ -147,7 +152,7 @@ def _synthesize_evidence_summary(tool_history: list[dict], user_input: str) -> s
 
     tools_used = list(dict.fromkeys(t["tool_name"] for t in tool_history if "tool_name" in t))
     has_errors = any("error" in str(t.get("result", "")).lower() or "failed" in str(t.get("result", "")).lower() for t in tool_history)
-    
+
     header = f"Completed operations using {', '.join(tools_used)}, sir." if not has_errors else f"Operations completed with notable execution notices or errors, sir. (Tools: {', '.join(tools_used)})"
     lines = [header, "", "### Execution Evidence:"]
     for t in tool_history:
@@ -180,9 +185,9 @@ class JarvisOrchestrator:
         self._session_id = ""
         self._history_linker = None
         try:
-            from brjarvis.history.session_store import SessionStore
-            from brjarvis.history.linker import HistoryLinker
             from brjarvis.history.audit_writer import set_session_id
+            from brjarvis.history.linker import HistoryLinker
+            from brjarvis.history.session_store import SessionStore
             self._session_store = SessionStore()
             self._history_linker = HistoryLinker()
             self._session_id = self._session_store.new_session(
@@ -259,7 +264,7 @@ class JarvisOrchestrator:
             return mode_res
         try:
             return self.chat(q)
-        except Exception as e:
+        except Exception:
             return f"Status: OK (Processed: {q[:40]})"
 
     def _parse_mode(self, user_input: str) -> str | None:
@@ -644,9 +649,9 @@ class JarvisOrchestrator:
     def _check_skill(self, user_input: str) -> str | None:
         try:
             try:
-                from brjarvis.skills import find_skill, execute_skill, load_skills
+                from brjarvis.skills import execute_skill, find_skill, load_skills
             except ImportError:
-                from brjarvis.skills import find_skill, execute_skill, load_skills
+                from brjarvis.skills import execute_skill, find_skill, load_skills
             m = re.match(r"^/skill\s+(\S+)\s*(.*)", user_input.strip())
             if m:
                 name = m.group(1)
@@ -707,7 +712,7 @@ class JarvisOrchestrator:
                 self._record_turn("assistant", result_text, backend="fast_path", latency_ms=0)
                 self.working_memory.add("user", user_input)
                 self.working_memory.add("assistant", result_text)
-                
+
                 try:
                     event_bus = get_event_bus()
                     event_bus.publish(TaskEvent(
@@ -766,6 +771,21 @@ class JarvisOrchestrator:
         ))
 
         while True:
+            # ── Absolute hard-cap failsafe (TOP_20 #13) ──────────────────────
+            if step >= MAX_TOOL_ITERATIONS:
+                logger.warning(
+                    "[Orchestrator] MAX_TOOL_ITERATIONS=%d reached at step %d — "
+                    "force-breaking ReAct loop to prevent token burn.",
+                    MAX_TOOL_ITERATIONS,
+                    step,
+                )
+                if not final_response:
+                    final_response = _synthesize_evidence_summary(tool_history, user_input)
+                if stream:
+                    yield f"\n[JARVIS] ⛔ Hard iteration cap ({MAX_TOOL_ITERATIONS}) reached. Summarising results.\n"
+                    yield final_response
+                break
+
             # ── Budget gate ───────────────────────────────────────────────────
             should_continue, budget_msg, was_extended = budget.evaluate(step, tool_history)
             if was_extended:

@@ -6,7 +6,6 @@ Guarantees that policy evaluation failure fails CLOSED (DENY).
 """
 from __future__ import annotations
 
-import json
 import logging
 import os
 from dataclasses import dataclass, field
@@ -15,7 +14,7 @@ from pathlib import Path
 from typing import Any, Dict, FrozenSet, Optional, Set, Union
 
 from brjarvis.security.capabilities import Capability, RiskLevel
-from brjarvis.security.path_policy import CRITICAL_RESOURCE_DENYLIST, PathTier, get_path_policy
+from brjarvis.security.path_policy import get_path_policy
 
 logger = logging.getLogger("JARVIS.PolicyEngine")
 
@@ -157,9 +156,10 @@ class PolicyEngine:
                     try:
                         self.mode = PermissionMode(val)
                     except ValueError:
-                        self.mode = PermissionMode.ALLOW_ALL
+                        logger.warning("Unknown permission mode '%s'; using confirm_destructive", val)
+                        self.mode = PermissionMode.CONFIRM_DESTRUCTIVE
             else:
-                self.mode = PermissionMode.ALLOW_ALL
+                self.mode = PermissionMode.CONFIRM_DESTRUCTIVE
         elif isinstance(mode, str):
             self.set_mode(mode)
         else:

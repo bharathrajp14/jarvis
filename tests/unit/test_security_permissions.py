@@ -1,15 +1,12 @@
 import os
 import unittest
+
 from brjarvis.security.permissions import (
     PermissionMode,
     PermissionPolicy,
     _normalize_mode,
-    evaluate_action_policy,
-    ActionDecision,
-    RiskLevel,
-    PERMISSIONS,
 )
-from brjarvis.security.policy_engine import PolicyEngine, get_policy_engine
+from brjarvis.security.policy_engine import PolicyEngine
 
 
 class TestSecurityPolicyPermissions(unittest.TestCase):
@@ -49,6 +46,16 @@ class TestSecurityPolicyPermissions(unittest.TestCase):
         # In confirm_destructive mode, safe reads are allowed, destructive tools are blocked/require confirmation
         self.assertTrue(engine.check_tool_permission("file_read", {"path": "test.txt"}))
         self.assertFalse(engine.check_tool_permission("file_delete", {"path": "test.txt"}))
+
+    def test_policy_engine_defaults_to_confirm_destructive(self):
+        os.environ.pop("JARVIS_PERMISSION_MODE", None)
+        self.assertEqual(PolicyEngine().mode, PermissionMode.CONFIRM_DESTRUCTIVE)
+        self.assertEqual(_normalize_mode(None), PermissionMode.CONFIRM_DESTRUCTIVE)
+
+    def test_invalid_permission_mode_falls_back_safely(self):
+        os.environ["JARVIS_PERMISSION_MODE"] = "unknown-mode"
+        self.assertEqual(PolicyEngine().mode, PermissionMode.CONFIRM_DESTRUCTIVE)
+        self.assertEqual(_normalize_mode(None), PermissionMode.CONFIRM_DESTRUCTIVE)
 
     def test_permissions_set_mode_sync(self):
         policy = PermissionPolicy(mode="confirm_destructive")

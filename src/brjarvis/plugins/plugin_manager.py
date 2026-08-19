@@ -5,10 +5,12 @@ import enum
 import importlib.util
 import json
 import logging
+import os
 import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, Field
+
+from pydantic import BaseModel
 
 from brjarvis.core.runtime import get_runtime
 from brjarvis.events.bus import get_event_bus
@@ -37,7 +39,7 @@ class PluginMetadata(BaseModel):
 
 
 class PluginManager:
-    """Dynamic Plugin Platform Manager with sandbox isolation and lifecycle hooks."""
+    """Dynamic plugin manager with explicit trust opt-in and lifecycle hooks."""
 
     def __init__(self):
         self.runtime = get_runtime()
@@ -82,6 +84,17 @@ class PluginManager:
                 status=PluginStatus.UNLOADED,
                 folder_path=str(folder),
             )
+
+            enabled = os.environ.get("JARVIS_ENABLE_UNTRUSTED_PLUGINS", "false").strip().lower()
+            if enabled not in {"1", "true", "yes", "on"}:
+                meta.status = PluginStatus.FAILED
+                self._plugins[name] = meta
+                logger.warning(
+                    "Plugin '%s' was not loaded: in-process community plugins are disabled. "
+                    "Set JARVIS_ENABLE_UNTRUSTED_PLUGINS=true only for explicitly trusted code.",
+                    name,
+                )
+                return None
 
             if script_path.exists():
                 spec = importlib.util.spec_from_file_location(f"jarvis_plugin_{folder.name}", str(script_path))
